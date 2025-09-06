@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\TicketRoutingHistory;
 
 
 class TicketController extends Controller
@@ -134,6 +135,15 @@ class TicketController extends Controller
             'staff_id' => $staff ? $staff->id : null,
             'date_created' => now(),
             'date_closed' => null,
+        ]);
+
+        // Record initial routing history at ticket creation
+        TicketRoutingHistory::create([
+            'ticket_id' => $ticket->id,
+            'staff_id' => $ticket->staff_id, // may be null if not assigned
+            'status' => 'Open',
+            'routed_at' => now(),
+            'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
         ]);
 
         // For API requests, return JSON

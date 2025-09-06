@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 
     <!-- Styles -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -43,7 +43,7 @@
             @yield('content')
         </main>
     </div>
-    
+
     <!-- Scripts -->
     @yield('scripts')
 </body>
