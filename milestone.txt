@@ -69,3 +69,168 @@ Date: 2025-09-07
 15) Notes
 - FAQ count is currently a placeholder (0) until FAQ model/table exists.
 - Ensure Mail and Auth are configured for full workflow in staff dashboard.
+
+16) Database Schema and Relationships
+
+Tables and Columns
+- users (Laravel auth)
+  - id (PK, bigint)
+  - name (string)
+  - email (string, unique)
+  - email_verified_at (timestamp, nullable)
+  - password (string)
+  - role (string)
+  - remember_token (string, nullable)
+  - timestamps (created_at, updated_at)
+  - Migration: database/migrations/0001_01_01_000000_create_users_table.php
+
+- tickets (core)
+  - id (PK, bigint)
+  - category (string)
+  - question (text)
+  - response (text, nullable) — added by migration 2025_09_06_120001_add_response_to_tickets_table.php
+  - recepient_id (string) — student/submitter identifier (not a FK)
+  - email (string) — submitter’s email
+  - status (enum: Open, In-Progress, Closed; default Open)
+  - staff_id (FK to users.id, nullable)
+  - date_created (timestamp, default current)
+  - date_closed (timestamp, nullable)
+  - timestamps (created_at, updated_at)
+  - Migration: database/migrations/2025_09_04_111633_create_tickets_table.php
+
+- ticket_routing_histories (audit of routing and status changes)
+  - id (PK, bigint)
+  - ticket_id (FK to tickets.id, onDelete: CASCADE)
+  - staff_id (FK to users.id, nullable, onDelete: SET NULL)
+  - status (enum: Open, In-Progress, Closed) — status when routing occurred
+  - routed_at (timestamp, default current)
+  - notes (text, nullable)
+  - timestamps (created_at, updated_at)
+  - Migration: database/migrations/2025_09_06_090726_create_ticket_routing_histories_table.php
+
+- password_reset_tokens (Laravel)
+  - email (PK)
+  - token (string)
+  - created_at (timestamp, nullable)
+  - Migration: database/migrations/0001_01_01_000000_create_users_table.php
+
+- sessions (Laravel)
+  - id (PK)
+  - user_id (FK-like, nullable, indexed)
+  - ip_address (string)
+  - user_agent (text)
+  - payload (longText)
+  - last_activity (int, indexed)
+  - Migration: database/migrations/0001_01_01_000000_create_users_table.php
+
+Eloquent Models and Relationships
+- App\Models\User
+  - Fillable: name, email, password, role
+  - Implicit relationships (used by other models):
+    - hasMany(Ticket) via tickets.staff_id (referenced in Ticket::staff())
+    - hasMany(TicketRoutingHistory) via ticket_routing_histories.staff_id (referenced in TicketRoutingHistory::staff())
+
+- App\Models\Ticket
+  - Fillable: category, question, response, recepient_id, email, status, staff_id, date_created, date_closed
+  - Relationships:
+    - belongsTo(User, 'staff_id') as staff — assigned staff
+    - hasMany(TicketRoutingHistory, 'ticket_id') with('staff')->orderByDesc('routed_at')
+
+- App\Models\TicketRoutingHistory
+  - Fillable: ticket_id, staff_id, status, routed_at, notes
+  - Casts: routed_at => datetime
+  - Relationships:
+    - belongsTo(Ticket)
+    - belongsTo(User, 'staff_id')
+
+Referential Integrity and Behaviors
+- ticket_routing_histories.ticket_id → tickets.id
+  - onDelete: CASCADE — deleting a Ticket removes its routing history automatically.
+- ticket_routing_histories.staff_id → users.id
+  - onDelete: SET NULL — preserves history, even if staff user is removed.
+- tickets.staff_id → users.id
+  - Nullable FK — tickets can exist without an assigned staff.
+
+Domain Notes
+- Submitter identity is captured as:
+  - recepient_id (string) and email (string) stored on Ticket (not tied to users table).
+- Status lifecycle:
+  - Ticket.status ∈ {Open, In-Progress, Closed}
+  - Routing history records transitions and assignment events with timestamps and optional notes.
+- Analytics sources:
+  - Weekly counts by tickets.date_created.
+  - Category breakdown by tickets.category.
+  - Top senders by tickets.email.
+
+ER Summary (textual)
+- User (1) — (0..N) Ticket [via staff_id]
+- User (1) — (0..N) TicketRoutingHistory [via staff_id]
+- Ticket (1) — (0..N) TicketRoutingHistory [via ticket_id]
+- Ticket (0..1) — (1) User [staff_id, nullable]
+- Submitter fields (recepient_id, email) live on Ticket and are not foreign keyed.
+
+
+17) Routes Overview (HTTP, Names, Middleware)
+Source: [routes/web.php](routes/web.php:1)
+
+Public (no auth required)
+- GET / — [php.Closure()](routes/web.php:10)
+  - Behavior: Redirects authenticated users to staff/admin dashboards; guests see login view.
+- GET /login — [php.Route::get()](routes/web.php:24)
+  - Name: login
+  - Middleware: guest
+- POST /login — [php.Route::post()](routes/web.php:25)
+  - Middleware: guest, throttle:10,1
+- Tickets (public)
+  - GET /tickets/{recepient_id?} — [php.Route::get()](routes/web.php:27)
+    - Name: tickets.index
+    - Constraints: whereNumber('recepient_id')
+  - GET /tickets/create/{recepient_id?} — [php.Route::get()](routes/web.php:28)
+    - Name: tickets.create
+    - Constraints: whereNumber('recepient_id')
+  - POST /tickets — [php.Route::post()](routes/web.php:29)
+    - Name: tickets.store
+    - Middleware: throttle:10,1
+  - PUT /tickets/{ticket} — [php.Route::put()](routes/web.php:30)
+    - Name: tickets.update
+    - Constraints: whereNumber('ticket')
+    - Middleware: throttle:10,1
+  - DELETE /tickets/{ticket} — [php.Route::delete()](routes/web.php:34)
+    - Name: tickets.destroy
+    - Constraints: whereNumber('ticket')
+    - Middleware: throttle:10,1
+
+Authenticated (wrapped in auth middleware group)
+- Staff dashboard
+  - GET /staff/dashboard — [php.Route::get()](routes/web.php:41)
+    - Name: staff.dashboard
+  - GET /staff/dashboard/data — [php.Route::get()](routes/web.php:43)
+    - Name: staff.dashboard.data
+    - Middleware: throttle:20,1
+- Staff actions on tickets
+  - POST /staff/tickets/{ticket}/reroute — [php.Route::post()](routes/web.php:46)
+    - Name: staff.tickets.reroute
+    - Constraints: whereNumber('ticket')
+    - Middleware: throttle:30,1
+  - POST /staff/tickets/{ticket}/respond — [php.Route::post()](routes/web.php:52)
+    - Name: staff.tickets.respond
+    - Constraints: whereNumber('ticket')
+    - Middleware: throttle:20,1
+- Staff mail test
+  - GET /staff/mail/test — [php.Route::get()](routes/web.php:58)
+    - Name: staff.mail.test
+    - Middleware: throttle:5,1
+- Admin dashboard
+  - GET /admin/dashboard — [php.Route::get()](routes/web.php:61)
+    - Name: admin.dashboard
+  - GET /admin/dashboard/data — [php.Route::get()](routes/web.php:63)
+    - Name: admin.dashboard.data
+    - Middleware: throttle:20,1
+- Logout
+  - POST /logout — [php.Route::post()](routes/web.php:68)
+    - Name: logout
+
+Notes
+- CSRF protection applies to state-changing routes (POST/PUT/DELETE) in web middleware.
+- Numeric route parameters are enforced via whereNumber for robustness (e.g., ticket, recepient_id).
+- Throttle middleware guards key endpoints to prevent abuse.
