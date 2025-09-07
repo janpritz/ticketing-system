@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -26,6 +27,14 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('guest','thr
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->whereNumber('recepient_id')->name('tickets.index');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->whereNumber('recepient_id')->name('tickets.create');
 Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');
+Route::put('/tickets/{ticket}', [TicketController::class, 'update'])
+    ->whereNumber('ticket')
+    ->middleware('throttle:10,1')
+    ->name('tickets.update');
+Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
+    ->whereNumber('ticket')
+    ->middleware('throttle:10,1')
+    ->name('tickets.destroy');
 
 Route::middleware('auth')->group(function () {
     // Staff dashboard
@@ -48,10 +57,12 @@ Route::middleware('auth')->group(function () {
     // SMTP test endpoint (sends to the authenticated user's email)
     Route::get('/staff/mail/test', [StaffController::class, 'mailTest'])->middleware('throttle:5,1')->name('staff.mail.test');
     
-    // Admin dashboard (placeholder for now)
-    Route::get('/admin/dashboard', function () {
-        return view('dashboards.admin.index'); // Placeholder for admin dashboard
-    })->name('admin.dashboard');
+    // Admin dashboard
+    Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+    // Live data endpoint for admin dashboard auto-refresh
+    Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
+        ->middleware('throttle:20,1')
+        ->name('admin.dashboard.data');
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

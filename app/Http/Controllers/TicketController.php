@@ -195,17 +195,20 @@ class TicketController extends Controller
 
     public function update(Request $request, $id)
     {
+        // Only allow editing of the question; category must remain unchanged
         $request->validate([
-            'category' => 'required|string|max:255',
             'question' => 'required|string',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
         $ticket->update([
-            'category' => $request->category,
             'question' => $request->question,
         ]);
+
+        if ($request->wantsJson()) {
+            return response()->json($ticket);
+        }
 
         return redirect()->back()->with('success', 'Ticket updated successfully!');
     }
@@ -216,6 +219,10 @@ class TicketController extends Controller
 
         // Delete the ticket
         $ticket->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['deleted' => true]);
+        }
 
         return redirect()->back()->with('success', 'Ticket deleted successfully!');
     }

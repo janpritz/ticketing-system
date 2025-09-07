@@ -1,0 +1,71 @@
+Milestones and Accomplishments
+Sangkay Ticketing System
+Date: 2025-09-07
+
+1) Admin Analytics Overhaul
+- Replaced "Open vs In‑Progress" chart with Weekly Tickets (Mon–Sun) bar chart.
+- Added Tickets by Category chart.
+- Included Top Senders table ranked by email.
+
+2) Tickets by Category - All Categories
+- Removed Top 5 limit; now includes all categories sorted by count desc.
+
+3) Frequent Senders (Top Senders)
+- Aggregates tickets grouped by email; shows top 10.
+
+4) Admin Dashboard Auto-Load (AJAX)
+- Created live data endpoint: GET /admin/dashboard/data (auth + throttle).
+- Endpoint returns KPIs, weekly series, category series, top senders, openList, inProgressList.
+- JSON response marked no-cache to avoid stale data.
+
+5) Frontend Auto-Refresh Behavior
+- Initial fetch after page load; polling every 10s.
+- Refresh on tab focus and when tab becomes visible.
+- Cross-tab instant refresh using localStorage “ts_tickets_changed” signal.
+- Fetch uses credentials same-origin and cache no-store.
+
+6) Charts: Live Updates
+- Store Chart.js instances and update in place (labels + datasets).
+- Weekly Tickets bar and Category doughnut update without re-creating instances.
+
+7) Admin Tables: Live Updates
+- Added DOM IDs for table bodies (openListBody, inProgressListBody).
+- Render functions rebuild rows from API response for Open and In‑Progress sections.
+
+8) Ticket Editing Policy
+- End users can edit only the question; category is read-only in the edit modal.
+- Server-side update only persists "question" field.
+
+9) Ticket Deletion
+- End users can delete their tickets.
+- Delete triggers cross-tab signal so admin dashboard refreshes immediately.
+
+10) Routes
+- Added PUT /tickets/{ticket} (tickets.update).
+- Added DELETE /tickets/{ticket} (tickets.destroy).
+- Added GET /admin/dashboard/data (admin.dashboard.data).
+
+11) Files Updated (key changes)
+- app/Http/Controllers/AdminController.php: index(), data() analytics, JSON response, open/in-progress lists.
+- resources/views/dashboards/admin/index.blade.php: charts, hidden data div, auto-refresh, table updates.
+- routes/web.php: admin data route, tickets update/destroy routes.
+- app/Http/Controllers/TicketController.php: update() question-only, destroy() delete.
+- resources/views/tickets/index.blade.php: edit modal category readonly, delete button emits signal.
+
+12) Data Considerations
+- Weekly series from Carbon::startOfWeek to endOfWeek (Mon–Sun).
+- Category grouping returns all categories (null/empty labeled "Uncategorized").
+- Top senders limited to 10 to keep UI concise.
+
+13) Performance & Reliability
+- No-cache headers on admin data responses.
+- Shorter polling interval (10s) balanced with focus/visibility triggers.
+
+14) How to Verify
+- Open Admin Dashboard and My Tickets in separate tabs.
+- Delete a ticket in My Tickets; admin dashboard KPIs, charts, and tables should refresh almost immediately.
+- Edit a ticket’s question; no change allowed to category; admin will reflect counts on next refresh.
+
+15) Notes
+- FAQ count is currently a placeholder (0) until FAQ model/table exists.
+- Ensure Mail and Auth are configured for full workflow in staff dashboard.

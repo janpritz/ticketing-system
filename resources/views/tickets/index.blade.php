@@ -118,7 +118,7 @@
                 <div class="mt-2 px-7 py-3">
                     <div class="mb-4">
                         <label for="edit-category" class="block text-sm font-medium text-gray-700">Category</label>
-                        <input type="text" id="edit-category" name="category" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <input type="text" id="edit-category" name="category" readonly aria-readonly="true" class="mt-1 block w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-md shadow-sm py-2 px-3 cursor-not-allowed focus:outline-none focus:ring-0 focus:border-gray-200 sm:text-sm">
                     </div>
                     <div class="mb-4">
                         <label for="edit-question" class="block text-sm font-medium text-gray-700">Question</label>
@@ -188,6 +188,7 @@
                     form.appendChild(methodField);
                     
                     // Submit the form
+                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                     document.body.appendChild(form);
                     form.submit();
                 }

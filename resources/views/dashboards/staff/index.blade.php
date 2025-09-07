@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@section('logo')
+<link rel="icon" type="image/x-icon" href="{{ asset('logo.png') }}">
+@endsection
+
 @section('title', 'Staff Dashboard')
 
 @section('content')
@@ -320,18 +324,18 @@
                                         <!-- Actions -->
                                         <td class="px-3 py-4 align-top">
                                             <a href="#"
-                                               data-action="view"
-                                               data-id="{{ $t->id }}"
-                                               data-category="{{ $t->category }}"
-                                               data-question="{{ $t->question }}"
-                                               data-status="{{ $t->status }}"
-                                               data-staff="{{ optional($t->staff)->name }}"
-                                               data-date-created="{{ $t->date_created }}"
-                                               data-updated-at="{{ $t->updated_at }}"
-                                               data-email="{{ $t->email }}"
-                                               data-recepient="{{ $t->recepient_id }}"
-                                               data-response="{{ $t->response }}"
-                                               class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-blue px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                                                data-action="view"
+                                                data-id="{{ $t->id }}"
+                                                data-category="{{ $t->category }}"
+                                                data-question="{{ $t->question }}"
+                                                data-status="{{ $t->status }}"
+                                                data-staff="{{ optional($t->staff)->name }}"
+                                                data-date-created="{{ $t->date_created }}"
+                                                data-updated-at="{{ $t->updated_at }}"
+                                                data-email="{{ $t->email }}"
+                                                data-recepient="{{ $t->recepient_id }}"
+                                                data-response="{{ $t->response }}"
+                                                class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-blue px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
                                                 View
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M9 5l7 7-7 7" />
@@ -359,86 +363,90 @@
 
 <!-- Ticket View Modal -->
 <div id="ticketModal" class="fixed inset-0 z-50 hidden">
-  <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
-  <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
-    <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5">
-      <div class="flex items-center justify-between px-5 py-4 border-b">
-        <div>
-          <div id="tmTicketNo" class="text-sm font-semibold text-gray-900">Ticket</div>
-          <div id="tmDates" class="text-xs text-gray-500"></div>
-        </div>
-        <div class="relative flex items-center gap-2">
-          <div class="relative">
-            <button type="button" id="tmOptionsBtn" class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-600 hover:bg-gray-100" aria-haspopup="true" aria-expanded="false" title="Options">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z"/></svg>
-            </button>
-            <div id="tmOptionsMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black/5 hidden z-10">
-              <button type="button" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="toggle-history">Show History</button>
-              <button type="button" id="tmOptionReroute" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="show-reroute">Reroute…</button>
+    <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
+    <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
+        <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5">
+            <div class="flex items-center justify-between px-5 py-4 border-b">
+                <div>
+                    <div id="tmTicketNo" class="text-sm font-semibold text-gray-900">Ticket</div>
+                    <div id="tmDates" class="text-xs text-gray-500"></div>
+                </div>
+                <div class="relative flex items-center gap-2">
+                    <div class="relative">
+                        <button type="button" id="tmOptionsBtn" class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-600 hover:bg-gray-100" aria-haspopup="true" aria-expanded="false" title="Options">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                            </svg>
+                        </button>
+                        <div id="tmOptionsMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black/5 hidden z-10">
+                            <button type="button" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="toggle-history">Show History</button>
+                            <button type="button" id="tmOptionReroute" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="show-reroute">Reroute…</button>
+                        </div>
+                    </div>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" aria-label="Close" data-modal-close>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
-          </div>
-          <button type="button" class="text-gray-500 hover:text-gray-700" aria-label="Close" data-modal-close>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
+            <div class="px-5 py-4 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span id="tmStatus" class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1"></span>
+                    <span id="tmCategory" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700"></span>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-500">Subject</div>
+                    <div id="tmSubject" class="text-sm font-medium text-gray-900"></div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-500">Question</div>
+                    <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-xs text-gray-500">Email</div>
+                        <div id="tmEmail" class="text-sm text-gray-800"></div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500">Recipient ID</div>
+                        <div id="tmRecepient" class="text-sm text-gray-800"></div>
+                    </div>
+                </div>
+                <div id="tmStoredResponseBlock" class="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 hidden">
+                    <div class="text-xs font-semibold text-emerald-700 mb-1">Sent Response</div>
+                    <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+                </div>
+                <div class="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
+                    <label for="tmResponse" class="block text-xs font-semibold text-indigo-700 mb-1">Response Message</label>
+                    <textarea id="tmResponse" class="w-full rounded-md border-indigo-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm" rows="5" placeholder="Type your response..."></textarea>
+                </div>
+            </div>
+            <div class="px-5 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <label for="tmRerouteSelect" class="text-xs text-gray-500">Reroute to</label>
+                    @php
+                    $roles = ['Primary Administrator','Enrollment','Finance and Payments','Scholarships','Academic Concerns','Exams','Student Services','Library Services','IT Support','Graduation','Athletics and Sports'];
+                    @endphp
+                    <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="" selected disabled>Select a role</option>
+                        @foreach($roles as $role)
+                        <option value="{{ $role }}">{{ $role }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50" id="tmRerouteApply">Apply</button>
+                </div>
+                <div class="flex items-center gap-2 ml-auto">
+                    <button type="button" class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50" data-modal-close>Close</button>
+                    <button type="button" title="Send response" aria-label="Send response" class="inline-flex items-center justify-center rounded-full bg-indigo-600 size-8 text-white hover:bg-indigo-700" id="tmSendResponse">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 12l18-9-9 18-2-7-7-2z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="px-5 py-4 space-y-4">
-        <div class="flex items-center gap-2">
-          <span id="tmStatus" class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1"></span>
-          <span id="tmCategory" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700"></span>
-        </div>
-        <div>
-          <div class="text-xs text-gray-500">Subject</div>
-          <div id="tmSubject" class="text-sm font-medium text-gray-900"></div>
-        </div>
-        <div>
-          <div class="text-xs text-gray-500">Question</div>
-          <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <div class="text-xs text-gray-500">Email</div>
-            <div id="tmEmail" class="text-sm text-gray-800"></div>
-          </div>
-          <div>
-            <div class="text-xs text-gray-500">Recipient ID</div>
-            <div id="tmRecepient" class="text-sm text-gray-800"></div>
-          </div>
-        </div>
-        <div id="tmStoredResponseBlock" class="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 hidden">
-          <div class="text-xs font-semibold text-emerald-700 mb-1">Sent Response</div>
-          <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
-        </div>
-        <div class="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
-          <label for="tmResponse" class="block text-xs font-semibold text-indigo-700 mb-1">Response Message</label>
-          <textarea id="tmResponse" class="w-full rounded-md border-indigo-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm" rows="5" placeholder="Type your response..."></textarea>
-        </div>
-      </div>
-      <div class="px-5 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <label for="tmRerouteSelect" class="text-xs text-gray-500">Reroute to</label>
-          @php
-            $roles = ['Primary Administrator','Enrollment','Finance and Payments','Scholarships','Academic Concerns','Exams','Student Services','Library Services','IT Support','Graduation','Athletics and Sports'];
-          @endphp
-          <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500">
-            <option value="" selected disabled>Select a role</option>
-            @foreach($roles as $role)
-              <option value="{{ $role }}">{{ $role }}</option>
-            @endforeach
-          </select>
-          <button type="button" class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50" id="tmRerouteApply">Apply</button>
-        </div>
-        <div class="flex items-center gap-2 ml-auto">
-          <button type="button" class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50" data-modal-close>Close</button>
-          <button type="button" title="Send response" aria-label="Send response" class="inline-flex items-center justify-center rounded-full bg-indigo-600 size-8 text-white hover:bg-indigo-700" id="tmSendResponse">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12l18-9-9 18-2-7-7-2z"/></svg>
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
 </div>
 
 @section('scripts')
@@ -497,7 +505,7 @@
         const toggleEl = document.getElementById('toggleViewAll');
         const ticketsHeadingEl = document.getElementById('ticketsHeading');
         let ticketsMap = new Map();
- 
+
         const statusStyles = {
             'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
             'In-Progress': 'text-amber-700 bg-amber-50 ring-amber-600/20',
@@ -638,7 +646,7 @@
                 ticketsMap = new Map(list.map(t => [String(t.id), t]));
                 // Show both Open and In-Progress when not viewing all
                 const filtered = viewAll ? list : list.filter(t => (t.status === 'Open' || t.status === 'In-Progress'));
-  
+
                 // Render tickets only if changed (cheap diff by filter+IDs+counts JSON)
                 const snapshot = JSON.stringify({
                     mode: viewAll ? 'all' : 'open',
@@ -659,7 +667,7 @@
         const POLL_MS = 5000; // 5 seconds
         setInterval(fetchData, POLL_MS);
         document.addEventListener('visibilitychange', fetchData);
- 
+
         // React to toggle changes immediately
         if (toggleEl) {
             toggleEl.addEventListener('change', () => {
@@ -688,7 +696,7 @@
         const tmOptionReroute = document.getElementById('tmOptionReroute');
         const tmStoredResponseBlock = document.getElementById('tmStoredResponseBlock');
         const tmStoredResponse = document.getElementById('tmStoredResponse');
- 
+
         const csrfToken = '{{ csrf_token() }}';
         const rerouteBase = "{{ url('/staff/tickets') }}";
         let currentTicketId = null;
@@ -697,7 +705,7 @@
             const base = statusStyles[s] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
             return base;
         }
- 
+
         function ensureHistorySection() {
             const resp = document.getElementById('tmResponse');
             const container = resp ? resp.closest('.space-y-4') : null;
@@ -714,11 +722,17 @@
                 if (responseBlock) container.insertBefore(section, responseBlock);
             }
             const list = document.getElementById('tmHistoryList');
-            return { section, list };
+            return {
+                section,
+                list
+            };
         }
- 
+
         function renderHistory(histArr) {
-            const { section, list } = ensureHistorySection();
+            const {
+                section,
+                list
+            } = ensureHistorySection();
             if (!section || !list) return;
             if (!Array.isArray(histArr) || histArr.length === 0) {
                 list.innerHTML = '<li class="text-xs text-gray-500">No routing history.</li>';
@@ -834,7 +848,9 @@
                         category: a.getAttribute('data-category') || '',
                         question: a.getAttribute('data-question') || '',
                         status: a.getAttribute('data-status') || '',
-                        staff: { name: a.getAttribute('data-staff') || '' },
+                        staff: {
+                            name: a.getAttribute('data-staff') || ''
+                        },
                         date_created: a.getAttribute('data-date-created') || '',
                         updated_at: a.getAttribute('data-updated-at') || '',
                         email: a.getAttribute('data-email') || '',
@@ -854,7 +870,7 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeModal();
         });
- 
+
         // Options dropdown
         if (tmOptionsBtn && tmOptionsMenu) {
             tmOptionsBtn.addEventListener('click', (e) => {
@@ -863,23 +879,23 @@
                 tmOptionsMenu.classList.toggle('hidden', isOpen);
                 tmOptionsBtn.setAttribute('aria-expanded', String(!isOpen));
             });
- 
+
             document.addEventListener('click', (e) => {
                 if (!tmOptionsMenu.contains(e.target) && e.target !== tmOptionsBtn) {
                     tmOptionsMenu.classList.add('hidden');
                     tmOptionsBtn.setAttribute('aria-expanded', 'false');
                 }
             });
- 
+
             tmOptionsMenu.addEventListener('click', (e) => {
                 const btn = e.target.closest('[data-option]');
                 if (!btn) return;
                 const action = btn.getAttribute('data-option');
- 
+
                 // Hide menu after action
                 tmOptionsMenu.classList.add('hidden');
                 tmOptionsBtn.setAttribute('aria-expanded', 'false');
- 
+
                 if (action === 'toggle-history') {
                     const hs = ensureHistorySection().section;
                     if (hs) {
@@ -915,7 +931,9 @@
                             'X-CSRF-TOKEN': csrfToken
                         },
                         credentials: 'same-origin',
-                        body: JSON.stringify({ role })
+                        body: JSON.stringify({
+                            role
+                        })
                     });
                     if (res.ok) {
                         lastSnapshot = '';
@@ -955,7 +973,9 @@
                             'X-CSRF-TOKEN': csrfToken
                         },
                         credentials: 'same-origin',
-                        body: JSON.stringify({ message: msg })
+                        body: JSON.stringify({
+                            message: msg
+                        })
                     });
                     if (res.ok) {
                         alert('Response email sent.');
