@@ -7,7 +7,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
-    
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+
     <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <link rel="shortcut icon" href="{{ asset('logo.png') }}">
     <!-- Fonts -->
@@ -18,6 +19,7 @@
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 
     <!-- Styles -->
+    <link rel="stylesheet" href="https://unpkg.com/@rasahq/chat-widget-ui/dist/rasa-chatwidget/rasa-chatwidget.css" />
     <!-- <script src="https://cdn.tailwindcss.com"></script> -->
 
     <!-- Scripts -->
@@ -25,6 +27,8 @@
 
     <!-- Alpine.js for dropdown functionality -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Rasa Widget -->
+    <script type="module" src="https://unpkg.com/@rasahq/chat-widget-ui/dist/rasa-chatwidget/rasa-chatwidget.esm.js"></script>
 </head>
 
 <body class="font-sans antialiased bg-gray-100">

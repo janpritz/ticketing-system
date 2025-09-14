@@ -24,7 +24,7 @@ class TicketController extends Controller
         $request->validate([
             'category' => 'required|string|max:255',
             'question' => 'required|string',
-            'recepient_id' => ['required', 'string', 'regex:/^[0-9]+$/'],  // Only numbers allowed as string
+            'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
         ]);
 
@@ -176,7 +176,7 @@ class TicketController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:open,closed,in-progress'
+            'status' => 'required|in:Open,Closed,Re-Routed'
         ]);
 
         $user = request()->user();

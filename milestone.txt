@@ -15,7 +15,7 @@ Date: 2025-09-07
 
 4) Admin Dashboard Auto-Load (AJAX)
 - Created live data endpoint: GET /admin/dashboard/data (auth + throttle).
-- Endpoint returns KPIs, weekly series, category series, top senders, openList, inProgressList.
+- Endpoint returns KPIs, weekly series, category series, top senders, openList, Re-routedList.
 - JSON response marked no-cache to avoid stale data.
 
 5) Frontend Auto-Refresh Behavior
@@ -29,7 +29,7 @@ Date: 2025-09-07
 - Weekly Tickets bar and Category doughnut update without re-creating instances.
 
 7) Admin Tables: Live Updates
-- Added DOM IDs for table bodies (openListBody, inProgressListBody).
+- Added DOM IDs for table bodies (openListBody, Re-routedListBody).
 - Render functions rebuild rows from API response for Open and In‑Progress sections.
 
 8) Ticket Editing Policy
@@ -46,7 +46,7 @@ Date: 2025-09-07
 - Added GET /admin/dashboard/data (admin.dashboard.data).
 
 11) Files Updated (key changes)
-- app/Http/Controllers/AdminController.php: index(), data() analytics, JSON response, open/in-progress lists.
+- app/Http/Controllers/AdminController.php: index(), data() analytics, JSON response, open/Re-routed lists.
 - resources/views/dashboards/admin/index.blade.php: charts, hidden data div, auto-refresh, table updates.
 - routes/web.php: admin data route, tickets update/destroy routes.
 - app/Http/Controllers/TicketController.php: update() question-only, destroy() delete.
@@ -91,7 +91,7 @@ Tables and Columns
   - response (text, nullable) — added by migration 2025_09_06_120001_add_response_to_tickets_table.php
   - recepient_id (string) — student/submitter identifier (not a FK)
   - email (string) — submitter’s email
-  - status (enum: Open, In-Progress, Closed; default Open)
+  - status (enum: Open, Re-routed, Closed; default Open)
   - staff_id (FK to users.id, nullable)
   - date_created (timestamp, default current)
   - date_closed (timestamp, nullable)
@@ -102,7 +102,7 @@ Tables and Columns
   - id (PK, bigint)
   - ticket_id (FK to tickets.id, onDelete: CASCADE)
   - staff_id (FK to users.id, nullable, onDelete: SET NULL)
-  - status (enum: Open, In-Progress, Closed) — status when routing occurred
+  - status (enum: Open, Re-routed, Closed) — status when routing occurred
   - routed_at (timestamp, default current)
   - notes (text, nullable)
   - timestamps (created_at, updated_at)
@@ -155,7 +155,7 @@ Domain Notes
 - Submitter identity is captured as:
   - recepient_id (string) and email (string) stored on Ticket (not tied to users table).
 - Status lifecycle:
-  - Ticket.status ∈ {Open, In-Progress, Closed}
+  - Ticket.status ∈ {Open, Re-routed, Closed}
   - Routing history records transitions and assignment events with timestamps and optional notes.
 - Analytics sources:
   - Weekly counts by tickets.date_created.

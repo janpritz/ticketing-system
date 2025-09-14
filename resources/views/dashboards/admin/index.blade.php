@@ -24,7 +24,7 @@
         </a>
       </li>
       <li>
-        <a href="#" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+        <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
           <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
             <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
           </svg>
@@ -61,7 +61,7 @@
     </ul>
   </div>
 </aside>
-<div id="content-wrapper" class="px-10  sm:ml-64 transition-all duration-300">
+<div id="content-wrapper" class="px-10 sm:ml-64 transition-all duration-300">
     <!-- Top Bar -->
     <header class="bg-white border border-gray-200 rounded-md">
         <div class="px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between gap-4">
@@ -104,7 +104,7 @@
         </div>
 
         <!-- Metrics -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Total Open Tickets -->
             <div class="bg-white rounded-xl border border-gray-200 p-4">
                 <div class="flex items-start justify-between">
@@ -141,6 +141,22 @@
                     <div class="rounded-md bg-blue-50 p-2 text-blue-600 border border-blue-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 3l9 4.5V12c0 5-4 9-9 9s-9-4-9-9V7.5L12 3zm0 2.2L5 8.1V12c0 3.9 3.1 7 7 7s7-3.1 7-7V8.1l-7-2.9z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Staff (last 10 min) -->
+            <div id="activeStaffCard" class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:bg-gray-50" role="button" tabindex="0" aria-label="Open active staff list">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="text-xs font-medium text-slate-500">Active Staff (last 10 min)</div>
+                        <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="activeStaffCount">{{ number_format($activeStaffCount ?? 0) }}</span></div>
+                        <div class="mt-1 text-xs text-slate-500">Users with recent activity</div>
+                    </div>
+                    <div class="rounded-md bg-purple-50 p-2 text-purple-600 border border-purple-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
                         </svg>
                     </div>
                 </div>
@@ -230,7 +246,7 @@
             @php
             $badge = fn($status) => match($status) {
             'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
-            'In-Progress' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+            'Re-routed' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
             'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
             default => 'text-slate-700 bg-slate-50 ring-slate-600/20',
             };
@@ -295,10 +311,10 @@
                 </div>
             </div>
 
-            <!-- In Progress Tickets -->
+            <!-- Re-routed Tickets -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">In Progress Tickets</h3>
+                    <h3 class="text-sm font-semibold text-slate-800">Re-routed Tickets</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -356,7 +372,33 @@
         </div>
     </main>
 </div>
+
+<!-- Secondary right-side Contacts nav (hidden by default; toggled by Active Staff card) -->
+<aside id="contacts-aside" class="hidden fixed top-0 right-0 z-30 w-72 h-screen bg-white border-l border-gray-200 flex-col">
+  <div class="h-12 flex items-center justify-between px-4 border-b">
+    <div class="text-[11px] font-semibold text-slate-700 tracking-wide">CONTACTS</div>
+  </div>
+  <div id="contactsList" class="flex-1 overflow-y-auto p-2 space-y-1">
+    <!-- Filled by JS -->
+  </div>
+</aside>
 @endsection
+
+<!-- Right-side drawer for Active Staff -->
+<div id="activeStaffDrawer" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+  <div id="asdOverlay" class="absolute inset-0 bg-black/40"></div>
+  <div class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
+    <div class="h-12 flex items-center justify-between px-4 border-b">
+      <div class="text-sm font-semibold text-slate-800">Active Staff</div>
+      <button id="asdClose" type="button" class="text-slate-500 hover:text-slate-700" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="asdList" class="flex-1 overflow-y-auto p-3 text-sm">
+      <!-- Filled dynamically -->
+    </div>
+  </div>
+</div>
 
 
 <!-- Serialized analytics data for charts (avoid Blade directives inside JS) -->
@@ -365,6 +407,8 @@
      data-week-data='@json($weekData ?? [])'
      data-category-labels='@json($categoryLabels ?? [])'
      data-category-data='@json($categoryData ?? [])'
+     data-active-staff='@json($activeStaff ?? [])'
+     data-staff-contacts='@json($staffContacts ?? [])'
      data-admin-url="{{ route('admin.dashboard.data') }}"></div>
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
@@ -377,6 +421,10 @@
         const weekData = analyticsEl ? JSON.parse(analyticsEl.getAttribute('data-week-data') || '[]') : [];
         const categoryLabels = analyticsEl ? JSON.parse(analyticsEl.getAttribute('data-category-labels') || '[]') : [];
         const categoryData = analyticsEl ? JSON.parse(analyticsEl.getAttribute('data-category-data') || '[]') : [];
+        const activeStaffSeed = analyticsEl ? JSON.parse(analyticsEl.getAttribute('data-active-staff') || '[]') : [];
+        let activeStaffList = Array.isArray(activeStaffSeed) ? activeStaffSeed : [];
+        const staffContactsSeed = analyticsEl ? JSON.parse(analyticsEl.getAttribute('data-staff-contacts') || '[]') : [];
+        let staffContactsList = Array.isArray(staffContactsSeed) ? staffContactsSeed : [];
         // Chart instances (assigned after init so refresh can update them)
         let weeklyChart, catChart;
 
@@ -441,9 +489,11 @@
             const elOpen = document.getElementById('openTicketsCount');
             const elFaq = document.getElementById('faqCountValue');
             const elUser = document.getElementById('userCountValue');
+            const elActive = document.getElementById('activeStaffCount');
             if (elOpen) elOpen.textContent = fmt.format(payload.openTickets ?? 0);
             if (elFaq) elFaq.textContent = fmt.format(payload.faqCount ?? 0);
             if (elUser) elUser.textContent = fmt.format(payload.userCount ?? 0);
+            if (elActive) elActive.textContent = fmt.format(payload.activeStaffCount ?? 0);
         }
 
         function updateTopSenders(payload) {
@@ -467,6 +517,57 @@
             }
         }
 
+        // Contacts aside rendering
+        const contactsListEl = document.getElementById('contactsList');
+        function initialsOf(name) {
+            if (!name) return '?';
+            const parts = String(name).trim().split(/\s+/).slice(0, 2);
+            return parts.map(p => (p && p[0] ? p[0].toUpperCase() : '')).join('') || '?';
+        }
+        function escapeHtml(s) {
+            return String(s || '')
+                .replace(/&/g, '&')
+                .replace(/</g, '<')
+                .replace(/>/g, '>')
+                .replace(/"/g, '"')
+                .replace(/'/g, '&#039;');
+        }
+        function renderContacts(list) {
+            if (!contactsListEl) return;
+            const arr = Array.isArray(list) ? list.slice() : [];
+            if (!arr.length) {
+                contactsListEl.innerHTML = '<div class="p-3 text-xs text-slate-500">No staff found.</div>';
+                return;
+            }
+            // Sort by active first, then name
+            arr.sort((a, b) => {
+                const aa = a.is_active ? 0 : 1;
+                const bb = b.is_active ? 0 : 1;
+                if (aa !== bb) return aa - bb;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+            const html = arr.map(u => {
+                const dot = u.is_active ? 'bg-emerald-500' : 'bg-slate-300';
+                const initials = initialsOf(u.name);
+                const name = escapeHtml(u.name);
+                const email = escapeHtml(u.email);
+                return `
+                <div class="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-50">
+                  <div class="relative">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold">${initials}</div>
+                    <span class="absolute -bottom-0 -right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${dot}"></span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm text-slate-900 truncate">${name}</div>
+                    <div class="text-xs text-slate-500 truncate">${email}</div>
+                  </div>
+                </div>`;
+            }).join('');
+            contactsListEl.innerHTML = html;
+        }
+        // Initial render
+        renderContacts(staffContactsList);
+
         // Helpers for lists rendering
         const adminPad = (num, size = 4) => {
             num = String(num ?? '');
@@ -483,7 +584,7 @@
         function adminBadgeClass(status) {
             switch (status) {
                 case 'Open': return 'text-blue-700 bg-blue-50 ring-blue-600/20';
-                case 'In-Progress': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
+                case 'Re-routed': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
                 case 'Closed': return 'text-emerald-700 bg-emerald-50 ring-emerald-600/20';
                 default: return 'text-slate-700 bg-slate-50 ring-slate-600/20';
             }
@@ -558,7 +659,7 @@
                     </td>
                 </tr>`;
             }) : [];
-            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No in-progress tickets.</td></tr>`;
+            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No re-routed tickets.</td></tr>`;
         }
         async function refreshAdminData() {
             const url = analyticsEl ? analyticsEl.getAttribute('data-admin-url') : null;
@@ -596,6 +697,19 @@
                 updateTopSenders(data);
                 updateOpenList(data.openList || []);
                 updateInProgressList(data.inProgressList || []);
+
+                // Keep active staff list fresh for drawer
+                if (Array.isArray(data.activeStaff)) {
+                    activeStaffList = data.activeStaff;
+                    if (typeof asd !== 'undefined' && asd && !asd.classList.contains('hidden') && typeof renderActiveStaff === 'function') {
+                        renderActiveStaff(activeStaffList);
+                    }
+                }
+                // Update right-side contacts
+                if (Array.isArray(data.staffContacts)) {
+                    staffContactsList = data.staffContacts;
+                    renderContacts(staffContactsList);
+                }
             } catch (e) {
                 // swallow errors to avoid UI disruption
                 console.debug('Admin auto-refresh failed', e);
@@ -618,6 +732,44 @@
             }
         });
     })();
+</script>
+
+<!-- Toggle Contacts Aside via Active Staff card -->
+<script>
+  (function () {
+    const activeCard = document.getElementById('activeStaffCard');
+    const contactsAside = document.getElementById('contacts-aside');
+    const content = document.getElementById('content-wrapper');
+
+    if (!activeCard || !contactsAside || !content) return;
+
+    function isShown() {
+      return !contactsAside.classList.contains('hidden');
+    }
+    function showAside() {
+      contactsAside.classList.remove('hidden');
+      contactsAside.classList.add('flex');        // ensure flex layout when visible
+      content.classList.add('sm:mr-72');          // reserve space on right for >= sm
+    }
+    function hideAside() {
+      contactsAside.classList.add('hidden');
+      contactsAside.classList.remove('flex');
+      content.classList.remove('sm:mr-72');
+    }
+    function toggleAside() {
+      if (isShown()) hideAside(); else showAside();
+    }
+
+    // Click to toggle
+    activeCard.addEventListener('click', toggleAside);
+    // Keyboard support (Enter/Space)
+    activeCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleAside();
+      }
+    });
+  })();
 </script>
 
 <!-- Sidebar collapse/expand for desktop as well -->

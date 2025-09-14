@@ -30,12 +30,12 @@
                                 <button type="button" class="relative flex max-w-xs items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
                                     <span class="absolute -inset-1.5"></span>
                                     <span class="sr-only">Open user menu</span>
-                                    <img class="size-40 rounded-full object-cover w-8 h-8" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" />
+                                    <img class="size-40 rounded-full object-cover w-8 h-8" src="{{ $user->profile_photo ? asset('storage/'.$user->profile_photo).'?v='.(optional($user->updated_at)->timestamp) : ('https://ui-avatars.com/api/?background=E5E7EB&color=111827&name=' . urlencode($user->name)) }}" alt="{{ $user->name }}" />
                                 </button>
                             </div>
                             <!-- Dropdown menu -->
                             <div class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline-1 outline-black/5 dark:bg-gray-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 hidden" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" id="user-menu">
-                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 outline-hidden dark:hover:bg-white/5" role="menuitem">Your profile</a>
+                                <a href="{{ route('staff.profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 outline-hidden dark:hover:bg-white/5" role="menuitem">Your profile</a>
                                 <a href="{{ route('logout') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 outline-hidden dark:hover:bg-white/5" role="menuitem"
                                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     Sign out
@@ -67,7 +67,7 @@
             <div class="border-t border-white/10 pt-4 pb-3">
                 <div class="flex items-center px-5">
                     <div class="shrink-0">
-                        <img class="size-10 rounded-full outline -outline-offset-1 outline-white/10" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="" />
+                        <img class="size-10 rounded-full outline -outline-offset-1 outline-white/10" src="{{ $user->profile_photo ? asset('storage/'.$user->profile_photo).'?v='.(optional($user->updated_at)->timestamp) : ('https://ui-avatars.com/api/?background=E5E7EB&color=111827&name=' . urlencode($user->name)) }}" alt="{{ $user->name }}" />
                     </div>
                     <div class="ml-3">
                         <div class="text-base/5 font-medium text-white">{{ $user->name }}</div>
@@ -82,8 +82,7 @@
                     </button>
                 </div>
                 <div class="mt-3 space-y-1 px-2">
-                    <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white">Your profile</a>
-                    <a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white">Settings</a>
+                    <a href="{{ route('staff.profile') }}" class="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white">Your profile</a>
                     <a href="{{ route('logout') }}" class="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
                         onclick="event.preventDefault(); document.getElementById('logout-form-mobile').submit();">
                         Sign out
@@ -101,89 +100,44 @@
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div class="grid grid-cols-12 gap-6">
                 <!-- Left rail -->
-                <aside class="col-span-12 md:col-span-3 space-y-6">
+                <aside class="col-span-12 md:col-span-3 space-y-6 order-2 md:order-1">
                     <!-- Quick Filters -->
-                    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-4">Quick Filters</h3>
-
-                        <div class="space-y-5">
-                            <!-- Status -->
-                            <!-- <div>
-                                <label class="block text-xs text-gray-500 mb-1">Status</label>
-                                <select class="w-full rounded-lg border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500">
-                                    <option>All</option>
-                                    <option>Open</option>
-                                    <option>In Progress</option>
-                                    <option>Resolved</option>
-                                </select>
-                            </div> -->
-
-                            <!-- Priority -->
-                            <!-- <div>
-                                <label class="block text-xs text-gray-500 mb-1">Priority</label>
-                                <select class="w-full rounded-lg border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500">
-                                    <option>All</option>
-                                    <option>Urgent</option>
-                                    <option>High</option>
-                                    <option>Medium</option>
-                                    <option>Low</option>
-                                </select>
-                            </div> -->
-
-                            <!-- Category -->
-                            <!-- <div>
-                                <label class="block text-xs text-gray-500 mb-1">Category</label>
-                                <select class="w-full rounded-lg border-gray-200 text-sm focus:ring-2 focus:ring-indigo-500">
-                                    <option>All</option>
-                                    <option>Enrollment</option>
-                                    <option>Finance and Payments</option>
-                                    <option>Scholarships</option>
-                                    <option>Academic Concerns</option>
-                                    <option>Exams</option>
-                                    <option>Student Services</option>
-                                    <option>Library Services</option>
-                                    <option>IT Support</option>
-                                    <option>Graduation</option>
-                                    <option>Athletics and Sports</option>
-                                </select>
-                            </div>  -->
-                            <!-- Only my tickets -->
-                            <div class="flex items-center justify-between">
-                                <span class="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">View All My Tickets</span>
-                                <label class="inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="toggleViewAll" aria-label="View all my tickets" class="sr-only peer">
-                                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Weekly Throughput -->
                     <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
-                        <h3 class="text-sm font-semibold text-gray-700">Weekly Throughput</h3>
+                        <h3 class="text-sm font-semibold text-gray-700">Weekly Tickets</h3>
                         <div class="mt-5">
-                            <!-- Tiny bar chart placeholder -->
-                            <div class="h-40 flex items-end justify-between">
-                                <div class="w-6 bg-indigo-200 rounded-t" style="height: 60%"></div>
-                                <div class="w-6 bg-indigo-300 rounded-t" style="height: 40%"></div>
-                                <div class="w-6 bg-indigo-200 rounded-t" style="height: 25%"></div>
-                                <div class="w-6 bg-indigo-400 rounded-t" style="height: 80%"></div>
-                                <div class="w-6 bg-indigo-300 rounded-t" style="height: 35%"></div>
-                                <div class="w-6 bg-indigo-400 rounded-t" style="height: 70%"></div>
-                                <div class="w-6 bg-indigo-200 rounded-t" style="height: 30%"></div>
+                            <div id="weeklyChart" class="h-40 flex items-end justify-between gap-2">
+                                @php
+                                    $wt = $weeklyThroughput ?? ['series' => [], 'labels' => [], 'max' => 0];
+                                    $series = $wt['series'] ?? [];
+                                    $labels = $wt['labels'] ?? [];
+                                    $max = (int)($wt['max'] ?? 0);
+                                @endphp
+                                @for ($i = 0; $i < 7; $i++)
+                                    @php
+                                        $count = (int)($series[$i] ?? 0);
+                                        $label = $labels[$i] ?? '';
+                                        $height = $max > 0 ? round(($count / $max) * 100) : 0;
+                                    @endphp
+                                    <div class="flex flex-col items-center w-8 h-full">
+                                        <div class="mb-1 text-[10px] text-gray-500 weekly-label" data-index="{{ $i }}">{{ $label }}</div>
+                                        <div class="w-6 bg-indigo-400 opacity-80 rounded-t weekly-bar mt-auto" data-index="{{ $i }}" data-count="{{ (int) $count }}" data-height="{{ (int) $height }}" title="{{ $label }}: {{ $count }}" style="height: 0%;"></div>
+                                    </div>
+                                @endfor
                             </div>
                             <div class="mt-3 text-xs text-gray-500 flex justify-between">
-                                <span>This Week</span>
-                                <span>2 Weeks Ago</span>
+                                <span id="weeklyTotal">Week total: {{ array_sum($series) }}</span>
+                                <span id="weeklyMax">Peak: {{ $max }}</span>
                             </div>
                         </div>
                     </div>
                 </aside>
 
                 <!-- Main content -->
-                <section class="col-span-12 md:col-span-9 space-y-6">
+                <section class="col-span-12 md:col-span-9 space-y-6 order-1 md:order-2 flex flex-col">
                     <!-- KPI cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 order-2 md:order-1 mt-4 md:mt-0">
                         <!-- Open -->
                         <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
                             <div class="flex items-center justify-between">
@@ -199,11 +153,11 @@
                             </div>
                         </div>
 
-                        <!-- In Progress -->
+                        <!-- Re-routed -->
                         <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <div class="text-sm text-gray-500">In Progress</div>
+                                    <div class="text-sm text-gray-500">Re-routed</div>
                                     <div class="mt-2 text-3xl font-semibold text-gray-900"><span id="inProgressCount">{{ $inProgressCount ?? 0 }}</span></div>
                                 </div>
                                 <div class="rounded-full bg-amber-50 text-amber-600 p-3 ring-1 ring-amber-600/10">
@@ -246,20 +200,28 @@
                     </div>
 
                     <!-- Tickets Table -->
-                    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5">
+                    <div id="openTicketsSection" class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 order-1 md:order-2 pb-6 md:pb-5">
                         <!-- Header -->
                         <div class="px-5 py-4 flex items-center justify-between">
                             <h2 id="ticketsHeading" class="text-base font-semibold text-gray-800">Open Tickets</h2>
-                            <!-- <div class="flex items-center gap-3">
-                                <button type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.25A.75.75 0 013.75 4.5h16.5a.75.75 0 01.6 1.2l-5.4 7.2v5.55a.75.75 0 01-1.05.69l-3-1.2a.75.75 0 01-.45-.69v-4.35L3.15 5.7a.75.75 0 01-.15-.45z"/></svg>
-                                    More Filters
-                                </button>
-                                <a href="{{ route('tickets.create') }}" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-                                    <span class="inline-flex size-5 items-center justify-center rounded-md bg-white/10">+</span>
-                                    New Ticket
-                                </a>
-                            </div> -->
+                            <div class="flex items-center gap-4 flex-wrap justify-end">
+                                <div class="flex items-center gap-2">
+                                    <span class="hidden sm:inline text-sm text-gray-700">Show</span>
+                                    <select id="perPageSelect" class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                    <span class="hidden sm:inline text-sm text-gray-700">per page</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-700">View All My Tickets</span>
+                                    <label class="inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="toggleViewAll" aria-label="View all my tickets" class="sr-only peer">
+                                        <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Table -->
@@ -278,7 +240,7 @@
                                     @php
                                     $statusStyles = [
                                     'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
-                                    'In-Progress' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+                                    'Re-routed' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
                                     'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
                                     ];
                                     @endphp
@@ -352,6 +314,11 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="px-5 py-3 flex items-center justify-between border-t text-sm">
+                            <button id="pagerPrev" type="button" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 disabled:opacity-50">Prev</button>
+                            <div id="pagerInfo" class="text-gray-500"></div>
+                            <button id="pagerNext" type="button" class="rounded-md border border-gray-300 px-3 py-1.5 text-gray-700 disabled:opacity-50">Next</button>
                         </div>
                     </div>
                 </section>
@@ -504,11 +471,43 @@
         const ticketsBodyEl = document.getElementById('ticketsBody');
         const toggleEl = document.getElementById('toggleViewAll');
         const ticketsHeadingEl = document.getElementById('ticketsHeading');
-        let ticketsMap = new Map();
+        const weeklyChartEl = document.getElementById('weeklyChart');
+        const weeklyTotalEl = document.getElementById('weeklyTotal');
+        const weeklyMaxEl = document.getElementById('weeklyMax');
+        // Pagination controls and per-page
+        const perPageSelect = document.getElementById('perPageSelect');
+        const pagerPrev = document.getElementById('pagerPrev');
+        const pagerNext = document.getElementById('pagerNext');
+        const pagerInfo = document.getElementById('pagerInfo');
+        let currentPage = 1, lastPage = 1;
+        function normalizePerPage(v) {
+            const n = Number(v || 10);
+            return [10, 25, 50].includes(n) ? n : 10;
+        }
+        let perPage = normalizePerPage(localStorage.getItem('ts_staff_perPage'));
+        if (perPageSelect) {
+            perPageSelect.value = String(perPage);
+        }
+            // Initialize weekly bar heights from server-rendered data-height (and ensure minimum visible bar)
+            function applyInitialWeeklyHeights() {
+                if (!weeklyChartEl) return;
+                weeklyChartEl.querySelectorAll('.weekly-bar').forEach(el => {
+                    const v = Number(el.getAttribute('data-height') || 0);
+                    const countVal = Number(el.getAttribute('data-count') || 0);
+                    const pct = v > 0 ? v : (countVal > 0 ? 4 : 0); // show a tiny bar when count > 0
+                    el.style.height = (Number.isFinite(pct) ? pct : 0) + '%';
+                });
+            }
+            applyInitialWeeklyHeights();
+            // Re-apply after first paint in case styles load late
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(applyInitialWeeklyHeights);
+            }
+            let ticketsMap = new Map();
 
         const statusStyles = {
             'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
-            'In-Progress': 'text-amber-700 bg-amber-50 ring-amber-600/20',
+            'Re-routed': 'text-amber-700 bg-amber-50 ring-amber-600/20',
             'Closed': 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
         };
 
@@ -601,6 +600,62 @@
                 ticketsBodyEl.innerHTML = rows.join('');
             }
         }
+function renderWeekly(wt) {
+            if (!weeklyChartEl) return;
+            const series = Array.isArray(wt?.series) ? wt.series.slice(0, 7) : [];
+            const labels = Array.isArray(wt?.labels) ? wt.labels.slice(0, 7) : [];
+            const maxFromPayload = Number(wt && wt.max != null ? wt.max : NaN);
+            const max = (Number.isFinite(maxFromPayload) && maxFromPayload > 0)
+                ? maxFromPayload
+                : Math.max(0, ...series.map(n => Number(n || 0)));
+            const bars = weeklyChartEl.querySelectorAll('.weekly-bar');
+            const lbls = weeklyChartEl.querySelectorAll('.weekly-label');
+
+            const heightPct = (count, m) => (m > 0 ? Math.round((Number(count || 0) / m) * 100) : 0);
+
+            if (bars.length === 7 && lbls.length === 7) {
+                for (let i = 0; i < 7; i++) {
+                    const c = Number(series[i] || 0);
+                    const h = heightPct(c, max);
+                    if (bars[i]) {
+                        bars[i].style.height = h + '%';
+                        bars[i].setAttribute('title', (labels[i] || '') + ': ' + c);
+                    }
+                    if (lbls[i]) {
+                        lbls[i].textContent = labels[i] || '';
+                    }
+                }
+            } else {
+                let html = '';
+                for (let i = 0; i < 7; i++) {
+                    const c = Number(series[i] || 0);
+                    const h = heightPct(c, max);
+                    const label = labels[i] || '';
+                    html += `
+                        <div class="flex flex-col items-center w-8 h-full">
+                            <div class="mb-1 text-[10px] text-gray-500 weekly-label" data-index="${i}">${label}</div>
+                            <div class="w-6 bg-indigo-400 opacity-80 rounded-t weekly-bar mt-auto" data-index="${i}" data-count="${c}" data-height="${h}" title="${label}: ${c}" style="height: 0%;"></div>
+                        </div>
+                    `;
+                }
+                weeklyChartEl.innerHTML = html;
+                // Apply heights for newly created bars
+                weeklyChartEl.querySelectorAll('.weekly-bar').forEach(el => {
+                    const v = Number(el.getAttribute('data-height') || 0);
+                    const countVal = Number(el.getAttribute('data-count') || 0);
+                    const pct = v > 0 ? v : (countVal > 0 ? 4 : 0);
+                    el.style.height = pct + '%';
+                });
+            }
+
+            if (weeklyTotalEl) {
+                const total = series.reduce((a, b) => a + Number(b || 0), 0);
+                weeklyTotalEl.textContent = 'Week total: ' + total;
+            }
+            if (weeklyMaxEl) {
+                weeklyMaxEl.textContent = 'Peak: ' + max;
+            }
+        }
 
         async function fetchData() {
             // Avoid background polling to save resources
@@ -608,7 +663,7 @@
 
             // Determine current filter (view all vs open-only) BEFORE the request
             const viewAll = toggleEl ? toggleEl.checked : false;
-            const url = dataUrl + '?viewAll=' + (viewAll ? 'true' : 'false');
+            const url = dataUrl + '?viewAll=' + (viewAll ? 'true' : 'false') + '&page=' + currentPage + '&perPage=' + perPage;
 
             try {
                 const res = await fetch(url, {
@@ -634,6 +689,7 @@
                 if (inProgressCountEl) inProgressCountEl.textContent = data.inProgressCount ?? 0;
                 if (closedCountEl) closedCountEl.textContent = data.closedCount ?? 0;
                 if (totalCountEl) totalCountEl.textContent = data.totalCount ?? 0;
+                if (weeklyChartEl && data.weeklyThroughput) renderWeekly(data.weeklyThroughput);
 
                 // Update heading based on filter
                 if (ticketsHeadingEl) {
@@ -644,8 +700,30 @@
                 const list = Array.isArray(data.recentTickets) ? data.recentTickets : [];
                 // Keep a fast lookup for "View" modal
                 ticketsMap = new Map(list.map(t => [String(t.id), t]));
-                // Show both Open and In-Progress when not viewing all
-                const filtered = viewAll ? list : list.filter(t => (t.status === 'Open' || t.status === 'In-Progress'));
+                // Show both Open and Re-routed when not viewing all
+                const filtered = viewAll ? list : list.filter(t => (t.status === 'Open' || t.status === 'Re-routed'));
+
+                // Update pagination UI
+                var pg = data.pagination || {};
+                currentPage = Number(pg.currentPage || 1);
+                lastPage = Number(pg.lastPage || 1);
+                if (pagerInfo) {
+                    const totalTxt = (typeof pg.total !== 'undefined') ? (' • ' + pg.total + ' total') : '';
+                    pagerInfo.textContent = 'Page ' + currentPage + ' of ' + (lastPage || 1) + totalTxt;
+                }
+                if (pagerPrev) pagerPrev.disabled = currentPage <= 1;
+                if (pagerNext) pagerNext.disabled = currentPage >= lastPage;
+
+                // Update pagination UI
+                var pg = data.pagination || {};
+                currentPage = Number(pg.currentPage || 1);
+                lastPage = Number(pg.lastPage || 1);
+                if (pagerInfo) {
+                    const totalTxt = (typeof pg.total !== 'undefined') ? (' • ' + pg.total + ' total') : '';
+                    pagerInfo.textContent = 'Page ' + currentPage + ' of ' + (lastPage || 1) + totalTxt;
+                }
+                if (pagerPrev) pagerPrev.disabled = currentPage <= 1;
+                if (pagerNext) pagerNext.disabled = currentPage >= lastPage;
 
                 // Render tickets only if changed (cheap diff by filter+IDs+counts JSON)
                 const snapshot = JSON.stringify({
@@ -666,14 +744,46 @@
         fetchData();
         const POLL_MS = 5000; // 5 seconds
         setInterval(fetchData, POLL_MS);
-        document.addEventListener('visibilitychange', fetchData);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                fetchData();
+            }
+        });
 
         // React to toggle changes immediately
         if (toggleEl) {
             toggleEl.addEventListener('change', () => {
-                // force re-render next tick
+                // reset pagination to first page
+                currentPage = 1;
                 lastSnapshot = '';
                 fetchData();
+            });
+        }
+        if (perPageSelect) {
+            perPageSelect.addEventListener('change', () => {
+                perPage = normalizePerPage(perPageSelect.value);
+                localStorage.setItem('ts_staff_perPage', String(perPage));
+                currentPage = 1;
+                lastSnapshot = '';
+                fetchData();
+            });
+        }
+        if (pagerPrev) {
+            pagerPrev.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    lastSnapshot = '';
+                    fetchData();
+                }
+            });
+        }
+        if (pagerNext) {
+            pagerNext.addEventListener('click', () => {
+                if (currentPage < lastPage) {
+                    currentPage += 1;
+                    lastSnapshot = '';
+                    fetchData();
+                }
             });
         }
 

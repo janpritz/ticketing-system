@@ -7,6 +7,9 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\StaffController;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+use App\Http\Controllers\RasaController;
+
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();

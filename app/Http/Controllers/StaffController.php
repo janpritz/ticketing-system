@@ -9,6 +9,9 @@ use App\Models\User;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketResponseMail;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
@@ -19,7 +22,7 @@ class StaffController extends Controller
 
         // Aggregate ticket stats for this staff member
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'In-Progress')->count();
+        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
 
@@ -30,6 +33,9 @@ class StaffController extends Controller
             ->with(['staff', 'routingHistories.staff'])
             ->get();
 
+        // Weekly throughput for last 7 days (per signed-in staff)
+        $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
+
         return view('dashboards.staff.index', [
             'user' => $user,
             'openCount' => $openCount,
@@ -37,12 +43,157 @@ class StaffController extends Controller
             'closedCount' => $closedCount,
             'totalCount' => $totalCount,
             'recentTickets' => $recentTickets,
+            'weeklyThroughput' => $weeklyThroughput,
         ]);
     }
 
     /**
+     * Show the Staff Profile page.
+     * - Displays current profile info
+     * - Activity snapshot (assigned/resolved counts and last 5 tickets)
+     */
+    public function profile()
+    {
+        $user = Auth::user();
+
+        $assignedCount = Ticket::where('staff_id', $user->id)->count();
+        $resolvedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
+        $recentTickets = Ticket::where('staff_id', $user->id)
+            ->orderByDesc('updated_at')
+            ->take(5)
+            ->get();
+
+        return view('dashboards.staff.profile', [
+            'user' => $user,
+            'assignedCount' => $assignedCount,
+            'resolvedCount' => $resolvedCount,
+            'recentTickets' => $recentTickets,
+        ]);
+    }
+
+    /**
+     * Update profile details and photo.
+     * - Email is read-only (not editable)
+     * - Validates photo type and size, stores in public disk under profile_photos/
+     * - Renames photo to user_{id}.ext and deletes old photo if different
+     */
+    public function updateProfile(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name'   => 'required|string|max:255',
+            'category' => 'nullable|string|max:255',
+            'photo'  => 'nullable|image|mimes:jpg,jpeg,png|max:5120', // 5MB
+        ]);
+
+        $user->name = $validated['name'];
+        $user->category = $validated['category'] ?? $user->category;
+
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $ext = strtolower($file->getClientOriginalExtension());
+            $filename = 'user_' . $user->id . '.' . $ext;
+            $dir = 'profile_photos';
+            $newPath = $dir . '/' . $filename;
+
+            // If existing photo and different file, delete old
+            if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo) && $user->profile_photo !== $newPath) {
+                Storage::disk('public')->delete($user->profile_photo);
+            }
+
+            // Store the new file
+            Storage::disk('public')->putFileAs($dir, $file, $filename);
+            $user->profile_photo = $newPath;
+        }
+
+        $user->save();
+
+        return redirect()->route('staff.profile')->with('status', 'Profile updated successfully.');
+    }
+
+    /**
+     * Change Password form
+     */
+    public function passwordForm()
+    {
+        $user = Auth::user();
+        return view('dashboards.staff.password', ['user' => $user]);
+    }
+
+    /**
+     * Handle Change Password
+     */
+    public function passwordUpdate(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if (!Hash::check($request->input('current_password'), $user->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
+        }
+
+        $user->password = Hash::make($request->input('password'));
+        $user->save();
+
+        return redirect()->route('staff.profile')->with('status', 'Password changed successfully.');
+    }
+
+    /**
+     * Build dynamic weekly throughput (last 7 days) for a staff user.
+     * Returns:
+     * [
+     *   'series' => [c1,...,c7],
+     *   'labels' => ['Sun','Mon',...],
+     *   'max'    => maxCount
+     * ]
+     */
+    private function buildWeeklyThroughput(int $staffId): array
+    {
+        // Weekly analytics (Mon–Sun) scoped to the signed-in staff's tickets
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $endOfWeek = Carbon::now()->endOfWeek();
+
+        $rows = Ticket::where('staff_id', $staffId)
+            ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
+            ->selectRaw('DATE(date_created) as d, COUNT(*) as c')
+            ->groupBy('d')
+            ->orderBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        $series = [];
+        $labels = [];
+        $max = 0;
+
+        $cursor = $startOfWeek->copy();
+        for ($i = 0; $i < 7; $i++) {
+            $dayKey = $cursor->toDateString();
+            $count = (int)($rows[$dayKey] ?? 0);
+            $series[] = $count;
+            $labels[] = $cursor->format('D'); // Mon, Tue, ...
+            if ($count > $max) {
+                $max = $count;
+            }
+            $cursor->addDay();
+        }
+
+        return [
+            'series' => $series,
+            'labels' => $labels,
+            'max' => $max,
+        ];
+    }
+
+    /**
      * Live data endpoint for the staff dashboard.
-     * Returns counts and tickets for the authenticated staff.
+     * Returns counts, tickets, and weekly throughput for the authenticated staff.
      * Query params:
      * - viewAll=true|false  when true returns all tickets (all statuses) for this staff;
      *                       when false returns only 'Open' tickets.
@@ -54,29 +205,42 @@ class StaffController extends Controller
 
         // KPI counts (across all statuses)
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'In-Progress')->count();
+        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
 
         $query = Ticket::where('staff_id', $user->id)
-            
             ->orderByDesc('date_created')
             ->with(['staff', 'routingHistories.staff']);
 
         if (!$viewAll) {
-            // Only active tickets (Open and In-Progress)
-            $query->whereIn('status', ['Open', 'In-Progress', ]);
+            // Only active tickets (Open and Re-routed)
+            $query->whereIn('status', ['Open', 'Re-routed']);
         }
 
-        // Return list according to filter (no limit to satisfy "fetch all data")
-        $recentTickets = $query->get();
+        // Pagination support for table view
+        $perPage = min(max((int) $request->query('perPage', 10), 1), 50);
+        $page    = max((int) $request->query('page', 1), 1);
+
+        $paginated     = $query->paginate($perPage, ['*'], 'page', $page);
+        $recentTickets = $paginated->items();
+
+        // Weekly throughput for last 7 days (per signed-in staff)
+        $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
 
         return response()->json([
-            'openCount' => $openCount,
-            'inProgressCount' => $inProgressCount,
-            'closedCount' => $closedCount,
-            'totalCount' => $totalCount,
-            'recentTickets' => $recentTickets,
+            'openCount'        => $openCount,
+            'inProgressCount'  => $inProgressCount,
+            'closedCount'      => $closedCount,
+            'totalCount'       => $totalCount,
+            'recentTickets'    => $recentTickets,
+            'weeklyThroughput' => $weeklyThroughput,
+            'pagination'       => [
+                'currentPage' => $paginated->currentPage(),
+                'lastPage'    => $paginated->lastPage(),
+                'perPage'     => $paginated->perPage(),
+                'total'       => $paginated->total(),
+            ],
         ]);
     }
 
@@ -110,9 +274,9 @@ class StaffController extends Controller
             return response()->json(['error' => 'No staff found for the selected role'], 422);
         }
 
-        // Update ticket assignment and move to In-Progress
+        // Update ticket assignment and move to Re-routed
         $ticket->staff_id = $newStaff->id;
-        $ticket->status = 'In-Progress';
+        $ticket->status = 'Re-routed';
         $ticket->date_closed = null;
         $ticket->save();
 
@@ -120,7 +284,7 @@ class StaffController extends Controller
         TicketRoutingHistory::create([
             'ticket_id' => $ticket->id,
             'staff_id' => $newStaff->id,
-            'status' => 'In-Progress',
+            'status' => 'Re-routed',
             'routed_at' => now(),
             'notes' => $request->input('notes')
         ]);
