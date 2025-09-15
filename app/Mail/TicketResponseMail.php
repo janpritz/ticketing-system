@@ -35,7 +35,7 @@ class TicketResponseMail extends Mailable
         $ticketNo = sprintf('T-%s-%04d', $year, $this->ticket->id);
 
         return $this
-            ->subject('Response to your ticket ' . $ticketNo)
+            ->subject('[No-Reply] Response to your ticket ' . $ticketNo)
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.ticket_response')
             ->with([
