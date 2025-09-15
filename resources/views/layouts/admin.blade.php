@@ -62,7 +62,7 @@
     </ul>
   </div>
 </aside>
-
+<div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/40 hidden"></div>
 <div id="content-wrapper" class="px-10 sm:ml-64 transition-all duration-300">
   <!-- Top Bar -->
   <header class="bg-white border border-gray-200 rounded-md">
@@ -107,34 +107,90 @@
 
 @section('scripts')
   @parent
-  <!-- Sidebar collapse/expand for desktop -->
+  <!-- Sidebar collapse/expand for mobile + desktop (mobile as overlay, desktop pushes content) -->
   <script>
     (function () {
       const toggleBtn = document.getElementById('sidebar-toggle');
       const sidebar = document.getElementById('default-sidebar');
       const content = document.getElementById('content-wrapper');
+      const backdrop = document.getElementById('sidebar-backdrop');
 
       if (!toggleBtn || !sidebar || !content) return;
 
-      function toggleSidebar() {
-        const isCollapsed = sidebar.classList.contains('sm:-translate-x-full');
+      const mq = window.matchMedia('(max-width: 639.98px)'); // Tailwind < sm
 
-        if (isCollapsed) {
-          sidebar.classList.remove('sm:-translate-x-full');
-          sidebar.classList.add('sm:translate-x-0');
-          content.classList.add('sm:ml-64');
-          content.classList.remove('ml-0');
+      function isMobile() { return mq.matches; }
+
+      // Desktop behaviors (>= sm): push content
+      function openDesktop() {
+        sidebar.classList.remove('sm:-translate-x-full');
+        sidebar.classList.add('sm:translate-x-0');
+        content.classList.add('sm:ml-64');
+        content.classList.remove('ml-0');
+        if (backdrop) backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+      function closeDesktop() {
+        sidebar.classList.add('sm:-translate-x-full');
+        sidebar.classList.remove('sm:translate-x-0');
+        content.classList.remove('sm:ml-64');
+        content.classList.add('ml-0');
+        if (backdrop) backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+
+      // Mobile behaviors (< sm): overlay on top of content
+      function openMobile() {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        if (backdrop) backdrop.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
+      function closeMobile() {
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        if (backdrop) backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+
+      function toggleSidebar() {
+        if (isMobile()) {
+          const isHidden = sidebar.classList.contains('-translate-x-full');
+          if (isHidden) openMobile(); else closeMobile();
         } else {
-          sidebar.classList.add('sm:-translate-x-full');
-          sidebar.classList.remove('sm:translate-x-0');
-          content.classList.remove('sm:ml-64');
-          content.classList.add('ml-0');
+          const isCollapsed = sidebar.classList.contains('sm:-translate-x-full');
+          if (isCollapsed) openDesktop(); else closeDesktop();
         }
       }
 
       toggleBtn.addEventListener('click', function (e) {
         e.preventDefault();
         toggleSidebar();
+      });
+
+      if (backdrop) {
+        backdrop.addEventListener('click', closeMobile);
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isMobile()) {
+          closeMobile();
+        }
+      });
+
+      // Keep state coherent on breakpoint change
+      mq.addEventListener('change', () => {
+        if (!isMobile()) {
+          // Leaving mobile: ensure desktop-open baseline
+          sidebar.classList.remove('translate-x-0');
+          sidebar.classList.add('-translate-x-full'); // keep mobile base hidden
+          openDesktop();
+        } else {
+          // Entering mobile: keep content unshifted and sidebar hidden
+          content.classList.remove('sm:ml-64');
+          if (backdrop) backdrop.classList.add('hidden');
+          sidebar.classList.add('-translate-x-full');
+          sidebar.classList.remove('translate-x-0');
+        }
       });
     })();
   </script>

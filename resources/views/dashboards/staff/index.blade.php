@@ -100,7 +100,7 @@
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div class="grid grid-cols-12 gap-6">
                 <!-- Left rail -->
-                <aside class="col-span-12 md:col-span-3 space-y-6 order-2 md:order-1">
+                <aside class="col-span-12 md:col-span-3 space-y-6 row-start-2 md:row-start-auto">
                     <!-- Quick Filters -->
 
                     <!-- Weekly Throughput -->
@@ -135,7 +135,7 @@
                 </aside>
 
                 <!-- Main content -->
-                <section class="col-span-12 md:col-span-9 space-y-6 order-1 md:order-2 flex flex-col">
+                <section class="col-span-12 md:col-span-9 space-y-6 row-start-1 md:row-start-auto flex flex-col">
                     <!-- KPI cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 order-2 md:order-1 mt-4 md:mt-0">
                         <!-- Open -->

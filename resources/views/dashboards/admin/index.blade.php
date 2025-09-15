@@ -61,6 +61,7 @@
     </ul>
   </div>
 </aside>
+<div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/40 hidden"></div>
 <div id="content-wrapper" class="px-10 sm:ml-64 transition-all duration-300">
     <!-- Top Bar -->
     <header class="bg-white border border-gray-200 rounded-md">
@@ -772,38 +773,93 @@
   })();
 </script>
 
-<!-- Sidebar collapse/expand for desktop as well -->
+<!-- Sidebar collapse/expand for mobile + desktop -->
 <script>
   (function () {
     const toggleBtn = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('default-sidebar');
     const content = document.getElementById('content-wrapper');
+    const backdrop = document.getElementById('sidebar-backdrop');
 
     if (!toggleBtn || !sidebar || !content) return;
 
-    function toggleSidebar() {
-      // Collapse on >= sm by forcing sm:-translate-x-full and removing sm:translate-x-0
-      const isCollapsed = sidebar.classList.contains('sm:-translate-x-full');
+    const mq = window.matchMedia('(max-width: 639.98px)'); // Tailwind sm breakpoint
 
-      if (isCollapsed) {
-        // Expand
-        sidebar.classList.remove('sm:-translate-x-full');
-        sidebar.classList.add('sm:translate-x-0');
-        content.classList.add('sm:ml-64');
-        content.classList.remove('ml-0');
+    function isMobile() {
+      return mq.matches;
+    }
+
+    function openDesktop() {
+      sidebar.classList.remove('sm:-translate-x-full');
+      sidebar.classList.add('sm:translate-x-0');
+      content.classList.add('sm:ml-64');
+      content.classList.remove('ml-0');
+      if (backdrop) backdrop.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    function closeDesktop() {
+      sidebar.classList.add('sm:-translate-x-full');
+      sidebar.classList.remove('sm:translate-x-0');
+      content.classList.remove('sm:ml-64');
+      content.classList.add('ml-0');
+      if (backdrop) backdrop.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    function openMobile() {
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+      if (backdrop) backdrop.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeMobile() {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      if (backdrop) backdrop.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    function toggleSidebar() {
+      if (isMobile()) {
+        const isHidden = sidebar.classList.contains('-translate-x-full');
+        if (isHidden) openMobile(); else closeMobile();
       } else {
-        // Collapse
-        sidebar.classList.add('sm:-translate-x-full');
-        sidebar.classList.remove('sm:translate-x-0');
-        content.classList.remove('sm:ml-64');
-        content.classList.add('ml-0');
+        const isCollapsed = sidebar.classList.contains('sm:-translate-x-full');
+        if (isCollapsed) openDesktop(); else closeDesktop();
       }
     }
 
     toggleBtn.addEventListener('click', function (e) {
-      // Keep Flowbite behavior for mobile, but ensure desktop collapse works
       e.preventDefault();
       toggleSidebar();
+    });
+
+    if (backdrop) {
+      backdrop.addEventListener('click', closeMobile);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isMobile()) {
+        closeMobile();
+      }
+    });
+
+    // Ensure correct state on resize
+    mq.addEventListener('change', () => {
+      if (!isMobile()) {
+        // Leaving mobile: hide backdrop and ensure desktop-open by default
+        sidebar.classList.remove('translate-x-0');
+        sidebar.classList.add('-translate-x-full'); // keep base mobile hidden
+        openDesktop();
+      } else {
+        // Entering mobile: keep content unshifted and sidebar hidden
+        content.classList.remove('sm:ml-64');
+        if (backdrop) backdrop.classList.add('hidden');
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+      }
     });
   })();
 </script>
