@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Faq;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -20,8 +21,7 @@ class AdminController extends Controller
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
         $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
-        // Placeholder until a FAQs model/table exists
-        $faqCount = 0;
+        $faqCount = Faq::count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes (based on sessions table)
@@ -163,8 +163,7 @@ class AdminController extends Controller
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
         $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
-        // Placeholder until a FAQs model/table exists
-        $faqCount = 0;
+        $faqCount = Faq::count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes
@@ -470,7 +469,172 @@ class AdminController extends Controller
         }
 
         $user->delete();
-
+    
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');
+    }
+
+    /**
+     * FAQ Management - page (blade)
+     */
+    public function faqsIndex(Request $request)
+    {
+        $this->ensureAdmin();
+        return view('dashboards.admin.faqs.index');
+    }
+
+    /**
+     * FAQ list (AJAX) - supports search and per_page options
+     */
+    public function faqsList(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', 25);
+        if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
+
+        $faqs = Faq::when($q !== '', function ($query) use ($q) {
+                $like = '%' . $q . '%';
+                $query->where(function ($qq) use ($like) {
+                    $qq->where('topic', 'like', $like)
+                       ->orWhere('response', 'like', $like);
+                });
+            })
+            ->orderBy('topic')
+            ->paginate($perPage)
+            ->appends(['q' => $q, 'per_page' => $perPage]);
+
+        return response()->json([
+            'items' => $faqs->items(),
+            'meta' => [
+                'total' => $faqs->total(),
+                'per_page' => $faqs->perPage(),
+                'current_page' => $faqs->currentPage(),
+                'last_page' => $faqs->lastPage(),
+            ],
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    /**
+     * Return single FAQ (AJAX)
+     */
+    public function faqsShow(Faq $faq)
+    {
+        $this->ensureAdmin();
+        return response()->json([
+            'id' => $faq->id,
+            'topic' => $faq->topic,
+            'response' => $faq->response,
+            'created_at' => optional($faq->created_at)->toDateTimeString(),
+            'updated_at' => optional($faq->updated_at)->toDateTimeString(),
+        ]);
+    }
+
+    /**
+     * Store new FAQ (AJAX)
+     */
+    public function faqsStore(Request $request)
+    {
+        $this->ensureAdmin();
+        $validated = $request->validate([
+            'topic' => 'required|string|max:255',
+            'response' => 'required|string',
+        ]);
+
+        $faq = Faq::create([
+            'topic' => $validated['topic'],
+            'response' => $validated['response'],
+        ]);
+
+        return response()->json(['success' => true, 'faq' => $faq], 201);
+    }
+
+    /**
+     * Update FAQ (AJAX)
+     */
+    public function faqsUpdate(Request $request, Faq $faq)
+    {
+        $this->ensureAdmin();
+        $validated = $request->validate([
+            'topic' => 'required|string|max:255',
+            'response' => 'required|string',
+        ]);
+
+        $faq->update([
+            'topic' => $validated['topic'],
+            'response' => $validated['response'],
+        ]);
+
+        return response()->json(['success' => true, 'faq' => $faq]);
+    }
+
+    /**
+     * Delete FAQ (AJAX)
+     */
+    public function faqsDestroy(Faq $faq)
+    {
+        $this->ensureAdmin();
+        $faq->delete();
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Pending FAQs page (blade)
+     */
+    public function faqsPendingIndex(Request $request)
+    {
+        $this->ensureAdmin();
+        return view('dashboards.admin.faqs.pending');
+    }
+
+    /**
+     * Pending FAQs list (AJAX) - supports search and per_page options
+     */
+    public function faqsPendingList(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', 25);
+        if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
+
+        $faqs = Faq::when($q !== '', function ($query) use ($q) {
+                $like = '%' . $q . '%';
+                $query->where(function ($qq) use ($like) {
+                    $qq->where('topic', 'like', $like)
+                       ->orWhere('response', 'like', $like);
+                });
+            })
+            ->where('status', 'pending')
+            ->orderBy('topic')
+            ->paginate($perPage)
+            ->appends(['q' => $q, 'per_page' => $perPage]);
+
+        return response()->json([
+            'items' => $faqs->items(),
+            'meta' => [
+                'total' => $faqs->total(),
+                'per_page' => $faqs->perPage(),
+                'current_page' => $faqs->currentPage(),
+                'last_page' => $faqs->lastPage(),
+            ],
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    /**
+     * Mark FAQ as trained (AJAX)
+     */
+    public function faqsTrain(Request $request, Faq $faq)
+    {
+        $this->ensureAdmin();
+
+        if ($faq->status !== 'pending') {
+            return response()->json(['message' => 'FAQ is not pending'], 422);
+        }
+
+        $faq->status = 'trained';
+        $faq->save();
+
+        return response()->json(['success' => true, 'faq' => $faq]);
     }
 }

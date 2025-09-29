@@ -16,14 +16,17 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Primary Administrator',
-            'email' => 'acc.sangkaychatbot@gmail.com',
-            'password' => Hash::make('ACCSangkay2025'),
-            'role' => 'Primary Administrator',
-        ]);
+        // Ensure Primary Administrator exists (update or create to avoid duplicate seed failures)
+        User::updateOrCreate(
+            ['email' => 'acc.sangkaychatbot@gmail.com'],
+            [
+                'name' => 'Primary Administrator',
+                'password' => Hash::make('ACCSangkay2025'),
+                'role' => 'Primary Administrator',
+            ]
+        );
 
-        // Create sample staff users with different roles
+        // Create or update sample staff users with different roles
         $roles = [
             'Enrollment',
             'Finance and Payments',
@@ -39,12 +42,20 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($roles as $role) {
-            User::factory()->create([
-                'name' => $role . ' Staff',
-                'email' => strtolower(str_replace(' ', '.', $role)) . '@example.com',
-                'password' => Hash::make('password123'),
-                'role' => $role,
-            ]);
+            $email = strtolower(str_replace(' ', '.', $role)) . '@example.com';
+            User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $role . ' Staff',
+                    'password' => Hash::make('password123'),
+                    'role' => $role,
+                ]
+            );
+        }
+
+        // Seed FAQs from response.yml (if present)
+        if (class_exists(\Database\Seeders\FaqSeeder::class)) {
+            $this->call(\Database\Seeders\FaqSeeder::class);
         }
     }
 }

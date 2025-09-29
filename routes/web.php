@@ -23,13 +23,13 @@ Route::get('/', function () {
 });
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
-Route::post('/login', [AuthController::class, 'login'])->middleware('guest','throttle:10,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
 
 // Password reset via OTP
 Route::get('/password/forgot', [AuthController::class, 'showForgotForm'])->middleware('guest')->name('password.forgot');
-Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('guest','throttle:5,1')->name('password.otp');
+Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('guest', 'throttle:5,1')->name('password.otp');
 Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
-Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest','throttle:10,1')->name('password.reset.apply');
+Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
@@ -64,7 +64,7 @@ Route::middleware('auth')->group(function () {
         ->whereNumber('ticket')
         ->middleware('throttle:30,1')
         ->name('staff.tickets.reroute');
- 
+
     // Ticket respond (send email)
     Route::post('/staff/tickets/{ticket}/respond', [StaffController::class, 'respond'])
         ->whereNumber('ticket')
@@ -73,23 +73,53 @@ Route::middleware('auth')->group(function () {
 
     // SMTP test endpoint (sends to the authenticated user's email)
     Route::get('/staff/mail/test', [StaffController::class, 'mailTest'])->middleware('throttle:5,1')->name('staff.mail.test');
-    
+
     // Admin dashboard
+    Route::get('/admin', function () {
+        // If the user is authenticated, auto-redirect them to the appropriate dashboard
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user->role === 'Primary Administrator') {
+                return redirect()->route('admin.dashboard');
+            }
+            return redirect()->route('staff.dashboard');
+        }
+
+        // Guests still see the public ticket create page
+        return view('/login');
+    });
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     // Live data endpoint for admin dashboard auto-refresh
     Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
         ->middleware('throttle:20,1')
         ->name('admin.dashboard.data');
 
-// Admin user management (CRUD)
-Route::prefix('admin/users')->name('admin.users.')->group(function () {
-    Route::get('/', [AdminController::class, 'usersIndex'])->name('index');
-    Route::get('/create', [AdminController::class, 'usersCreate'])->name('create');
-    Route::post('/', [AdminController::class, 'usersStore'])->middleware('throttle:10,1')->name('store');
-    Route::get('/{user}/edit', [AdminController::class, 'usersEdit'])->whereNumber('user')->name('edit');
-    Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
-    Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
-});
+    // Admin user management (CRUD)
+    Route::prefix('admin/users')->name('admin.users.')->group(function () {
+        Route::get('/', [AdminController::class, 'usersIndex'])->name('index');
+        Route::get('/create', [AdminController::class, 'usersCreate'])->name('create');
+        Route::post('/', [AdminController::class, 'usersStore'])->middleware('throttle:10,1')->name('store');
+        Route::get('/{user}/edit', [AdminController::class, 'usersEdit'])->whereNumber('user')->name('edit');
+        Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
+        Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
+    });
+
+    // Admin FAQ management (CRUD via AJAX)
+    Route::prefix('admin/faqs')->name('admin.faqs.')->group(function () {
+        Route::get('/', [AdminController::class, 'faqsIndex'])->name('index');
+        Route::get('/list', [AdminController::class, 'faqsList'])->name('list');
+        Route::post('/', [AdminController::class, 'faqsStore'])->middleware('throttle:20,1')->name('store');
+        Route::get('/{faq}', [AdminController::class, 'faqsShow'])->whereNumber('faq')->name('show');
+        Route::put('/{faq}', [AdminController::class, 'faqsUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
+        Route::delete('/{faq}', [AdminController::class, 'faqsDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
+
+        // Pending FAQs view + AJAX list
+        Route::get('/pending', [AdminController::class, 'faqsPendingIndex'])->name('pending');
+        Route::get('/pending/list', [AdminController::class, 'faqsPendingList'])->name('pending.list');
+
+        // Mark FAQ as trained
+        Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
+    });
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
