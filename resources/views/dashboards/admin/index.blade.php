@@ -132,11 +132,15 @@
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total FAQs</div>
                         <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="faqCountValue">{{ number_format($faqCount ?? 0) }}</span></div>
+
+                        <!-- Pending FAQs (green text under total, clickable) -->
                         <div class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
                             </svg>
-                            <span>+12 trained today</span>
+                            <a href="{{ route('admin.faqs.pending') }}" class="hover:underline">
+                                <span id="faqPendingCount">{{ number_format($faqPendingCount ?? 0) }}</span> pending
+                            </a>
                         </div>
                     </div>
                     <div class="rounded-md bg-blue-50 p-2 text-blue-600 border border-blue-100">
@@ -278,7 +282,7 @@
                                 <td class="py-3 pl-5 pr-3 align-top">
                                     <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
-                                        {{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('n/j/Y, g:i A') }}
+                                        {{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y-m-d h:i a') }}
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 align-top">
@@ -337,7 +341,7 @@
                                 <td class="py-3 pl-5 pr-3 align-top">
                                     <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
-                                        Updated {{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('n/j/Y, g:i A') }}
+                                        Updated {{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('Y-m-d h:i a') }}
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 align-top">
@@ -489,10 +493,12 @@
         function updateCounts(payload) {
             const elOpen = document.getElementById('openTicketsCount');
             const elFaq = document.getElementById('faqCountValue');
+            const elFaqPending = document.getElementById('faqPendingCount');
             const elUser = document.getElementById('userCountValue');
             const elActive = document.getElementById('activeStaffCount');
             if (elOpen) elOpen.textContent = fmt.format(payload.openTickets ?? 0);
             if (elFaq) elFaq.textContent = fmt.format(payload.faqCount ?? 0);
+            if (elFaqPending) elFaqPending.textContent = fmt.format(payload.faqPendingCount ?? 0);
             if (elUser) elUser.textContent = fmt.format(payload.userCount ?? 0);
             if (elActive) elActive.textContent = fmt.format(payload.activeStaffCount ?? 0);
         }
@@ -579,7 +585,17 @@
             try {
                 const dt = new Date(d);
                 if (isNaN(dt.getTime())) return '';
-                return dt.toLocaleString();
+                // yyyy-mm-dd hh:mm am/pm
+                const yyyy = dt.getFullYear();
+                const mm = String(dt.getMonth() + 1).padStart(2, '0');
+                const dd = String(dt.getDate()).padStart(2, '0');
+                let hours = dt.getHours();
+                const minutes = String(dt.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'pm' : 'am';
+                hours = hours % 12;
+                if (hours === 0) hours = 12;
+                const hh = String(hours).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd} ${hh}:${minutes} ${ampm}`;
             } catch (_) { return ''; }
         }
         function adminBadgeClass(status) {

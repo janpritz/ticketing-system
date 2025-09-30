@@ -79,7 +79,7 @@
                     </div>
                     <div>
                         <label class="block text-xs text-gray-600 mb-1">Date Joined</label>
-                        <input type="text" value="{{ optional($user->created_at)->format('M j, Y g:i A') }}" readonly
+                        <input type="text" value="{{ optional($user->created_at)->format('Y-m-d h:i a') }}" readonly
                                class="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-600">
                     </div>
                     <div>
@@ -136,7 +136,7 @@
                                         <td class="py-2 px-3">T-{{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y') }}-{{ str_pad($t->id, 4, '0', STR_PAD_LEFT) }}</td>
                                         <td class="py-2 px-3">{{ $t->category ?? '-' }}</td>
                                         <td class="py-2 px-3">{{ $t->status }}</td>
-                                        <td class="py-2 px-3">{{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('n/j/Y, g:i A') }}</td>
+                                        <td class="py-2 px-3">{{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('Y-m-d h:i a') }}</td>
                                     </tr>
                                 @empty
                                     <tr>

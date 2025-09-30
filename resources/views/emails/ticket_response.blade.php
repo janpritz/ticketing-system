@@ -60,7 +60,7 @@
                                     </tr>
                                     <tr>
                                         <td style="padding:6px 0;color:#6b7280;">Created</td>
-                                        <td style="padding:6px 0;">{{ \Illuminate\Support\Carbon::parse($ticket->date_created ?? $ticket->created_at)->format('M d, Y g:i A') }}</td>
+                                        <td style="padding:6px 0;">{{ \Illuminate\Support\Carbon::parse($ticket->date_created ?? $ticket->created_at)->format('Y-m-d h:i a') }}</td>
                                     </tr>
                                 </table>
                             </div>

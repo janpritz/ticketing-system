@@ -76,7 +76,7 @@
                         </div>
                         <div class="ml-4 flex-shrink-0 flex items-center">
                             <p class="text-sm text-gray-500 mr-4">
-                                {{ $ticket->created_at->format('M d, Y') }}
+                                {{ $ticket->created_at->format('Y-m-d h:i a') }}
                             </p>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 edit-ticket-btn mr-2"
                                 data-id="{{ $ticket->id }}"

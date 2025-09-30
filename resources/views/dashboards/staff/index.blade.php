@@ -255,7 +255,7 @@
                                         <td class="py-4 pl-5 pr-3 align-top">
                                             <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
                                             <div class="mt-1 text-xs text-gray-500">
-                                                {{ \Illuminate\Support\Carbon::parse($t->date_created)->format('n/j/Y, g:i A') }}
+                                                {{ \Illuminate\Support\Carbon::parse($t->date_created)->format('Y-m-d h:i a') }}
                                             </div>
                                         </td>
 
@@ -280,7 +280,7 @@
                                         <!-- Assignee -->
                                         <td class="px-3 py-4 align-top">
                                             <div class="text-gray-900">{{ optional($t->staff)->name ?? '-' }}</div>
-                                            <div class="mt-1 text-xs text-gray-500">Updated {{ \Illuminate\Support\Carbon::parse($t->updated_at)->format('n/j/Y, g:i A') }}</div>
+                                            <div class="mt-1 text-xs text-gray-500">Updated {{ \Illuminate\Support\Carbon::parse($t->updated_at)->format('Y-m-d h:i a') }}</div>
                                         </td>
 
                                         <!-- Actions -->

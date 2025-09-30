@@ -113,9 +113,23 @@ Route::middleware('auth')->group(function () {
         Route::put('/{faq}', [AdminController::class, 'faqsUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
         Route::delete('/{faq}', [AdminController::class, 'faqsDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
 
+        // Deleted FAQs view + AJAX list (trash)
+        Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
+        Route::get('/deleted/list', [AdminController::class, 'faqsDeletedList'])->name('deleted.list');
+
         // Pending FAQs view + AJAX list
         Route::get('/pending', [AdminController::class, 'faqsPendingIndex'])->name('pending');
         Route::get('/pending/list', [AdminController::class, 'faqsPendingList'])->name('pending.list');
+
+        // Revisions & revert for FAQ responses (audit / undo)
+        Route::get('/{faq}/revisions', [AdminController::class, 'faqsRevisions'])->whereNumber('faq')->name('revisions');
+        Route::post('/{faq}/revert/{revision}', [AdminController::class, 'faqsRevert'])->whereNumber('faq')->whereNumber('revision')->name('revert');
+
+        // Restore soft-deleted FAQ
+        Route::post('/{faq}/restore', [AdminController::class, 'faqsRestore'])->whereNumber('faq')->name('restore');
+
+        // Undo most recent change for a FAQ
+        Route::post('/{faq}/undo', [AdminController::class, 'faqsUndo'])->whereNumber('faq')->name('undo');
 
         // Mark FAQ as trained
         Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');

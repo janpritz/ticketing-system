@@ -9,10 +9,23 @@
             <h1 class="text-2xl font-semibold text-slate-900">User Management</h1>
             <p class="text-sm text-slate-500">Manage staff accounts (excluding Primary Administrator)</p>
         </div>
-        <div>
-            <button id="openCreateModalBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2">
+
+        <!-- Desktop actions -->
+        <div class="hidden sm:flex items-center gap-2">
+            <button id="openCreateModalBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2" aria-label="Add Staff">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
-                Add Staff
+                <span class="hidden sm:inline">Add Staff</span>
+            </button>
+        </div>
+
+        <!-- Mobile toolbar: icons only -->
+        <div class="flex sm:hidden items-center gap-2">
+            <button id="mobileSearchToggle" type="button" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700" aria-label="Search">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" /></svg>
+            </button>
+
+            <button id="openCreateModalBtnMobile" type="button" class="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white" aria-label="Add Staff (mobile)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
             </button>
         </div>
     </div>
@@ -28,23 +41,34 @@
         </div>
     @endif
 
-    <div class="mt-5 flex items-center gap-3">
-        <form method="GET" action="{{ route('admin.users.index') }}" class="flex items-center gap-2">
-            <label class="relative block">
-                <span class="sr-only">Search</span>
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                    </svg>
-                </span>
-                <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Search name, email, role, category"
-                       class="w-72 pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-            </label>
-            <button type="submit" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Search</button>
-            @if(($q ?? '') !== '')
-                <a href="{{ route('admin.users.index') }}" class="text-sm text-slate-600 hover:text-slate-800">Clear</a>
-            @endif
-        </form>
+    <div class="mt-5">
+        <!-- Desktop search -->
+        <div class="hidden sm:flex items-center gap-3">
+            <form method="GET" action="{{ route('admin.users.index') }}" class="flex items-center gap-2">
+                <label class="relative block">
+                    <span class="sr-only">Search</span>
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
+                        </svg>
+                    </span>
+                    <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Search name, email, role, category"
+                           class="w-72 pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </label>
+                <button type="submit" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Search</button>
+                @if(($q ?? '') !== '')
+                    <a href="{{ route('admin.users.index') }}" class="text-sm text-slate-600 hover:text-slate-800">Clear</a>
+                @endif
+            </form>
+        </div>
+
+        <!-- Mobile search area (toggled) -->
+        <div id="mobileSearchArea" class="sm:hidden mt-3 hidden">
+            <div class="flex items-center gap-2">
+                <input id="q_mobile" type="text" placeholder="Search name, email, role, category" class="flex-1 pl-3 pr-3 py-2 rounded-md border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                <button id="mobileSearchBtn" type="button" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2" aria-label="Search">Search</button>
+            </div>
+        </div>
     </div>
 
     <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -79,19 +103,24 @@
                             <td class="py-3 pl-3 pr-5 align-top">
                                 <div class="flex items-center gap-2">
                                     <button type="button"
-                                            class="openEditModalBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                            class="openEditModalBtn inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
                                             data-id="{{ $u->id }}"
                                             data-name="{{ $u->name }}"
                                             data-email="{{ $u->email }}"
                                             data-role="{{ $u->role }}"
-                                            data-category="{{ $u->category }}">
-                                        Edit
+                                            data-category="{{ $u->category }}"
+                                            aria-label="Edit user">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                        </svg>
                                     </button>
                                     <form method="POST" action="{{ route('admin.users.destroy', $u) }}" onsubmit="return confirm('Delete this user? This action cannot be undone.');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50">
-                                            Delete
+                                        <button type="submit" class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50" aria-label="Delete user">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z"/>
+                                            </svg>
                                         </button>
                                     </form>
                                 </div>
@@ -107,7 +136,17 @@
         </div>
 
         <div class="px-5 py-3 border-t border-gray-200">
-            {{ $users->links() }}
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-slate-600">
+                    Showing {{ $users->perPage() }} per page — {{ $users->total() }} total
+                    @if($users->total() > 0)
+                        &nbsp;•&nbsp; displaying {{ $users->firstItem() }}–{{ $users->lastItem() }}
+                    @endif
+                </div>
+                <div>
+                    {{ $users->links() }}
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -288,6 +327,15 @@
       openModal(createModal);
     });
   }
+
+  // Mobile create button - open the same modal
+  const createOpenMobileBtn = $('#openCreateModalBtnMobile');
+  if (createOpenMobileBtn) {
+    createOpenMobileBtn.addEventListener('click', () => {
+      openModal(createModal);
+    });
+  }
+
   // Close Create
   createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
 
@@ -348,6 +396,43 @@
     } else if (OLD_FORM_CONTEXT === 'create') {
       openModal(createModal);
     }
+  }
+
+  // Mobile search UI (toggles mobile search bar)
+  const mobileSearchToggle = $('#mobileSearchToggle');
+  const mobileSearchArea = $('#mobileSearchArea');
+  const qMobile = $('#q_mobile');
+  const mobileSearchBtn = $('#mobileSearchBtn');
+  const mobileClearSearch = $('#mobileClearSearch');
+
+  if (mobileSearchToggle) {
+    mobileSearchToggle.addEventListener('click', () => {
+      if (mobileSearchArea) mobileSearchArea.classList.toggle('hidden');
+      if (qMobile) qMobile.focus();
+    });
+  }
+
+  if (mobileSearchBtn) {
+    mobileSearchBtn.addEventListener('click', () => {
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = "{{ route('admin.users.index') }}";
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'q';
+      input.value = qMobile ? qMobile.value.trim() : '';
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    });
+  }
+
+  if (mobileClearSearch) {
+    mobileClearSearch.addEventListener('click', () => {
+      if (qMobile) qMobile.value = '';
+      // navigate to the index without query
+      window.location.href = "{{ route('admin.users.index') }}";
+    });
   }
 })();
 </script>
