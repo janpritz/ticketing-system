@@ -22,4 +22,5 @@ class UpgradeToHttpsUnderNgrok
          }
         return $next($request);
     }
+
 }

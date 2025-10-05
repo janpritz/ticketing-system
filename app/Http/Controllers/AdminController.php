@@ -509,16 +509,41 @@ class AdminController extends Controller
         $perPage = (int) $request->query('per_page', 25);
         if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
 
-        $faqs = Faq::when($q !== '', function ($query) use ($q) {
+        // Accept 'pending', 'trained' or 'all' for preview statuses.
+        // When 'all' is requested, do not apply a status filter.
+        $status = trim((string) $request->query('status', 'pending'));
+        $allowedStatuses = ['pending', 'trained', 'all'];
+        if (!in_array($status, $allowedStatuses, true)) {
+            $status = 'pending';
+        }
+ 
+        // Build base query (search + optional status filter)
+        $faqsQuery = Faq::when($q !== '', function ($query) use ($q) {
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('intent', 'like', $like)
                        ->orWhere('response', 'like', $like);
                 });
             })
-            ->orderBy('intent')
-            ->paginate($perPage)
-            ->appends(['q' => $q, 'per_page' => $perPage]);
+            // apply status filter only when a specific status is requested (not 'all')
+            ->when($status !== 'all', function ($query) use ($status) {
+                $query->where('status', $status);
+            });
+
+        // When showing "all" prioritize trained FAQs first, then sort by intent.
+        // For specific-status views keep the normal alphabetical intent sort.
+        if ($status === 'all') {
+            $faqs = $faqsQuery
+                ->orderByRaw("CASE WHEN status = 'trained' THEN 0 ELSE 1 END")
+                ->orderBy('intent')
+                ->paginate($perPage)
+                ->appends(['q' => $q, 'per_page' => $perPage, 'status' => $status]);
+        } else {
+            $faqs = $faqsQuery
+                ->orderBy('intent')
+                ->paginate($perPage)
+                ->appends(['q' => $q, 'per_page' => $perPage, 'status' => $status]);
+        }
 
         // Format items so created_at / updated_at use "yyyy-mm-dd hh:mm am/pm"
         $items = array_map(function ($f) {
@@ -636,12 +661,15 @@ class AdminController extends Controller
             'response' => $faq->response,
             'created_at' => optional($faq->created_at)->format('Y-m-d h:i a'),
             'updated_at' => optional($faq->updated_at)->format('Y-m-d h:i a'),
+            'status' => $faq->status,
             'can_restore' => $canRestore,
             'can_revert' => $canRevert,
             'can_undo' => $canUndo,
+            'can_untrain' => ($faq->status === 'trained'),
             'revisions_url' => route('admin.faqs.revisions', ['faq' => $faq->id]),
             'restore_url' => route('admin.faqs.restore', ['faq' => $faq->id]),
             'undo_url' => route('admin.faqs.undo', ['faq' => $faq->id]),
+            'untrain_url' => route('admin.faqs.untrain', ['faq' => $faq->id]),
             'latest_revision' => $latestRevision,
         ]);
     }
@@ -686,11 +714,30 @@ class AdminController extends Controller
 
     /**
      * Delete FAQ (AJAX)
+     *
+     * Accepts soft-deleted items as well (permanent delete from Trash).
+     * When called on a non-deleted FAQ it will perform the usual soft-delete.
+     * When called on an already trashed FAQ it will permanently remove it.
      */
-    public function faqsDestroy(Faq $faq)
+    public function faqsDestroy($faqId)
     {
         $this->ensureAdmin();
 
+        // Resolve the FAQ whether it's trashed or not so we can handle permanent deletes.
+        $faq = Faq::withTrashed()->findOrFail($faqId);
+
+        if ($faq->trashed()) {
+            // Permanently delete the FAQ (force delete)
+            $faq->forceDelete();
+
+            // Note: faq_revisions are configured to cascade on delete, so any revision rows
+            // tied to this FAQ will be removed by the DB. If you want to retain a separate
+            // audit trail for permanent deletions, consider storing a record outside of
+            // the faq_revisions table.
+            return response()->json(['success' => true]);
+        }
+
+        // Not trashed yet — perform soft-delete and record deletion revision
         // Mark status as 'deleted' for audit/filters, then soft-delete
         $faq->status = 'deleted';
         $faq->save();
@@ -910,6 +957,35 @@ class AdminController extends Controller
         }
 
         $faq->status = 'trained';
+        $faq->save();
+
+        return response()->json(['success' => true, 'faq' => $faq]);
+    }
+
+    /**
+     * Mark FAQ as not trained (AJAX) — used when the chatbot reports an incorrect trained response.
+     *
+     * This sets the FAQ status back to 'pending' and records a revision for audit.
+     */
+    public function faqsUntrain(Request $request, Faq $faq)
+    {
+        $this->ensureAdmin();
+
+        if ($faq->status !== 'trained') {
+            return response()->json(['message' => 'FAQ is not marked as trained'], 422);
+        }
+
+        // Save a revision snapshot so this change is auditable
+        FaqRevision::create([
+            'faq_id'   => $faq->id,
+            'intent'   => $faq->intent ?? $faq->topic,
+            'response' => $faq->response,
+            'user_id'  => Auth::id(),
+            'action'   => 'untrain',
+            'meta'     => null,
+        ]);
+
+        $faq->status = 'pending';
         $faq->save();
 
         return response()->json(['success' => true, 'faq' => $faq]);

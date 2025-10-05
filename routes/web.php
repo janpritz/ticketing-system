@@ -133,6 +133,9 @@ Route::middleware('auth')->group(function () {
 
         // Mark FAQ as trained
         Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
+        
+        // Mark FAQ as not trained (revert trained -> pending)
+        Route::post('/{faq}/untrain', [AdminController::class, 'faqsUntrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('untrain');
     });
 
     // Logout (authenticated only)

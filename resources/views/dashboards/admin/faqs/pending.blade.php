@@ -281,9 +281,13 @@
         </td>
         <td class="py-3 pl-3 pr-5 align-top">
           <div class="flex items-center gap-2">
-            <button class="verifyFaqBtn inline-flex items-center gap-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 text-xs font-medium"
+            <!-- Mobile: make action full-width and larger; Desktop: keep inline button -->
+            <button class="verifyFaqBtn w-full sm:inline-flex items-center gap-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2"
                     data-id="${f.id}">
-              Verify Training
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9 11l3 3L22 4l-1.4-1.4L12 11.2 10.4 9.6 9 11z" />
+              </svg>
+              <span>Verify Training</span>
             </button>
           </div>
         </td>
@@ -398,8 +402,9 @@
                     });
                     if (!res.ok) throw new Error('Failed to load FAQ');
                     const f = await res.json();
+                    // populate the pending view modal fields (use 'intent' consistently)
                     pendingViewFaqId.value = f.id;
-                    pendingViewTopic.value = f.topic || '';
+                    pendingViewIntent.value = f.intent || '';
                     pendingViewResponse.value = f.response || '';
                     pendingViewTimestamps.innerHTML =
                         `<div class="text-xs">Created: ${escapeHtml(f.created_at || '')} &nbsp; Updated: ${escapeHtml(f.updated_at || '')}</div>`;

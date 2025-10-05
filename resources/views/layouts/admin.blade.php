@@ -101,18 +101,22 @@
 
 @section('scripts')
   @parent
-  <!-- Sidebar collapse/expand for mobile + desktop (mobile as overlay, desktop pushes content) -->
+  <!-- Sidebar collapse/expand for mobile + desktop (mobile as overlay, desktop pushes content)
+       Behavior changes:
+       - Sidebar is hidden by default on both mobile and desktop.
+       - User open/close choice is persisted in localStorage so navigation between pages keeps the chosen state.
+  -->
   <script>
     (function () {
       const toggleBtn = document.getElementById('sidebar-toggle');
       const sidebar = document.getElementById('default-sidebar');
       const content = document.getElementById('content-wrapper');
       const backdrop = document.getElementById('sidebar-backdrop');
+      const STORAGE_KEY = 'admin.sidebar.open';
 
       if (!toggleBtn || !sidebar || !content) return;
 
       const mq = window.matchMedia('(max-width: 639.98px)'); // Tailwind < sm
-
       function isMobile() { return mq.matches; }
 
       // Desktop behaviors (>= sm): push content
@@ -147,15 +151,57 @@
         document.body.classList.remove('overflow-hidden');
       }
 
-      function toggleSidebar() {
-        if (isMobile()) {
-          const isHidden = sidebar.classList.contains('-translate-x-full');
-          if (isHidden) openMobile(); else closeMobile();
+      // Apply state depending on breakpoint
+      function applyState(open) {
+        if (open) {
+          if (isMobile()) openMobile(); else openDesktop();
         } else {
-          const isCollapsed = sidebar.classList.contains('sm:-translate-x-full');
-          if (isCollapsed) openDesktop(); else closeDesktop();
+          if (isMobile()) closeMobile(); else closeDesktop();
         }
       }
+
+      // Read persisted state (default: closed)
+      function readState() {
+        try {
+          const v = localStorage.getItem(STORAGE_KEY);
+          return v === 'true';
+        } catch (e) {
+          return false;
+        }
+      }
+      function writeState(open) {
+        try {
+          localStorage.setItem(STORAGE_KEY, open ? 'true' : 'false');
+        } catch (e) { /* ignore storage errors */ }
+      }
+
+      // Toggle and persist
+      function toggleSidebar() {
+        const currentlyOpen = readState();
+        const next = !currentlyOpen;
+        applyState(next);
+        writeState(next);
+      }
+
+      // Initialize: ensure sidebar starts hidden unless persisted open=true
+      (function init() {
+        // Normalize classes so we can reliably toggle later
+        // Ensure desktop hidden baseline
+        sidebar.classList.add('sm:-translate-x-full');
+        sidebar.classList.remove('sm:translate-x-0');
+        // Ensure mobile hidden baseline
+        sidebar.classList.add('-translate-x-full');
+        sidebar.classList.remove('translate-x-0');
+        // Ensure content baseline
+        content.classList.remove('sm:ml-64');
+        content.classList.add('ml-0');
+        if (backdrop) backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+
+        // Apply persisted state
+        const wasOpen = readState();
+        applyState(wasOpen);
+      })();
 
       toggleBtn.addEventListener('click', function (e) {
         e.preventDefault();
@@ -163,28 +209,26 @@
       });
 
       if (backdrop) {
-        backdrop.addEventListener('click', closeMobile);
+        backdrop.addEventListener('click', function () {
+          // close on backdrop click and persist closed
+          if (isMobile()) {
+            closeMobile();
+            writeState(false);
+          }
+        });
       }
+
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isMobile()) {
           closeMobile();
+          writeState(false);
         }
       });
 
-      // Keep state coherent on breakpoint change
+      // Keep state coherent on breakpoint change: re-apply persisted state
       mq.addEventListener('change', () => {
-        if (!isMobile()) {
-          // Leaving mobile: ensure desktop-open baseline
-          sidebar.classList.remove('translate-x-0');
-          sidebar.classList.add('-translate-x-full'); // keep mobile base hidden
-          openDesktop();
-        } else {
-          // Entering mobile: keep content unshifted and sidebar hidden
-          content.classList.remove('sm:ml-64');
-          if (backdrop) backdrop.classList.add('hidden');
-          sidebar.classList.add('-translate-x-full');
-          sidebar.classList.remove('translate-x-0');
-        }
+        const wasOpen = readState();
+        applyState(wasOpen);
       });
     })();
   </script>
