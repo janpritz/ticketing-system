@@ -1,12 +1,13 @@
+
 @extends('layouts.admin')
 
-@section('title', 'Pending FAQs')
+@section('title', 'Untrain FAQs Page')
 
 @section('admin-content')
     <div class="sm:px-2">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">Pending FAQs</h1>
+                <h1 class="text-2xl font-semibold text-slate-900">Untrain FAQs Page</h1>
             </div>
 
             <!-- Desktop back button -->
@@ -99,6 +100,7 @@
                     <thead class="bg-gray-50 text-gray-600">
                         <tr>
                           <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
+                          <th class="px-3 py-3 text-left font-medium">Description</th>
                           <th class="px-3 py-3 text-left font-medium">Response</th>
                           <th class="px-3 py-3 text-left font-medium">Status</th>
                           <th class="py-3 pl-3 pr-5 text-left font-medium">Action</th>
@@ -106,7 +108,7 @@
                     </thead>
                     <tbody id="faqsTbody" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="4" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                            <td colspan="5" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -148,6 +150,12 @@
                         <p id="pending_view_intent_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700">Description</label>
+                        <textarea id="pending_view_description" rows="3" readonly
+                            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 whitespace-pre-line"></textarea>
+                        <p id="pending_view_description_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700">Response</label>
                         <textarea id="pending_view_response" rows="6" readonly
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 whitespace-pre-line"></textarea>
@@ -176,9 +184,12 @@
         </rasa-chatbot-widget>
     </div>
 
-    <div id="pending-faqs-state" class="hidden" data-list-url="{{ route('admin.faqs.pending.list') }}"
+    <div id="pending-faqs-state" class="hidden"
+        data-list-url="{{ route('admin.faqs.untrained.list') }}"
+        data-default-status="untrained"
         data-show-url-template="{{ route('admin.faqs.show', ['faq' => '__ID__']) }}"
-        data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"></div>
+        data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"
+        data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"></div>
 
 @endsection
 
@@ -202,6 +213,7 @@
             const stateEl = document.getElementById('pending-faqs-state');
             const LIST_URL = stateEl.getAttribute('data-list-url');
             const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
+            const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             const $ = (sel, root = document) => root.querySelector(sel);
@@ -238,11 +250,15 @@
                     .replaceAll("'", "&#039;");
             }
 
+            const DEFAULT_STATUS = stateEl.getAttribute('data-default-status') || 'untrained';
+
             async function fetchList(page = 1) {
                 currentPage = page;
                 const q = encodeURIComponent((qInput.value || '').trim());
                 const per = perPageSelect.value || '25';
-                const url = `${LIST_URL}?q=${q}&per_page=${per}&page=${page}`;
+                // Support LIST_URL that may already contain query string
+                const sep = LIST_URL.includes('?') ? '&' : '?';
+                const url = `${LIST_URL}${sep}q=${q}&per_page=${per}&page=${page}&status=${encodeURIComponent(DEFAULT_STATUS)}`;
                 try {
                     const res = await fetch(url, {
                         headers: {
@@ -265,7 +281,7 @@
             function renderTable(items) {
                 if (!items || items.length === 0) {
                     faqsTbody.innerHTML =
-                        `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No pending FAQs.</td></tr>`;
+                        `<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => `
@@ -274,26 +290,93 @@
           <div class="text-slate-900 font-medium">${escapeHtml(f.intent)}</div>
         </td>
         <td class="px-3 py-3 align-top">
+          <div class="text-slate-700 whitespace-pre-line max-w-xl">${escapeHtml(truncate(f.description || '', 180))}</div>
+        </td>
+        <td class="px-3 py-3 align-top">
           <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response, 200))}</div>
         </td>
         <td class="px-3 py-3 align-top">
-          <div class="text-slate-700">${escapeHtml(f.status || 'pending')}</div>
+          <div class="text-slate-700">${escapeHtml(f.status || 'untrained')}</div>
         </td>
         <td class="py-3 pl-3 pr-5 align-top">
           <div class="flex items-center gap-2">
-            <!-- Mobile: make action full-width and larger; Desktop: keep inline button -->
-            <button class="verifyFaqBtn w-full sm:inline-flex items-center gap-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2"
-                    data-id="${f.id}">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M9 11l3 3L22 4l-1.4-1.4L12 11.2 10.4 9.6 9 11z" />
-              </svg>
-              <span>Verify Training</span>
-            </button>
+            <!-- Pill group: Train / Untrain. Wrapper holds the current status as value -->
+            <div class="inline-flex items-center gap-2" data-status="${escapeHtml(f.status || 'untrained')}" data-faq-id="${f.id}">
+              <button class="pillOption inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${f.status === 'trained' ? 'bg-emerald-600 text-white' : 'bg-white border border-emerald-600 text-emerald-600'}"
+                      data-value="trained"
+                      aria-pressed="${f.status === 'trained'}"
+                      data-id="${f.id}">
+                Train
+              </button>
+              <button class="pillOption inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${f.status !== 'trained' ? 'bg-yellow-400 text-slate-900' : 'bg-white border border-yellow-400 text-yellow-600'}"
+                      data-value="untrained"
+                      aria-pressed="${f.status !== 'trained'}"
+                      data-id="${f.id}">
+                Untrain
+              </button>
+            </div>
           </div>
         </td>
       </tr>
     `).join('');
-                $$('.verifyFaqBtn').forEach(b => b.addEventListener('click', onVerifyClick));
+                // attach handlers for pill options (train / untrain)
+                $$('.pillOption').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = btn.getAttribute('data-id');
+                    const value = btn.getAttribute('data-value'); // 'trained' or 'untrained'
+                    if (!id || !value) return;
+
+                    // Determine endpoint and method
+                    let url = '';
+                    let method = 'POST';
+                    let confirmOpts = {
+                        title: 'Confirm',
+                        text: '',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes',
+                        cancelButtonText: 'Cancel'
+                    };
+
+                    if (value === 'trained') {
+                        url = TRAIN_TEMPLATE ? TRAIN_TEMPLATE.replace('__ID__', id) : '';
+                        method = 'PUT';
+                        confirmOpts.title = 'Train response?';
+                        confirmOpts.text = 'This will mark the FAQ as trained.';
+                    } else {
+                        url = UNTRAIN_TEMPLATE ? UNTRAIN_TEMPLATE.replace('__ID__', id) : '';
+                        method = 'POST';
+                        confirmOpts.title = 'Mark response as not trained?';
+                        confirmOpts.text = 'This will set the FAQ status back to untrained so it can be retrained.';
+                        confirmOpts.icon = 'warning';
+                    }
+
+                    const confirmResult = await Swal.fire(confirmOpts);
+                    if (!confirmResult.isConfirmed) return;
+
+                    try {
+                        btn.disabled = true;
+                        const res = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            const err = json.message || 'Failed to update status';
+                            throw new Error(err);
+                        }
+                        showToast('success', json.message || (value === 'trained' ? 'Marked as trained' : 'Marked as not trained'));
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error');
+                        console.error(err);
+                    } finally {
+                        btn.disabled = false;
+                    }
+                }));
             }
 
             function renderPagination(meta) {
@@ -320,153 +403,4 @@
         <div class="text-sm text-slate-600">Showing ${per} per page — ${total} total</div>
       </div>
       <div class="flex items-center gap-2">
-        <button ${prevDisabled ? 'disabled' : ''} data-page="${current-1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm ${prevDisabled ? 'opacity-50' : 'hover:bg-gray-50'}">Prev</button>
-        ${pages.map(p => `<button data-page="${p}" class="pagerBtn rounded-md ${p===current ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-sm hover:bg-gray-50'} px-3 py-1">${p}</button>`).join('')}
-        <button ${nextDisabled ? 'disabled' : ''} data-page="${current+1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm ${nextDisabled ? 'opacity-50' : 'hover:bg-gray-50'}">Next</button>
-      </div>
-    `;
-
-                $$('.pagerBtn').forEach(b => b.addEventListener('click', (e) => {
-                    const p = parseInt(b.getAttribute('data-page') || '1', 10);
-                    if (!isNaN(p)) fetchList(p);
-                }));
-            }
-
-            function toggleClear(show) {
-                clearSearchBtn.classList.toggle('hidden', !show);
-            }
-
-            searchBtn.addEventListener('click', () => fetchList(1));
-            perPageSelect.addEventListener('change', () => fetchList(1));
-            clearSearchBtn.addEventListener('click', () => {
-                qInput.value = '';
-                toggleClear(false);
-                fetchList(1);
-            });
-            qInput.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') fetchList(1);
-            });
-
-            // Mobile search UI (toggles mobile search bar)
-            if (mobileSearchToggle) {
-                mobileSearchToggle.addEventListener('click', () => {
-                    if (mobileSearchArea) mobileSearchArea.classList.toggle('hidden');
-                    if (qMobile) qMobile.focus();
-                });
-            }
-
-            if (mobileSearchBtn) {
-                mobileSearchBtn.addEventListener('click', () => {
-                    const v = qMobile ? qMobile.value.trim() : '';
-                    qInput.value = v;
-                    toggleClear(v !== '');
-                    fetchList(1);
-                });
-            }
-
-            if (perPageMobile) {
-                perPageMobile.addEventListener('change', () => {
-                    perPageSelect.value = perPageMobile.value;
-                    fetchList(1);
-                });
-            }
-
-            // Modal helpers for viewing and verifying training
-            const viewModal = document.getElementById('viewPendingFaqModal');
-            const viewCloseEls = $$('.pending-modal-close', viewModal || document);
-            const pendingViewFaqId = document.getElementById('pending_view_faq_id');
-            const pendingViewIntent = document.getElementById('pending_view_intent');
-            const pendingViewResponse = document.getElementById('pending_view_response');
-            const pendingViewTimestamps = document.getElementById('pending_view_timestamps');
-
-            function openModal(modal) {
-                if (modal) modal.classList.remove('hidden');
-            }
-
-            function closeModal(modal) {
-                if (modal) modal.classList.add('hidden');
-            }
-
-            viewCloseEls.forEach(el => el.addEventListener('click', () => closeModal(viewModal)));
-
-            async function onVerifyClick(e) {
-                const id = e.currentTarget.getAttribute('data-id');
-                if (!id) return;
-                // fetch faq details and open modal
-                const showUrl = stateEl.getAttribute('data-show-url-template').replace('__ID__', id);
-                try {
-                    const res = await fetch(showUrl, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    if (!res.ok) throw new Error('Failed to load FAQ');
-                    const f = await res.json();
-                    // populate the pending view modal fields (use 'intent' consistently)
-                    pendingViewFaqId.value = f.id;
-                    pendingViewIntent.value = f.intent || '';
-                    pendingViewResponse.value = f.response || '';
-                    pendingViewTimestamps.innerHTML =
-                        `<div class="text-xs">Created: ${escapeHtml(f.created_at || '')} &nbsp; Updated: ${escapeHtml(f.updated_at || '')}</div>`;
-                    openModal(viewModal);
-                } catch (err) {
-                    showToast('error', 'Failed to load FAQ');
-                    console.error(err);
-                }
-            }
-
-            const responseTrainedBtn = document.getElementById('responseTrainedBtn');
-
-            // Shared trainer helper
-            async function trainFaq(id, btn, confirmMessage) {
-                if (!id) return;
-                const result = await Swal.fire({
-                    title: 'Confirm',
-                    text: confirmMessage,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes',
-                    cancelButtonText: 'Cancel'
-                });
-                if (!result.isConfirmed) return;
-                const url = TRAIN_TEMPLATE.replace('__ID__', id);
-                try {
-                    if (btn) btn.disabled = true;
-                    const res = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    const json = await res.json();
-                    if (!res.ok) {
-                        const msg = json.message || 'Failed to mark as trained';
-                        throw new Error(msg);
-                    }
-                    showToast('success', 'Marked as trained');
-                    // close modal and refresh list
-                    closeModal(viewModal);
-                    fetchList(currentPage);
-                } catch (err) {
-                    showToast('error', err.message || 'Error');
-                    console.error(err);
-                } finally {
-                    if (btn) btn.disabled = false;
-                }
-            }
-
-
-            // Response-trained action
-            if (responseTrainedBtn) {
-                responseTrainedBtn.addEventListener('click', async () => {
-                    const id = pendingViewFaqId.value;
-                    await trainFaq(id, responseTrainedBtn, 'Mark this FAQ as trained (Response)?');
-                });
-            }
-
-            // Init
-            fetchList(1);
-        })();
-    </script>
-@endsection
+        <button ${prevDisabled ? 'disabled' : ''} data-page="${current-1}" class="pagerBtn rounded-md border border-gray-200 bg-white px

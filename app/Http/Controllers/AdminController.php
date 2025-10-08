@@ -11,6 +11,8 @@ use App\Models\FaqRevision;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -23,8 +25,8 @@ class AdminController extends Controller
         $openTickets = Ticket::where('status', 'Open')->count();
         $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
         $faqCount = Faq::count();
-        // number of pending FAQs (displayed under Total FAQs on dashboard)
-        $faqPendingCount = Faq::where('status', 'pending')->count();
+        // number of untrained FAQs (displayed under Total FAQs on dashboard)
+        $faqPendingCount = Faq::where('status', 'untrained')->count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes (based on sessions table)
@@ -169,8 +171,8 @@ class AdminController extends Controller
         $openTickets = Ticket::where('status', 'Open')->count();
         $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
         $faqCount = Faq::count();
-        // include pending FAQ count for live admin data
-        $faqPendingCount = Faq::where('status', 'pending')->count();
+        // include untrained FAQ count for live admin data
+        $faqPendingCount = Faq::where('status', 'untrained')->count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes
@@ -509,12 +511,12 @@ class AdminController extends Controller
         $perPage = (int) $request->query('per_page', 25);
         if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
 
-        // Accept 'pending', 'trained' or 'all' for preview statuses.
+        // Accept 'untrained', 'trained' or 'all' for preview statuses.
         // When 'all' is requested, do not apply a status filter.
-        $status = trim((string) $request->query('status', 'pending'));
-        $allowedStatuses = ['pending', 'trained', 'all'];
+        $status = trim((string) $request->query('status', 'untrained'));
+        $allowedStatuses = ['untrained', 'trained', 'all'];
         if (!in_array($status, $allowedStatuses, true)) {
-            $status = 'pending';
+            $status = 'untrained';
         }
  
         // Build base query (search + optional status filter)
@@ -550,8 +552,10 @@ class AdminController extends Controller
             return [
                 'id' => $f->id,
                 'intent' => $f->intent,
+                'description' => $f->description ?? '',
                 'response' => $f->response,
                 'status' => $f->status,
+                'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
             ];
@@ -607,8 +611,10 @@ class AdminController extends Controller
             return [
                 'id' => $f->id,
                 'intent' => $f->intent,
+                'description' => $f->description ?? '',
                 'response' => $f->response,
                 'status' => $f->status,
+                'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
                 'deleted_at' => optional($f->deleted_at)->format('Y-m-d h:i a'),
@@ -658,10 +664,12 @@ class AdminController extends Controller
         return response()->json([
             'id' => $faq->id,
             'intent' => $faq->intent,
+            'description' => $faq->description ?? '',
             'response' => $faq->response,
             'created_at' => optional($faq->created_at)->format('Y-m-d h:i a'),
             'updated_at' => optional($faq->updated_at)->format('Y-m-d h:i a'),
             'status' => $faq->status,
+            'response_disabled' => (bool) ($faq->response_disabled ?? false),
             'can_restore' => $canRestore,
             'can_revert' => $canRevert,
             'can_undo' => $canUndo,
@@ -676,21 +684,82 @@ class AdminController extends Controller
 
     /**
      * Store new FAQ (AJAX)
+     *
+     * REQUIREMENT:
+     * Ensure the external updater API responds SUCCESS before persisting the FAQ locally.
+     * This prevents creating DB rows when the Rasa updater cannot register the new action/flow.
      */
     public function faqsStore(Request $request)
     {
         $this->ensureAdmin();
         $validated = $request->validate([
             'intent' => 'required|string|max:255',
+            'description' => 'required|string',
             'response' => 'required|string',
         ]);
  
-        $faq = Faq::create([
+        // Ensure updater endpoint is configured
+        $updaterUrl = env('FAQ_UPDATER_URL', null);
+        if (empty($updaterUrl)) {
+            return response()->json(['ok' => false, 'message' => 'FAQ updater not configured. Set FAQ_UPDATER_URL in .env'], 500);
+        }
+ 
+        // Prepare payload for updater (use provided values)
+        $payload = [
             'intent' => $validated['intent'],
-            'response' => $validated['response'],
-        ]);
-
-        return response()->json(['success' => true, 'faq' => $faq], 201);
+            'description' => $validated['description'],
+            // let updater decide whether to restart actions
+            'restart_actions' => true,
+        ];
+        $headers = [];
+        $secret = env('FAQ_UPDATER_SECRET', null);
+        if (!empty($secret)) {
+            $headers['X-FAQ-UPDATER-TOKEN'] = $secret;
+        }
+ 
+        // Call updater and require success before saving
+        try {
+            $res = Http::withHeaders($headers)->timeout(8)->post($updaterUrl, $payload);
+        } catch (\Throwable $e) {
+            Log::error("FAQ updater request failed for intent={$validated['intent']}: " . $e->getMessage());
+            return response()->json(['ok' => false, 'message' => 'Failed to contact updater service'], 502);
+        }
+ 
+        // Validate updater response
+        if (!$res->ok()) {
+            $body = (string) $res->body();
+            Log::error("FAQ updater returned non-200 for intent={$validated['intent']}: HTTP {$res->status()} body={$body}");
+            return response()->json(['ok' => false, 'message' => 'Updater service error', 'status' => $res->status(), 'body' => $body], 502);
+        }
+ 
+        $json = null;
+        try {
+            $json = $res->json();
+        } catch (\Throwable $e) {
+            Log::error("FAQ updater returned invalid JSON for intent={$validated['intent']}: " . $e->getMessage());
+            return response()->json(['ok' => false, 'message' => 'Updater returned invalid JSON'], 502);
+        }
+ 
+        // Expecting {"ok": true, ...}
+        if (empty($json['ok'])) {
+            Log::error("FAQ updater reported failure for intent={$validated['intent']}: " . json_encode($json));
+            return response()->json(['ok' => false, 'message' => 'Updater reported failure', 'details' => $json], 422);
+        }
+ 
+        // Updater succeeded — persist FAQ locally
+        try {
+            $faq = Faq::create([
+                'intent' => $validated['intent'],
+                'description' => $validated['description'],
+                'response' => $validated['response'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Failed to persist FAQ after updater success for intent={$validated['intent']}: " . $e->getMessage());
+            // Optionally inform updater to rollback (not implemented) — at least return error
+            return response()->json(['ok' => false, 'message' => 'Failed to save FAQ locally'], 500);
+        }
+ 
+        return response()->json(['ok' => true, 'faq' => $faq], 201);
     }
 
     /**
@@ -701,14 +770,16 @@ class AdminController extends Controller
         $this->ensureAdmin();
         $validated = $request->validate([
             'intent' => 'required|string|max:255',
+            'description' => 'required|string',
             'response' => 'required|string',
         ]);
  
         $faq->update([
             'intent' => $validated['intent'],
+            'description' => $validated['description'],
             'response' => $validated['response'],
         ]);
-
+ 
         return response()->json(['success' => true, 'faq' => $faq]);
     }
 
@@ -773,8 +844,8 @@ class AdminController extends Controller
         // Restore the soft-deleted model
         $faq->restore();
 
-        // After restore, set status back to 'pending' (per requirement)
-        $faq->status = 'pending';
+        // After restore, set status back to 'untrained' (per new convention)
+        $faq->status = 'untrained';
         $faq->save();
 
         // Record a revision for the restore action so it is auditable / undoable
@@ -891,18 +962,18 @@ class AdminController extends Controller
     }
 
     /**
-     * Pending FAQs page (blade)
+     * Untrained FAQs page (blade)
      */
-    public function faqsPendingIndex(Request $request)
+    public function faqsUntrainIndex(Request $request)
     {
         $this->ensureAdmin();
-        return view('dashboards.admin.faqs.pending');
+        return view('dashboards.admin.faqs.untrained');
     }
 
     /**
      * Pending FAQs list (AJAX) - supports search and per_page options
      */
-    public function faqsPendingList(Request $request)
+    public function faqsUntrainList(Request $request)
     {
         $this->ensureAdmin();
 
@@ -917,7 +988,7 @@ class AdminController extends Controller
                        ->orWhere('response', 'like', $like);
                 });
             })
-            ->where('status', 'pending')
+            ->where('status', 'untrained')
             ->orderBy('intent')
             ->paginate($perPage)
             ->appends(['q' => $q, 'per_page' => $perPage]);
@@ -927,8 +998,10 @@ class AdminController extends Controller
             return [
                 'id' => $f->id,
                 'intent' => $f->intent,
+                'description' => $f->description ?? '',
                 'response' => $f->response,
                 'status' => $f->status,
+                'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
             ];
@@ -952,8 +1025,8 @@ class AdminController extends Controller
     {
         $this->ensureAdmin();
 
-        if ($faq->status !== 'pending') {
-            return response()->json(['message' => 'FAQ is not pending'], 422);
+        if ($faq->status !== 'untrained') {
+            return response()->json(['message' => 'FAQ is not untrained'], 422);
         }
 
         $faq->status = 'trained';
@@ -985,7 +1058,62 @@ class AdminController extends Controller
             'meta'     => null,
         ]);
 
-        $faq->status = 'pending';
+        $faq->status = 'untrained';
+        $faq->save();
+
+        return response()->json(['success' => true, 'faq' => $faq]);
+    }
+
+    /**
+     * Disable a FAQ response so external systems (Rasa) will treat it as unavailable.
+     * This sets the `response_disabled` flag and records a revision for audit.
+     */
+    public function faqsDisable(Request $request, Faq $faq)
+    {
+        $this->ensureAdmin();
+
+        if ($faq->response_disabled) {
+            return response()->json(['message' => 'FAQ already disabled'], 422);
+        }
+
+        // record revision snapshot
+        FaqRevision::create([
+            'faq_id'   => $faq->id,
+            'intent'   => $faq->intent ?? $faq->topic,
+            'response' => $faq->response,
+            'user_id'  => Auth::id(),
+            'action'   => 'disable',
+            'meta'     => null,
+        ]);
+
+        $faq->response_disabled = true;
+        $faq->save();
+
+        return response()->json(['success' => true, 'faq' => $faq]);
+    }
+
+    /**
+     * Re-enable a previously disabled FAQ response.
+     */
+    public function faqsEnable(Request $request, Faq $faq)
+    {
+        $this->ensureAdmin();
+
+        if (!$faq->response_disabled) {
+            return response()->json(['message' => 'FAQ is not disabled'], 422);
+        }
+
+        // record revision snapshot
+        FaqRevision::create([
+            'faq_id'   => $faq->id,
+            'intent'   => $faq->intent ?? $faq->topic,
+            'response' => $faq->response,
+            'user_id'  => Auth::id(),
+            'action'   => 'enable',
+            'meta'     => null,
+        ]);
+
+        $faq->response_disabled = false;
         $faq->save();
 
         return response()->json(['success' => true, 'faq' => $faq]);

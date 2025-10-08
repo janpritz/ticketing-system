@@ -117,9 +117,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
         Route::get('/deleted/list', [AdminController::class, 'faqsDeletedList'])->name('deleted.list');
 
-        // Pending FAQs view + AJAX list
-        Route::get('/pending', [AdminController::class, 'faqsPendingIndex'])->name('pending');
-        Route::get('/pending/list', [AdminController::class, 'faqsPendingList'])->name('pending.list');
+        // Untrained FAQs view + AJAX list
+        Route::get('/untrain', [AdminController::class, 'faqsUntrainIndex'])->name('untrained');
+        Route::get('/untrain/list', [AdminController::class, 'faqsUntrainList'])->name('untrained.list');
 
         // Revisions & revert for FAQ responses (audit / undo)
         Route::get('/{faq}/revisions', [AdminController::class, 'faqsRevisions'])->whereNumber('faq')->name('revisions');
@@ -134,8 +134,12 @@ Route::middleware('auth')->group(function () {
         // Mark FAQ as trained
         Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
         
-        // Mark FAQ as not trained (revert trained -> pending)
+        // Mark FAQ as not trained (revert trained -> untrained)
         Route::post('/{faq}/untrain', [AdminController::class, 'faqsUntrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('untrain');
+
+        // Disable / Enable FAQ response (used to temporarily unpublish an answer without deleting)
+        Route::post('/{faq}/disable', [AdminController::class, 'faqsDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
+        Route::post('/{faq}/enable', [AdminController::class, 'faqsEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
     });
 
     // Logout (authenticated only)

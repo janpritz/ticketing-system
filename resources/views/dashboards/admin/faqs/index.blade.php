@@ -1,4 +1,4 @@
-dev@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', $isDeletedView ? 'Deleted FAQs' : 'FAQ Management')
 
@@ -48,13 +48,13 @@ dev@extends('layouts.admin')
                             class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Trained</button>
                     </div>
 
-                    <a href="{{ route('admin.faqs.pending') }}"
+                    <a href="{{ route('admin.faqs.untrained') }}"
                         class="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-3 py-2"
-                        aria-label="Update FAQ Status">
+                        aria-label="Untrain FAQs">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
                         </svg>
-                        <span class="hidden sm:inline">Update FAQ Status</span>
+                        <span class="hidden sm:inline">Untrain FAQs</span>
                     </a>
                     <button id="openCreateModalBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
@@ -147,12 +147,12 @@ dev@extends('layouts.admin')
                     </div>
                     <button id="mobileActionUpdateStatus" type="button"
                         class="w-full flex items-center gap-3 px-3 py-2 rounded-md bg-amber-600 text-white hover:opacity-90"
-                        data-pending-url="{{ route('admin.faqs.pending') }}" aria-label="Update FAQ Status (mobile)">
+                        data-pending-url="{{ route('admin.faqs.untrained') }}" aria-label="Untrain FAQs (mobile)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24"
                             fill="currentColor">
                             <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
                         </svg>
-                        <span class="font-medium">Update Status</span>
+                        <span class="font-medium">Untrain FAQs</span>
                     </button>
 
                     <button id="mobileActionTrash" type="button"
@@ -205,6 +205,7 @@ dev@extends('layouts.admin')
                     <thead class="bg-gray-50 text-gray-600">
                         <tr>
                             <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
+                            <th class="px-3 py-3 text-left font-medium">Description</th>
                             <th class="px-3 py-3 text-left font-medium">Response</th>
                             <th class="px-3 py-3 text-left font-medium">Created At</th>
                             <th class="px-3 py-3 text-left font-medium">Updated At</th>
@@ -214,7 +215,7 @@ dev@extends('layouts.admin')
                     </thead>
                     <tbody id="faqsTbody" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="4" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                            <td colspan="7" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -247,6 +248,18 @@ dev@extends('layouts.admin')
                         <input type="text" name="intent" id="create_intent" required
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                         <p id="create_intent_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Description</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <textarea name="description" id="create_description" rows="3" required
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            <button id="createTemplateBtn" type="button"
+                                class="hidden mt-2 sm:mt-1 w-full sm:w-auto rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100 text-sm px-3 py-2 text-slate-700 sm:self-start">
+                                Use template
+                            </button>
+                        </div>
+                        <p id="create_description_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Response</label>
@@ -291,7 +304,13 @@ dev@extends('layouts.admin')
                     </svg>
                 </button>
 
-                <!-- More actions (shows '...' when restore/revisions available) -->
+                <!-- Action pills (Train / Untrain) shown to the left of the "more actions" menu -->
+                <div id="actionPills" class="absolute top-3 right-28 hidden space-x-2">
+                    <button id="trainPillBtn" type="button"
+                        class="rounded-full px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium hidden">Train</button>
+                    <button id="untrainPillBtn" type="button"
+                        class="rounded-full px-3 py-1.5 bg-yellow-400 text-sm font-medium text-slate-900 hidden">Untrain</button>
+                </div>
                 <button id="moreActionsBtn" type="button"
                     class="absolute top-3 right-12 text-slate-500 hover:text-slate-700 hidden" aria-label="More actions">
                     <span class="text-xl font-bold">⋯</span>
@@ -327,6 +346,19 @@ dev@extends('layouts.admin')
                         <p id="view_intent_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
 
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Description</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <textarea name="description" id="view_description" rows="3" required
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            <button id="viewTemplateBtn" type="button"
+                                class="hidden mt-2 sm:mt-1 w-full sm:w-auto rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100 text-sm px-3 py-2 text-slate-700 sm:self-start">
+                                Use template
+                            </button>
+                        </div>
+                        <p id="view_description_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+    
                     <!-- Previous revision collapsible (populated dynamically) -->
                     <div id="previousRevisionWrapper" class="mt-3 hidden">
                         <button type="button" id="togglePrevRevisionBtn"
@@ -342,7 +374,7 @@ dev@extends('layouts.admin')
                             </div>
                         </div>
                     </div>
-
+    
                     <!-- Response -->
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Response</label>
@@ -377,6 +409,7 @@ dev@extends('layouts.admin')
         data-destroy-url-template="{{ route('admin.faqs.destroy', ['faq' => '__ID__']) }}"
         data-revisions-url-template="{{ route('admin.faqs.revisions', ['faq' => '__ID__']) }}"
         data-restore-url-template="{{ route('admin.faqs.restore', ['faq' => '__ID__']) }}"
+        data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"
         data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"></div>
 
 @endsection
@@ -406,6 +439,7 @@ dev@extends('layouts.admin')
             const UPDATE_TEMPLATE = stateEl.getAttribute('data-update-url-template');
             const DESTROY_TEMPLATE = stateEl.getAttribute('data-destroy-url-template');
             const RESTORE_TEMPLATE = stateEl.getAttribute('data-restore-url-template');
+            const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
             const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -571,13 +605,16 @@ dev@extends('layouts.admin')
 
                 if (!items || items.length === 0) {
                     faqsTbody.innerHTML =
-                        `<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+                        `<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => `
       <tr class="${f.status === 'trained' ? 'bg-emerald-50' : 'hover:bg-gray-50'} ${f.deleted_at ? 'opacity-70' : ''}">
         <td class="py-3 pl-5 pr-3 align-top">
           <div class="text-slate-900 font-medium">${escapeHtml(f.intent)}</div>
+        </td>
+        <td class="px-3 py-3 align-top">
+          <div class="text-slate-700 whitespace-pre-line max-w-xl">${escapeHtml(truncate(f.description || '', 140))}</div>
         </td>
         <td class="px-3 py-3 align-top">
           <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response, 180))}</div>
@@ -589,7 +626,7 @@ dev@extends('layouts.admin')
           <div class="text-slate-500 text-xs">${escapeHtml(f.updated_at || '')}</div>
         </td>
         <td class="px-3 py-3 align-top">
-          <div class="text-slate-700">${escapeHtml(f.status || 'pending')}</div>
+          <div class="text-slate-700">${escapeHtml(f.status || 'untrained')}</div>
         </td>
         <td class="py-3 pl-3 pr-5 align-top">
           <div class="flex items-center gap-2">
@@ -989,13 +1026,19 @@ dev@extends('layouts.admin')
                 // clear errors
                 $('#create_intent_error').classList.add('hidden');
                 $('#create_response_error').classList.add('hidden');
-
+                $('#create_description_error').classList.add('hidden');
+ 
                 const intent = $('#create_intent').value.trim();
+                const description = $('#create_description').value.trim();
                 const response = $('#create_response').value.trim();
-                if (!intent || !response) {
+                if (!intent || !description || !response) {
                     if (!intent) {
                         $('#create_intent_error').textContent = 'Intent is required';
                         $('#create_intent_error').classList.remove('hidden');
+                    }
+                    if (!description) {
+                        $('#create_description_error').textContent = 'Description is required';
+                        $('#create_description_error').classList.remove('hidden');
                     }
                     if (!response) {
                         $('#create_response_error').textContent = 'Response is required';
@@ -1003,7 +1046,7 @@ dev@extends('layouts.admin')
                     }
                     return;
                 }
-
+ 
                 try {
                     createSubmit.disabled = true;
                     const res = await fetch(STORE_URL, {
@@ -1015,6 +1058,7 @@ dev@extends('layouts.admin')
                         },
                         body: JSON.stringify({
                             intent,
+                            description,
                             response
                         })
                     });
@@ -1056,7 +1100,9 @@ dev@extends('layouts.admin')
                     // populate
                     viewFaqId.value = f.id;
                     viewTopic.value = f.intent || '';
+                    view_description_value = f.description || '';
                     viewResponse.value = f.response || '';
+                    if ($('#view_description')) $('#view_description').value = f.description || '';
                     viewTimestamps.innerHTML = `
         <div class="tiny-text">Created: ${escapeHtml(f.created_at || '')}</div>
         <div class="text-super-small">Updated: ${escapeHtml(f.updated_at || '')}</div>
@@ -1130,15 +1176,22 @@ dev@extends('layouts.admin')
                 const url = UPDATE_TEMPLATE.replace('__ID__', id);
                 const payload = {
                     intent: viewTopic.value.trim(),
+                    description: ($('#view_description') ? $('#view_description').value.trim() : ''),
                     response: viewResponse.value.trim()
                 };
                 // basic validation
                 let hasErr = false;
                 $('#view_intent_error').classList.add('hidden');
                 $('#view_response_error').classList.add('hidden');
+                $('#view_description_error').classList.add('hidden');
                 if (!payload.intent) {
                     $('#view_intent_error').textContent = 'Intent required';
                     $('#view_intent_error').classList.remove('hidden');
+                    hasErr = true;
+                }
+                if (!payload.description) {
+                    $('#view_description_error').textContent = 'Description required';
+                    $('#view_description_error').classList.remove('hidden');
                     hasErr = true;
                 }
                 if (!payload.response) {
@@ -1147,7 +1200,7 @@ dev@extends('layouts.admin')
                     hasErr = true;
                 }
                 if (hasErr) return;
-
+ 
                 try {
                     updateSubmit.disabled = true;
                     const res = await fetch(url, {
@@ -1221,7 +1274,7 @@ dev@extends('layouts.admin')
                     e.stopPropagation();
                     if (moreMenu) moreMenu.classList.toggle('hidden');
                 });
-
+    
                 // Close menu when clicking outside
                 document.addEventListener('click', (ev) => {
                     if (!moreMenu) return;
@@ -1231,7 +1284,7 @@ dev@extends('layouts.admin')
                         moreMenu.classList.add('hidden');
                     }
                 });
-
+    
                 // View revisions - navigate to revisions page (full page)
                 if (moreRevisionsBtn) {
                     moreRevisionsBtn.addEventListener('click', () => {
@@ -1241,13 +1294,13 @@ dev@extends('layouts.admin')
                         window.location.href = url;
                     });
                 }
-
+    
                 // Restore action - POST to restore endpoint
                 if (moreRestoreBtn) {
                     moreRestoreBtn.addEventListener('click', async () => {
                         const url = moreRestoreBtn.dataset.url || '';
                         if (!url) return;
-
+    
                         // Ask for confirmation before restoring
                         const confirmResult = await Swal.fire({
                             title: 'Restore FAQ?',
@@ -1258,7 +1311,7 @@ dev@extends('layouts.admin')
                             cancelButtonText: 'Cancel'
                         });
                         if (!confirmResult.isConfirmed) return;
-
+    
                         try {
                             moreRestoreBtn.disabled = true;
                             const res = await fetch(url, {
@@ -1286,23 +1339,23 @@ dev@extends('layouts.admin')
                         }
                     });
                 }
-
-                // "This response is not trained" action - mark trained -> pending
+    
+                // "This response is not trained" action - mark trained -> untrained
                 if (moreUntrainBtn) {
                     moreUntrainBtn.addEventListener('click', async () => {
                         const url = moreUntrainBtn.dataset.url || '';
                         if (!url) return;
-
+    
                         const confirmResult = await Swal.fire({
                             title: 'Mark response as not trained?',
-                            text: 'This will set the FAQ status back to pending so it can be retrained.',
+                            text: 'This will set the FAQ status back to untrained so it can be retrained.',
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonText: 'Yes, mark as not trained',
                             cancelButtonText: 'Cancel'
                         });
                         if (!confirmResult.isConfirmed) return;
-
+    
                         try {
                             moreUntrainBtn.disabled = true;
                             const res = await fetch(url, {
@@ -1330,6 +1383,91 @@ dev@extends('layouts.admin')
                         }
                     });
                 }
+    
+                // Pill buttons (Train / Untrain) handlers
+                const trainPillBtn = $('#trainPillBtn');
+                const untrainPillBtn = $('#untrainPillBtn');
+    
+                if (trainPillBtn) {
+                    trainPillBtn.addEventListener('click', async () => {
+                        const id = activeFaqId || (viewFaqId ? viewFaqId.value : null);
+                        if (!id) return;
+                        const url = TRAIN_TEMPLATE ? TRAIN_TEMPLATE.replace('__ID__', id) : '';
+                        const confirmResult = await Swal.fire({
+                            title: 'Train response?',
+                            text: 'This will mark the FAQ as trained.',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes, train',
+                            cancelButtonText: 'Cancel'
+                        });
+                        if (!confirmResult.isConfirmed) return;
+                        try {
+                            trainPillBtn.disabled = true;
+                            const res = await fetch(url, {
+                                method: 'PUT',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                const err = json.message || 'Failed to mark as trained';
+                                throw new Error(err);
+                            }
+                            showToast('success', 'Marked as trained');
+                            closeModal(viewModal);
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                        } finally {
+                            trainPillBtn.disabled = false;
+                        }
+                    });
+                }
+    
+                if (untrainPillBtn) {
+                    untrainPillBtn.addEventListener('click', async () => {
+                        const id = activeFaqId || (viewFaqId ? viewFaqId.value : null);
+                        if (!id) return;
+                        const url = UNTRAIN_TEMPLATE ? UNTRAIN_TEMPLATE.replace('__ID__', id) : '';
+                        const confirmResult = await Swal.fire({
+                            title: 'Mark response as not trained?',
+                            text: 'This will set the FAQ status back to untrained so it can be retrained.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes, mark as not trained',
+                            cancelButtonText: 'Cancel'
+                        });
+                        if (!confirmResult.isConfirmed) return;
+                        try {
+                            untrainPillBtn.disabled = true;
+                            const res = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                const err = json.message || 'Failed to update status';
+                                throw new Error(err);
+                            }
+                            showToast('success', json.message || 'Marked as not trained');
+                            closeModal(viewModal);
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                        } finally {
+                            untrainPillBtn.disabled = false;
+                        }
+                    });
+                }
             }
 
             // Auto-refresh every 20s
@@ -1339,6 +1477,63 @@ dev@extends('layouts.admin')
             }
 
             // Initialize
+            // Template button behavior and visibility helpers
+            const TEMPLATE_TEXT = 'This flow handles question when the user asks about...';
+            const createTemplateBtn = $('#createTemplateBtn');
+            const viewTemplateBtn = $('#viewTemplateBtn');
+            const createDescriptionEl = $('#create_description');
+            const viewDescriptionEl = $('#view_description');
+
+            function updateTemplateButtonsVisibility() {
+                // Create button: only shown when create modal is open AND description is empty
+                if (createTemplateBtn) {
+                    // if create modal element exists and is visible (no 'hidden' class) and description exists
+                    const showCreate = createModal && createDescriptionEl && !createModal.classList.contains('hidden') && createDescriptionEl.value.trim() === '';
+                    createTemplateBtn.classList.toggle('hidden', !showCreate);
+                    // ensure button label
+                    createTemplateBtn.textContent = 'Use template';
+                }
+
+                // View/Edit button: shown only when view modal is open AND description is empty
+                if (viewTemplateBtn) {
+                    const showView = viewModal && viewDescriptionEl && !viewModal.classList.contains('hidden') && viewDescriptionEl.value.trim() === '';
+                    viewTemplateBtn.classList.toggle('hidden', !showView);
+                    viewTemplateBtn.textContent = 'Use template';
+                }
+            }
+
+            // Hook visibility update when modals open/close via MutationObserver (observes class changes)
+            const modalObserver = new MutationObserver(() => updateTemplateButtonsVisibility());
+            if (createModal) modalObserver.observe(createModal, { attributes: true, attributeFilter: ['class'] });
+            if (viewModal) modalObserver.observe(viewModal, { attributes: true, attributeFilter: ['class'] });
+
+            // Also update visibility when user types into description boxes
+            if (createDescriptionEl) createDescriptionEl.addEventListener('input', updateTemplateButtonsVisibility);
+            if (viewDescriptionEl) viewDescriptionEl.addEventListener('input', updateTemplateButtonsVisibility);
+
+            // Template button actions: only insert template when the description is empty
+            if (createTemplateBtn) {
+                createTemplateBtn.addEventListener('click', () => {
+                    if (!createDescriptionEl) return;
+                    if (createDescriptionEl.value.trim() === '') {
+                        createDescriptionEl.value = TEMPLATE_TEXT;
+                        updateTemplateButtonsVisibility();
+                    }
+                });
+            }
+
+            if (viewTemplateBtn) {
+                viewTemplateBtn.addEventListener('click', () => {
+                    if (!viewDescriptionEl) return;
+                    if (viewDescriptionEl.value.trim() === '') {
+                        viewDescriptionEl.value = TEMPLATE_TEXT;
+                        updateTemplateButtonsVisibility();
+                    }
+                });
+            }
+
+            // Ensure correct initial state, start app
+            updateTemplateButtonsVisibility();
             fetchList(1);
             startAutoRefresh();
 

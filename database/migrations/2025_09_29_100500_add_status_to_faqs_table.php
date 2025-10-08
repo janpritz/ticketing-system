@@ -8,10 +8,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('faqs', function (Blueprint $table) {
-            // Add status with default 'pending' and allowed values ['pending', 'trained']
+            // Add status with default 'untrained' and allowed values ['untrained', 'trained']
             // Note: On PostgreSQL, enum becomes a CHECK constraint.
             if (!Schema::hasColumn('faqs', 'status')) {
-                $table->enum('status', ['pending', 'trained'])->default('pending')->after('response');
+                $table->enum('status', ['untrained', 'trained'])->default('untrained')->after('response');
             }
         });
     }

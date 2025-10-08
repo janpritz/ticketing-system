@@ -14,14 +14,17 @@ class Faq extends Model
 
     protected $fillable = [
         'intent',
+        'description',
         'response',
         'status',
+        'response_disabled',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'response_disabled' => 'boolean',
     ];
 
     /**

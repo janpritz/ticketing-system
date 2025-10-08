@@ -91,17 +91,61 @@ class FaqSeeder extends Seeder
 
         $this->command->info('Seeding FAQs from response.yml ...');
 
-        foreach ($items as $utter => $text) {
-            // generate topic from utter name: remove leading "utter_", replace underscores with spaces, trim, and title case
-            $topic = preg_replace('/^utter_/', '', $utter);
-            $topic = str_replace('_', ' ', $topic);
-            $topic = trim($topic);
-            $topic = mb_convert_case($topic, MB_CASE_TITLE, "UTF-8");
+        // Attempt to read flow descriptions from responses/faqs_flow.yml so we can populate the
+        // new `description` column for seeded FAQs. This is a lightweight line parser (not full YAML).
+        $flowPath = base_path('responses' . DIRECTORY_SEPARATOR . 'faqs_flow.yml');
+        $flowDescriptions = [];
+        if ($flowPath && file_exists($flowPath)) {
+            $flowLines = preg_split("/\r\n|\n|\r/", File::get($flowPath));
+            $inFlows = false;
+            $currentFlow = null;
+            foreach ($flowLines as $ln) {
+                if (!$inFlows && preg_match('/^\s*flows\s*:\s*$/', $ln)) {
+                    $inFlows = true;
+                    continue;
+                }
+                if (!$inFlows) continue;
+                if (preg_match('/^\s*([a-zA-Z0-9_]+)\s*:\s*$/', $ln, $m)) {
+                    // new flow key (e.g. acc_hymn_flow)
+                    $currentFlow = $m[1];
+                    continue;
+                }
+                // simple single-line description capture (covers the current file format)
+                if ($currentFlow && preg_match('/^\s*description\s*:\s*(.+)$/', $ln, $m)) {
+                    $desc = trim($m[1]);
+                    // strip optional surrounding quotes
+                    $desc = trim($desc, "\"'");
+                    $flowDescriptions[$currentFlow] = $desc;
+                }
+            }
+        }
 
-            // Avoid duplicating existing exact entries; update or create
+        foreach ($items as $utter => $text) {
+            // derive intent from utter name: remove leading "utter_", replace underscores with spaces, trim, and title case
+            $intent = preg_replace('/^utter_/', '', $utter);
+            $intent = str_replace('_', ' ', $intent);
+            $intent = trim($intent);
+            $intent = mb_convert_case($intent, MB_CASE_TITLE, "UTF-8");
+
+            // Try to find a matching flow description.
+            // Common convention: flow keys end with "_flow" (e.g. acc_hymn_flow)
+            $base = preg_replace('/^utter_/', '', $utter);
+            $flowKeyA = $base . '_flow';
+            $flowKeyB = $base . 'flow';
+            $description = '';
+            if (isset($flowDescriptions[$flowKeyA])) {
+                $description = $flowDescriptions[$flowKeyA];
+            } elseif (isset($flowDescriptions[$flowKeyB])) {
+                $description = $flowDescriptions[$flowKeyB];
+            }
+
+            // Ensure description is a non-null string (controller enforces required for future edits)
+            $description = (string) ($description ?? '');
+
+            // Avoid duplicating existing exact entries; update or create using the 'intent' column
             Faq::updateOrCreate(
-                ['topic' => $topic],
-                ['response' => $text]
+                ['intent' => $intent],
+                ['description' => $description, 'response' => $text]
             );
         }
 
