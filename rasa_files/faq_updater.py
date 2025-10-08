@@ -33,8 +33,9 @@ from pathlib import Path
 app = Flask(__name__)
 
 # Paths (relative to this file)
-ACTIONS_FILE = Path("actions/faqs.py")
-FAQS_FLOW_FILE = Path("data/flows/ticketing_faq.yml")
+BASE_DIR = Path(__file__).parent
+ACTIONS_FILE = BASE_DIR / "actions.py"
+FAQS_FLOW_FILE = BASE_DIR / "data/flows/faqs_flow.yml"
 
 # Lock suffix and timeout
 LOCK_SUFFIX = ".lock"
@@ -120,36 +121,65 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
                     return False
                 # Prepare class code in the requested format
                 class_code = f"""
-class {cls_name}(Action):
-    def name(self) -> str:
-        return "{func_name}"
-
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: dict):
-
-        connection = get_db_connection()
-        try:
-            with connection.cursor(dictionary=True) as cursor:
-                cursor.execute("SELECT response FROM faqs WHERE intent = '{intent_literal}'")
-                results = cursor.fetchall()   # fetch ALL rows
-
-                if results:
-                    # Join all responses into one string
-                    responses = "\\n".join([row["response"] for row in results if row.get("response")])
-                    dispatcher.utter_message(text=responses)
-                else:
-                    dispatcher.utter_message(
-                        text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-                    )
-
-        except Exception as e:
-            dispatcher.utter_message(text=f"DB Error: {{str(e)}}")
-
-        finally:
-            connection.close()
-        return []
-"""
+ # Ensure DB helper exists (idempotent)
+ if "get_db_connection" not in globals():
+     def get_db_connection():
+         import os
+         import mysql.connector
+         return mysql.connector.connect(
+             host=os.environ.get('FAQ_DB_HOST', '127.0.0.1'),
+             user=os.environ.get('FAQ_DB_USERNAME', 'root'),
+             password=os.environ.get('FAQ_DB_PASSWORD', ''),
+             database=os.environ.get('FAQ_DB_DATABASE', 'your_database'),
+             port=int(os.environ.get('FAQ_DB_PORT', '3306'))
+         )
+ 
+ class {cls_name}(Action):
+     def name(self) -> str:
+         return "{func_name}"
+ 
+     def run(self, dispatcher: CollectingDispatcher,
+             tracker: Tracker,
+             domain: dict):
+ 
+         connection = get_db_connection()
+         try:
+             with connection.cursor(dictionary=True) as cursor:
+                 cursor.execute("SELECT response, status FROM faqs WHERE intent = '{intent_literal}'")
+                 results = cursor.fetchall()   # fetch all matching rows
+ 
+                 if not results:
+                     # No record found
+                     dispatcher.utter_message(
+                         text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+                     )
+                     return []
+ 
+                 # Check if all entries are untrained or have empty response
+                 trained_responses = [
+                     row["response"].strip()
+                     for row in results
+                     if row.get("status", "").lower() == "trained" and row.get("response")
+                 ]
+ 
+                 if trained_responses:
+                     # Combine all trained responses into one message
+                     final_response = "\\n".join(trained_responses)
+                     dispatcher.utter_message(text=final_response)
+                 else:
+                     # None are trained or no response content
+                     dispatcher.utter_message(
+                         text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+                     )
+ 
+         except Exception as e:
+             dispatcher.utter_message(text=f"DB Error: {{str(e)}}")
+ 
+         finally:
+             connection.close()
+ 
+         return []
+ """
                 f.seek(0, os.SEEK_END)
                 f.write(class_code)
                 print(f"[faq_updater] Appended action class {cls_name} to {ACTIONS_FILE}")
@@ -213,22 +243,10 @@ def append_flow(intent_norm: str, description: str) -> bool:
 
                 if indent is not None:
                     # Append under flows: (indented block)
-                    flow_block = f"""
-
-{indent}{key}:
-{indent}  description: {desc_single}
-{indent}  steps:
-{indent}    - action: {action_function_name(intent_norm)}
-"""
+                    flow_block = f"\n{indent}{key}:\n{indent}  description: {desc_single}\n{indent}  steps:\n{indent}    - action: {action_function_name(intent_norm)}\n"
                 else:
                     # Append as top-level flow
-                    flow_block = f"""
-
-{key}:
-  description: {desc_single}
-  steps:
-    - action: {action_function_name(intent_norm)}
-"""
+                    flow_block = f"\n{key}:\n  description: {desc_single}\n  steps:\n    - action: {action_function_name(intent_norm)}\n"
 
                 f.seek(0, os.SEEK_END)
                 f.write(flow_block)
