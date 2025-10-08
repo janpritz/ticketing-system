@@ -138,7 +138,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
                             </svg>
-                            <a href="{{ route('admin.faqs.untrained') }}" class="hover:underline">
+                            <a href="{{ route('admin.faqs.index', ['status' => 'untrained']) }}" class="hover:underline">
                                 <span id="faqPendingCount">{{ number_format($faqPendingCount ?? 0) }}</span> pending
                             </a>
                         </div>

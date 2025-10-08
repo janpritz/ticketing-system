@@ -46,16 +46,10 @@
                             class="px-4 py-1.5 rounded-full bg-white text-yellow-700 font-medium text-sm">All</button>
                         <button id="faqsStatusTrainedBtn" type="button"
                             class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Trained</button>
+                        <button id="faqsStatusUntrainedBtn" type="button"
+                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Untrained</button>
                     </div>
 
-                    <a href="{{ route('admin.faqs.untrained') }}"
-                        class="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-3 py-2"
-                        aria-label="Untrain FAQs">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
-                        </svg>
-                        <span class="hidden sm:inline">Untrain FAQs</span>
-                    </a>
                     <button id="openCreateModalBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
                         aria-label="Add FAQ">
@@ -143,17 +137,20 @@
                             <button id="mobileTrainedToggle" type="button"
                                 class="ml-1 flex-1 px-4 py-3 rounded bg-yellow-400 text-white font-medium text-sm text-center"
                                 aria-label="Trained (mobile)">Trained</button>
+                            <button id="mobileUntrainedToggle" type="button"
+                                class="ml-1 flex-1 px-4 py-3 rounded bg-yellow-400 text-white font-medium text-sm text-center"
+                                aria-label="Untrained (mobile)">Untrained</button>
                         </div>
                     </div>
-                    <button id="mobileActionUpdateStatus" type="button"
+                    {{-- <button id="mobileActionUpdateStatus" type="button"
                         class="w-full flex items-center gap-3 px-3 py-2 rounded-md bg-amber-600 text-white hover:opacity-90"
-                        data-pending-url="{{ route('admin.faqs.untrained') }}" aria-label="Untrain FAQs (mobile)">
+                        data-pending-url="{{ route('admin.faqs.index', ['status' => 'untrained']) }}" aria-label="Untrain FAQs (mobile)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24"
                             fill="currentColor">
                             <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
                         </svg>
                         <span class="font-medium">Untrain FAQs</span>
-                    </button>
+                    </button> --}}
 
                     <button id="mobileActionTrash" type="button"
                         class="w-full text-left px-3 py-2 rounded-md bg-white hover:bg-gray-50 text-slate-700 flex items-center gap-3"
@@ -326,9 +323,10 @@
                         <button id="more_restore_btn" type="button"
                             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Restore
                             FAQ</button>
+                        <button id="more_train_btn" type="button"
+                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Train</button>
                         <button id="more_untrain_btn" type="button"
-                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">This response
-                            is not trained</button>
+                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Untrain</button>
                     </div>
                 </div>
 
@@ -446,6 +444,9 @@
             const $ = (sel, root = document) => root.querySelector(sel);
             const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+            // Prevent ReferenceErrors for optional mobile actions menu that may not exist
+            const mobileActionsMenu = null;
+
             // Elements
             const qInput = $('#q');
             const perPageSelect = $('#per_page');
@@ -476,6 +477,7 @@
             const moreMenu = $('#moreActionsMenu');
             const moreRestoreBtn = $('#more_restore_btn');
             const moreRevisionsBtn = $('#more_revisions_btn');
+            const moreTrainBtn = $('#more_train_btn');
             const moreUntrainBtn = $('#more_untrain_btn');
 
             // Previous revision elements (collapsible)
@@ -797,43 +799,36 @@
                 });
             }
 
-            // Status preview toggle handler (All / Trained)
+            // Status preview toggle handler (All / Trained / Untrained)
             const allBtn = $('#faqsStatusAllBtn');
             const trainedBtn = $('#faqsStatusTrainedBtn');
+            const untrainedBtn = $('#faqsStatusUntrainedBtn');
 
             function updateToggleUI() {
-                // desktop toggle
-                if (allBtn && trainedBtn) {
-                    if (currentStatus === 'all') {
-                        // 'All' selected: white bg, yellow text; trained inactive: yellow bg, white text
-                        allBtn.classList.remove('bg-yellow-400', 'text-white');
-                        allBtn.classList.add('bg-white', 'text-yellow-700');
-                        trainedBtn.classList.remove('bg-white', 'text-yellow-700');
-                        trainedBtn.classList.add('bg-yellow-400', 'text-white');
+                // helper to toggle button styles
+                const setActive = (btn, active) => {
+                    if (!btn) return;
+                    if (active) {
+                        btn.classList.remove('bg-yellow-400', 'text-white');
+                        btn.classList.add('bg-white', 'text-yellow-700');
                     } else {
-                        trainedBtn.classList.remove('bg-yellow-400', 'text-white');
-                        trainedBtn.classList.add('bg-white', 'text-yellow-700');
-                        allBtn.classList.remove('bg-white', 'text-yellow-700');
-                        allBtn.classList.add('bg-yellow-400', 'text-white');
+                        btn.classList.remove('bg-white', 'text-yellow-700');
+                        btn.classList.add('bg-yellow-400', 'text-white');
                     }
-                }
+                };
+
+                // desktop toggle
+                setActive(allBtn, currentStatus === 'all');
+                setActive(trainedBtn, currentStatus === 'trained');
+                setActive(untrainedBtn, currentStatus === 'untrained');
 
                 // mobile toggle (kept in sync with desktop)
                 const mobileAll = $('#mobileAllToggle');
                 const mobileTrained = $('#mobileTrainedToggle');
-                if (mobileAll && mobileTrained) {
-                    if (currentStatus === 'all') {
-                        mobileAll.classList.remove('bg-yellow-400', 'text-white');
-                        mobileAll.classList.add('bg-white', 'text-yellow-700');
-                        mobileTrained.classList.remove('bg-white', 'text-yellow-700');
-                        mobileTrained.classList.add('bg-yellow-400', 'text-white');
-                    } else {
-                        mobileTrained.classList.remove('bg-yellow-400', 'text-white');
-                        mobileTrained.classList.add('bg-white', 'text-yellow-700');
-                        mobileAll.classList.remove('bg-white', 'text-yellow-700');
-                        mobileAll.classList.add('bg-yellow-400', 'text-white');
-                    }
-                }
+                const mobileUntrained = $('#mobileUntrainedToggle');
+                setActive(mobileAll, currentStatus === 'all');
+                setActive(mobileTrained, currentStatus === 'trained');
+                setActive(mobileUntrained, currentStatus === 'untrained');
             }
             // initialize UI
             updateToggleUI();
@@ -850,6 +845,15 @@
                 trainedBtn.addEventListener('click', () => {
                     if (currentStatus !== 'trained') {
                         currentStatus = 'trained';
+                        updateToggleUI();
+                        fetchList(1);
+                    }
+                });
+            }
+            if (untrainedBtn) {
+                untrainedBtn.addEventListener('click', () => {
+                    if (currentStatus !== 'untrained') {
+                        currentStatus = 'untrained';
                         updateToggleUI();
                         fetchList(1);
                     }
@@ -872,6 +876,7 @@
             const mobileActionSearch = $('#mobileActionSearch');
             const mobileAllToggle = $('#mobileAllToggle');
             const mobileTrainedToggle = $('#mobileTrainedToggle');
+            const mobileUntrainedToggle = $('#mobileUntrainedToggle');
             const mobileActionUpdateStatus = $('#mobileActionUpdateStatus');
             const mobileActionTrash = $('#mobileActionTrash');
             const mobileActionAdd = $('#mobileActionAdd');
@@ -941,6 +946,16 @@
                 mobileTrainedToggle.addEventListener('click', () => {
                     if (currentStatus !== 'trained') {
                         currentStatus = 'trained';
+                        updateToggleUI();
+                        fetchList(1);
+                    }
+                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
+                });
+            }
+            if (mobileUntrainedToggle) {
+                mobileUntrainedToggle.addEventListener('click', () => {
+                    if (currentStatus !== 'untrained') {
+                        currentStatus = 'untrained';
                         updateToggleUI();
                         fetchList(1);
                     }
@@ -1112,8 +1127,8 @@
 
                     // Configure the "more actions" button/menu based on server flags
                     if (moreBtn) {
-                        // show the menu button if there are any contextual actions (restore/revisions/untrain/etc.)
-                        if (f.can_restore || f.can_revert || f.can_undo || f.status === 'trained') {
+                        // show the menu button if there are any contextual actions (restore/revisions/undo/train/untrain)
+                        if (f.can_restore || f.can_revert || f.can_undo || (typeof f.status !== 'undefined')) {
                             moreBtn.classList.remove('hidden');
                             // Show/hide individual menu items
                             if (moreRestoreBtn) {
@@ -1132,11 +1147,20 @@
                                     moreRevisionsBtn.classList.add('hidden');
                                 }
                             }
-                            // Show "This response is not trained" when the FAQ is currently trained
+                            // Show "Train" when the FAQ is currently untrained
+                            if (moreTrainBtn) {
+                                if (f.status !== 'trained') {
+                                    moreTrainBtn.classList.remove('hidden');
+                                    moreTrainBtn.dataset.url = f.train_url || (TRAIN_TEMPLATE ?
+                                        TRAIN_TEMPLATE.replace('__ID__', id) : '');
+                                } else {
+                                    moreTrainBtn.classList.add('hidden');
+                                }
+                            }
+                            // Show "Untrain" when the FAQ is currently trained
                             if (moreUntrainBtn) {
                                 if (f.status === 'trained') {
                                     moreUntrainBtn.classList.remove('hidden');
-                                    // use provided template if available, otherwise construct via route-like template
                                     moreUntrainBtn.dataset.url = f.untrain_url || (UNTRAIN_TEMPLATE ?
                                         UNTRAIN_TEMPLATE.replace('__ID__', id) : '');
                                 } else {
@@ -1345,17 +1369,17 @@
                     moreUntrainBtn.addEventListener('click', async () => {
                         const url = moreUntrainBtn.dataset.url || '';
                         if (!url) return;
-    
+
                         const confirmResult = await Swal.fire({
-                            title: 'Mark response as not trained?',
-                            text: 'This will set the FAQ status back to untrained so it can be retrained.',
+                            title: 'Mark response as untrained?',
+                            text: 'This will set the FAQ status back to untrained so the response will not be available to the students.',
                             icon: 'warning',
                             showCancelButton: true,
-                            confirmButtonText: 'Yes, mark as not trained',
+                            confirmButtonText: 'Yes, mark as untrained',
                             cancelButtonText: 'Cancel'
                         });
                         if (!confirmResult.isConfirmed) return;
-    
+
                         try {
                             moreUntrainBtn.disabled = true;
                             const res = await fetch(url, {
@@ -1380,6 +1404,48 @@
                             console.error(err);
                         } finally {
                             moreUntrainBtn.disabled = false;
+                        }
+                    });
+                }
+
+                // "Train" action from the ... menu - mark untrained -> trained
+                if (moreTrainBtn) {
+                    moreTrainBtn.addEventListener('click', async () => {
+                        const url = moreTrainBtn.dataset.url || '';
+                        if (!url) return;
+
+                        const confirmResult = await Swal.fire({
+                            title: 'Mark response as trained?',
+                            text: 'This will mark the FAQ as trained.',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes, mark as trained',
+                            cancelButtonText: 'Cancel'
+                        });
+                        if (!confirmResult.isConfirmed) return;
+
+                        try {
+                            moreTrainBtn.disabled = true;
+                            const res = await fetch(url, {
+                                method: 'PUT',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                const err = json.message || 'Failed to mark as trained';
+                                throw new Error(err);
+                            }
+                            showToast('success', json.message || 'Marked as trained');
+                            closeModal(viewModal);
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                        } finally {
+                            moreTrainBtn.disabled = false;
                         }
                     });
                 }

@@ -89,12 +89,13 @@
                           <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
                           <th class="px-3 py-3 text-left font-medium">Description</th>
                           <th class="px-3 py-3 text-left font-medium">Response</th>
+                          <th class="px-3 py-3 text-left font-medium">Status</th>
                           <th class="py-3 pl-3 pr-5 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="faqsTbody" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="4" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                            <td colspan="5" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -124,6 +125,7 @@
     const LIST_URL = stateEl.getAttribute('data-list-url');
     const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
     const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
+    const DEFAULT_STATUS = stateEl.getAttribute('data-default-status') || 'all';
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -158,7 +160,8 @@
         const q = encodeURIComponent((qInput ? qInput.value : '').trim());
         const per = (perPageSelect ? perPageSelect.value : '25');
         const sep = LIST_URL.includes('?') ? '&' : '?';
-        const url = `${LIST_URL}${sep}q=${q}&per_page=${per}&page=${page}&status=untrained`;
+        const statusPart = (DEFAULT_STATUS && DEFAULT_STATUS !== 'all') ? `&status=${encodeURIComponent(DEFAULT_STATUS)}` : '';
+        const url = `${LIST_URL}${sep}q=${q}&per_page=${per}&page=${page}${statusPart}`;
         try {
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
             if (!res.ok) throw new Error('Failed to load FAQs');
@@ -167,7 +170,7 @@
             renderPagination(json.meta || {});
         } catch (err) {
             faqsTbody.innerHTML =
-                `<tr><td colspan="4" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
+                `<tr><td colspan="5" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
             paginationControls.innerHTML = '';
             console.error(err);
         }
@@ -176,7 +179,7 @@
     function renderTable(items) {
         if (!items || items.length === 0) {
             faqsTbody.innerHTML =
-                `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+                `<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
             return;
         }
 
@@ -206,6 +209,9 @@
     <td class="px-3 py-3 align-top">
       <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response || '', 200))}</div>
     </td>
+    <td class="px-3 py-3 align-top">
+      <div class="text-slate-700">${escapeHtml(f.status || 'untrained')}</div>
+    </td>
     <td class="py-3 pl-3 pr-5 align-top">
       <div class="inline-flex items-center gap-2" data-faq-id="${f.id}">
         <button class="pillToggle train ${trainCls}" data-value="trained" data-id="${f.id}">Train</button>
@@ -232,8 +238,16 @@
                 }
                 if (!url) return;
 
-                const confirmed = confirm(value === 'trained' ? 'Mark this response as trained?' : 'Mark this response as not trained?');
-                if (!confirmed) return;
+                // Use SweetAlert2 for confirmation
+                const confirmOpts = {
+                    title: value === 'trained' ? 'Mark this response as trained?' : 'Mark this response as not trained?',
+                    icon: value === 'trained' ? 'question' : 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'Cancel'
+                };
+                const confirmed = await Swal.fire(confirmOpts);
+                if (!confirmed.isConfirmed) return;
 
                 try {
                     // disable all buttons for this faq while request is ongoing
@@ -253,17 +267,31 @@
                         }
                     });
 
+                    const json = await res.json().catch(() => null);
                     if (!res.ok) {
-                        const json = await res.json().catch(() => null);
                         const err = json && json.message ? json.message : 'Failed to update status';
                         throw new Error(err);
                     }
 
-                    // Refresh the list to reflect new status (keeps UI consistent)
+                    // Show success toast and refresh the list to reflect new status (keeps UI consistent)
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: json && json.message ? json.message : (value === 'trained' ? 'Marked as trained' : 'Marked as not trained'),
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+
                     fetchList(currentPage);
                 } catch (err) {
                     console.error(err);
-                    alert(err.message || 'Error updating FAQ status');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: err.message || 'Error updating FAQ status'
+                    });
                 } finally {
                     const container = btn.closest('[data-faq-id]');
                     if (container) {

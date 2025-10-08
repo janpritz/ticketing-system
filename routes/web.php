@@ -117,10 +117,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
         Route::get('/deleted/list', [AdminController::class, 'faqsDeletedList'])->name('deleted.list');
 
-        // Untrained FAQs view + AJAX list
-        Route::get('/untrain', [AdminController::class, 'faqsUntrainIndex'])->name('untrained');
-        Route::get('/untrain/list', [AdminController::class, 'faqsUntrainList'])->name('untrained.list');
-
         // Revisions & revert for FAQ responses (audit / undo)
         Route::get('/{faq}/revisions', [AdminController::class, 'faqsRevisions'])->whereNumber('faq')->name('revisions');
         Route::post('/{faq}/revert/{revision}', [AdminController::class, 'faqsRevert'])->whereNumber('faq')->whereNumber('revision')->name('revert');

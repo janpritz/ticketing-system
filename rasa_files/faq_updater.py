@@ -33,9 +33,8 @@ from pathlib import Path
 app = Flask(__name__)
 
 # Paths (relative to this file)
-# Paths (relative to this file)
 ACTIONS_FILE = Path("actions/faqs.py")
-FAQS_FLOW_FILE = Path("data/flows/faqs_flow.yml")
+FAQS_FLOW_FILE = Path("data/flows/ticketing_faq.yml")
 
 # Lock suffix and timeout
 LOCK_SUFFIX = ".lock"
@@ -69,11 +68,15 @@ def action_function_name(intent_norm: str) -> str:
 def flow_key(intent_norm: str) -> str:
     return f"{intent_norm}_flow"
 
-def append_action_class(intent_norm: str) -> bool:
+def append_action_class(intent_norm: str, intent_raw: str) -> bool:
     """
     Appends an action class to actions.py.
     Returns True if appended, False if already exists.
     Includes debug prints for easier troubleshooting.
+    Generated class matches the expected pattern in actions.py:
+      - class ActionUtterX(Action)
+      - name() -> "action_utter_x"
+      - run() uses get_db_connection() and joins all matching responses
     """
     cls_name = action_class_name(intent_norm)
     func_name = action_function_name(intent_norm)
@@ -81,25 +84,24 @@ def append_action_class(intent_norm: str) -> bool:
     lock_path = str(ACTIONS_FILE) + LOCK_SUFFIX
     os.makedirs(os.path.dirname(str(ACTIONS_FILE)), exist_ok=True)
 
-    # Ensure actions.py exists
+    # Ensure actions.py exists with the required helpers
     if not os.path.exists(ACTIONS_FILE):
         try:
             with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
                 f.write("# actions.py (auto-generated header)\n\n")
                 f.write("from typing import Any, Text, Dict, List, Optional\n")
-                f.write("import requests\n")
+                f.write("import os\n")
+                f.write("import mysql.connector\n")
                 f.write("from rasa_sdk import Action, Tracker\n")
                 f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-                f.write('LARAVEL_API_BASE = "https://your-laravel-app.com"\n\n')
-                f.write("def fetch_faq_response(intent_normalized: str, timeout: float = 5.0) -> str:\n")
-                f.write("    try:\n")
-                f.write("        r = requests.get(f\"{LARAVEL_API_BASE}/api/faqs/{intent_normalized}\", timeout=timeout)\n")
-                f.write("        r.raise_for_status()\n")
-                f.write("        data = r.json()\n")
-                f.write("        return data.get('response', 'No answer available.')\n")
-                f.write("    except Exception as e:\n")
-                f.write("        print(f'[actions.py] fetch error: {e}')\n")
-                f.write("        return 'No answer available.'\n\n")
+                f.write("def get_db_connection():\n")
+                f.write("    return mysql.connector.connect(\n")
+                f.write("        host=os.environ.get('FAQ_DB_HOST', '127.0.0.1'),\n")
+                f.write("        user=os.environ.get('FAQ_DB_USERNAME', 'root'),\n")
+                f.write("        password=os.environ.get('FAQ_DB_PASSWORD', ''),\n")
+                f.write("        database=os.environ.get('FAQ_DB_DATABASE', 'your_database'),\n")
+                f.write("        port=int(os.environ.get('FAQ_DB_PORT', '3306'))\n")
+                f.write("    )\n\n")
                 f.write("# Dynamic FAQ actions will be appended below\n\n")
             print(f"[faq_updater] Created new actions file at {ACTIONS_FILE}")
         except Exception as e:
@@ -108,21 +110,44 @@ def append_action_class(intent_norm: str) -> bool:
             raise
 
     try:
+        # Escape raw intent for safe SQL literal embedding in generated class
+        intent_literal = intent_raw.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
         with FileLock(lock_path, timeout=LOCK_TIMEOUT):
             with open(ACTIONS_FILE, "r+", encoding="utf-8") as f:
                 content = f.read()
                 if re.search(pattern, content):
                     print(f"[faq_updater] Action class {cls_name} already exists in {ACTIONS_FILE}")
                     return False
-                # Prepare class code
+                # Prepare class code in the requested format
                 class_code = f"""
 class {cls_name}(Action):
     def name(self) -> str:
         return "{func_name}"
 
-    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict) -> list:
-        reply = fetch_faq_response("{intent_norm}")
-        dispatcher.utter_message(text=reply)
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: dict):
+
+        connection = get_db_connection()
+        try:
+            with connection.cursor(dictionary=True) as cursor:
+                cursor.execute("SELECT response FROM faqs WHERE intent = '{intent_literal}'")
+                results = cursor.fetchall()   # fetch ALL rows
+
+                if results:
+                    # Join all responses into one string
+                    responses = "\\n".join([row["response"] for row in results if row.get("response")])
+                    dispatcher.utter_message(text=responses)
+                else:
+                    dispatcher.utter_message(
+                        text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+                    )
+
+        except Exception as e:
+            dispatcher.utter_message(text=f"DB Error: {{str(e)}}")
+
+        finally:
+            connection.close()
         return []
 """
                 f.seek(0, os.SEEK_END)
@@ -259,7 +284,7 @@ def update_faq():
 
         # Attempt to append action and flow, capture errors separately
         try:
-            action_appended = append_action_class(intent_norm)
+            action_appended = append_action_class(intent_norm, intent)
         except Exception as e:
             print(f"[faq_updater] Exception while appending action for {intent_norm}: {e}", file=sys.stderr)
             traceback.print_exc()
@@ -299,5 +324,5 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("FAQ_UPDATER_PORT", 5005))
+    port = int(os.environ.get("FAQ_UPDATER_PORT", 5001))
     app.run(host="0.0.0.0", port=port)
