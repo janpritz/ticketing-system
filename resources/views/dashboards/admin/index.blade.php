@@ -733,16 +733,28 @@
             }
         }
 
-        // Initial fetch and interval (every 10s)
+        // Initial fetch (once) - polling disabled to avoid overloading the database.
+        // The dashboard will only refresh when a CRUD operation signals a change
+        // via localStorage (key: 'ts_tickets_changed') or when the user focuses the tab
+        // and a change has been recorded.
         setTimeout(refreshAdminData, 250);
-        const ADMIN_POLL_MS = 10000;
-        setInterval(refreshAdminData, ADMIN_POLL_MS);
-
-        // Refresh on tab focus and when other tabs signal ticket changes
-        window.addEventListener('focus', refreshAdminData);
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) refreshAdminData();
+    
+        // Refresh on tab focus only if a change was recorded by another tab/window
+        window.addEventListener('focus', () => {
+            try {
+                if (localStorage.getItem('ts_tickets_changed')) refreshAdminData();
+            } catch (_) {}
         });
+    
+        // Refresh on visibility change only if a change was recorded
+        document.addEventListener('visibilitychange', () => {
+            try {
+                if (!document.hidden && localStorage.getItem('ts_tickets_changed')) refreshAdminData();
+            } catch (_) {}
+        });
+    
+        // Cross-tab notification: when other tabs perform CRUD they should set
+        // localStorage.ts_tickets_changed to notify this tab to refresh.
         window.addEventListener('storage', (e) => {
             if (e && e.key === 'ts_tickets_changed') {
                 refreshAdminData();

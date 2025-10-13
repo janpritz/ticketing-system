@@ -774,14 +774,24 @@ function renderWeekly(wt) {
             }
         }
 
-        // Initial load + polling interval
+        // Initial load only — polling disabled to avoid overloading the database.
+        // The dashboard will refresh when:
+        //  - a CRUD operation in any tab sets localStorage.ts_tickets_changed
+        //  - the current tab becomes visible AND a change was recorded
         fetchData();
-        const POLL_MS = 5000; // 5 seconds
-        setInterval(fetchData, POLL_MS);
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
+        // Cross-tab notification: refresh when other tabs set the flag
+        window.addEventListener('storage', (e) => {
+            if (e && e.key === 'ts_tickets_changed') {
                 fetchData();
             }
+        });
+        // When tab becomes visible, refresh only if an external change was recorded
+        document.addEventListener('visibilitychange', () => {
+            try {
+                if (!document.hidden && localStorage.getItem('ts_tickets_changed')) {
+                    fetchData();
+                }
+            } catch (_) {}
         });
 
         // React to toggle changes immediately
@@ -1081,6 +1091,7 @@ function renderWeekly(wt) {
                     });
                     if (res.ok) {
                         lastSnapshot = '';
+                        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                         fetchData();
                         closeModal();
                     } else {
@@ -1136,6 +1147,7 @@ function renderWeekly(wt) {
                         tmResponse.value = '';
                         // Refresh KPIs and table to reflect ticket Closed status
                         lastSnapshot = '';
+                        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                         fetchData();
                         closeModal();
                     } else {

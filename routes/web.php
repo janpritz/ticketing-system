@@ -138,6 +138,31 @@ Route::middleware('auth')->group(function () {
         Route::post('/{faq}/enable', [AdminController::class, 'faqsEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
     });
 
+    // Admin Ticket management (CRUD + respond + reroute) for admin UI (AJAX)
+    Route::prefix('admin/tickets')->name('admin.tickets.')->group(function () {
+        // paginated listing (JSON)
+        Route::get('/list', [\App\Http\Controllers\AdminTicketsController::class, 'list'])->name('list');
+        // shorthand index page (blade) - optional, points to listing route
+        Route::get('/', function () {
+            return redirect()->route('admin.tickets.list');
+        })->name('index');
+
+        // show single ticket details (JSON)
+        Route::get('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'show'])->whereNumber('ticket')->name('show');
+
+        // respond (send email / close)
+        Route::post('/{ticket}/respond', [\App\Http\Controllers\AdminTicketsController::class, 'respond'])->whereNumber('ticket')->name('respond');
+
+        // reroute to role (records history)
+        Route::post('/{ticket}/reroute', [\App\Http\Controllers\AdminTicketsController::class, 'reroute'])->whereNumber('ticket')->name('reroute');
+
+        // update ticket fields (PUT)
+        Route::put('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'update'])->whereNumber('ticket')->name('update');
+
+        // delete ticket
+        Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
+    });
+
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });

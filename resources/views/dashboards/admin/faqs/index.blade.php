@@ -535,6 +535,7 @@
                         // Use server-provided confirmation message when available
                         showToast('success', json.message || 'Previous response restored');
                         closeModal(viewModal);
+                        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                         fetchList(currentPage);
                     } catch (err) {
                         showToast('error', err.message || 'Error');
@@ -678,6 +679,7 @@
                                 throw new Error(err);
                             }
                             showToast('success', json.message || 'FAQ restored');
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -717,6 +719,7 @@
                                 throw new Error(err);
                             }
                             showToast('success', json.message || 'FAQ permanently deleted');
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1085,6 +1088,7 @@
                     }
                     showToast('success', 'FAQ created');
                     closeModal(createModal);
+                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                     fetchList(1);
                 } catch (err) {
                     showToast('error', err.message || 'Error');
@@ -1244,6 +1248,7 @@
                     }
                     showToast('success', 'FAQ updated');
                     closeModal(viewModal);
+                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                     fetchList(currentPage);
                 } catch (err) {
                     showToast('error', err.message || 'Error');
@@ -1283,6 +1288,7 @@
                     showToast('success', 'FAQ deleted');
                     closeModal(viewModal);
                     // refresh list (stay on same page if possible)
+                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                     fetchList(currentPage);
                 } catch (err) {
                     showToast('error', err.message || 'Error');
@@ -1354,6 +1360,7 @@
                             // Use server-provided confirmation message when available
                             showToast('success', json.message || 'FAQ restored');
                             closeModal(viewModal);
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1398,6 +1405,7 @@
                             showToast('success', json.message || 'Marked as not trained');
                             // update UI: refresh list and update modal state
                             closeModal(viewModal);
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1440,6 +1448,7 @@
                             }
                             showToast('success', json.message || 'Marked as trained');
                             closeModal(viewModal);
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1484,6 +1493,7 @@
                             }
                             showToast('success', 'Marked as trained');
                             closeModal(viewModal);
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1525,6 +1535,7 @@
                             }
                             showToast('success', json.message || 'Marked as not trained');
                             closeModal(viewModal);
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
@@ -1536,10 +1547,13 @@
                 }
             }
 
-            // Auto-refresh every 20s
+            // Auto-refresh disabled to avoid DB overload.
+            // Refresh will only happen when a CRUD operation sets the localStorage
+            // notification (ts_tickets_changed) or when the tab becomes visible and
+            // a change was recorded by another tab.
             function startAutoRefresh() {
-                if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-                autoRefreshInterval = setInterval(() => fetchList(currentPage), 20000);
+                if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
+                // polling intentionally disabled
             }
 
             // Initialize
@@ -1601,7 +1615,20 @@
             // Ensure correct initial state, start app
             updateTemplateButtonsVisibility();
             fetchList(1);
-            startAutoRefresh();
+            // Cross-tab refresh: when other tabs set the ts_tickets_changed flag,
+            // refresh this listing. Also refresh when the tab gains focus or becomes
+            // visible and the change flag exists.
+            window.addEventListener('storage', (e) => {
+                if (e && e.key === 'ts_tickets_changed') {
+                    fetchList(1);
+                }
+            });
+            window.addEventListener('focus', () => {
+                try { if (localStorage.getItem('ts_tickets_changed')) fetchList(1); } catch (_) {}
+            });
+            document.addEventListener('visibilitychange', () => {
+                try { if (!document.hidden && localStorage.getItem('ts_tickets_changed')) fetchList(1); } catch (_) {}
+            });
 
             // Close modals on Escape
             document.addEventListener('keydown', (e) => {

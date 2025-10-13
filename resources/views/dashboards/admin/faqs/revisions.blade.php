@@ -129,8 +129,10 @@
           throw new Error(msg);
         }
         showToast('success', 'FAQ reverted');
-        // Reload to show new current value and updated revision list
-        setTimeout(() => location.reload(), 800);
+        // Notify other tabs/pages to refresh their lists via localStorage and
+        // navigate back to FAQ management page (no blind reload).
+        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
+        window.location.href = "{{ route('admin.faqs.index') }}";
       } catch (err) {
         console.error(err);
         showToast('error', err.message || 'Error');
