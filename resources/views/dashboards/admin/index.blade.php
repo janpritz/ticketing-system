@@ -32,7 +32,7 @@
         </a>
       </li>
       <li>
-        <a href="{{ route('tickets.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+        <a href="{{ route('admin.tickets.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
           <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
             <path d="M2 5h16v2H2V5zm0 4h16v2H2V9zm0 4h12v2H2v-2z"/>
           </svg>

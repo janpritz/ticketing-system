@@ -142,9 +142,11 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin/tickets')->name('admin.tickets.')->group(function () {
         // paginated listing (JSON)
         Route::get('/list', [\App\Http\Controllers\AdminTicketsController::class, 'list'])->name('list');
-        // shorthand index page (blade) - optional, points to listing route
+        // index page (blade) - renders admin ticket management UI
         Route::get('/', function () {
-            return redirect()->route('admin.tickets.list');
+            $users = \App\Models\User::orderBy('name')->get(['id','name','role']);
+            $roles = \App\Models\User::whereNotNull('role')->distinct()->orderBy('role')->pluck('role');
+            return view('dashboards.admin.tickets.index', compact('users','roles'));
         })->name('index');
 
         // show single ticket details (JSON)

@@ -4,15 +4,39 @@
 
 @section('admin-content')
 <div class="sm:px-2">
-  <div class="flex items-center justify-between gap-4">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold text-slate-900">Ticket Management</h1>
       <p class="text-sm text-slate-500 mt-1">Manage all tickets: respond, reroute, edit, delete.</p>
     </div>
-    <div>
-      <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2">
-        ← Back to Dashboard
-      </a>
+
+    <div class="flex items-center gap-3">
+      <!-- Desktop search + per-page -->
+      <div class="hidden md:flex items-center gap-2">
+        <label class="relative block">
+          <span class="sr-only">Search</span>
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z"/>
+            </svg>
+          </span>
+          <input id="q" type="text" placeholder="Search tickets..." class="pl-9 pr-3 py-2 rounded-md border border-gray-200 text-sm w-72" />
+        </label>
+        <button id="searchBtn" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Search</button>
+        <select id="perPageSelect" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+
+      <!-- Mobile search -->
+      <div class="md:hidden flex items-center gap-2">
+        <input id="q_mobile" type="text" placeholder="Search tickets..." class="pl-3 pr-3 py-2 rounded-md border border-gray-200 text-sm w-full" />
+        <button id="searchBtnMobile" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Search</button>
+      </div>
+
+      <button id="openFiltersBtn" class="ml-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">Filters</button>
     </div>
   </div>
 
@@ -43,11 +67,72 @@
   </div>
 </div>
 
+<div id="ticketsDrawerOverlay" class="hidden fixed inset-0 bg-black/30 z-40"></div>
+<!-- Bottom drawer: Filters & Sort -->
+<div id="ticketsBottomDrawer" class="fixed left-0 right-0 bottom-0 z-50 bg-white border-t border-gray-200 shadow-lg transform translate-y-full transition-transform duration-200">
+  <div class="px-4 py-3 flex items-center justify-between border-b">
+    <div class="text-sm font-semibold text-slate-800">Filters & Sort</div>
+    <button id="closeFiltersBtn" type="button" class="p-2 rounded-md text-slate-600 hover:text-slate-800 hover:bg-gray-50" aria-label="Close filters">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="px-4 py-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
+    <div>
+      <label for="filterStatus" class="block text-xs text-slate-600 mb-1">Status</label>
+      <select id="filterStatus" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
+        <option value="">All</option>
+        <option value="Open">Open</option>
+        <option value="Re-routed">Re-routed</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </div>
+    <div>
+      <label for="filterSort" class="block text-xs text-slate-600 mb-1">Sort by</label>
+      <select id="filterSort" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
+        <option value="created_desc" selected>Created (newest)</option>
+        <option value="created_asc">Created (oldest)</option>
+        <option value="status_asc">Status (A-Z)</option>
+        <option value="status_desc">Status (Z-A)</option>
+        <option value="assignee_asc">Assignee (A-Z)</option>
+        <option value="assignee_desc">Assignee (Z-A)</option>
+      </select>
+    </div>
+    <div>
+      <label for="filterRole" class="block text-xs text-slate-600 mb-1">Role</label>
+      <select id="filterRole" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
+        <option value="">All</option>
+        @isset($roles)
+          @foreach($roles as $r)
+            <option value="{{ $r }}">{{ $r }}</option>
+          @endforeach
+        @endisset
+      </select>
+    </div>
+    <div>
+      <label for="filterAssigneeId" class="block text-xs text-slate-600 mb-1">Assignee</label>
+      <select id="filterAssigneeId" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
+        <option value="">All</option>
+        @isset($users)
+          @foreach($users as $u)
+            <option value="{{ $u->id }}">{{ $u->name }}@if(!empty($u->role)) ({{ $u->role }})@endif</option>
+          @endforeach
+        @endisset
+      </select>
+    </div>
+  </div>
+  <div class="px-4 py-3 border-t flex items-center justify-end gap-2">
+    <button id="resetFiltersBtn" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Reset</button>
+    <button id="applyFiltersBtn" type="button" class="rounded-md bg-blue-600 text-white px-4 py-2 text-sm">Apply</button>
+  </div>
+</div>
+
 <!-- View / Respond Modal -->
 <div id="ticketModal" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/40" data-modal-backdrop></div>
   <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
     <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5">
+<!-- Bottom drawer: Filters & Sort (opens from bottom on mobile / small screens) -->
+<!-- (moved earlier into header area to avoid being inside modal) -->
       <div class="flex items-center justify-between px-5 py-4 border-b">
         <div class="text-sm font-semibold text-slate-800">Ticket</div>
         <button type="button" class="text-gray-500 hover:text-gray-700" data-modal-close>
@@ -98,6 +183,7 @@
   </div>
 </div>
 
+@endsection
 @section('admin-scripts')
 <script>
 (function(){
@@ -127,15 +213,44 @@
 
   function fmtDate(d){ try { const dt=new Date(d); return isNaN(dt)?'':dt.toLocaleString(); } catch(_) { return ''; } }
 
-  async function fetchList(page=1){
+  async function fetchList(page = 1) {
     currentPage = page;
     try {
-      const res = await fetch(LIST_URL + '?page=' + page, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      // read UI filters
+      const qEl = document.getElementById('q');
+      const qMobileEl = document.getElementById('q_mobile');
+      const qVal = (qEl && qEl.value.trim()) ? qEl.value.trim() : (qMobileEl && qMobileEl.value.trim() ? qMobileEl.value.trim() : '');
+      const perEl = document.getElementById('perPageSelect');
+      const per = perEl ? perEl.value : '25';
+
+      const statusEl = document.getElementById('filterStatus');
+      const sortEl = document.getElementById('filterSort');
+      const roleEl = document.getElementById('filterRole');
+      const assigneeIdEl = document.getElementById('filterAssigneeId');
+      const assigneeEl = document.getElementById('filterAssignee'); // fallback (text input)
+ 
+      const statusVal = statusEl ? statusEl.value : '';
+      const sortVal = sortEl ? sortEl.value : '';
+      const roleVal = roleEl ? roleEl.value : '';
+      const assigneeIdVal = assigneeIdEl ? assigneeIdEl.value : '';
+      const assigneeVal = assigneeEl ? assigneeEl.value.trim() : '';
+
+      const sep = LIST_URL.includes('?') ? '&' : '?';
+      let url = `${LIST_URL}${sep}page=${page}&per_page=${encodeURIComponent(per)}`;
+
+      if (qVal) url += '&q=' + encodeURIComponent(qVal);
+      if (statusVal) url += '&status=' + encodeURIComponent(statusVal);
+      if (sortVal) url += '&sort=' + encodeURIComponent(sortVal);
+      if (roleVal) url += '&role=' + encodeURIComponent(roleVal);
+      if (assigneeIdVal) url += '&assignee_id=' + encodeURIComponent(assigneeIdVal);
+      else if (assigneeVal) url += '&assignee=' + encodeURIComponent(assigneeVal);
+
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
       if (!res.ok) throw new Error('Failed to load tickets');
       const json = await res.json();
       renderTable(json.items || []);
       renderPagination(json.meta || {});
-    } catch(err) {
+    } catch (err) {
       ticketsTbody.innerHTML = '<tr><td colspan="7" class="px-5 py-6 text-center text-sm text-red-600">Error loading tickets</td></tr>';
     }
   }
@@ -188,20 +303,156 @@
     }));
   }
 
-  function renderPagination(meta){
-    ticketsPagination.innerHTML = '';
+  function renderPagination(meta) {
+    if (!meta || !meta.total) {
+      ticketsPagination.innerHTML = '';
+      return;
+    }
     const total = meta.total || 0;
+    const per = meta.per_page || (document.getElementById('perPageSelect') ? document.getElementById('perPageSelect').value : 25);
     const current = meta.current_page || 1;
     const last = meta.last_page || 1;
-    ticketsPagination.innerHTML = `<div class="text-sm text-slate-600">Page ${current} of ${last} • ${total} total</div>
+
+    // windowed pages
+    const delta = 2;
+    const left = Math.max(1, current - delta);
+    const right = Math.min(last, current + delta);
+    const pages = [];
+    for (let i = left; i <= right; i++) pages.push(i);
+
+    const prevDisabled = current <= 1;
+    const nextDisabled = current >= last;
+
+    ticketsPagination.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-slate-600">Showing ${per} per page — ${total} total</div>
+      </div>
       <div class="flex items-center gap-2">
-        <button ${current<=1?'disabled':''} data-page="${current-1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm">Prev</button>
-        <button ${current>=last?'disabled':''} data-page="${current+1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm">Next</button>
-      </div>`;
-    ticketsPagination.querySelectorAll('.pagerBtn').forEach(b => b.addEventListener('click', ()=> {
-      const p = Number(b.getAttribute('data-page')||1);
+        <button ${prevDisabled ? 'disabled' : ''} data-page="${current-1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm ${prevDisabled ? 'opacity-50' : 'hover:bg-gray-50'}">Prev</button>
+        ${pages.map(p => `<button data-page="${p}" class="pagerBtn rounded-md ${p===current ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-sm hover:bg-gray-50'} px-3 py-1">${p}</button>`).join('')}
+        <button ${nextDisabled ? 'disabled' : ''} data-page="${current+1}" class="pagerBtn rounded-md border border-gray-200 bg-white px-3 py-1 text-sm ${nextDisabled ? 'opacity-50' : 'hover:bg-gray-50'}">Next</button>
+      </div>
+    `;
+
+    ticketsPagination.querySelectorAll('.pagerBtn').forEach(b => b.addEventListener('click', (e) => {
+      const p = parseInt(b.getAttribute('data-page') || '1', 10);
       if (!isNaN(p)) fetchList(p);
     }));
+  }
+
+  // Hook search and per-page controls
+  const searchBtn = document.getElementById('searchBtn');
+  const searchBtnMobile = document.getElementById('searchBtnMobile');
+  const qInput = document.getElementById('q');
+  const qMobileInput = document.getElementById('q_mobile');
+  const perPageSelect = document.getElementById('perPageSelect');
+
+  if (searchBtn) {
+    searchBtn.addEventListener('click', () => fetchList(1));
+  }
+  if (qInput) {
+    qInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') fetchList(1); });
+  }
+  if (searchBtnMobile) {
+    searchBtnMobile.addEventListener('click', () => {
+      // copy mobile query to desktop input so UI stays consistent
+      if (qMobileInput && qInput) qInput.value = qMobileInput.value;
+      fetchList(1);
+    });
+  }
+  if (perPageSelect) {
+    perPageSelect.addEventListener('change', () => fetchList(1));
+  }
+
+  // Filters & drawer controls (apply / reset / close)
+  const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+  const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+  const closeFiltersBtn = document.getElementById('closeFiltersBtn');
+  const openFiltersBtn = document.getElementById('openFiltersBtn');
+
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener('click', () => {
+      const drawer = document.getElementById('ticketsBottomDrawer');
+      const overlay = document.getElementById('ticketsDrawerOverlay');
+      if (drawer) {
+        drawer.classList.add('translate-y-full');
+      }
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+      fetchList(1);
+    });
+  }
+
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', () => {
+      const statusEl = document.getElementById('filterStatus');
+      const sortEl = document.getElementById('filterSort');
+      const roleEl = document.getElementById('filterRole');
+      const assigneeIdEl = document.getElementById('filterAssigneeId');
+      const assigneeEl = document.getElementById('filterAssignee');
+      if (statusEl) statusEl.value = '';
+      if (sortEl) sortEl.value = 'created_desc';
+      if (roleEl) roleEl.value = '';
+      if (assigneeIdEl) assigneeIdEl.value = '';
+      if (assigneeEl) assigneeEl.value = '';
+      // also clear search inputs
+      if (qInput) qInput.value = '';
+      if (qMobileInput) qMobileInput.value = '';
+      fetchList(1);
+    });
+  }
+
+  if (closeFiltersBtn) {
+    closeFiltersBtn.addEventListener('click', () => {
+      const drawer = document.getElementById('ticketsBottomDrawer');
+      const overlay = document.getElementById('ticketsDrawerOverlay');
+      if (drawer) {
+        drawer.classList.add('translate-y-full');
+      }
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+    });
+  }
+
+  // Overlay click closes the drawer (FAQ-style)
+  const ticketsDrawerOverlayEl = document.getElementById('ticketsDrawerOverlay');
+  if (ticketsDrawerOverlayEl) {
+    ticketsDrawerOverlayEl.addEventListener('click', () => {
+      const drawer = document.getElementById('ticketsBottomDrawer');
+      if (drawer) drawer.classList.add('translate-y-full');
+      ticketsDrawerOverlayEl.classList.add('hidden');
+    });
+  }
+
+  // Close drawer on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const drawer = document.getElementById('ticketsBottomDrawer');
+      const overlay = document.getElementById('ticketsDrawerOverlay');
+      if (drawer && !drawer.classList.contains('translate-y-full')) {
+        drawer.classList.add('translate-y-full');
+        if (overlay) overlay.classList.add('hidden');
+      }
+    }
+  });
+
+  if (openFiltersBtn) {
+    openFiltersBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const drawer = document.getElementById('ticketsBottomDrawer');
+      const overlay = document.getElementById('ticketsDrawerOverlay');
+      if (!drawer || !overlay) return;
+      const isOpen = !drawer.classList.contains('translate-y-full');
+      if (isOpen) {
+        drawer.classList.add('translate-y-full');
+        overlay.classList.add('hidden');
+      } else {
+        drawer.classList.remove('translate-y-full');
+        overlay.classList.remove('hidden');
+      }
+    });
   }
 
   function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,"&#039;"); }
