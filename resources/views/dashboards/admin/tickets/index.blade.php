@@ -46,8 +46,8 @@
         <thead class="bg-gray-50 text-gray-600">
           <tr>
             <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
-            <th class="px-3 py-3 text-left font-medium">Subject</th>
             <th class="px-3 py-3 text-left font-medium">Category</th>
+            <th class="px-3 py-3 text-left font-medium">Message</th>
             <th class="px-3 py-3 text-left font-medium">Status</th>
             <th class="px-3 py-3 text-left font-medium">Assignee</th>
             <th class="px-3 py-3 text-left font-medium">Created</th>
@@ -134,10 +134,10 @@
 <!-- Bottom drawer: Filters & Sort (opens from bottom on mobile / small screens) -->
 <!-- (moved earlier into header area to avoid being inside modal) -->
       <div class="flex items-center justify-between px-5 py-4 border-b">
-        <div class="text-sm font-semibold text-slate-800">Ticket</div>
-        <button type="button" class="text-gray-500 hover:text-gray-700" data-modal-close>
+        <div class="text-sm font-semibold text-slate-800">Ticket Details</div>
+        <button type="button" class="text-slate-500 hover:text-slate-700" data-modal-close aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 18L18 6M6 6l12 12" />
+            <path d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -153,30 +153,31 @@
         </div>
         <div>
           <label class="block text-xs text-gray-500">Reroute to</label>
-          <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
-            <option value="" selected disabled>Select role</option>
-            <option>Primary Administrator</option>
-            <option>Enrollment</option>
-            <option>Finance and Payments</option>
-            <option>Scholarships</option>
-            <option>Academic Concerns</option>
-            <option>Exams</option>
-            <option>Student Services</option>
-            <option>Library Services</option>
-            <option>IT Support</option>
-            <option>Graduation</option>
-            <option>Athletics and Sports</option>
-          </select>
+          <div class="flex items-center gap-2">
+            <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
+              <option value="" selected disabled>Select role</option>
+              <option>Primary Administrator</option>
+              <option>Enrollment</option>
+              <option>Finance and Payments</option>
+              <option>Scholarships</option>
+              <option>Academic Concerns</option>
+              <option>Exams</option>
+              <option>Student Services</option>
+              <option>Library Services</option>
+              <option>IT Support</option>
+              <option>Graduation</option>
+              <option>Athletics and Sports</option>
+            </select>
+            <!-- Inline reroute button shown only when a role is selected -->
+            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+          </div>
         </div>
       </div>
       <div class="px-5 py-3 border-t flex items-center justify-between gap-3">
+        <div></div>
         <div class="flex items-center gap-2">
-          <button id="tmDeleteBtn" type="button" class="rounded-md border border-red-200 bg-white text-red-700 px-3 py-1.5 text-sm">Delete</button>
-          <button id="tmEditBtn" type="button" class="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm">Edit</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="tmRerouteBtn" type="button" class="rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
-          <button id="tmSendResponse" type="button" class="rounded-md bg-indigo-600 text-white px-4 py-1.5 text-sm">Send</button>
+          <!-- Send button is disabled by default and becomes active/blue when response has text -->
+          <button id="tmSendResponse" type="button" disabled class="rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm">Send</button>
         </div>
       </div>
     </div>
@@ -191,7 +192,8 @@
   state.id = 'admin-tickets-state';
   state.className = 'hidden';
   state.setAttribute('data-list-url', "{{ route('admin.tickets.list') }}");
-  state.setAttribute('data-show-url-template', "{{ route('admin.tickets.show', ['ticket' => '__ID__']) }}");
+  // Use a raw URL template here (avoid route() encoding the placeholder)
+  state.setAttribute('data-show-url-template', "{{ url('/admin/tickets') }}/__ID__");
   state.setAttribute('data-respond-url-template', "{{ url('/admin/tickets') }}/__ID__/respond");
   state.setAttribute('data-reroute-url-template', "{{ url('/admin/tickets') }}/__ID__/reroute");
   state.setAttribute('data-destroy-url-template', "{{ url('/admin/tickets') }}/__ID__");
@@ -213,7 +215,7 @@
 
   function fmtDate(d){ try { const dt=new Date(d); return isNaN(dt)?'':dt.toLocaleString(); } catch(_) { return ''; } }
 
-  async function fetchList(page = 1) {
+  async function fetchList(page = 1, minimal = false) {
     currentPage = page;
     try {
       // read UI filters
@@ -221,8 +223,8 @@
       const qMobileEl = document.getElementById('q_mobile');
       const qVal = (qEl && qEl.value.trim()) ? qEl.value.trim() : (qMobileEl && qMobileEl.value.trim() ? qMobileEl.value.trim() : '');
       const perEl = document.getElementById('perPageSelect');
-      const per = perEl ? perEl.value : '25';
-
+      let per = perEl ? perEl.value : '25';
+ 
       const statusEl = document.getElementById('filterStatus');
       const sortEl = document.getElementById('filterSort');
       const roleEl = document.getElementById('filterRole');
@@ -234,22 +236,46 @@
       const roleVal = roleEl ? roleEl.value : '';
       const assigneeIdVal = assigneeIdEl ? assigneeIdEl.value : '';
       const assigneeVal = assigneeEl ? assigneeEl.value.trim() : '';
-
+ 
+      // When in minimal mode (used by the poller) request just 1 item to keep payload small
+      if (minimal) per = '1';
+ 
       const sep = LIST_URL.includes('?') ? '&' : '?';
       let url = `${LIST_URL}${sep}page=${page}&per_page=${encodeURIComponent(per)}`;
-
-      if (qVal) url += '&q=' + encodeURIComponent(qVal);
-      if (statusVal) url += '&status=' + encodeURIComponent(statusVal);
-      if (sortVal) url += '&sort=' + encodeURIComponent(sortVal);
-      if (roleVal) url += '&role=' + encodeURIComponent(roleVal);
-      if (assigneeIdVal) url += '&assignee_id=' + encodeURIComponent(assigneeIdVal);
-      else if (assigneeVal) url += '&assignee=' + encodeURIComponent(assigneeVal);
-
+ 
+      // Only send full filters when not doing a minimal poll
+      if (!minimal) {
+        if (qVal) url += '&q=' + encodeURIComponent(qVal);
+        if (statusVal) url += '&status=' + encodeURIComponent(statusVal);
+        if (sortVal) url += '&sort=' + encodeURIComponent(sortVal);
+        if (roleVal) url += '&role=' + encodeURIComponent(roleVal);
+        if (assigneeIdVal) url += '&assignee_id=' + encodeURIComponent(assigneeIdVal);
+        else if (assigneeVal) url += '&assignee=' + encodeURIComponent(assigneeVal);
+      }
+ 
       const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
       if (!res.ok) throw new Error('Failed to load tickets');
       const json = await res.json();
+ 
+      // Poll-only mode: check last_changed and update main list only when it differs
+      if (minimal) {
+        const serverLast = json.last_changed || null;
+        const localLast = Number(localStorage.getItem('ts_tickets_last_changed') || 0);
+        if (serverLast && serverLast !== localLast) {
+          // record server's last_changed so other tabs or subsequent polls are in sync
+          localStorage.setItem('ts_tickets_last_changed', String(serverLast));
+          // refresh the currently visible page to show new data
+          fetchList(currentPage);
+        }
+        return;
+      }
+ 
       renderTable(json.items || []);
       renderPagination(json.meta || {});
+      // store last_changed in localStorage to allow efficient cross-tab / poll comparisons
+      if (json.last_changed) {
+        try { localStorage.setItem('ts_tickets_last_changed', String(json.last_changed)); } catch(e){}
+      }
     } catch (err) {
       ticketsTbody.innerHTML = '<tr><td colspan="7" class="px-5 py-6 text-center text-sm text-red-600">Error loading tickets</td></tr>';
     }
@@ -267,40 +293,31 @@
       return `
         <tr class="hover:bg-gray-50">
           <td class="py-4 pl-5 pr-3">${ticketNo}</td>
-          <td class="px-3 py-4">${escapeHtml((t.question||'').slice(0,80))}</td>
           <td class="px-3 py-4">${escapeHtml(t.category||'')}</td>
+          <td class="px-3 py-4">${escapeHtml((t.question||'').slice(0,80))}</td>
           <td class="px-3 py-4">${escapeHtml(t.status||'')}</td>
           <td class="px-3 py-4">${escapeHtml((t.staff && t.staff.name) || '-')}</td>
           <td class="px-3 py-4">${escapeHtml(fmtDate(t.date_created||t.created_at))}</td>
           <td class="py-4 pl-3 pr-5">
             <div class="flex items-center gap-2">
               <button class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs" data-id="${t.id}">View</button>
-              <button class="btn-edit inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs" data-id="${t.id}">Edit</button>
-              <button class="btn-delete inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-red-700" data-id="${t.id}">Delete</button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
-    // attach view handlers
-    document.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', async (e) => {
-      const id = b.getAttribute('data-id');
+    // Use event delegation for actions (more reliable with dynamic table updates)
+    // Only the "View" action is rendered in the list now.
+    ticketsTbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-view');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      if (!id) {
+        console.error('Action button missing data-id');
+        return;
+      }
       openModalFor(id);
-    }));
-    document.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', (e)=> {
-      const id = b.getAttribute('data-id');
-      const t = ticketsMap.get(String(id));
-      if (!t) return;
-      // simple inline edit: prompt for question
-      const q = prompt('Edit question', t.question||'');
-      if (q === null) return;
-      saveEdit(id, { question: q });
-    }));
-    document.querySelectorAll('.btn-delete').forEach(b => b.addEventListener('click', (e)=> {
-      const id = b.getAttribute('data-id');
-      if (!confirm('Delete ticket?')) return;
-      deleteTicket(id);
-    }));
+    });
   }
 
   function renderPagination(meta) {
@@ -460,51 +477,130 @@
   async function openModalFor(id){
     const url = SHOW_TEMPLATE.replace('__ID__', id);
     try {
+      // Helpful debug logs to diagnose why the ticket fetch might fail (status, content-type).
+      console.debug('openModalFor: fetching', url);
       const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
-      if (!res.ok) throw new Error('Failed to load ticket');
+      console.debug('openModalFor: response status=', res.status, 'ok=', res.ok, 'headers=', Array.from(res.headers.entries()));
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      if (!res.ok) {
+        const text = await res.text().catch(() => '[body unreadable]');
+        console.error('openModalFor: non-ok response', res.status, text);
+        alert('Failed to load ticket (status ' + res.status + '). See console for details.');
+        return;
+      }
+      if (!contentType.includes('application/json')) {
+        const text = await res.text().catch(() => '[body unreadable]');
+        console.error('openModalFor: expected JSON but got', contentType, text);
+        alert('Failed to load ticket: unexpected response from server. Check console for details.');
+        return;
+      }
       const t = await res.json();
       // populate modal
       document.getElementById('tmInfo').textContent = `#${t.id} • ${t.email || '-'} • ${t.category || ''}`;
       document.getElementById('tmQuestion').textContent = t.question || '';
-      document.getElementById('tmResponse').value = '';
+      const respEl = document.getElementById('tmResponse');
+      const sendBtn = document.getElementById('tmSendResponse');
+      const rerouteSelect = document.getElementById('tmRerouteSelect');
+      const rerouteInlineBtn = document.getElementById('tmRerouteInlineBtn');
+
+      // reset response field and UI
+      if (respEl) respEl.value = '';
       ticketModal.classList.remove('hidden');
-      // actions
-      document.getElementById('tmSendResponse').onclick = async () => {
-        const msg = document.getElementById('tmResponse').value.trim();
-        if (!msg) return alert('Enter a response');
-        const rUrl = RESPOND_TEMPLATE.replace('__ID__', id);
-        try {
-          const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ message: msg })});
-          if (!resp.ok) throw new Error('Failed to send response');
-          try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
-          fetchList(currentPage);
-          ticketModal.classList.add('hidden');
-        } catch(err){ console.error(err); alert('Error sending response'); }
-      };
-      document.getElementById('tmRerouteBtn').onclick = async () => {
-        const role = document.getElementById('tmRerouteSelect').value;
-        if (!role) return alert('Choose a role');
-        const rUrl = REROUTE_TEMPLATE.replace('__ID__', id);
-        try {
-          const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
-          if (!resp.ok) throw new Error('Failed to reroute');
-          try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
-          fetchList(currentPage);
-          ticketModal.classList.add('hidden');
-        } catch(err){ console.error(err); alert('Error rerouting'); }
-      };
-      document.getElementById('tmDeleteBtn').onclick = async () => {
-        if (!confirm('Delete ticket?')) return;
-        try {
-          const dUrl = DESTROY_TEMPLATE.replace('__ID__', id);
-          const res = await fetch(dUrl, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf }});
-          if (!res.ok) throw new Error('Failed to delete');
-          try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
-          fetchList(currentPage);
-          ticketModal.classList.add('hidden');
-        } catch(err){ console.error(err); alert('Delete failed'); }
-      };
-    } catch(err){ console.error(err); alert('Failed to load ticket'); }
+
+      // Helper to toggle send button enabled state and style
+      function toggleSendButton() {
+        if (!sendBtn || !respEl) return;
+        const hasText = respEl.value.trim().length > 0;
+        sendBtn.disabled = !hasText;
+        if (hasText) {
+          sendBtn.className = 'rounded-md bg-indigo-600 text-white px-4 py-1.5 text-sm';
+        } else {
+          sendBtn.className = 'rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm';
+        }
+      }
+
+      // Hook response input for realtime enable/disable
+      if (respEl) {
+        respEl.removeEventListener('input', toggleSendButton);
+        respEl.addEventListener('input', toggleSendButton);
+      }
+      // initial toggle
+      toggleSendButton();
+
+      // Show/hide inline reroute button when a role is selected
+      if (rerouteSelect && rerouteInlineBtn) {
+        // initialize visibility
+        rerouteInlineBtn.classList.toggle('hidden', !rerouteSelect.value);
+        rerouteSelect.removeEventListener('change', () => {});
+        rerouteSelect.addEventListener('change', () => {
+          rerouteInlineBtn.classList.toggle('hidden', !rerouteSelect.value);
+        });
+      }
+
+      // Send handler (safe attach)
+      if (sendBtn) {
+        sendBtn.onclick = async () => {
+          if (!respEl) return;
+          const msg = respEl.value.trim();
+          if (!msg) {
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'warning', toast: true, title: 'Enter a response', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            return;
+          }
+          const rUrl = RESPOND_TEMPLATE.replace('__ID__', id);
+          try {
+            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ message: msg })});
+            if (resp && resp.ok) {
+              try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
+              fetchList(currentPage);
+              ticketModal.classList.add('hidden');
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Response sent', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            } else {
+              const txt = resp ? await resp.text().catch(()=> '') : '';
+              console.error('Send response failed', txt);
+              ticketModal.classList.add('hidden');
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Send failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            }
+          } catch(err){
+            console.error('Send response error', err);
+            ticketModal.classList.add('hidden');
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Send error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+          }
+        };
+      }
+
+      // Reroute handler (inline button) - safe attach
+      if (rerouteInlineBtn) {
+        rerouteInlineBtn.onclick = async () => {
+          const role = rerouteSelect ? rerouteSelect.value : '';
+          if (!role) {
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'warning', toast: true, title: 'Choose a role', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            return;
+          }
+          const rUrl = REROUTE_TEMPLATE.replace('__ID__', id);
+          try {
+            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
+            if (resp && resp.ok) {
+              try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
+              fetchList(currentPage);
+              ticketModal.classList.add('hidden');
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Rerouted', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            } else {
+              const txt = resp ? await resp.text().catch(()=> '') : '';
+              console.error('Reroute failed', txt);
+              ticketModal.classList.add('hidden');
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            }
+          } catch(err){
+            console.error('Error rerouting', err);
+            ticketModal.classList.add('hidden');
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+          }
+        };
+      }
+    } catch(err){
+      console.error('openModalFor: unexpected error', err);
+      alert('Failed to load ticket (unexpected error). See console for details.');
+    }
   }
 
   // inline save edit
