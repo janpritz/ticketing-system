@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class RolesController extends Controller
 {
@@ -18,9 +20,22 @@ class RolesController extends Controller
         $this->ensureAdmin();
 
         $perPage = (int) $request->query('per_page', 25);
-        $roles = Role::orderBy('name')->paginate($perPage);
 
-        return view('dashboards.admin.roles.index', compact('roles'));
+        // Select only needed columns to reduce payload
+        $roles = Role::select('id','name','description','updated_at')
+            ->orderBy('name')
+            ->paginate($perPage);
+
+        // Cache a "last changed" timestamp to avoid repeated MAX() scans
+        $lastChanged = Cache::get('roles_last_changed');
+        if (!$lastChanged) {
+            $maxUpdated = Role::max('updated_at');
+            $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
+            Cache::put('roles_last_changed', $lastChanged, 3600);
+        }
+
+        return view('dashboards.admin.roles.index', compact('roles'))
+            ->with('lastChanged', $lastChanged);
     }
 
     /**
@@ -48,6 +63,13 @@ class RolesController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
         ]);
+
+        // bump roles last-changed cache
+        try {
+            Cache::put('roles_last_changed', time(), 3600);
+        } catch (\Throwable $cacheEx) {
+            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
+        }
 
         return redirect()->route('admin.roles.index')->with('status', 'Role created.');
     }
@@ -88,6 +110,13 @@ class RolesController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
+        // bump roles last-changed cache
+        try {
+            Cache::put('roles_last_changed', time(), 3600);
+        } catch (\Throwable $cacheEx) {
+            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
+        }
+
         return redirect()->route('admin.roles.index')->with('status', 'Role updated.');
     }
 
@@ -106,6 +135,13 @@ class RolesController extends Controller
         User::where('role_id', $role->id)->update(['role_id' => null]);
 
         $role->delete();
+
+        // bump roles last-changed cache
+        try {
+            Cache::put('roles_last_changed', time(), 3600);
+        } catch (\Throwable $cacheEx) {
+            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
+        }
 
         return redirect()->route('admin.roles.index')->with('status', 'Role deleted.');
     }

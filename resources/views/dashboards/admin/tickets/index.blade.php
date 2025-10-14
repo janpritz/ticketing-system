@@ -23,11 +23,6 @@
           <input id="q" type="text" placeholder="Search tickets..." class="pl-9 pr-3 py-2 rounded-md border border-gray-200 text-sm w-72" />
         </label>
         <button id="searchBtn" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Search</button>
-        <select id="perPageSelect" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
-          <option value="10">10</option>
-          <option value="25" selected>25</option>
-          <option value="50">50</option>
-        </select>
       </div>
 
       <!-- Mobile search -->
@@ -118,6 +113,14 @@
             <option value="{{ $u->id }}">{{ $u->name }}@if(!empty($u->role)) ({{ $u->role }})@endif</option>
           @endforeach
         @endisset
+      </select>
+    </div>
+    <div>
+      <label for="filterPerPage" class="block text-xs text-slate-600 mb-1">Per page</label>
+      <select id="filterPerPage" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
       </select>
     </div>
   </div>
@@ -223,7 +226,7 @@
       const qEl = document.getElementById('q');
       const qMobileEl = document.getElementById('q_mobile');
       const qVal = (qEl && qEl.value.trim()) ? qEl.value.trim() : (qMobileEl && qMobileEl.value.trim() ? qMobileEl.value.trim() : '');
-      const perEl = document.getElementById('perPageSelect');
+      const perEl = document.getElementById('filterPerPage') || document.getElementById('perPageSelect');
       let per = perEl ? perEl.value : '25';
  
       const statusEl = document.getElementById('filterStatus');
@@ -249,7 +252,12 @@
         if (qVal) url += '&q=' + encodeURIComponent(qVal);
         if (statusVal) url += '&status=' + encodeURIComponent(statusVal);
         if (sortVal) url += '&sort=' + encodeURIComponent(sortVal);
-        if (roleVal) url += '&role=' + encodeURIComponent(roleVal);
+
+        // Role param only from dropdown (pills removed)
+        if (roleVal) {
+          url += '&role=' + encodeURIComponent(roleVal);
+        }
+
         if (assigneeIdVal) url += '&assignee_id=' + encodeURIComponent(assigneeIdVal);
         else if (assigneeVal) url += '&assignee=' + encodeURIComponent(assigneeVal);
       }
@@ -327,7 +335,7 @@
       return;
     }
     const total = meta.total || 0;
-    const per = meta.per_page || (document.getElementById('perPageSelect') ? document.getElementById('perPageSelect').value : 25);
+    const per = meta.per_page || (document.getElementById('filterPerPage') ? document.getElementById('filterPerPage').value : 25);
     const current = meta.current_page || 1;
     const last = meta.last_page || 1;
 
@@ -363,7 +371,7 @@
   const searchBtnMobile = document.getElementById('searchBtnMobile');
   const qInput = document.getElementById('q');
   const qMobileInput = document.getElementById('q_mobile');
-  const perPageSelect = document.getElementById('perPageSelect');
+  const perPageSelect = document.getElementById('filterPerPage');
 
   if (searchBtn) {
     searchBtn.addEventListener('click', () => fetchList(1));
@@ -380,6 +388,14 @@
   }
   if (perPageSelect) {
     perPageSelect.addEventListener('change', () => fetchList(1));
+  }
+
+  // Role filter dropdown change handler
+  const roleSelect = document.getElementById('filterRole');
+  if (roleSelect) {
+    roleSelect.addEventListener('change', () => {
+      fetchList(1);
+    });
   }
 
   // Filters & drawer controls (apply / reset / close)
@@ -643,8 +659,34 @@
   window.addEventListener('focus', ()=> { try { if (localStorage.getItem('ts_tickets_changed')) fetchList(currentPage); } catch(_){} });
   document.addEventListener('visibilitychange', ()=> { try { if (!document.hidden && localStorage.getItem('ts_tickets_changed')) fetchList(currentPage); } catch(_){} });
 
+  // Lightweight auto-reload poller using minimal payload (no backend DB pooling/optimization changes)
+  let ticketsPollTimer = null;
+  function startTicketsPoller() {
+    if (ticketsPollTimer) clearInterval(ticketsPollTimer);
+    ticketsPollTimer = setInterval(() => {
+      // minimal=true: server should return last_changed; only refresh when it differs
+      fetchList(currentPage, true);
+    }, 15000); // 15s cadence
+  }
+  function stopTicketsPoller() {
+    if (ticketsPollTimer) {
+      clearInterval(ticketsPollTimer);
+      ticketsPollTimer = null;
+    }
+  }
+
+  // Pause/resume polling with page lifecycle
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopTicketsPoller();
+    else startTicketsPoller();
+  });
+  window.addEventListener('focus', startTicketsPoller);
+  window.addEventListener('blur', stopTicketsPoller);
+
   // initial load
   fetchList(1);
+  // start background poller
+  startTicketsPoller();
 })();
 </script>
 @endsection

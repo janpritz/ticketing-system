@@ -53,10 +53,11 @@ class AdminTicketsController extends Controller
             });
         }
 
-        // Filter by staff role
+        // Filter by staff role (supports Role as a related model; users no longer have a 'role' string column)
         if ($role = $request->query('role')) {
-            $query->whereHas('staff', function ($qb) use ($role) {
-                $qb->where('role', $role);
+            // filter by the related roles.name via the staff->role relation
+            $query->whereHas('staff.role', function ($q) use ($role) {
+                $q->where('name', $role);
             });
         }
 
