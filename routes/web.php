@@ -144,8 +144,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/list', [\App\Http\Controllers\AdminTicketsController::class, 'list'])->name('list');
         // index page (blade) - renders admin ticket management UI
         Route::get('/', function () {
-            $users = \App\Models\User::orderBy('name')->get(['id','name','role']);
-            $roles = \App\Models\User::whereNotNull('role')->distinct()->orderBy('role')->pluck('role');
+            // When roles are stored in the DB use Role::pluck('name') instead of deriving from users.
+            $users = \App\Models\User::orderBy('name')->get(['id','name']);
+            $roles = \App\Models\Role::orderBy('name')->pluck('name');
             return view('dashboards.admin.tickets.index', compact('users','roles'));
         })->name('index');
 
@@ -163,6 +164,16 @@ Route::middleware('auth')->group(function () {
 
         // delete ticket
         Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
+    });
+
+    // Admin role management (CRUD)
+    Route::prefix('admin/roles')->name('admin.roles.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RolesController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\RolesController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\RolesController::class, 'store'])->name('store');
+        Route::get('/{role}/edit', [\App\Http\Controllers\RolesController::class, 'edit'])->whereNumber('role')->name('edit');
+        Route::put('/{role}', [\App\Http\Controllers\RolesController::class, 'update'])->whereNumber('role')->name('update');
+        Route::delete('/{role}', [\App\Http\Controllers\RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
     });
 
     // Logout (authenticated only)

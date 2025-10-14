@@ -5,6 +5,7 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Models\Role;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -23,24 +24,16 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        // Resolve a random role id if any roles exist; null otherwise.
+        $roleId = Role::inRandomOrder()->value('id');
+
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement([
-                'Enrollment',
-                'Finance and Payments',
-                'Scholarships',
-                'Academic Concerns',
-                'Exams',
-                'Student Services',
-                'Library Services',
-                'IT Support',
-                'Student Affairs',
-                'Graduation',
-                'Athletics and Sports'
-            ]),
+            // Use role_id (foreign key) instead of the legacy role string.
+            'role_id' => $roleId ?? null,
             'remember_token' => Str::random(10),
         ];
     }

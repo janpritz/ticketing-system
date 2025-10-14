@@ -395,12 +395,13 @@
                 <div class="flex items-center gap-2">
                     <label for="tmRerouteSelect" class="text-xs text-gray-500">Reroute to</label>
                     @php
-                    $roles = ['Primary Administrator','Enrollment','Finance and Payments','Scholarships','Academic Concerns','Exams','Student Services','Library Services','IT Support','Graduation','Athletics and Sports'];
+                        // Load roles from DB so roles are manageable via CRUD
+                        $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
                     @endphp
                     <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500">
                         <option value="" selected disabled>Select a role</option>
                         @foreach($roles as $role)
-                        <option value="{{ $role }}">{{ $role }}</option>
+                            <option value="{{ $role }}">{{ $role }}</option>
                         @endforeach
                     </select>
                     <button type="button" class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50" id="tmRerouteApply">Apply</button>

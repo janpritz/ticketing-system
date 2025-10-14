@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Role;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -16,13 +17,15 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        // Ensure Primary Administrator exists (update or create to avoid duplicate seed failures)
+        // Ensure Primary Administrator role exists and Primary Administrator user is present
+        $adminRole = Role::firstOrCreate(['name' => 'Primary Administrator']);
+
         User::updateOrCreate(
             ['email' => 'acc.sangkaychatbot@gmail.com'],
             [
                 'name' => 'Primary Administrator',
                 'password' => Hash::make('ACCSangkay2025'),
-                'role' => 'Primary Administrator',
+                'role_id' => $adminRole->id,
             ]
         );
 
@@ -41,14 +44,18 @@ class DatabaseSeeder extends Seeder
             'Athletics and Sports'
         ];
 
-        foreach ($roles as $role) {
-            $email = strtolower(str_replace(' ', '.', $role)) . '@example.com';
+        foreach ($roles as $roleName) {
+            $email = strtolower(str_replace(' ', '.', $roleName)) . '@example.com';
+
+            // Ensure role record exists
+            $r = Role::firstOrCreate(['name' => $roleName]);
+
             User::updateOrCreate(
                 ['email' => $email],
                 [
-                    'name' => $role . ' Staff',
+                    'name' => $roleName . ' Staff',
                     'password' => Hash::make('password123'),
-                    'role' => $role,
+                    'role_id' => $r->id,
                 ]
             );
         }

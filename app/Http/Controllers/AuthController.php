@@ -48,9 +48,11 @@ class AuthController extends Controller
         // 3) Credentials are valid — sign in and redirect based on role
         if (Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
             $request->session()->regenerate();
-
+    
+            /** @var \App\Models\User|null $authUser */
             $authUser = Auth::user();
-            if ($authUser && ($authUser->role === 'Primary Administrator')) {
+            // Use the model helper directly (User::isPrimaryAdministrator exists on App\Models\User).
+            if ($authUser && $authUser->isPrimaryAdministrator()) {
                 return redirect()->intended('/admin/dashboard');
             }
             return redirect()->intended('/staff/dashboard');

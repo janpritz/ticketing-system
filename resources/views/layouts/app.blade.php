@@ -7,8 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-
+    
     <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     <link rel="shortcut icon" href="{{ asset('logo.png') }}">
     <!-- Fonts -->

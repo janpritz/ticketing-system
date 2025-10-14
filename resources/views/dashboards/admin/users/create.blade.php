@@ -40,8 +40,15 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Role</label>
-                    <input type="text" name="role" value="{{ old('role') }}" required placeholder="e.g. IT Support"
-                           class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    @php
+                        $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+                    @endphp
+                    <select name="role" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="" disabled selected>Select role</option>
+                        @foreach($roles as $r)
+                            <option value="{{ $r }}" {{ old('role') === $r ? 'selected' : '' }}>{{ $r }}</option>
+                        @endforeach
+                    </select>
                     <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be created here.</p>
                     @error('role')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
@@ -73,4 +80,33 @@
         </form>
     </div>
 </div>
+@endsection
+@section('admin-scripts')
+  @parent
+  <script>
+    (function () {
+      try {
+        if (typeof Swal !== 'undefined') {
+          @if (session('status'))
+          Swal.fire({
+            icon: 'success',
+            title: {!! json_encode(session('status')) !!},
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+          });
+          @endif
+
+          @if ($errors->any())
+          Swal.fire({
+            icon: 'error',
+            title: 'Validation error',
+            text: {!! json_encode($errors->first()) !!}
+          });
+          @endif
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 @endsection

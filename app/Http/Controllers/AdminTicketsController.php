@@ -24,9 +24,13 @@ class AdminTicketsController extends Controller
 
         // Base query with eager staff relation (only load needed staff columns to avoid unnecessary data transfer).
         // Also ensure the query selects tickets.* so joins (used later for sorting) don't pollute the column set.
-        $query = Ticket::with(['staff' => function($q) {
-            $q->select('id', 'name', 'role');
-        }])->select('tickets.*');
+        $query = Ticket::with([
+            // Load staff minimal columns and the related role model for DB-backed roles
+            'staff' => function($q) {
+                $q->select('id', 'name', 'role_id');
+            },
+            'staff.role'
+        ])->select('tickets.*');
 
         // Keyword search across common fields
         if ($q = $request->query('q')) {
@@ -224,8 +228,10 @@ class AdminTicketsController extends Controller
 
         DB::beginTransaction();
         try {
-            // Find a staff with that role
-            $staff = User::where('role', $request->role)->inRandomOrder()->first();
+            // Find a staff with that role (using roles table)
+            $staff = User::whereHas('role', function ($q) use ($request) {
+                $q->where('name', $request->role);
+            })->inRandomOrder()->first();
 
             $ticket->staff_id = $staff ? $staff->id : null;
             // optional: set status to Re-routed

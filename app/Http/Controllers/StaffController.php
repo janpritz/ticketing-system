@@ -254,10 +254,16 @@ class StaffController extends Controller
             'role' => 'required|string'
         ]);
 
+        /** @var \App\Models\User|null $auth */
         $auth = Auth::user();
-
+    
         // Only currently assigned staff or Primary Administrator can reroute
-        if ($ticket->staff_id !== $auth->id && ($auth->role ?? null) !== 'Primary Administrator') {
+        if ($ticket->staff_id !== $auth->id
+            && ! (
+                $auth
+                && (strtolower((string)($auth->role ?? '')) === 'primary administrator')
+            )
+        ) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -266,9 +272,11 @@ class StaffController extends Controller
             return response()->json(['error' => 'Cannot reroute a closed ticket'], 422);
         }
 
-        // Find a staff member with the target role
+        // Find a staff member with the target role (using roles table)
         $targetRole = $request->input('role');
-        $newStaff = User::where('role', $targetRole)->inRandomOrder()->first();
+        $newStaff = User::whereHas('role', function ($q) use ($targetRole) {
+            $q->where('name', $targetRole);
+        })->inRandomOrder()->first();
 
         if (!$newStaff) {
             return response()->json(['error' => 'No staff found for the selected role'], 422);
@@ -309,7 +317,12 @@ class StaffController extends Controller
 
         $auth = Auth::user();
         // Only the assigned staff or Primary Administrator may send responses
-        if ($ticket->staff_id !== $auth->id && ($auth->role ?? null) !== 'Primary Administrator') {
+        if ($ticket->staff_id !== $auth->id
+            && ! (
+                $auth
+                && (strtolower((string)($auth->role ?? '')) === 'primary administrator')
+            )
+        ) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

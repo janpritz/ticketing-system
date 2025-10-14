@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\Faq;
 use App\Models\FaqRevision;
 use Carbon\Carbon;
@@ -34,18 +35,25 @@ class AdminController extends Controller
         $cutoff = now()->subMinutes(10)->getTimestamp();
         $activeStaffCount = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
+            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
-            ->where('users.role', '!=', 'Primary Administrator')
+            // exclude Primary Administrator by role name (supports migrated role_id and legacy null-role rows)
+            ->where(function ($qb) {
+                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->distinct('sessions.user_id')
             ->count('sessions.user_id');
 
         // Build initial active staff list (name, email, last_activity)
         $activeStaff = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
+            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
-            ->where('users.role', '!=', 'Primary Administrator')
+            ->where(function ($qb) {
+                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->groupBy('users.id', 'users.name', 'users.email')
             ->select([
                 'users.id',
@@ -67,7 +75,10 @@ class AdminController extends Controller
             ->toArray();
 
         // Build full staff contacts with last activity and active flag
-        $staffContacts = User::where('role', '!=', 'Primary Administrator')
+        $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            ->where(function ($q) {
+                $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
             ->groupBy('users.id', 'users.name', 'users.email')
             ->select([
@@ -179,17 +190,23 @@ class AdminController extends Controller
         $cutoff = now()->subMinutes(10)->getTimestamp();
         $activeStaffCount = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
+            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
-            ->where('users.role', '!=', 'Primary Administrator')
+            ->where(function ($qb) {
+                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->distinct('sessions.user_id')
             ->count('sessions.user_id');
 
         $activeStaffArr = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
+            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
-            ->where('users.role', '!=', 'Primary Administrator')
+            ->where(function ($qb) {
+                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->groupBy('users.id', 'users.name', 'users.email')
             ->select([
                 'users.id',
@@ -211,7 +228,10 @@ class AdminController extends Controller
             ->toArray();
 
         // Full staff contacts list with active flag
-        $staffContactsArr = User::where('role', '!=', 'Primary Administrator')
+        $staffContactsArr = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            ->where(function ($q) {
+                $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+            })
             ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
             ->groupBy('users.id', 'users.name', 'users.email')
             ->select([
@@ -347,11 +367,14 @@ class AdminController extends Controller
 
     /**
      * Ensure only Primary Administrator can access user management.
+     *
+     * Use the backwards-compatible string check to avoid analyzer/runtime issues
+     * during migration (the User model exposes a getRoleAttribute accessor).
      */
     private function ensureAdmin(): void
     {
         $u = Auth::user();
-        abort_unless($u && ($u->role === 'Primary Administrator'), 403, 'Unauthorized');
+        abort_unless($u && (strtolower((string) ($u->role ?? '')) === 'primary administrator'), 403, 'Unauthorized');
     }
 
     /**
@@ -363,13 +386,17 @@ class AdminController extends Controller
 
         $q = trim((string) $request->query('q', ''));
 
-        $users = User::where('role', '!=', 'Primary Administrator')
+        $users = User::whereHas('role', function ($qRole) {
+                $qRole->where('name', '!=', 'Primary Administrator');
+            })
             ->when($q !== '', function ($query) use ($q) {
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('name', 'like', $like)
                        ->orWhere('email', 'like', $like)
-                       ->orWhere('role', 'like', $like)
+                       ->orWhereHas('role', function ($qr) use ($like) {
+                           $qr->where('name', 'like', $like);
+                       })
                        ->orWhere('category', 'like', $like);
                 });
             })
@@ -403,20 +430,23 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             // Restrict creation to staff accounts (avoid creating another Primary Administrator)
-            'role' => 'required|string|max:255|not_in:Primary Administrator',
+            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
             'category' => 'nullable|string|max:255',
             'password' => 'required|string|min:8|confirmed',
         ]);
-
+    
+        // Resolve role id from provided role name
+        $roleModel = Role::where('name', $validated['role'])->first();
+    
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role = $validated['role'];
+        $user->role_id = $roleModel ? $roleModel->id : null;
         $user->category = $validated['category'] ?? null;
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
-
+    
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
 
@@ -445,21 +475,24 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'role' => 'required|string|max:255|not_in:Primary Administrator',
+            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
             'category' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
-
+    
+        // Resolve role id
+        $roleModel = Role::where('name', $validated['role'])->first();
+    
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role = $validated['role'];
+        $user->role_id = $roleModel ? $roleModel->id : null;
         $user->category = $validated['category'] ?? null;
         if (!empty($validated['password'] ?? '')) {
             // Auto-hashed via casts
             $user->password = $validated['password'];
         }
         $user->save();
-
+    
         return redirect()->route('admin.users.index')->with('status', 'Staff updated.');
     }
 
@@ -470,14 +503,15 @@ class AdminController extends Controller
     {
         $this->ensureAdmin();
         $auth = Auth::user();
-
+    
         if ($user->id === ($auth->id ?? 0)) {
             return back()->withErrors(['delete' => 'You cannot delete your own account.']);
         }
-        if ($user->role === 'Primary Administrator') {
+        // Use backward-compatible role accessor (string) to determine Primary Administrator
+        if (strtolower((string) ($user->role ?? '')) === 'primary administrator') {
             return back()->withErrors(['delete' => 'Cannot delete Primary Administrator.']);
         }
-
+    
         $user->delete();
     
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');

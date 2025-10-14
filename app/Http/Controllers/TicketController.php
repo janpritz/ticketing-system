@@ -121,10 +121,12 @@ class TicketController extends Controller
         ];
 
         // Determine the role based on category
-        $role = $categoryToRoleMap[$request->category] ?? 'Primary Administrator'; // Default to Student Services if no match
-
-        // Find an available staff member with the required role
-        $staff = User::where('role', $role)->inRandomOrder()->first();
+        $role = $categoryToRoleMap[$request->category] ?? 'Primary Administrator'; // Default to Primary Administrator if no match
+ 
+        // Find an available staff member with the required role (use roles table)
+        $staff = User::whereHas('role', function ($q) use ($role) {
+            $q->where('name', $role);
+        })->inRandomOrder()->first();
 
         $ticket = Ticket::create([
             'category' => $request->category,

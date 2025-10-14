@@ -101,11 +101,12 @@
       <label for="filterRole" class="block text-xs text-slate-600 mb-1">Role</label>
       <select id="filterRole" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
         <option value="">All</option>
-        @isset($roles)
-          @foreach($roles as $r)
-            <option value="{{ $r }}">{{ $r }}</option>
-          @endforeach
-        @endisset
+        @php
+          $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+        @endphp
+        @foreach($roles as $r)
+          <option value="{{ $r }}">{{ $r }}</option>
+        @endforeach
       </select>
     </div>
     <div>
