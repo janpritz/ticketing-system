@@ -7,7 +7,7 @@
       <div class="min-h-screen flex flex-col items-center justify-center py-6 px-4">
         <div class="max-w-[480px] w-full">
           <div class="flex items-center justify-center mb-5">
-            <img src="/logo.png" alt="logo" class="w-25" />
+            <img src="public\logo.png" alt="logo" class="w-25" />
             <h1 class="text-slate-900 text-center text-3xl font-semibold">Sangkay Integrated Ticketing System</h1>
           </div>
           <div class="p-6 sm:p-8 rounded-2xl bg-white border border-gray-200 shadow-sm">
