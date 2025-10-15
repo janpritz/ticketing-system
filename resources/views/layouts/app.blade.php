@@ -32,7 +32,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
-<body class="font-sans antialiased bg-cover bg-center bg-no-repeat" style="background-image: url('{{ asset('bg-login.png') }}'); background-color: #f8fafc;">
+<body class="font-sans antialiased bg-amber-600>
     <div class="min-h-screen">
         <!-- Navigation -->
 
