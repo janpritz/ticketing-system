@@ -91,7 +91,7 @@
                 </button>
                 <div class="text-right">
                     <div class="text-xs text-slate-500">Welcome back,</div>
-                    <div class="text-sm font-medium text-slate-900">{{ auth()->user()->name ?? 'Admin User' }}</div>
+                    <div class="text-sm font-medium text-slate-900">{{ auth()->user()?->name ?? 'Admin User' }}</div>
                 </div>
             </div>
         </div>
