@@ -3,7 +3,7 @@
 @section('title', 'Login')
 
 @section('content')
-<div class="bg-gray-50">
+<div>
       <div class="min-h-screen flex flex-col items-center justify-center py-6 px-4">
         <div class="max-w-[480px] w-full">
           <div class="flex items-center justify-center mb-5">
