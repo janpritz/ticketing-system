@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Admin Dashboard')
 
@@ -112,12 +112,14 @@
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Open Tickets</div>
                         <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="openTicketsCount">{{ number_format($openTickets ?? 0) }}</span></div>
-                        <div class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
+                        @if(($openTicketsDelta ?? 0) > 0)
+                        <div id="openTicketsDeltaWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
                             </svg>
-                            <span>+3 from yesterday</span>
+                            <span id="openTicketsDelta">+{{ number_format($openTicketsDelta ?? 0) }} from yesterday</span>
                         </div>
+                        @endif
                     </div>
                     <div class="rounded-md bg-red-50 p-2 text-red-500 border border-red-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -133,15 +135,17 @@
                         <div class="text-xs font-medium text-slate-500">Total FAQs</div>
                         <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="faqCountValue">{{ number_format($faqCount ?? 0) }}</span></div>
 
-                        <!-- Pending FAQs (green text under total, clickable) -->
-                        <div class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
+                        <!-- New FAQs (green text under total, clickable) -->
+                        @if(($faqNewCount ?? 0) > 0)
+                        <div id="faqNewWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
                             </svg>
-                            <a href="{{ route('admin.faqs.index', ['status' => 'untrained']) }}" class="hover:underline">
-                                <span id="faqPendingCount">{{ number_format($faqPendingCount ?? 0) }}</span> pending
+                            <a href="{{ route('admin.faqs.index', ['filter' => 'new']) }}" class="hover:underline">
+                                <span id="faqNewCount">{{ number_format($faqNewCount ?? 0) }}</span> new
                             </a>
                         </div>
+                        @endif
                     </div>
                     <div class="rounded-md bg-blue-50 p-2 text-blue-600 border border-blue-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -172,12 +176,14 @@
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Users</div>
                         <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="userCountValue">{{ number_format($userCount ?? 0) }}</span></div>
-                        <div class="mt-1 text-xs text-emerald-600 flex items中心 gap-1">
+                        @if(($newUsers ?? 0) > 0)
+                        <div id="userNewWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
                             </svg>
-                            <span>+15 new users</span>
+                            <span id="userNewCount">+{{ number_format($newUsers ?? 0) }} new users</span>
                         </div>
+                        @endif
                     </div>
                     <div class="rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -492,14 +498,41 @@
 
         function updateCounts(payload) {
             const elOpen = document.getElementById('openTicketsCount');
+            const elOpenDelta = document.getElementById('openTicketsDelta');
+            const wrapOpen = document.getElementById('openTicketsDeltaWrap');
+
             const elFaq = document.getElementById('faqCountValue');
-            const elFaqPending = document.getElementById('faqPendingCount');
+            const elFaqNew = document.getElementById('faqNewCount');
+            const wrapFaq = document.getElementById('faqNewWrap');
+
             const elUser = document.getElementById('userCountValue');
+            const elUserNew = document.getElementById('userNewCount');
+            const wrapUser = document.getElementById('userNewWrap');
+
             const elActive = document.getElementById('activeStaffCount');
+
             if (elOpen) elOpen.textContent = fmt.format(payload.openTickets ?? 0);
+
+            const d = Number(payload.openTicketsDelta ?? 0);
+            if (wrapOpen) wrapOpen.style.display = d > 0 ? 'flex' : 'none';
+            if (elOpenDelta) {
+                const sign = d > 0 ? '+' : '';
+                elOpenDelta.textContent = `${sign}${fmt.format(d)} from yesterday`;
+            }
+
             if (elFaq) elFaq.textContent = fmt.format(payload.faqCount ?? 0);
-            if (elFaqPending) elFaqPending.textContent = fmt.format(payload.faqPendingCount ?? 0);
+            const fn = Number(payload.faqNewCount ?? 0);
+            if (wrapFaq) wrapFaq.style.display = fn > 0 ? 'flex' : 'none';
+            if (elFaqNew) elFaqNew.textContent = fmt.format(fn);
+
             if (elUser) elUser.textContent = fmt.format(payload.userCount ?? 0);
+            const nu = Number(payload.newUsers ?? 0);
+            if (wrapUser) wrapUser.style.display = nu > 0 ? 'flex' : 'none';
+            if (elUserNew) {
+                const signU = nu > 0 ? '+' : '';
+                elUserNew.textContent = `${signU}${fmt.format(nu)} new users`;
+            }
+
             if (elActive) elActive.textContent = fmt.format(payload.activeStaffCount ?? 0);
         }
 

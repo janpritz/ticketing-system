@@ -8,8 +8,11 @@
 
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
     
-    <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
-    <link rel="shortcut icon" href="{{ asset('logo.png') }}">
+    <!-- Favicons: provide both PNG sizes and a fallback favicon.ico -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('logo.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('logo.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('logo.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('logo.png') }}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600&display=swap" rel="stylesheet" />
@@ -32,7 +35,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
-<body class="font-sans antialiased bg-amber-600>
+<body class="font-sans antialiased">
     <div class="min-h-screen">
         <!-- Navigation -->
 
