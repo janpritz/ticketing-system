@@ -234,7 +234,7 @@
 
             async function registerServiceWorker() {
                 if (!('serviceWorker' in navigator)) throw new Error('Service workers not supported');
-                return navigator.serviceWorker.register('/public/sw.js', { scope: '/' });
+                return navigator.serviceWorker.register('/sw.js', { scope: '/' });
             }
 
             async function sendSubscriptionToServer(subscription) {
