@@ -6,6 +6,8 @@ use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\TicketRoutingHistory;
+use Illuminate\Support\Facades\Log;
+
 
 
 class TicketController extends Controller
@@ -147,12 +149,28 @@ class TicketController extends Controller
             'routed_at' => now(),
             'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
         ]);
-
+        
+        // Send push notification to the assigned staff (if any)
+        if ($ticket->staff_id) {
+            try {
+                $payload = [
+                    'title' => 'New ticket assigned',
+                    'body'  => 'A new ticket (ID: ' . $ticket->id . ') has been assigned to you.',
+                    'data'  => ['url' => '/staff/dashboard']
+                ];
+                // Use the PushService to deliver the notification (non-blocking on failure)
+                app(\App\Services\PushService::class)->sendToUser($ticket->staff_id, $payload);
+            } catch (\Throwable $e) {
+                // Log and continue — notification failure must not block ticket creation
+                Log::warning('Push send failed for ticket assignment: ' . $e->getMessage());
+            }
+        }
+        
         // For API requests, return JSON
         if ($request->wantsJson()) {
             return response()->json($ticket, 201);
         }
-
+        
         // For web requests, redirect to index page with success message
         return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }

@@ -12,6 +12,7 @@ use App\Mail\TicketResponseMail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class StaffController extends Controller
 {
@@ -298,6 +299,20 @@ class StaffController extends Controller
         ]);
 
         $ticket->load(['staff', 'routingHistories.staff']);
+
+        // Send push to the newly assigned staff if available (non-blocking)
+        if ($newStaff && $newStaff->id) {
+            try {
+                $payload = [
+                    'title' => 'Ticket rerouted to you',
+                    'body'  => 'Ticket #' . $ticket->id . ' has been rerouted to you.',
+                    'data'  => ['url' => '/staff/dashboard']
+                ];
+                app(\App\Services\PushService::class)->sendToUser($newStaff->id, $payload);
+            } catch (\Throwable $e) {
+                Log::warning('Push send failed on reroute: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Ticket rerouted successfully',

@@ -53,6 +53,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/staff/profile', [StaffController::class, 'profile'])->name('staff.profile');
     Route::post('/staff/profile', [StaffController::class, 'updateProfile'])->name('staff.profile.update');
 
+    // Push subscription (web push)
+    Route::post('/staff/push/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])
+        ->name('staff.push.subscribe');
+
+    // Push test/send endpoints
+    Route::post('/staff/push/test', [\App\Http\Controllers\PushNotificationController::class, 'sendTest'])
+        ->name('staff.push.test');
+    Route::post('/admin/push/user/{userId}', [\App\Http\Controllers\PushNotificationController::class, 'sendToUser'])
+        ->whereNumber('userId')
+        ->name('admin.push.user');
+    Route::post('/admin/push/all', [\App\Http\Controllers\PushNotificationController::class, 'sendToAll'])
+        ->name('admin.push.all');
+
     // Staff change password (separate flow)
     Route::get('/staff/profile/password', [StaffController::class, 'passwordForm'])->name('staff.profile.password');
     Route::post('/staff/profile/password', [StaffController::class, 'passwordUpdate'])
