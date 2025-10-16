@@ -7,6 +7,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\RasaController;
+use App\Http\Controllers\PushNotificationController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -119,12 +120,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
         ->middleware('throttle:20,1')
         ->name('admin.dashboard.data');
-
-    // Admin Push Test Page (simple form to send a push to a specific user id)
-    Route::get('/admin/push/test-page', function () {
-        return view('dashboards.admin.push-test');
-    })->name('admin.push.test_page');
-
     // Admin user management (CRUD)
     Route::prefix('admin/users')->name('admin.users.')->group(function () {
         Route::get('/', [AdminController::class, 'usersIndex'])->name('index');
@@ -160,7 +155,7 @@ Route::middleware('auth')->group(function () {
 
         // Mark FAQ as trained
         Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
-        
+
         // Mark FAQ as not trained (revert trained -> untrained)
         Route::post('/{faq}/untrain', [AdminController::class, 'faqsUntrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('untrain');
 
@@ -176,9 +171,9 @@ Route::middleware('auth')->group(function () {
         // index page (blade) - renders admin ticket management UI
         Route::get('/', function () {
             // When roles are stored in the DB use Role::pluck('name') instead of deriving from users.
-            $users = \App\Models\User::orderBy('name')->get(['id','name']);
+            $users = \App\Models\User::orderBy('name')->get(['id', 'name']);
             $roles = \App\Models\Role::orderBy('name')->pluck('name');
-            return view('dashboards.admin.tickets.index', compact('users','roles'));
+            return view('dashboards.admin.tickets.index', compact('users', 'roles'));
         })->name('index');
 
         // show single ticket details (JSON)
@@ -209,6 +204,13 @@ Route::middleware('auth')->group(function () {
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    //Push Notification
+    // Start Push Notification==========================================================
+    Route::view('push-notification', 'PushNotification.push-test');
+    Route::post('save-push-notification-sub', [PushNotificationController::class, 'saveSubscription']);
+    Route::post('send-push-notification', [PushNotificationController::class, 'sendNotification']);
+    // End Push Notification==========================================================
 });
 
 Route::post('/send-message', [RasaController::class, 'sendMessage']);

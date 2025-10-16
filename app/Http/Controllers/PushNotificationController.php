@@ -2,67 +2,64 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PushNotification;
+use App\Models\PushNotificationMsgs;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Services\PushService;
+use Illuminate\Support\Facades\URL;
+use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
+
 
 class PushNotificationController extends Controller
 {
-    /**
-     * Send a test notification to the authenticated user (useful for dev)
-     */
-    public function sendTest(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthenticated'], 401);
-        }
-
-        $payload = [
-            'title' => $request->input('title', 'Test notification'),
-            'body' => $request->input('body', 'This is a test push notification.'),
-            'data' => $request->input('data', ['url' => '/staff/dashboard'])
-        ];
-
-        $service = new PushService();
-        $results = $service->sendToUser($user->id, $payload);
-
-        return response()->json(['results' => $results]);
-    }
-
-    /**
-     * Send arbitrary payload to a specific user id (admin-only)
-     */
-    public function sendToUser(Request $request, $userId)
+    //
+    public function sendNotification(Request $request)
     {
         $auth = [
             'VAPID' => [
-                'subject' => 'mailto:me@website.com', // can be a mailto: or your website address
-                'publicKey' => '~88 chars', // (recommended) uncompressed public key P-256 encoded in Base64-URL
-                'privateKey' => '~44 chars', // (recommended) in fact the secret multiplier of the private key encoded in Base64-URL
-                'pemFile' => 'path/to/pem', // if you have a PEM file and can link to it on your filesystem
-                'pem' => 'pemFileContent', // if you have a PEM file and want to hardcode its content
+                'subject' => 'https://fritzcabalhin.com/public/', // can be a mailto: or your website address
+                'publicKey' => env('PUBLIC_KEY'), // (recommended) uncompressed public key P-256 encoded in Base64-URL
+                'privateKey' => env('PRIVATE_KEY'), // (recommended) in fact the secret multiplier of the private key encoded in Base64-URL
             ],
         ];
 
         $webPush = new WebPush($auth);
+        // $payload = '{"title":"' . $request->title . '" , "body":"' . $request->body . '" , "url":"./?id=' . $request->idOfProduct . '"}';
+
+        // Construct the payload with the logo
+        $payload = json_encode([
+            'title' => $request->title,
+            'body' => $request->body,
+            'url' => './?id=' . $request->idOfProduct,
+        ]);
+
+        $msg = new PushNotificationMsgs();
+        $msg->title = $request->title;
+        $msg->body = $request->body;
+        $msg->url = $request->idOfProduct;
+        $msg->save();
+
+
+
+        $notifications = PushNotification::all();
+
+        foreach ($notifications as $notification) {
+            $webPush->sendOneNotification(
+                Subscription::create($notification['subscriptions']),
+                $payload,
+                ['TTL' => 5000]
+            );
+        }
+
+        return response()->json(['message' => 'send successfully'], 200);
     }
 
-    /**
-     * Send to all saved subscriptions
-     */
-    public function sendToAll(Request $request)
+    public function saveSubscription(Request $request)
     {
-        // add authorization checks as needed
-        $payload = $request->only(['title', 'body', 'data']);
-        $payload['title'] = $payload['title'] ?? 'Broadcast';
-        $payload['body'] = $payload['body'] ?? '';
-        $payload['data'] = $payload['data'] ?? [];
+        $items = new PushNotification();
+        $items->subscriptions = json_decode($request->sub);
+        $items->save();
 
-        $service = new PushService();
-        $results = $service->sendToAll($payload);
-
-        return response()->json(['results' => $results]);
+        return response()->json(['message' => 'added successfully'], 200);
     }
 }
