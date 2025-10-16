@@ -219,7 +219,7 @@
             // Push Notifications enable flow (runs only on user click to ensure permission prompt)
             const enableBtn = document.getElementById('enablePushBtn');
             const statusText = document.getElementById('pushStatusText');
-            const publicVapidKey = "{{ config('webpush.public') }}";
+            const publicVapidKey = @json(env('PUBLIC_KEY', config('webpush.public')));
 
             function urlBase64ToUint8Array(base64String) {
                 const padding = '='.repeat((4 - base64String.length % 4) % 4);
