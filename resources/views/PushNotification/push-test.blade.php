@@ -1,35 +1,42 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Push Test')
 
 @section('content')
-    <div class="card">
-        <div class="card-header">
-            <button onclick="askForPermission()" class="btn btn-success">Enable Notification</button>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <label for='title'>{{ __('title') }}</label>
-                    <input type='text' class='form-control' id='title' name='title'>
-                </div>
-                <div class="col-md-3">
-                    <label for='body'>{{ __('body') }}</label>
-                    <input type='text' class='form-control' id='body' name='body'>
-                </div>
-                <div class="col-md-3">
-                    <label for='idOfProduct'>{{ __('ID Of Product') }}</label>
-                    <input type='text' class='form-control' id='idOfProduct' name='idOfProduct'>
-                </div>
-                <div class="col-md-3">
-                    <input type="button" value="{{ 'Send Notification' }}" onclick="sendNotification()" class="btn btn-info" />
-                    <p>Please Enable Push notification before sending</p>
+    <div class="max-w-7xl mx-auto p-4">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-gray-700">Push Notification Test</h2>
+                <button onclick="askForPermission()" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                    Enable Notification
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label for='title' class="block text-sm font-medium text-gray-700">{{ __('title') }}</label>
+                        <input type='text' class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm' id='title' name='title'>
+                    </div>
+                    <div>
+                        <label for='body' class="block text-sm font-medium text-gray-700">{{ __('body') }}</label>
+                        <input type='text' class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm' id='body' name='body'>
+                    </div>
+                    <div>
+                        <label for='idOfProduct' class="block text-sm font-medium text-gray-700">{{ __('ID Of Product') }}</label>
+                        <input type='text' class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm' id='idOfProduct' name='idOfProduct'>
+                    </div>
+                    <div class="flex items-end">
+                        <div>
+                            <input type="button" value="{{ 'Send Notification' }}" onclick="sendNotification()" class="inline-flex items-center bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2" />
+                            <p class="mt-2 text-xs text-gray-500">Please enable push notifications before sending.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 @endsection
-@section('script')
+@section('scripts')
     <script>
         navigator.serviceWorker.register('/sw.js', {
             scope: '/'
