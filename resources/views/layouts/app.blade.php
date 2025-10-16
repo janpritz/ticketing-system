@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <script>
+        // Expose globals for push setup
+        window.VAPID_PUBLIC_KEY = @json(config('webpush.public'));
+        window.APP_AUTHENTICATED = @json(auth()->check());
+    </script>
+
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
     
     <!-- Favicons: provide both PNG sizes and a fallback favicon.ico -->
