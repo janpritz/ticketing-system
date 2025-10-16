@@ -41,7 +41,12 @@ class PushService
 
         try {
             $sub = Subscription::create($subscription);
-            $this->webPush->queueNotification($sub, $payloadJson);
+            // Request timely delivery: small TTL and high urgency helps FCM/Push services prioritize
+            $options = [
+                'TTL' => 60,           // seconds
+                'urgency' => 'high',   // 'very-low' | 'low' | 'normal' | 'high'
+            ];
+            $this->webPush->queueNotification($sub, $payloadJson, $options);
 
             $results = [];
             foreach ($this->webPush->flush() as $report) {

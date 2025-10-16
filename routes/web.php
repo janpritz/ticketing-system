@@ -120,6 +120,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:20,1')
         ->name('admin.dashboard.data');
 
+    // Admin Push Test Page (simple form to send a push to a specific user id)
+    Route::get('/admin/push/test-page', function () {
+        return view('dashboards.admin.push-test');
+    })->name('admin.push.test_page');
+
     // Admin user management (CRUD)
     Route::prefix('admin/users')->name('admin.users.')->group(function () {
         Route::get('/', [AdminController::class, 'usersIndex'])->name('index');
