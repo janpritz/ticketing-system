@@ -71,38 +71,71 @@
 
 
 
-        // Save subscription to DB via AJAX
+        // Save subscription to DB via AJAX (use axios/fetch instead of jQuery)
         function saveSub(sub) {
-            $.ajax({
-                type: 'post',
-                url: '{{ URL('save-push-notification-sub') }}',
-                data: {
-                    '_token': "{{ csrf_token() }}",
-                    'sub': sub
-                },
-                success: function (data) {
-                    console.log('Subscription saved', data);
-                },
-                error: function (xhr) {
-                    console.error('Failed to save subscription', xhr.responseText || xhr.statusText);
-                }
-            });
+            // Prefer axios (already bundled). Fallback to fetch if axios not available.
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post('{{ URL('save-push-notification-sub') }}', { sub: sub })
+                    .then(function (response) {
+                        console.log('Subscription saved', response.data);
+                    })
+                    .catch(function (error) {
+                        console.error('Failed to save subscription', error.response ? error.response.data : error.message);
+                    });
+            } else {
+                fetch('{{ URL('save-push-notification-sub') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify({ sub: sub })
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        console.log('Subscription saved', data);
+                    })
+                    .catch(function (err) {
+                        console.error('Failed to save subscription', err);
+                    });
+            }
         }
         function sendNotification() {
-            $.ajax({
-                type: 'post',
-                url: '{{ URL('send-push-notification') }}',
-                data: {
-                    '_token': "{{ csrf_token() }}",
-                    'title': $("#title").val(),
-                    'body': $("#body").val(),
-                    'idOfProduct': $("#idOfProduct").val(),
-                },
-                success: function(data) {
-                    alert('send Successfull');
-                    console.log(data);
-                }
-            });
+            const payload = {
+                title: document.getElementById('title').value,
+                body: document.getElementById('body').value,
+                idOfProduct: document.getElementById('idOfProduct').value,
+            };
+
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post('{{ URL('send-push-notification') }}', payload)
+                    .then(function (response) {
+                        alert('Send Successful');
+                        console.log(response.data);
+                    })
+                    .catch(function (error) {
+                        alert('Send failed');
+                        console.error('Send error', error.response ? error.response.data : error.message);
+                    });
+            } else {
+                fetch('{{ URL('send-push-notification') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify(payload)
+                })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        alert('Send Successful');
+                        console.log(data);
+                    })
+                    .catch(function (err) {
+                        alert('Send failed');
+                        console.error('Send error', err);
+                    });
+            }
         }
     </script>
 @endsection
