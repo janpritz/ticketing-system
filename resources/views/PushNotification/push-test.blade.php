@@ -69,30 +69,25 @@
             });
         }
 
-        async function saveSub(sub) {
-            try {
-                const response = await fetch('https://fritzcabalhin.com/public/save-push-notification-sub', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': 'dj0Zuwg1MaXTpqHN01FnN1cthm5N9U22h70auY9j'
-                    },
-                    body: JSON.stringify({
-                        sub
-                    })
-                });
 
-                if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
 
-                const data = await response.json();
-                console.log('[push] Subscription saved:', data);
-            } catch (err) {
-                console.error('[push] Failed to save subscription:', err);
-            }
+        // Save subscription to DB via AJAX
+        function saveSub(sub) {
+            $.ajax({
+                type: 'post',
+                url: '{{ URL('save-push-notification-sub') }}',
+                data: {
+                    '_token': "{{ csrf_token() }}",
+                    'sub': sub
+                },
+                success: function (data) {
+                    console.log('Subscription saved', data);
+                },
+                error: function (xhr) {
+                    console.error('Failed to save subscription', xhr.responseText || xhr.statusText);
+                }
+            });
         }
-
-
-
         function sendNotification() {
             $.ajax({
                 type: 'post',
