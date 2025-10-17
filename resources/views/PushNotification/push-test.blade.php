@@ -69,28 +69,43 @@
             });
         }
 
-        // Save subscription to DB using axios (no jQuery dependency)
+        // Save subscription to DB
         function saveSub(sub) {
+            // sub may be a JSON-stringified subscription or an object
+            let payload;
+            try {
+                payload = (typeof sub === 'string') ? JSON.parse(sub) : sub;
+            } catch (e) {
+                console.error('Invalid subscription payload', e);
+                return;
+            }
+
+            const body = { subscription: payload };
+
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('{{ URL('save-push-notification-sub') }}', { sub })
+                window.axios.post('{{ url('/staff/push/subscribe') }}', body)
                     .then(function (response) {
-                        console.log(response.data);
+                        console.log('Subscription saved', response.data);
                     })
                     .catch(function (error) {
-                        console.error('Failed to save subscription:', error);
+                        console.error('Failed to save subscription via axios:', error);
                     });
             } else {
-                // Fallback to fetch if axios isn't available
-                fetch('{{ URL('save-push-notification-sub') }}', {
+                // Fallback to fetch (include CSRF token)
+                fetch('{{ url('/staff/push/subscribe') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ sub })
-                }).then(r => r.json()).then(data => console.log(data)).catch(err => console.error(err));
+                    body: JSON.stringify(body)
+                })
+                .then(r => r.json())
+                .then(data => console.log('Subscription saved (fetch)', data))
+                .catch(err => console.error('Failed to save subscription via fetch:', err));
             }
         }
+        
 
 
         function sendNotification() {

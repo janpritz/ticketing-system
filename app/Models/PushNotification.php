@@ -9,7 +9,13 @@ class PushNotification extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'subscriptions',
+        'subscription',
+    ];
+
     protected $casts = [
-        'subscriptions' => 'array'
+        'subscriptions' => 'array',
+        'subscription' => 'array',
     ];
 }

@@ -6,6 +6,7 @@ use App\Models\PushNotification;
 use App\Models\PushNotificationMsgs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -43,12 +44,36 @@ class PushNotificationController extends Controller
 
         $notifications = PushNotification::all();
 
+        // Iterate stored subscriptions and send the payload to each.
         foreach ($notifications as $notification) {
-            $webPush->sendOneNotification(
-                Subscription::create($notification['subscriptions']),
-                $payload,
-                ['TTL' => 5000]
-            );
+            // Prefer the singular 'subscription' column (new), fallback to legacy 'subscriptions'
+            $subs = $notification->subscription ?? $notification->subscriptions ?? $notification['subscription'] ?? $notification['subscriptions'] ?? null;
+            if (!$subs) {
+                continue;
+            }
+
+            // Normalize subscription payload (it should be an associative array with 'endpoint')
+            $subPayload = is_string($subs) ? json_decode($subs, true) : $subs;
+            if (is_array($subPayload) && array_key_exists('endpoint', $subPayload) === false) {
+                // If the payload is an array of subscriptions, try to pick the first that looks valid
+                foreach ($subPayload as $candidate) {
+                    if (is_array($candidate) && array_key_exists('endpoint', $candidate)) {
+                        $subPayload = $candidate;
+                        break;
+                    }
+                }
+            }
+
+            try {
+                $webPush->sendOneNotification(
+                    Subscription::create($subPayload),
+                    $payload,
+                    ['TTL' => 5000]
+                );
+            } catch (\Throwable $e) {
+                // Log and continue with other subscriptions (don't stop the entire loop)
+                Log::error('Push send failed for subscription id=' . $notification->id . ' : ' . $e->getMessage());
+            }
         }
 
         return response()->json(['message' => 'send successfully'], 200);
@@ -56,10 +81,27 @@ class PushNotificationController extends Controller
 
     public function saveSubscription(Request $request)
     {
-        $items = new PushNotification();
-        $items->subscriptions = json_decode($request->sub);
-        $items->save();
+        // Accept either 'subscription' (used by the frontend) or legacy 'sub'
+        $sub = $request->input('subscription', $request->input('sub'));
 
-        return response()->json(['message' => 'added successfully'], 200);
+        if (!$sub) {
+            return response()->json(['error' => 'No subscription provided'], 422);
+        }
+
+        // Normalize payload to array/object
+        $payload = $sub;
+        if (is_string($payload)) {
+            $payload = json_decode($payload, true);
+        }
+
+        if ($payload === null) {
+            return response()->json(['error' => 'Invalid subscription JSON'], 422);
+        }
+
+        $push = new PushNotification();
+        $push->subscriptions = $payload;
+        $push->save();
+
+        return response()->json(['message' => 'added successfully', 'id' => $push->id], 201);
     }
 }
