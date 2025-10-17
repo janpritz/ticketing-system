@@ -4,7 +4,7 @@ self.addEventListener("push", (event) => {
     event.waitUntil(
         self.registration.showNotification(notification.title, {
             body: notification.body,
-            icon: "{{ asset('logo.png') }}",
+            icon: "/logo.png",
             data: {
                 url: notification.url
             }
