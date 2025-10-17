@@ -69,37 +69,39 @@
             });
         }
 
-
-
         // Save subscription to DB via AJAX (use axios/fetch instead of jQuery)
         function saveSub(sub) {
-            // Prefer axios (already bundled). Fallback to fetch if axios not available.
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('{{ URL('save-push-notification-sub') }}', { sub: sub })
-                    .then(function (response) {
+                window.axios.post('{{ url('save-push-notification-sub') }}', {
+                        sub: sub
+                    })
+                    .then(function(response) {
                         console.log('Subscription saved', response.data);
                     })
-                    .catch(function (error) {
-                        console.error('Failed to save subscription', error.response ? error.response.data : error.message);
+                    .catch(function(error) {
+                        console.error('Failed to save subscription:', error.response ? error.response.data : error);
                     });
             } else {
-                fetch('{{ URL('save-push-notification-sub') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
-                    },
-                    body: JSON.stringify({ sub: sub })
-                })
-                    .then(function (res) { return res.json(); })
-                    .then(function (data) {
+                fetch('{{ url('save-push-notification-sub') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify({
+                            sub: sub
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
                         console.log('Subscription saved', data);
                     })
-                    .catch(function (err) {
-                        console.error('Failed to save subscription', err);
+                    .catch(err => {
+                        console.error('Failed to save subscription:', err);
                     });
             }
         }
+
         function sendNotification() {
             const payload = {
                 title: document.getElementById('title').value,
@@ -108,32 +110,32 @@
             };
 
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('{{ URL('send-push-notification') }}', payload)
-                    .then(function (response) {
+                window.axios.post('{{ url('send-push-notification') }}', payload)
+                    .then(response => {
                         alert('Send Successful');
                         console.log(response.data);
                     })
-                    .catch(function (error) {
+                    .catch(error => {
                         alert('Send failed');
-                        console.error('Send error', error.response ? error.response.data : error.message);
+                        console.error('Send error:', error.response ? error.response.data : error);
                     });
             } else {
-                fetch('{{ URL('send-push-notification') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
-                    },
-                    body: JSON.stringify(payload)
-                })
-                    .then(function (res) { return res.json(); })
-                    .then(function (data) {
+                fetch('{{ url('send-push-notification') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
                         alert('Send Successful');
                         console.log(data);
                     })
-                    .catch(function (err) {
+                    .catch(err => {
                         alert('Send failed');
-                        console.error('Send error', err);
+                        console.error('Send error:', err);
                     });
             }
         }
