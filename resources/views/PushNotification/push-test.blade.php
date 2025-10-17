@@ -69,37 +69,58 @@
             });
         }
 
-        // Save subscription to DB via AJAX (use axios/fetch instead of jQuery)
+        // Save subscription to DB using axios (no jQuery dependency)
         function saveSub(sub) {
-            $.ajax({
-                type: 'post',
-                url: '{{ URL('save-push-notification-sub') }}',
-                data: {
-                    '_token': "{{ csrf_token() }}",
-                    'sub': sub
-                },
-                success: function(data) {
-                    console.log(data);
-                }
-            });
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post('{{ URL('save-push-notification-sub') }}', { sub })
+                    .then(function (response) {
+                        console.log(response.data);
+                    })
+                    .catch(function (error) {
+                        console.error('Failed to save subscription:', error);
+                    });
+            } else {
+                // Fallback to fetch if axios isn't available
+                fetch('{{ URL('save-push-notification-sub') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ sub })
+                }).then(r => r.json()).then(data => console.log(data)).catch(err => console.error(err));
+            }
         }
 
 
         function sendNotification() {
-            $.ajax({
-                type: 'post',
-                url: '{{ URL('send-push-notification') }}',
-                data: {
-                    '_token': "{{ csrf_token() }}",
-                    'title': $("#title").val(),
-                    'body': $("#body").val(),
-                    'idOfProduct': $("#idOfProduct").val(),
-                },
-                success: function(data) {
-                    alert('send Successfull');
-                    console.log(data);
-                }
-            });
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post('{{ URL('send-push-notification') }}', {
+                    title: document.getElementById('title').value,
+                    body: document.getElementById('body').value,
+                    idOfProduct: document.getElementById('idOfProduct').value
+                }).then(function (response) {
+                    alert('Send successful');
+                    console.log(response.data);
+                }).catch(function (error) {
+                    console.error('Send failed:', error);
+                    alert('Send failed');
+                });
+            } else {
+                // Fallback to fetch if axios isn't available
+                fetch('{{ URL('send-push-notification') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        title: document.getElementById('title').value,
+                        body: document.getElementById('body').value,
+                        idOfProduct: document.getElementById('idOfProduct').value
+                    })
+                }).then(r => r.json()).then(data => { alert('Send successful'); console.log(data); }).catch(err => { console.error(err); alert('Send failed'); });
+            }
         }
     </script>
 @endsection
