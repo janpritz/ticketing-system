@@ -208,8 +208,10 @@ Route::middleware('auth')->group(function () {
     //Push Notification
     // Start Push Notification==========================================================
     Route::view('push-notification', 'PushNotification.push-test');
-    Route::post('save-push-notification-sub', [PushNotificationController::class, 'saveSubscription']);
-    Route::post('send-push-notification', [PushNotificationController::class, 'sendNotification']);
+    Route::prefix('staff/push')->group(function () {
+        Route::post('/subscribe', [PushNotificationController::class, 'saveSubscription'])->name('push.subscribe');
+        Route::post('/send', [PushNotificationController::class, 'sendNotification'])->name('push.send');
+    });
     // End Push Notification==========================================================
 });
 
