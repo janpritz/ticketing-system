@@ -47,8 +47,10 @@
 @endsection
 @section('scripts')
     <script>
-        navigator.serviceWorker.register('/sw.js', {
-            scope: '/'
+        // Register service worker relative to current path so it resolves correctly
+        // when the app is served under a subpath like /public/.
+        navigator.serviceWorker.register('sw.js', {
+            scope: './'
         });
 
         function askForPermission() {
