@@ -83,7 +83,7 @@
             const body = { subscription: payload };
 
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('{{ url('/staff/push/subscribe') }}', body)
+                window.axios.post('staff/push/subscribe', body)
                     .then(function (response) {
                         console.log('Subscription saved', response.data);
                     })
@@ -92,7 +92,7 @@
                     });
             } else {
                 // Fallback to fetch (include CSRF token)
-                fetch('{{ url('/staff/push/subscribe') }}', {
+                fetch('staff/push/subscribe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -110,7 +110,7 @@
 
         function sendNotification() {
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('{{ URL('send-push-notification') }}', {
+                window.axios.post('staff/push/send', {
                     title: document.getElementById('title').value,
                     body: document.getElementById('body').value,
                     idOfProduct: document.getElementById('idOfProduct').value
@@ -123,7 +123,7 @@
                 });
             } else {
                 // Fallback to fetch if axios isn't available
-                fetch('{{ URL('send-push-notification') }}', {
+                fetch('staff/push/send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
