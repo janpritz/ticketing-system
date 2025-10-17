@@ -70,7 +70,9 @@ if (window.APP_AUTHENTICATED !== true) {
     // Make sure your server route matches '/push/subscribe' (adjust if different).
     try {
       if (window.axios && typeof window.axios.post === 'function') {
-        await window.axios.post('/staff/push/subscribe', { subscription });
+        // Use a relative path (no leading slash) so the request respects any /public
+        // prefix in the current site URL (e.g. https://example.com/public/...)
+        await window.axios.post('staff/push/subscribe', { subscription });
         console.debug('[push] Subscription sent to server');
       } else {
         console.warn('[push] axios not available; subscription not sent to server');
