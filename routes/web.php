@@ -193,7 +193,7 @@ Route::middleware('auth')->group(function () {
 
     // Admin category management (CRUD)
     Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
-        Route::get('/', CategoriesController::class, 'index'])->name('index');
+        Route::get('/', [CategoriesController::class, 'index'])->name('index');
         Route::get('/create', [CategoriesController::class, 'create'])->name('create');
         Route::post('/', [CategoriesController::class, 'store'])->name('store');
         Route::get('/{category}/edit', [CategoriesController::class, 'edit'])->whereNumber('category')->name('edit');
