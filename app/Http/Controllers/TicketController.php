@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 
@@ -15,7 +16,11 @@ class TicketController extends Controller
     // Show the ticket creation form
     public function showCreateForm($recepient_id = null)
     {
-        return view('tickets.create', compact('recepient_id')); // returns the Blade view for the form
+        // Fetch roles (from DB) and categories (from the internal mapping) at page load
+        $roles = Role::orderBy('name')->get();
+        $categories = array_keys($this->getCategoryToRoleMap());
+
+        return view('tickets.create', compact('recepient_id', 'roles', 'categories'));
     }
 
     public function store(Request $request)
@@ -44,8 +49,86 @@ class TicketController extends Controller
             }
         }
 
-        // Map categories to staff roles
-        $categoryToRoleMap = [
+        // Determine the category->role map and choose role (prefer explicit role selection)
+        $categoryToRoleMap = $this->getCategoryToRoleMap();
+
+        // Prefer explicit role selection from the form (role_id) if provided
+        $roleModel = null;
+        if ($request->filled('role_id')) {
+            $roleModel = Role::find($request->role_id);
+        } else {
+            $roleName = $categoryToRoleMap[$request->category] ?? 'Primary Administrator';
+            $roleModel = Role::where('name', $roleName)->first();
+        }
+
+        // Find staff with the lowest open-ticket load within the selected role
+        $staff = null;
+        if ($roleModel) {
+            $candidates = User::where('role_id', $roleModel->id)
+                ->withCount(['assignedTickets as open_tickets_count' => function ($q) {
+                    $q->where('status', 'Open');
+                }])
+                ->get();
+
+            if ($candidates->isNotEmpty()) {
+                // pick the minimum load then randomize among equals to avoid hot-spotting a single user
+                $min = $candidates->min('open_tickets_count');
+                $ties = $candidates->where('open_tickets_count', $min);
+                $staff = $ties->count() ? $ties->random() : $ties->first();
+            }
+        }
+
+        $ticket = Ticket::create([
+            'category' => $request->category,
+            'question' => $request->question,
+            'recepient_id' => $request->recepient_id,
+            'email' => $request->email,
+            'status' => 'Open',
+            'staff_id' => $staff ? $staff->id : null,
+            'date_created' => now(),
+            'date_closed' => null,
+        ]);
+
+        // Record initial routing history at ticket creation
+        TicketRoutingHistory::create([
+            'ticket_id' => $ticket->id,
+            'staff_id' => $ticket->staff_id, // may be null if not assigned
+            'status' => 'Open',
+            'routed_at' => now(),
+            'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
+        ]);
+        
+        // Send push notification to the assigned staff (if any)
+        if ($ticket->staff_id) {
+            try {
+                $payload = [
+                    'title' => 'New ticket assigned',
+                    'body'  => 'A new ticket (ID: ' . $ticket->id . ') has been assigned to you.',
+                    'data'  => ['url' => '/staff/dashboard']
+                ];
+                // Use the PushService to deliver the notification (non-blocking on failure)
+                app(\App\Services\PushService::class)->sendToUser($ticket->staff_id, $payload);
+            } catch (\Throwable $e) {
+                // Log and continue — notification failure must not block ticket creation
+                Log::warning('Push send failed for ticket assignment: ' . $e->getMessage());
+            }
+        }
+        
+        // For API requests, return JSON
+        if ($request->wantsJson()) {
+            return response()->json($ticket, 201);
+        }
+        
+        // For web requests, redirect to index page with success message
+        return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
+    }
+
+
+    private function getCategoryToRoleMap(): array
+    {
+        // Centralised mapping between categories and role names.
+        // Keep this in sync with any admin-managed 'roles' entries.
+        return [
             // Enrollment-related categories
             'Course Registration' => 'Enrollment',
             'Add or Drop Classes' => 'Enrollment',
@@ -121,60 +204,7 @@ class TicketController extends Controller
             'Physical Education Classes' => 'Athletics and Sports',
             'Sports Event Tickets' => 'Athletics and Sports',
         ];
-
-        // Determine the role based on category
-        $role = $categoryToRoleMap[$request->category] ?? 'Primary Administrator'; // Default to Primary Administrator if no match
- 
-        // Find an available staff member with the required role (use roles table)
-        $staff = User::whereHas('role', function ($q) use ($role) {
-            $q->where('name', $role);
-        })->inRandomOrder()->first();
-
-        $ticket = Ticket::create([
-            'category' => $request->category,
-            'question' => $request->question,
-            'recepient_id' => $request->recepient_id,
-            'email' => $request->email,
-            'status' => 'Open',
-            'staff_id' => $staff ? $staff->id : null,
-            'date_created' => now(),
-            'date_closed' => null,
-        ]);
-
-        // Record initial routing history at ticket creation
-        TicketRoutingHistory::create([
-            'ticket_id' => $ticket->id,
-            'staff_id' => $ticket->staff_id, // may be null if not assigned
-            'status' => 'Open',
-            'routed_at' => now(),
-            'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
-        ]);
-        
-        // Send push notification to the assigned staff (if any)
-        if ($ticket->staff_id) {
-            try {
-                $payload = [
-                    'title' => 'New ticket assigned',
-                    'body'  => 'A new ticket (ID: ' . $ticket->id . ') has been assigned to you.',
-                    'data'  => ['url' => '/staff/dashboard']
-                ];
-                // Use the PushService to deliver the notification (non-blocking on failure)
-                app(\App\Services\PushService::class)->sendToUser($ticket->staff_id, $payload);
-            } catch (\Throwable $e) {
-                // Log and continue — notification failure must not block ticket creation
-                Log::warning('Push send failed for ticket assignment: ' . $e->getMessage());
-            }
-        }
-        
-        // For API requests, return JSON
-        if ($request->wantsJson()) {
-            return response()->json($ticket, 201);
-        }
-        
-        // For web requests, redirect to index page with success message
-        return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }
-
 
     public function index(Request $request)
     {

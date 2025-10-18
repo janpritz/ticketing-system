@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Role;
 
 class User extends Authenticatable
@@ -106,14 +107,26 @@ class User extends Authenticatable
         if ($this->relationLoaded('role')) {
             return $this->getRelation('role');
         }
-
+ 
         if (!empty($this->attributes['role_id'])) {
             return Role::find($this->attributes['role_id']);
         }
-
+ 
         return null;
     }
-
+ 
+    /**
+     * Tickets assigned to this user (as staff).
+     *
+     * This relation is used for calculating current open-ticket load.
+     *
+     * @return HasMany
+     */
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(\App\Models\Ticket::class, 'staff_id');
+    }
+ 
     /**
      * Helper to check if the user is the Primary Administrator.
      * Keeps previous behavior checks like ($user->role === 'Primary Administrator') functional.
