@@ -193,12 +193,12 @@ Route::middleware('auth')->group(function () {
 
     // Admin category management (CRUD)
     Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\CategoriesController::class, 'index'])->name('index');
-        Route::get('/create', [\App\Http\Controllers\CategoriesController::class, 'create'])->name('create');
-        Route::post('/', [\App\Http\Controllers\CategoriesController::class, 'store'])->name('store');
-        Route::get('/{category}/edit', [\App\Http\Controllers\CategoriesController::class, 'edit'])->whereNumber('category')->name('edit');
-        Route::put('/{category}', [\App\Http\Controllers\CategoriesController::class, 'update'])->whereNumber('category')->name('update');
-        Route::delete('/{category}', [\App\Http\Controllers\CategoriesController::class, 'destroy'])->whereNumber('category')->name('destroy');
+        Route::get('/', CategoriesController::class, 'index'])->name('index');
+        Route::get('/create', [CategoriesController::class, 'create'])->name('create');
+        Route::post('/', [CategoriesController::class, 'store'])->name('store');
+        Route::get('/{category}/edit', [CategoriesController::class, 'edit'])->whereNumber('category')->name('edit');
+        Route::put('/{category}', [CategoriesController::class, 'update'])->whereNumber('category')->name('update');
+        Route::delete('/{category}', [CategoriesController::class, 'destroy'])->whereNumber('category')->name('destroy');
     });
 
     // Admin role management (CRUD)
