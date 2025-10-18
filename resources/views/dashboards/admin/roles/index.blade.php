@@ -101,9 +101,27 @@
           <label class="block text-sm font-medium text-slate-700">Description (optional)</label>
           <textarea name="description" rows="3" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
         </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Categories <span class="text-xs text-slate-400">(Add at least 2)</span></label>
+          <div id="categoriesContainer" class="mt-2 space-y-2">
+            <div class="flex gap-2">
+              <input type="text" name="categories[]" required placeholder="Category name" class="categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <button type="button" class="remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" aria-label="Remove category">Remove</button>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" name="categories[]" required placeholder="Category name" class="categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <button type="button" class="remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" aria-label="Remove category">Remove</button>
+            </div>
+          </div>
+          <div class="pt-2">
+            <button type="button" id="addCategoryBtn" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Add Category</button>
+          </div>
+        </div>
+
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2" data-close="create-role">Cancel</button>
-          <button type="submit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create Role</button>
+          <button type="submit" id="createRoleSubmit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create Role</button>
         </div>
       </form>
     </div>
@@ -204,6 +222,71 @@
       });
     });
   });
+
+  // Category management inside Create Role modal
+  const categoriesContainer = document.getElementById('categoriesContainer');
+  const addCategoryBtn = document.getElementById('addCategoryBtn');
+
+  function createCategoryRow(value = '') {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex gap-2';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'categories[]';
+    input.placeholder = 'Category name';
+    input.className = 'categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+    input.value = value;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50';
+    removeBtn.setAttribute('aria-label', 'Remove category');
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', function () {
+      // remove this row
+      wrapper.remove();
+      // ensure at least two inputs visually remain (we'll validate at submit)
+    });
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(removeBtn);
+
+    return wrapper;
+  }
+
+  if (addCategoryBtn) {
+    addCategoryBtn.addEventListener('click', () => {
+      categoriesContainer.appendChild(createCategoryRow(''));
+    });
+  }
+
+  // Attach remove handlers to initial buttons
+  document.querySelectorAll('.remove-category-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const row = this.closest('div.flex');
+      if (row) row.remove();
+    });
+  });
+
+  // Validate at submit: require at least 2 non-empty categories
+  const createRoleForm = document.getElementById('createRoleForm');
+  if (createRoleForm) {
+    createRoleForm.addEventListener('submit', function (e) {
+      const inputs = Array.from(document.querySelectorAll('#categoriesContainer input[name="categories[]"]'));
+      const filled = inputs.filter(i => i.value && i.value.trim() !== '');
+      if (filled.length < 2) {
+        e.preventDefault();
+        Swal.fire({
+          icon: 'warning',
+          title: 'Please add at least 2 categories',
+          text: 'A role must have at least two categories before it can be created.',
+        });
+        return false;
+      }
+      // allow submission
+    });
+  }
 
   // Show success toast when session status exists
   @if(session('status'))

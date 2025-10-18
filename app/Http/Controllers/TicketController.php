@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 
@@ -16,11 +17,10 @@ class TicketController extends Controller
     // Show the ticket creation form
     public function showCreateForm($recepient_id = null)
     {
-        // Fetch roles (from DB) and categories (from the internal mapping) at page load
-        $roles = Role::orderBy('name')->get();
-        $categories = array_keys($this->getCategoryToRoleMap());
+        // Fetch categories from DB at page load (we show categories only; role is resolved from category)
+        $categories = Category::orderBy('name')->pluck('name')->toArray();
 
-        return view('tickets.create', compact('recepient_id', 'roles', 'categories'));
+        return view('tickets.create', compact('recepient_id', 'categories'));
     }
 
     public function store(Request $request)
@@ -49,16 +49,15 @@ class TicketController extends Controller
             }
         }
 
-        // Determine the category->role map and choose role (prefer explicit role selection)
-        $categoryToRoleMap = $this->getCategoryToRoleMap();
-
-        // Prefer explicit role selection from the form (role_id) if provided
+        // Determine role based on the selected category (lookup from DB).
+        // Role selection via the form has been removed; we resolve role by the category chosen.
         $roleModel = null;
-        if ($request->filled('role_id')) {
-            $roleModel = Role::find($request->role_id);
+        $categoryModel = Category::where('name', $request->category)->with('role')->first();
+        if ($categoryModel && $categoryModel->role) {
+            $roleModel = $categoryModel->role;
         } else {
-            $roleName = $categoryToRoleMap[$request->category] ?? 'Primary Administrator';
-            $roleModel = Role::where('name', $roleName)->first();
+            // Fallback to Primary Administrator if no mapping exists.
+            $roleModel = Role::where('name', 'Primary Administrator')->first();
         }
 
         // Find staff with the lowest open-ticket load within the selected role

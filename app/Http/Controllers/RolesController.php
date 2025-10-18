@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Role;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -54,15 +55,37 @@ class RolesController extends Controller
     {
         $this->ensureAdmin();
 
+        // Require at least 2 categories when creating a role
         $validated = $request->validate([
             'name' => ['required','string','max:191', Rule::unique('roles','name')],
             'description' => ['nullable','string','max:1000'],
+            'categories' => ['required','array','min:2'],
+            'categories.*' => ['required','string','max:191'],
         ]);
 
-        Role::create([
+        // Create role
+        $role = Role::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
         ]);
+
+        // Create categories and attach to role
+        foreach ($validated['categories'] as $catName) {
+            $catName = trim((string)$catName);
+            if ($catName === '') {
+                continue;
+            }
+            try {
+                Category::create([
+                    'role_id' => $role->id,
+                    'name' => $catName,
+                    'description' => null,
+                ]);
+            } catch (\Throwable $e) {
+                // Log but continue; category uniqueness or other DB issues shouldn't block role creation here
+                Log::warning('Failed to create category "' . $catName . '" for role ' . $role->id . ': ' . $e->getMessage());
+            }
+        }
 
         // bump roles last-changed cache
         try {

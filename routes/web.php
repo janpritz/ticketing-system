@@ -8,6 +8,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
+use App\Http\Controllers\CategoriesController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -188,6 +189,16 @@ Route::middleware('auth')->group(function () {
 
         // delete ticket
         Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
+    });
+
+    // Admin category management (CRUD)
+    Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CategoriesController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\CategoriesController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\CategoriesController::class, 'store'])->name('store');
+        Route::get('/{category}/edit', [\App\Http\Controllers\CategoriesController::class, 'edit'])->whereNumber('category')->name('edit');
+        Route::put('/{category}', [\App\Http\Controllers\CategoriesController::class, 'update'])->whereNumber('category')->name('update');
+        Route::delete('/{category}', [\App\Http\Controllers\CategoriesController::class, 'destroy'])->whereNumber('category')->name('destroy');
     });
 
     // Admin role management (CRUD)

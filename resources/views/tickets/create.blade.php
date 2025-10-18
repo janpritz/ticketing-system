@@ -86,22 +86,6 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label for="role_id" class="block text-sm font-medium text-gray-700">Role (optional)</label>
-                            <div class="mt-1">
-                                <select name="role_id" id="role_id"
-                                    class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                    <option value="">{{ __('Auto - select based on category') }}</option>
-                                    @if(isset($roles) && $roles->count())
-                                        @foreach($roles as $role)
-                                            <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
-                                                {{ $role->name }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                            </div>
-                        </div>
 
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
