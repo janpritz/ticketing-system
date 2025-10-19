@@ -71,12 +71,12 @@ Route::middleware('auth')->group(function () {
     // Push subscription (web push) - handled by '/staff/push' prefixed routes defined below
 
     // Push test/send endpoints
-    Route::post('/staff/push/test', [\App\Http\Controllers\PushNotificationController::class, 'sendTest'])
+    Route::post('/staff/push/test', [PushNotificationController::class, 'sendTest'])
         ->name('staff.push.test');
-    Route::post('/admin/push/user/{userId}', [\App\Http\Controllers\PushNotificationController::class, 'sendToUser'])
+    Route::post('/admin/push/user/{userId}', [PushNotificationController::class, 'sendToUser'])
         ->whereNumber('userId')
         ->name('admin.push.user');
-    Route::post('/admin/push/all', [\App\Http\Controllers\PushNotificationController::class, 'sendToAll'])
+    Route::post('/admin/push/all', [PushNotificationController::class, 'sendToAll'])
         ->name('admin.push.all');
 
     // Staff change password (separate flow)

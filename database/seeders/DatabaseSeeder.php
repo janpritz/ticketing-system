@@ -64,5 +64,11 @@ class DatabaseSeeder extends Seeder
         if (class_exists(\Database\Seeders\FaqSeeder::class)) {
             $this->call(\Database\Seeders\FaqSeeder::class);
         }
+
+        // Seed categories (creates a 'General' category for every existing role
+        // plus some extras for common roles)
+        if (class_exists(\Database\Seeders\CategorySeeder::class)) {
+            $this->call(\Database\Seeders\CategorySeeder::class);
+        }
     }
 }

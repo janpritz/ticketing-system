@@ -333,11 +333,18 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Role</label>
-                            <input type="text" name="role" id="edit_role" value="" required
-                                placeholder="e.g. IT Support"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                            <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be set here.
-                            </p>
+                            @php
+                                // Exclude Primary Administrator visually from the dropdown
+                                $editRoles = \App\Models\Role::orderBy('name')->where('name', '!=', 'Primary Administrator')->get();
+                            @endphp
+                            <select name="role" id="edit_role" required
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled>Select role</option>
+                                @foreach($editRoles as $r)
+                                    <option value="{{ $r->name }}">{{ $r->name }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be set here.</p>
                             @if (old('editing_user_id'))
                                 @error('role')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -346,9 +353,16 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            <input type="text" name="category" id="edit_category" value=""
-                                placeholder="e.g. Admissions"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                            @php
+                                $editCategories = \App\Models\Category::orderBy('name')->pluck('name')->unique()->toArray();
+                            @endphp
+                            <select name="category" id="edit_category"
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">— None —</option>
+                                @foreach($editCategories as $c)
+                                    <option value="{{ $c }}">{{ $c }}</option>
+                                @endforeach
+                            </select>
                             @if (old('editing_user_id'))
                                 @error('category')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>

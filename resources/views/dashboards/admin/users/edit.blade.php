@@ -57,12 +57,13 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Role</label>
                     @php
-                        $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+                        // Exclude Primary Administrator from the selectable roles (visual exclusion)
+                        $roles = \App\Models\Role::orderBy('name')->where('name', '!=', 'Primary Administrator')->get();
                     @endphp
                     <select name="role" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                         <option value="" disabled>Select role</option>
                         @foreach($roles as $r)
-                            <option value="{{ $r }}" {{ old('role', $user->role) === $r ? 'selected' : '' }}>{{ $r }}</option>
+                            <option value="{{ $r->name }}" {{ old('role', $user->role) === $r->name ? 'selected' : '' }}>{{ $r->name }}</option>
                         @endforeach
                     </select>
                     <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be set here.</p>
@@ -70,8 +71,16 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                    <input type="text" name="category" value="{{ old('category', $user->category) }}" placeholder="e.g. Admissions"
-                           class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    @php
+                        $categories = \App\Models\Category::orderBy('name')->pluck('name')->unique()->toArray();
+                    @endphp
+                    <select name="category" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— None —</option>
+                        @foreach($categories as $c)
+                            <option value="{{ $c }}" {{ old('category', $user->category) === $c ? 'selected' : '' }}>{{ $c }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[11px] text-slate-500">Optional: assign a department/category to the staff account.</p>
                     @error('category')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>

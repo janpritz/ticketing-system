@@ -11,7 +11,7 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <a href="{{ route('admin.categories.index') }}" class="inline-flex items-center gap-2 rounded-lg bg-slate-600 hover:bg-slate-700 text-white text-sm font-medium px-3 py-2" aria-label="Manage Categories">
+      <a href="{{ route('admin.categories.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2 text-slate-700" aria-label="Manage Categories">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6zm2 3h14v11H5V9zm2 2v7h10v-7H7z"/></svg>
         <span class="hidden sm:inline">Manage Categories</span>
       </a>

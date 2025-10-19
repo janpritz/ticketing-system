@@ -56,8 +56,20 @@ class TicketController extends Controller
         if ($categoryModel && $categoryModel->role) {
             $roleModel = $categoryModel->role;
         } else {
-            // Fallback to Primary Administrator if no mapping exists.
-            $roleModel = Role::where('name', 'Primary Administrator')->first();
+            // If the category does not exist in the categories table, create/assign it to Primary Administrator.
+            // This makes the mapping persistent so future tickets with the same category route to Primary Administrator.
+            $primaryRole = Role::where('name', 'Primary Administrator')->first();
+
+            if ($primaryRole) {
+                // Create the category assigned to Primary Administrator (idempotent).
+                $categoryModel = Category::firstOrCreate(
+                    ['name' => $request->category, 'role_id' => $primaryRole->id],
+                    ['description' => null]
+                );
+            }
+
+            // Use the category's role if present, otherwise fallback to the primary role.
+            $roleModel = ($categoryModel && $categoryModel->role) ? $categoryModel->role : $primaryRole;
         }
 
         // Find staff with the lowest open-ticket load within the selected role

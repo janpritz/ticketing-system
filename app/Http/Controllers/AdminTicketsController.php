@@ -128,9 +128,13 @@ class AdminTicketsController extends Controller
     public function show(Request $request, $id)
     {
         // Eager-load minimal related data to avoid N+1 and reduce payload size.
-        // Load staff (id, name, role) and recent routing histories (only the fields the UI needs).
+        // Load staff (id, name, role_id) and the staff->role relation, plus recent routing histories.
         $ticket = Ticket::with([
-            'staff:id,name,role',
+            'staff' => function ($q) {
+                // select role_id (foreign key) so the relation can resolve the Role model
+                $q->select('id', 'name', 'role_id');
+            },
+            'staff.role',
             'routingHistories' => function ($q) {
                 $q->select('id', 'ticket_id', 'staff_id', 'status', 'routed_at', 'notes')
                   ->orderBy('routed_at', 'desc');

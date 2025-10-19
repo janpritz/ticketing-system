@@ -131,21 +131,26 @@
 </div>
 
 <!-- View / Respond Modal -->
-<div id="ticketModal" class="fixed inset-0 z-50 hidden">
+<div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-auto">
   <div class="absolute inset-0 bg-black/40" data-modal-backdrop></div>
-  <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
-    <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5">
+  <!-- Use adaptive container that allows the modal to scroll when taller than the viewport -->
+  <div class="relative mx-auto my-6 w-[90%] max-w-3xl max-h-[90vh]">
+    <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden max-h-[90vh] flex flex-col">
 <!-- Bottom drawer: Filters & Sort (opens from bottom on mobile / small screens) -->
 <!-- (moved earlier into header area to avoid being inside modal) -->
       <div class="flex items-center justify-between px-5 py-4 border-b">
         <div class="text-sm font-semibold text-slate-800">Ticket Details</div>
-        <button type="button" class="text-slate-500 hover:text-slate-700" data-modal-close aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 18 18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div>
+          <button type="button" data-modal-close aria-label="Close ticket details" class="inline-flex items-center justify-center h-8 w-8 rounded-md text-slate-600 hover:text-slate-800 hover:bg-gray-50">
+            <span class="sr-only">Close</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
-      <div class="px-5 py-4 space-y-4">
+      <div class="px-5 py-4 space-y-4 overflow-auto flex-1">
         <div id="tmInfo" class="text-xs text-gray-500"></div>
         <div>
           <label class="block text-xs text-gray-500">Question</label>
@@ -174,6 +179,17 @@
             </select>
             <!-- Inline reroute button shown only when a role is selected -->
             <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+          </div>
+
+          <!-- Collapsible reroute history (hidden when empty) -->
+          <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
+            <button type="button" id="tmHistoryToggle" class="w-full text-left text-sm text-slate-600 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center justify-between">
+              <span>Reroute History</span>
+              <svg id="tmHistoryIcon" class="h-4 w-4 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div id="tmHistoryPanel" class="mt-2 px-2 py-2 border rounded-md bg-gray-50 hidden max-h-64 overflow-auto"></div>
           </div>
         </div>
       </div>
@@ -552,6 +568,59 @@
         rerouteSelect.addEventListener('change', () => {
           rerouteInlineBtn.classList.toggle('hidden', !rerouteSelect.value);
         });
+      }
+
+      // Render reroute history if present. The server returns routing histories under either
+      // `routingHistories` or `routing_histories` depending on how Eloquent serialized it.
+      const historyContainer = document.getElementById('tmRerouteHistoryContainer');
+      const historyPanel = document.getElementById('tmHistoryPanel');
+      const historyToggle = document.getElementById('tmHistoryToggle');
+      const historyIcon = document.getElementById('tmHistoryIcon');
+
+      function renderRerouteHistory(histories) {
+        if (!historyContainer || !historyPanel || !historyToggle) return;
+        const list = histories || (t.routingHistories || t.routing_histories) || [];
+        if (!Array.isArray(list) || list.length === 0) {
+          historyContainer.classList.add('hidden');
+          return;
+        }
+
+        // Build history items
+        historyPanel.innerHTML = list.map(h => {
+          const routedAt = h.routed_at || h.routedAt || h.created_at || '';
+          const staffName = (h.staff && (h.staff.name || h.staff_name)) || h.staff_name || '-';
+          const status = h.status || '';
+          const notes = h.notes || '';
+          return `<div class="border-b last:border-b-0 py-2 text-sm">
+                    <div class="text-xs text-slate-500">${escapeHtml(routedAt)}</div>
+                    <div class="text-sm text-slate-800 font-medium">${escapeHtml(staffName)} — ${escapeHtml(status)}</div>
+                    <div class="text-sm text-slate-700">${escapeHtml(notes)}</div>
+                  </div>`;
+        }).join('');
+
+        historyContainer.classList.remove('hidden');
+        historyPanel.classList.add('hidden'); // collapsed by default
+        if (historyIcon) historyIcon.classList.remove('rotate-180');
+
+        // Toggle behavior
+        historyToggle.onclick = () => {
+          const isHidden = historyPanel.classList.contains('hidden');
+          if (isHidden) {
+            historyPanel.classList.remove('hidden');
+            if (historyIcon) historyIcon.classList.add('rotate-180');
+          } else {
+            historyPanel.classList.add('hidden');
+            if (historyIcon) historyIcon.classList.remove('rotate-180');
+          }
+        };
+      }
+
+      // Populate history based on returned ticket
+      try {
+        renderRerouteHistory(t.routingHistories || t.routing_histories || []);
+      } catch (e) {
+        console.warn('Failed to render reroute history', e);
+        if (historyContainer) historyContainer.classList.add('hidden');
       }
 
       // Send handler (safe attach)

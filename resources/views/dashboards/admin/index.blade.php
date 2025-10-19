@@ -304,12 +304,12 @@
                                     </span>
                                 </td>
                                 <td class="py-3 pl-3 pr-5 align-top">
-                                    <a href="#" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
                                         View
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M9 5l7 7-7 7" />
                                         </svg>
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                             @empty
@@ -322,10 +322,10 @@
                 </div>
             </div>
 
-            <!-- Re-routed Tickets -->
+            <!-- My Tickets (assigned to Primary Administrator) -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">Re-routed Tickets</h3>
+                    <h3 class="text-sm font-semibold text-slate-800">My Tickets</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -363,17 +363,17 @@
                                     </span>
                                 </td>
                                 <td class="py-3 pl-3 pr-5 align-top">
-                                    <a href="#" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
                                         View
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M9 5l7 7-7 7" />
                                         </svg>
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No in-progress tickets.</td>
+                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to Primary Administrator.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -382,6 +382,74 @@
             </div>
         </div>
     </main>
+</div>
+
+<!-- Ticket Details Modal (shared with admin tickets page) -->
+<div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-auto">
+  <div class="absolute inset-0 bg-black/40" data-modal-backdrop></div>
+  <div class="relative mx-auto my-6 w-[90%] max-w-3xl max-h-[90vh]">
+    <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 border-b">
+        <div class="text-sm font-semibold text-slate-800">Ticket Details</div>
+        <div>
+          <button type="button" data-modal-close aria-label="Close ticket details" class="inline-flex items-center justify-center h-8 w-8 rounded-md text-slate-600 hover:text-slate-800 hover:bg-gray-50">
+            <span class="sr-only">Close</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="px-5 py-4 space-y-4 overflow-auto flex-1">
+        <div id="tmInfo" class="text-xs text-gray-500"></div>
+        <div>
+          <label class="block text-xs text-gray-500">Question</label>
+          <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500">Response (send email)</label>
+          <textarea id="tmResponse" class="w-full rounded-md border-gray-300 px-3 py-2 text-sm" rows="4"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500">Reroute to</label>
+          <div class="flex items-center gap-2">
+            <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
+              <option value="" selected disabled>Select role</option>
+              <option>Primary Administrator</option>
+              <option>Enrollment</option>
+              <option>Finance and Payments</option>
+              <option>Scholarships</option>
+              <option>Academic Concerns</option>
+              <option>Exams</option>
+              <option>Student Services</option>
+              <option>Library Services</option>
+              <option>IT Support</option>
+              <option>Graduation</option>
+              <option>Athletics and Sports</option>
+            </select>
+            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+          </div>
+
+          <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
+            <button type="button" id="tmHistoryToggle" class="w-full text-left text-sm text-slate-600 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center justify-between">
+              <span>Reroute History</span>
+              <svg id="tmHistoryIcon" class="h-4 w-4 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div id="tmHistoryPanel" class="mt-2 px-2 py-2 border rounded-md bg-gray-50 hidden max-h-64 overflow-auto"></div>
+          </div>
+        </div>
+      </div>
+      <div class="px-5 py-3 border-t flex items-center justify-between gap-3">
+        <div></div>
+        <div class="flex items-center gap-2">
+          <button id="tmSendResponse" type="button" disabled class="rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Secondary right-side Contacts nav (hidden by default; toggled by Active Staff card) -->
@@ -666,10 +734,10 @@
                         </span>
                     </td>
                     <td class="py-3 pl-3 pr-5 align-top">
-                        <a href="#" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                        <button type="button" data-id="${t.id}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
                             View
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7" /></svg>
-                        </a>
+                        </button>
                     </td>
                 </tr>`;
             }) : [];
@@ -702,14 +770,14 @@
                         </span>
                     </td>
                     <td class="py-3 pl-3 pr-5 align-top">
-                        <a href="#" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                        <button type="button" data-id="${t.id}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
                             View
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7" /></svg>
-                        </a>
+                        </button>
                     </td>
                 </tr>`;
             }) : [];
-            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No re-routed tickets.</td></tr>`;
+            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td></tr>`;
         }
         async function refreshAdminData() {
             const url = analyticsEl ? analyticsEl.getAttribute('data-admin-url') : null;
@@ -923,5 +991,110 @@
       }
     });
   })();
+</script>
+<script>
+(function(){
+  const ticketModal = document.getElementById('ticketModal');
+  const tmInfo = document.getElementById('tmInfo');
+  const tmQuestion = document.getElementById('tmQuestion');
+  const tmResponse = document.getElementById('tmResponse');
+  const historyContainer = document.getElementById('tmRerouteHistoryContainer');
+  const historyPanel = document.getElementById('tmHistoryPanel');
+  const historyToggle = document.getElementById('tmHistoryToggle');
+  const historyIcon = document.getElementById('tmHistoryIcon');
+
+  function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,"&#039;"); }
+
+  async function loadAndShowTicket(id){
+    if (!id) return;
+    const url = "/admin/tickets/" + encodeURIComponent(id);
+    try {
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      if (!res.ok) {
+        console.error('Dashboard: failed to load ticket', res.status);
+        return;
+      }
+      const t = await res.json();
+      if (!t) return;
+
+      if (tmInfo) tmInfo.textContent = `#${t.id} • ${t.email || '-'} • ${t.category || ''}`;
+      if (tmQuestion) tmQuestion.textContent = t.question || '';
+      if (tmResponse) tmResponse.value = '';
+
+      // Render reroute history
+      try {
+        const list = t.routingHistories || t.routing_histories || [];
+        if (!Array.isArray(list) || list.length === 0) {
+          if (historyContainer) historyContainer.classList.add('hidden');
+        } else {
+          if (historyContainer) historyContainer.classList.remove('hidden');
+          if (historyPanel) {
+            historyPanel.innerHTML = list.map(h => {
+              const routedAt = h.routed_at || h.routedAt || h.created_at || '';
+              const staffName = (h.staff && (h.staff.name || h.staff_name)) || h.staff_name || '-';
+              const status = h.status || '';
+              const notes = h.notes || '';
+              return `<div class="border-b last:border-b-0 py-2 text-sm">
+                        <div class="text-xs text-slate-500">${escapeHtml(routedAt)}</div>
+                        <div class="text-sm text-slate-800 font-medium">${escapeHtml(staffName)} — ${escapeHtml(status)}</div>
+                        <div class="text-sm text-slate-700">${escapeHtml(notes)}</div>
+                      </div>`;
+            }).join('');
+            historyPanel.classList.add('hidden'); // collapsed by default
+            if (historyIcon) historyIcon.classList.remove('rotate-180');
+            if (historyToggle) {
+              historyToggle.onclick = () => {
+                const isHidden = historyPanel.classList.contains('hidden');
+                if (isHidden) {
+                  historyPanel.classList.remove('hidden');
+                  if (historyIcon) historyIcon.classList.add('rotate-180');
+                } else {
+                  historyPanel.classList.add('hidden');
+                  if (historyIcon) historyIcon.classList.remove('rotate-180');
+                }
+              };
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Dashboard: failed to render history', e);
+        if (historyContainer) historyContainer.classList.add('hidden');
+      }
+
+      if (ticketModal) ticketModal.classList.remove('hidden');
+    } catch (err) {
+      console.error('Dashboard: error loading ticket', err);
+    }
+  }
+
+  // Open modal for "View" buttons in Open Tickets and My Tickets tables
+  document.addEventListener('click', function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest('.btn-view') : null;
+    if (!btn) return;
+    const id = btn.getAttribute('data-id') || btn.dataset.id;
+    if (!id) return;
+    loadAndShowTicket(id);
+  });
+
+  // Close modal handlers
+  document.addEventListener('click', function (e) {
+    if (!ticketModal) return;
+    if (e.target && e.target.closest && e.target.closest('[data-modal-backdrop]')) {
+      ticketModal.classList.add('hidden');
+    }
+    if (e.target && e.target.getAttribute && e.target.getAttribute('data-modal-close') != null) {
+      ticketModal.classList.add('hidden');
+    }
+    if (e.target && e.target.closest && e.target.closest('[data-modal-close]')) {
+      ticketModal.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && ticketModal && !ticketModal.classList.contains('hidden')) {
+      ticketModal.classList.add('hidden');
+    }
+  });
+})();
 </script>
 @endsection

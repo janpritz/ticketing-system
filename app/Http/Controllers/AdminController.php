@@ -147,8 +147,11 @@ class AdminController extends Controller
             ->take(6)
             ->get();
 
+        // Show recent tickets assigned to Primary Administrator (My Tickets)
+        $primaryRole = Role::where('name', 'Primary Administrator')->first();
+        $adminUserIds = $primaryRole ? User::where('role_id', $primaryRole->id)->pluck('id')->toArray() : [];
         $inProgressList = Ticket::with('staff')
-            ->where('status', 'Re-routed')
+            ->when(count($adminUserIds) > 0, fn($q) => $q->whereIn('staff_id', $adminUserIds))
             ->orderByDesc('updated_at')
             ->take(6)
             ->get();

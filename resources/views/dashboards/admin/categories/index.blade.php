@@ -11,10 +11,10 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <a href="{{ route('admin.categories.create') }}" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2" aria-label="Add Category">
+      <button type="button" id="openAddCategoryModal" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2" aria-label="Add Category">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
         <span class="hidden sm:inline">Add Category</span>
-      </a>
+      </button>
     </div>
   </div>
 
@@ -76,6 +76,103 @@
     </div>
   </div>
 </div>
+
+<!-- Add Category Modal -->
+<div id="addCategoryModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40" id="addCategoryModalBackdrop"></div>
+  <div class="relative max-w-xl mx-auto mt-20 bg-white rounded-lg shadow-lg overflow-hidden">
+    <div class="p-4 border-b">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900">Create Category</h2>
+          <p class="text-sm text-slate-500">Assign a category to an existing role.</p>
+        </div>
+        <div>
+          <button type="button" id="closeAddCategoryModal" class="text-gray-500 hover:text-gray-700" aria-label="Close modal">&times;</button>
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ route('admin.categories.store') }}" class="p-6 space-y-4">
+      @csrf
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Role</label>
+        <div class="mt-1">
+          <select name="role_id" required class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            <option value="">Select role</option>
+            @foreach($roles as $role)
+              <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>{{ $role->name }}</option>
+            @endforeach
+          </select>
+          @error('role_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Category</label>
+        <div class="mt-1">
+          <input type="text" name="name" required value="{{ old('name') }}" class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+          @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Description (optional)</label>
+        <div class="mt-1">
+          <textarea name="description" rows="3" class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">{{ old('description') }}</textarea>
+          @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </div>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-3">
+        <button type="button" id="cancelAddCategory" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2">Cancel</button>
+        <button type="submit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create Category</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const openBtn = document.getElementById('openAddCategoryModal');
+  const modal = document.getElementById('addCategoryModal');
+  const closeBtn = document.getElementById('closeAddCategoryModal');
+  const cancelBtn = document.getElementById('cancelAddCategory');
+  const backdrop = document.getElementById('addCategoryModalBackdrop');
+
+  function showModal() {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.classList.add('items-start');
+    document.body.classList.add('overflow-hidden');
+  }
+  function hideModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  if (openBtn) openBtn.addEventListener('click', function () { showModal(); });
+
+  if (closeBtn) closeBtn.addEventListener('click', function () { hideModal(); });
+  if (cancelBtn) cancelBtn.addEventListener('click', function () { hideModal(); });
+  if (backdrop) backdrop.addEventListener('click', function () { hideModal(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hideModal();
+  });
+
+  // If there were validation errors or old input from a form submit, open the modal so user sees errors
+  @if ($errors->any() || old('name') || old('role_id') || old('description'))
+    document.addEventListener('DOMContentLoaded', function () { showModal(); });
+  @endif
+
+  // Show toast on successful create (existing behavior is in admin-scripts section)
+})();
+</script>
 
 @endsection
 

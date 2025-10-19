@@ -41,7 +41,8 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Role</label>
                     @php
-                        $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+                        // Exclude Primary Administrator from the selectable roles
+                        $roles = \App\Models\Role::orderBy('name')->where('name', '!=', 'Primary Administrator')->pluck('name')->toArray();
                     @endphp
                     <select name="role" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                         <option value="" disabled selected>Select role</option>
@@ -54,8 +55,15 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                    <input type="text" name="category" value="{{ old('category') }}" placeholder="e.g. Admissions"
-                           class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    @php
+                        $categories = \App\Models\Category::orderBy('name')->pluck('name')->unique()->toArray();
+                    @endphp
+                    <select name="category" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— None —</option>
+                        @foreach($categories as $c)
+                            <option value="{{ $c }}" {{ old('category') === $c ? 'selected' : '' }}>{{ $c }}</option>
+                        @endforeach
+                    </select>
                     @error('category')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>

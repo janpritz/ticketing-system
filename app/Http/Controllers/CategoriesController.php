@@ -22,7 +22,10 @@ class CategoriesController extends Controller
             ->orderBy('name')
             ->paginate($perPage);
 
-        return view('dashboards.admin.categories.index', compact('categories'));
+        // Also load roles so the "Add Category" modal can render the role select
+        $roles = Role::orderBy('name')->get();
+
+        return view('dashboards.admin.categories.index', compact('categories', 'roles'));
     }
 
     public function create()
