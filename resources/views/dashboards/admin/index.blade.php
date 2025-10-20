@@ -48,6 +48,15 @@
         </a>
       </li>
       <li>
+        <a href="{{ route('admin.reports') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 3h14v2H3V3zm0 4h10v2H3V7zm0 4h14v6H3v-6z"/>
+          </svg>
+          <span class="ms-3">Reports & Analytics</span>
+        </a>
+      </li>
+
+      <li>
         <form method="POST" action="{{ route('logout') }}">
           @csrf
           <button type="submit" class="w-full flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">

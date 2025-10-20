@@ -177,6 +177,16 @@ class AdminController extends Controller
     }
 
     /**
+     * Reports & Analytics page (admin-only).
+     */
+    public function reports(Request $request)
+    {
+        $this->ensureAdmin();
+        // Return a simple view scaffold for Reports & Analytics.
+        return view('dashboards.admin.reports');
+    }
+
+    /**
      * Live data endpoint for admin dashboard auto-refresh.
      */
     public function data(Request $request)
