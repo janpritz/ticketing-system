@@ -1007,13 +1007,25 @@
 
   async function loadAndShowTicket(id){
     if (!id) return;
-    const url = "/admin/tickets/" + encodeURIComponent(id);
+    // Try both candidate URLs so the client works in environments that serve the app
+    // either under the project root (example.com/) or under /public (example.com/public/).
+    const publicUrl = "/public/admin/tickets/" + encodeURIComponent(id);
+    const normalUrl = "/admin/tickets/" + encodeURIComponent(id);
+
     try {
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
-      if (!res.ok) {
-        console.error('Dashboard: failed to load ticket', res.status);
+      // First try the public-prefixed URL
+      let res = await fetch(publicUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+
+      // If not found (404), fall back to the non-public path
+      if (res && res.status === 404) {
+        res = await fetch(normalUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+      }
+
+      if (!res || !res.ok) {
+        console.error('Dashboard: failed to load ticket', res ? res.status : 'no-response');
         return;
       }
+
       const t = await res.json();
       if (!t) return;
 

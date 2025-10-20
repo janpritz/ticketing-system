@@ -211,13 +211,12 @@
   const state = document.createElement('div');
   state.id = 'admin-tickets-state';
   state.className = 'hidden';
-  // Prefix routes with /public for deployments that serve the app under the public folder (e.g. fritzcabalhin.com/public/...)
-  state.setAttribute('data-list-url', "/public{{ route('admin.tickets.list') }}");
+  state.setAttribute('data-list-url', "{{ route('admin.tickets.list') }}");
   // Use named routes to build templates — insert the placeholder string '__ID__' into the route.
-  state.setAttribute('data-show-url-template', "/public{{ route('admin.tickets.show', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-respond-url-template', "/public{{ route('admin.tickets.respond', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-reroute-url-template', "/public{{ route('admin.tickets.reroute', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-destroy-url-template', "/public{{ route('admin.tickets.destroy', ['ticket' => '__ID__']) }}");
+  state.setAttribute('data-show-url-template', "{{ route('admin.tickets.show', ['ticket' => '__ID__']) }}");
+  state.setAttribute('data-respond-url-template', "{{ route('admin.tickets.respond', ['ticket' => '__ID__']) }}");
+  state.setAttribute('data-reroute-url-template', "{{ route('admin.tickets.reroute', ['ticket' => '__ID__']) }}");
+  state.setAttribute('data-destroy-url-template', "{{ route('admin.tickets.destroy', ['ticket' => '__ID__']) }}");
   document.body.appendChild(state);
 
   const LIST_URL = state.getAttribute('data-list-url');
