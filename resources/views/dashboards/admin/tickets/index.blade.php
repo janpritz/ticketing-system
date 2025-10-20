@@ -212,11 +212,11 @@
   state.id = 'admin-tickets-state';
   state.className = 'hidden';
   state.setAttribute('data-list-url', "{{ route('admin.tickets.list') }}");
-  // Use named routes to build templates — insert the placeholder string '__ID__' into the route.
-  state.setAttribute('data-show-url-template', "{{ route('admin.tickets.show', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-respond-url-template', "{{ route('admin.tickets.respond', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-reroute-url-template', "{{ route('admin.tickets.reroute', ['ticket' => '__ID__']) }}");
-  state.setAttribute('data-destroy-url-template', "{{ route('admin.tickets.destroy', ['ticket' => '__ID__']) }}");
+  // Use a raw URL template here (avoid route() encoding the placeholder)
+  state.setAttribute('data-show-url-template', "{{ url('/admin/tickets') }}/__ID__");
+  state.setAttribute('data-respond-url-template', "{{ url('/admin/tickets') }}/__ID__/respond");
+  state.setAttribute('data-reroute-url-template', "{{ url('/admin/tickets') }}/__ID__/reroute");
+  state.setAttribute('data-destroy-url-template', "{{ url('/admin/tickets') }}/__ID__");
   document.body.appendChild(state);
 
   const LIST_URL = state.getAttribute('data-list-url');
@@ -278,7 +278,7 @@
         else if (assigneeVal) url += '&assignee=' + encodeURIComponent(assigneeVal);
       }
  
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
       if (!res.ok) throw new Error('Failed to load tickets');
       const json = await res.json();
  
@@ -512,7 +512,7 @@
     try {
       // Helpful debug logs to diagnose why the ticket fetch might fail (status, content-type).
       console.debug('openModalFor: fetching', url);
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
       console.debug('openModalFor: response status=', res.status, 'ok=', res.ok, 'headers=', Array.from(res.headers.entries()));
       const contentType = (res.headers.get('content-type') || '').toLowerCase();
       if (!res.ok) {
@@ -634,7 +634,7 @@
           }
           const rUrl = RESPOND_TEMPLATE.replace('__ID__', id);
           try {
-            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ message: msg }), credentials: 'same-origin' });
+            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ message: msg })});
             if (resp && resp.ok) {
               try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
               fetchList(currentPage);
@@ -664,7 +664,7 @@
           }
           const rUrl = REROUTE_TEMPLATE.replace('__ID__', id);
           try {
-            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role }), credentials: 'same-origin' });
+            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
             if (resp && resp.ok) {
               try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
               fetchList(currentPage);
@@ -693,7 +693,7 @@
   async function saveEdit(id, payload){
     try {
       const upUrl = "{{ url('/admin/tickets') }}/" + id;
-      const res = await fetch(upUrl, { method: 'PUT', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify(payload), credentials: 'same-origin' });
+      const res = await fetch(upUrl, { method: 'PUT', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify(payload)});
       if (!res.ok) throw new Error('Failed to update');
       try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
       fetchList(currentPage);
@@ -703,7 +703,7 @@
   async function deleteTicket(id){
     try {
       const dUrl = DESTROY_TEMPLATE.replace('__ID__', id);
-      const res = await fetch(dUrl, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf }, credentials: 'same-origin' });
+      const res = await fetch(dUrl, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf }});
       if (!res.ok) throw new Error('Failed to delete');
       try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
       fetchList(currentPage);

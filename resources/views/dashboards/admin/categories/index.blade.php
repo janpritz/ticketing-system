@@ -43,15 +43,9 @@
               </td>
               <td class="py-3 pl-3 pr-5 align-top">
                 <div class="flex items-center gap-2">
-                  <button type="button"
-                          data-id="{{ $category->id }}"
-                          data-name="{{ $category->name }}"
-                          data-role-id="{{ $category->role_id }}"
-                          data-description="{{ $category->description }}"
-                          class="openEditCategoryModal inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
-                          aria-label="Edit category">
+                  <a href="{{ route('admin.categories.edit', $category) }}" class="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50" aria-label="Edit category">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                  </button>
+                  </a>
 
                   <form method="POST" action="{{ route('admin.categories.destroy', $category) }}">
                     @csrf
@@ -139,139 +133,7 @@
   </div>
 </div>
 
-<!-- Edit Category Modal -->
-<div id="editCategoryModal" class="fixed inset-0 z-50 hidden">
-  <div class="absolute inset-0 bg-black/40" id="editCategoryModalBackdrop"></div>
-  <div class="relative max-w-xl mx-auto mt-20 bg-white rounded-lg shadow-lg overflow-hidden">
-    <div class="p-4 border-b">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-900">Edit Category</h2>
-          <p class="text-sm text-slate-500">Modify the category assigned to a role.</p>
-        </div>
-        <div>
-          <button type="button" id="closeEditCategoryModal" class="text-gray-500 hover:text-gray-700" aria-label="Close modal">&times;</button>
-        </div>
-      </div>
-    </div>
-
-    <form id="editCategoryForm" method="POST" action="#" class="p-6 space-y-4">
-      @csrf
-      @method('PUT')
-      <input type="hidden" name="edit_id" id="edit_id" value="{{ old('edit_id') ?? '' }}" />
-
-      <div>
-        <label class="block text-sm font-medium text-slate-700">Role</label>
-        <div class="mt-1">
-          <select name="role_id" id="edit_role_id" required class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            <option value="">Select role</option>
-            @foreach($roles as $role)
-              <option value="{{ $role->id }}">{{ $role->name }}</option>
-            @endforeach
-          </select>
-          @error('role_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-slate-700">Category</label>
-        <div class="mt-1">
-          <input type="text" name="name" id="edit_name" required value="{{ old('name') }}" class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-          @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-slate-700">Description (optional)</label>
-        <div class="mt-1">
-          <textarea name="description" id="edit_description" rows="3" class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">{{ old('description') }}</textarea>
-          @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-        </div>
-      </div>
-
-      <div class="pt-2 flex items-center justify-end gap-3">
-        <button type="button" id="cancelEditCategory" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2">Cancel</button>
-        <button type="submit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Save changes</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <script>
-(function(){
-  // Edit modal logic
-  const openEditButtons = document.querySelectorAll('.openEditCategoryModal');
-  const editModal = document.getElementById('editCategoryModal');
-  const editBackdrop = document.getElementById('editCategoryModalBackdrop');
-  const closeEditBtn = document.getElementById('closeEditCategoryModal');
-  const cancelEditBtn = document.getElementById('cancelEditCategory');
-  const editForm = document.getElementById('editCategoryForm');
-  const editIdInput = document.getElementById('edit_id');
-  const editNameInput = document.getElementById('edit_name');
-  const editRoleSelect = document.getElementById('edit_role_id');
-  const editDesc = document.getElementById('edit_description');
-
-  function showEditModal() {
-    if (!editModal) return;
-    editModal.classList.remove('hidden');
-    editModal.classList.add('flex', 'items-start');
-    document.body.classList.add('overflow-hidden');
-  }
-  function hideEditModal() {
-    if (!editModal) return;
-    editModal.classList.add('hidden');
-    editModal.classList.remove('flex', 'items-start');
-    document.body.classList.remove('overflow-hidden');
-  }
-
-  openEditButtons.forEach(btn => {
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      const id = this.getAttribute('data-id');
-      const name = this.getAttribute('data-name') || '';
-      const roleId = this.getAttribute('data-role-id') || '';
-      const description = this.getAttribute('data-description') || '';
-
-      // Populate form
-      if (editIdInput) editIdInput.value = id;
-      if (editNameInput) editNameInput.value = name;
-      if (editRoleSelect) editRoleSelect.value = roleId;
-      if (editDesc) editDesc.value = description;
-
-      // Set form action to update endpoint
-      if (editForm) editForm.action = '/admin/categories/' + encodeURIComponent(id);
-
-      showEditModal();
-    });
-  });
-
-  if (closeEditBtn) closeEditBtn.addEventListener('click', hideEditModal);
-  if (cancelEditBtn) cancelEditBtn.addEventListener('click', hideEditModal);
-  if (editBackdrop) editBackdrop.addEventListener('click', hideEditModal);
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hideEditModal();
-  });
-
-  // If validation errors occurred for edit, open modal and populate with old input
-  @if (old('edit_id'))
-    document.addEventListener('DOMContentLoaded', function () {
-      const id = {!! json_encode(old('edit_id')) !!};
-      if (editForm) editForm.action = '/admin/categories/' + encodeURIComponent(id);
-      if (editIdInput) editIdInput.value = id;
-      @if(old('name'))
-        if (editNameInput) editNameInput.value = {!! json_encode(old('name')) !!};
-      @endif
-      @if(old('role_id'))
-        if (editRoleSelect) editRoleSelect.value = {!! json_encode(old('role_id')) !!};
-      @endif
-      @if(old('description'))
-        if (editDesc) editDesc.value = {!! json_encode(old('description')) !!};
-      @endif
-      showEditModal();
-    });
-  @endif
-
-})();
 (function(){
   const openBtn = document.getElementById('openAddCategoryModal');
   const modal = document.getElementById('addCategoryModal');

@@ -10,16 +10,6 @@ use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\CategoriesController;
 
-// Route aliases: support deployments that expose the app under "/public" (e.g. example.com/public/...)
-// Redirect requests from /admin/... to /public/admin/... so both paths are available to clients.
-// These aliases are intentionally simple redirects (302) so the canonical routes remain the single source of truth.
-Route::any('/admin', function () {
-    return redirect('/public/admin');
-});
-Route::any('/admin/{any}', function ($any) {
-    return redirect('/public/admin/' . $any);
-})->where('any', '.*');
-
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
     if (Auth::check()) {
@@ -199,23 +189,6 @@ Route::middleware('auth')->group(function () {
 
         // delete ticket
         Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
-    });
-
-    // Route aliases under /public for hosts that expose the app via the project root (example.com/public/...)
-    // These are duplicate (alias) routes that point to the same controller methods but are registered under /public/admin/...
-    // They do not replace named routes — they exist to make clients that request /public/... work without server rewrites.
-    Route::prefix('public/admin/tickets')->group(function () {
-        Route::get('/list', [\App\Http\Controllers\AdminTicketsController::class, 'list']);
-        Route::get('/', function () {
-            $users = \App\Models\User::orderBy('name')->get(['id', 'name']);
-            $roles = \App\Models\Role::orderBy('name')->pluck('name');
-            return view('dashboards.admin.tickets.index', compact('users', 'roles'));
-        });
-        Route::get('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'show'])->whereNumber('ticket');
-        Route::post('/{ticket}/respond', [\App\Http\Controllers\AdminTicketsController::class, 'respond'])->whereNumber('ticket');
-        Route::post('/{ticket}/reroute', [\App\Http\Controllers\AdminTicketsController::class, 'reroute'])->whereNumber('ticket');
-        Route::put('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'update'])->whereNumber('ticket');
-        Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket');
     });
 
     // Admin category management (CRUD)
