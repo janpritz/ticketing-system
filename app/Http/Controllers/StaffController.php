@@ -19,7 +19,13 @@ class StaffController extends Controller
     // Staff-related methods can be added here in the future
     public function index()
     {
-        $user = Auth::user();
+        // Redirect Primary Administrator away from the staff dashboard
+        $auth = Auth::user();
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        $user = $auth;
 
         // Aggregate ticket stats for this staff member
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
@@ -201,7 +207,13 @@ class StaffController extends Controller
      */
     public function data(Request $request)
     {
-        $user = Auth::user();
+        $auth = Auth::user();
+        // Block Primary Administrator from the staff dashboard data endpoint
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $user = $auth;
         $viewAll = filter_var($request->query('viewAll', 'false'), FILTER_VALIDATE_BOOLEAN);
 
         // KPI counts (across all statuses)
