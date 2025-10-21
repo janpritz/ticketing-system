@@ -29,8 +29,7 @@ Route::get('/sw.js', function () {
     return response()->file(base_path('sw.js'), [
         'Content-Type' => 'application/javascript',
     ]);
-});
-
+})->name('sw');
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
