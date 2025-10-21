@@ -116,11 +116,21 @@ class TicketController extends Controller
             $subscriptionPath = 'push_subscriptions/user-' . $ticket->staff_id . '.json';
             if (Storage::exists($subscriptionPath)) {
                 try {
+                    // Provide both top-level url/ticket_id and a data block so different clients/service-worker payload formats
+                    // will consistently receive the destination and ticket identifier.
                     $payload = [
-                        'title' => 'You have received a new ticket',
+                        'title'     => 'You have received a new ticket',
                         // Use the ticket's question/message as the notification body
-                        'body'  => $ticket->question,
-                        'data'  => ['url' => '/staff/dashboard', 'ticket_id' => $ticket->id]
+                        'body'      => $ticket->question,
+                        // Absolute URL to staff dashboard (so clients receive a fully-qualified URL)
+                        'url'       => url('/staff/dashboard'),
+                        // Top-level ticket id for convenience
+                        'ticket_id' => $ticket->id,
+                        // Keep data block for clients expecting a `data` object
+                        'data'      => [
+                            'url'       => url('/staff/dashboard'),
+                            'ticket_id' => $ticket->id
+                        ],
                     ];
 
                     // Attempt to deliver via PushService and log result details for production audit.

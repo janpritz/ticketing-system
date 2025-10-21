@@ -780,6 +780,38 @@ function renderWeekly(wt) {
         //  - a CRUD operation in any tab sets localStorage.ts_tickets_changed
         //  - the current tab becomes visible AND a change was recorded
         fetchData();
+
+        // If the page was opened with a ticket_id query param (from a push), attempt to open the ticket modal.
+        (function openTicketFromQuery() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const ticketId = params.get('ticket_id');
+                if (!ticketId) return;
+
+                // Try to open the modal as soon as the ticket is present in ticketsMap.
+                // ticketsMap is populated by fetchData(); poll briefly until available.
+                let attempts = 0;
+                const maxAttempts = 20;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (ticketsMap && ticketsMap.has(String(ticketId))) {
+                        const t = ticketsMap.get(String(ticketId));
+                        try { openModalFrom(t); } catch (e) { /* ignore */ }
+                        // Remove ticket_id from URL so reloading doesn't reopen modal
+                        try {
+                            const newSearch = window.location.search.replace(/([?&])ticket_id=[^&]*(&|$)/, (m, p1, p2) => p2 ? p1 : '');
+                            history.replaceState(null, '', window.location.pathname + newSearch);
+                        } catch (_) {}
+                        clearInterval(interval);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                    }
+                }, 300);
+            } catch (e) {
+                // ignore
+            }
+        })();
+
         // Cross-tab notification: refresh when other tabs set the flag
         window.addEventListener('storage', (e) => {
             if (e && e.key === 'ts_tickets_changed') {

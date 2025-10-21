@@ -15,26 +15,6 @@
         <div class="mt-8">
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
-                    <!-- Success Message -->
-                    @if (session('success'))
-                        <div class="rounded-md bg-green-50 p-4 mb-6">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-green-800">
-                                        {{ session('success') }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
 
                     <!-- Error Message -->
                     @if ($errors->any())
@@ -179,15 +159,14 @@
 
                     <div id="ajaxResponse" class="mt-4"></div>
 
+                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                     <script>
                         document.addEventListener('DOMContentLoaded', function () {
                             const form = document.getElementById('ticketForm');
-                            const responseContainer = document.getElementById('ajaxResponse');
                             const submitBtn = document.getElementById('submitTicketBtn');
 
                             form.addEventListener('submit', async function (e) {
                                 e.preventDefault();
-                                responseContainer.innerHTML = '';
                                 submitBtn.disabled = true;
 
                                 const payload = {
@@ -211,38 +190,38 @@
                                     const json = await res.json();
 
                                     if (res.ok) {
-                                        // Success UI
-                                        let successHtml = '<div class="rounded-md bg-green-50 p-4 mb-6"><div class="flex"><div class="flex-shrink-0"><svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div><div class="ml-3"><p class="text-sm font-medium text-green-800">Ticket created successfully! Please wait for a response, which will be sent to your email.</p></div></div></div>';
-                                        responseContainer.innerHTML = successHtml;
-
-                                        // Optionally show assigned staff id if present
-                                        if (json && json.staff_id) {
-                                            responseContainer.innerHTML += '<p class="text-sm text-gray-600">Assigned staff ID: ' + json.staff_id + '</p>';
-                                        }
-
-                                        // Reset question field
-                                        document.getElementById('question').value = '';
+                                        // On success redirect to My Tickets (include recepient_id as query param)
+                                        const redirectUrl = '/tickets?recepient_id=' + encodeURIComponent(payload.recepient_id);
+                                        window.location.href = redirectUrl;
                                     } else {
-                                        // Show validation / API errors
-                                        let errHtml = '<div class="rounded-md bg-red-50 p-4 mb-6"><div class="flex"><div class="ml-3"><div class="text-sm text-red-800">';
+                                        // Build a readable HTML message for SweetAlert
+                                        let messageHtml = '';
                                         if (json && json.errors) {
-                                            errHtml += '<ul class="list-disc pl-5 space-y-1">';
+                                            messageHtml += '<ul style="text-align:left;">';
                                             Object.keys(json.errors).forEach(function (k) {
                                                 json.errors[k].forEach(function (m) {
-                                                    errHtml += '<li>' + m + '</li>';
+                                                    messageHtml += '<li>' + m + '</li>';
                                                 });
                                             });
-                                            errHtml += '</ul>';
+                                            messageHtml += '</ul>';
                                         } else if (json && json.error) {
-                                            errHtml += '<p>' + (json.error || 'An error occurred') + '</p>';
+                                            messageHtml = '<p>' + (json.error || 'An error occurred') + '</p>';
                                         } else {
-                                            errHtml += '<p>An error occurred while creating the ticket.</p>';
+                                            messageHtml = '<p>An error occurred while creating the ticket.</p>';
                                         }
-                                        errHtml += '</div></div></div></div>';
-                                        responseContainer.innerHTML = errHtml;
+
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Failed to create ticket',
+                                            html: messageHtml,
+                                        });
                                     }
                                 } catch (err) {
-                                    responseContainer.innerHTML = '<div class="rounded-md bg-red-50 p-4 mb-6"><p class="text-sm text-red-800">Network error: ' + (err.message || 'unknown') + '</p></div>';
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Network error',
+                                        text: err && err.message ? err.message : 'Unknown network error'
+                                    });
                                 } finally {
                                     submitBtn.disabled = false;
                                 }
