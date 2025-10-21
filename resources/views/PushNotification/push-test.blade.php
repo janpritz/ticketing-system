@@ -49,7 +49,7 @@
     <script>
         // Register service worker relative to current path so it resolves correctly
         // when the app is served under a subpath like /public/.
-        navigator.serviceWorker.register('sw.js', {
+        navigator.serviceWorker.register("{{ url('sw.js') }}", {
             scope: './'
         });
 
@@ -85,7 +85,7 @@
             const body = { subscription: payload };
 
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('staff/push/subscribe', body)
+                window.axios.post("{{ route('push.subscribe') }}", body)
                     .then(function (response) {
                         console.log('Subscription saved', response.data);
                     })
@@ -94,7 +94,7 @@
                     });
             } else {
                 // Fallback to fetch (include CSRF token)
-                fetch('staff/push/subscribe', {
+                fetch("{{ route('push.subscribe') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -112,7 +112,7 @@
 
         function sendNotification() {
             if (window.axios && typeof window.axios.post === 'function') {
-                window.axios.post('staff/push/send', {
+                window.axios.post("{{ route('push.send') }}", {
                     title: document.getElementById('title').value,
                     body: document.getElementById('body').value,
                     idOfProduct: document.getElementById('idOfProduct').value
@@ -125,7 +125,7 @@
                 });
             } else {
                 // Fallback to fetch if axios isn't available
-                fetch('staff/push/send', {
+                fetch("{{ route('push.send') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

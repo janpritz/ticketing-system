@@ -117,11 +117,45 @@ class TicketController extends Controller
                     'body'  => 'A new ticket (ID: ' . $ticket->id . ') has been assigned to you.',
                     'data'  => ['url' => '/staff/dashboard']
                 ];
-                // Use the PushService to deliver the notification (non-blocking on failure)
-                app(\App\Services\PushService::class)->sendToUser($ticket->staff_id, $payload);
+
+                // Attempt to deliver via PushService and log result details for production audit.
+                $pushService = app(\App\Services\PushService::class);
+                $results = $pushService->sendToUser($ticket->staff_id, $payload);
+
+                if (empty($results)) {
+                    // No subscription found or nothing to send
+                    Log::info('PushService: no subscription found for user ' . $ticket->staff_id . ' when assigning ticket ' . $ticket->id);
+                } else {
+                    // Results may be an array of reports; log any failures for investigation.
+                    foreach ($results as $report) {
+                        // Report may be nested arrays when sendToSubscription aggregates multiple results.
+                        if (is_array($report)) {
+                            // If a single report structure
+                            if (isset($report['success'])) {
+                                if (!$report['success']) {
+                                    Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' reason=' . ($report['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                } else {
+                                    Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                }
+                            } else {
+                                // Possibly an array of report arrays
+                                foreach ($report as $r) {
+                                    if (isset($r['success']) && !$r['success']) {
+                                        Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' reason=' . ($r['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                    } elseif (isset($r['success'])) {
+                                        Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Unexpected report format — stringify for diagnostics
+                            Log::info('PushService: push report for user ' . $ticket->staff_id . ' ticket=' . $ticket->id . ' report=' . json_encode($report));
+                        }
+                    }
+                }
             } catch (\Throwable $e) {
                 // Log and continue — notification failure must not block ticket creation
-                Log::warning('Push send failed for ticket assignment: ' . $e->getMessage());
+                Log::warning('Push send failed for ticket assignment (exception): ' . $e->getMessage() . ' ticket=' . $ticket->id . ' staff=' . $ticket->staff_id);
             }
         }
         
@@ -131,7 +165,12 @@ class TicketController extends Controller
         }
         
         // For web requests, redirect to index page with success message
-        return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
+        // Include the assigned staff id in the session so the client can optionally trigger
+        // a follow-up notification (useful when subscriptions are managed via the web UI).
+        return redirect()
+            ->route('tickets.index', ['recepient_id' => $request->recepient_id])
+            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.')
+            ->with('assigned_staff_id', $ticket->staff_id);
     }
 
 
