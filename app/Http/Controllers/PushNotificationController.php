@@ -45,7 +45,11 @@ class PushNotificationController extends Controller
 
         $notifications = PushNotification::all();
 
-        // Iterate stored subscriptions and send the payload to each.
+        // Avoid sending duplicate notifications to the same endpoint:
+        // collect endpoints we've already queued/sent in this request.
+        $sentEndpoints = [];
+
+        // Iterate stored subscriptions and send the payload to each unique endpoint.
         foreach ($notifications as $notification) {
             // Prefer the singular 'subscription' column (new), fallback to legacy 'subscriptions'
             $subs = $notification->subscription ?? $notification->subscriptions ?? $notification['subscription'] ?? $notification['subscriptions'] ?? null;
@@ -53,27 +57,53 @@ class PushNotificationController extends Controller
                 continue;
             }
 
-            // Normalize subscription payload (it should be an associative array with 'endpoint')
+            // Normalize subscription payload (could be a single subscription or an array of subscriptions)
             $subPayload = is_string($subs) ? json_decode($subs, true) : $subs;
-            if (is_array($subPayload) && array_key_exists('endpoint', $subPayload) === false) {
-                // If the payload is an array of subscriptions, try to pick the first that looks valid
+            if ($subPayload === null) {
+                // invalid JSON or payload
+                continue;
+            }
+
+            // Build a list of candidate subscription objects/arrays to send to
+            $candidates = [];
+
+            if (is_array($subPayload) && array_key_exists('endpoint', $subPayload)) {
+                // single subscription represented as associative array
+                $candidates[] = $subPayload;
+            } elseif (is_object($subPayload) && property_exists($subPayload, 'endpoint')) {
+                $candidates[] = (array) $subPayload;
+            } elseif (is_array($subPayload)) {
+                // array of subscriptions: filter those that have an endpoint
                 foreach ($subPayload as $candidate) {
-                    if (is_array($candidate) && array_key_exists('endpoint', $candidate)) {
-                        $subPayload = $candidate;
-                        break;
+                    if ((is_array($candidate) && array_key_exists('endpoint', $candidate)) ||
+                        (is_object($candidate) && property_exists($candidate, 'endpoint'))) {
+                        $candidates[] = is_object($candidate) ? (array) $candidate : $candidate;
                     }
                 }
             }
 
-            try {
-                $webPush->sendOneNotification(
-                    Subscription::create($subPayload),
-                    $payload,
-                    ['TTL' => 5000]
-                );
-            } catch (\Throwable $e) {
-                // Log and continue with other subscriptions (don't stop the entire loop)
-                Log::error('Push send failed for subscription id=' . $notification->id . ' : ' . $e->getMessage());
+            foreach ($candidates as $subItem) {
+                $endpoint = $subItem['endpoint'] ?? null;
+                if (!$endpoint) {
+                    continue;
+                }
+                // Skip duplicates
+                if (in_array($endpoint, $sentEndpoints, true)) {
+                    continue;
+                }
+
+                try {
+                    $webPush->sendOneNotification(
+                        Subscription::create($subItem),
+                        $payload,
+                        ['TTL' => 5000]
+                    );
+                    // Mark endpoint as sent so we don't send again in this request
+                    $sentEndpoints[] = $endpoint;
+                } catch (\Throwable $e) {
+                    // Log and continue with other subscriptions (don't stop the entire loop)
+                    Log::error('Push send failed for subscription id=' . $notification->id . ' endpoint=' . ($endpoint ?? 'unknown') . ' : ' . $e->getMessage());
+                }
             }
         }
 
