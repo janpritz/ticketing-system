@@ -170,7 +170,8 @@ class TicketController extends Controller
         
         // For API requests, return JSON
         if ($request->wantsJson()) {
-            return response()->json($ticket, 201);
+            // Include assigned staff explicitly for client-side flows (AJAX form)
+            return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
         }
         
         // For web requests, redirect to index page with success message

@@ -64,8 +64,8 @@
                         </div>
                     @endif
 
-                    <!-- Ticket Creation Form -->
-                    <form action="{{ route('tickets.store') }}" method="POST" class="space-y-6">
+                    <!-- Ticket Creation Form (AJAX submission) -->
+                    <form id="ticketForm" action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate>
                         @csrf
 
                         <div>
@@ -85,7 +85,6 @@
                                     required value="{{ old('email') }}">
                             </div>
                         </div>
-
 
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
@@ -171,12 +170,85 @@
                         </div>
 
                         <div class="flex items-center justify-end">
-                            <button type="submit"
+                            <button id="submitTicketBtn" type="submit"
                                 class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Create Ticket
                             </button>
                         </div>
                     </form>
+
+                    <div id="ajaxResponse" class="mt-4"></div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const form = document.getElementById('ticketForm');
+                            const responseContainer = document.getElementById('ajaxResponse');
+                            const submitBtn = document.getElementById('submitTicketBtn');
+
+                            form.addEventListener('submit', async function (e) {
+                                e.preventDefault();
+                                responseContainer.innerHTML = '';
+                                submitBtn.disabled = true;
+
+                                const payload = {
+                                    recepient_id: document.getElementById('recepient_id').value,
+                                    email: document.getElementById('email').value,
+                                    category: document.getElementById('category').value,
+                                    question: document.getElementById('question').value
+                                };
+
+                                try {
+                                    const res = await fetch(form.action, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                        },
+                                        body: JSON.stringify(payload)
+                                    });
+
+                                    const json = await res.json();
+
+                                    if (res.ok) {
+                                        // Success UI
+                                        let successHtml = '<div class="rounded-md bg-green-50 p-4 mb-6"><div class="flex"><div class="flex-shrink-0"><svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div><div class="ml-3"><p class="text-sm font-medium text-green-800">Ticket created successfully! Please wait for a response, which will be sent to your email.</p></div></div></div>';
+                                        responseContainer.innerHTML = successHtml;
+
+                                        // Optionally show assigned staff id if present
+                                        if (json && json.staff_id) {
+                                            responseContainer.innerHTML += '<p class="text-sm text-gray-600">Assigned staff ID: ' + json.staff_id + '</p>';
+                                        }
+
+                                        // Reset question field
+                                        document.getElementById('question').value = '';
+                                    } else {
+                                        // Show validation / API errors
+                                        let errHtml = '<div class="rounded-md bg-red-50 p-4 mb-6"><div class="flex"><div class="ml-3"><div class="text-sm text-red-800">';
+                                        if (json && json.errors) {
+                                            errHtml += '<ul class="list-disc pl-5 space-y-1">';
+                                            Object.keys(json.errors).forEach(function (k) {
+                                                json.errors[k].forEach(function (m) {
+                                                    errHtml += '<li>' + m + '</li>';
+                                                });
+                                            });
+                                            errHtml += '</ul>';
+                                        } else if (json && json.error) {
+                                            errHtml += '<p>' + (json.error || 'An error occurred') + '</p>';
+                                        } else {
+                                            errHtml += '<p>An error occurred while creating the ticket.</p>';
+                                        }
+                                        errHtml += '</div></div></div></div>';
+                                        responseContainer.innerHTML = errHtml;
+                                    }
+                                } catch (err) {
+                                    responseContainer.innerHTML = '<div class="rounded-md bg-red-50 p-4 mb-6"><p class="text-sm text-red-800">Network error: ' + (err.message || 'unknown') + '</p></div>';
+                                } finally {
+                                    submitBtn.disabled = false;
+                                }
+                            });
+                        });
+                    </script>
                 </div>
             </div>
         </div>
