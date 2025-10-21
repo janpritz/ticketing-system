@@ -14,11 +14,14 @@
 
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
     
-    <!-- Favicons: provide both PNG sizes and a fallback favicon.ico -->
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('logo.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('logo.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('logo.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('logo.png') }}">
+    <!-- Favicons & PWA manifest: use homescreen icon for add-to-home and modern platforms -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('homescreen-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('homescreen-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('homescreen-icon.png') }}">
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <meta name="theme-color" content="#184c1c">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600&display=swap" rel="stylesheet" />
