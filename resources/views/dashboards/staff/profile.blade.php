@@ -164,29 +164,44 @@
                     </div>
                 </div>
 
-                <!-- Push Notifications -->
                 <div id="pushNotificationCard" class="mt-6 bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
-                    <h2 class="text-sm font-semibold text-gray-800 mb-2">Push Notifications</h2>
-                    <p class="text-xs text-gray-500 mb-3">Enable browser & mobile push notifications to receive ticket
-                        updates and important alerts.</p>
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-gray-700">Push Notification Test</h2>
-                            <button onclick="askForPermission()"
-                                class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-                                Enable Notification
-                            </button>
-                        </div>
-                        <button id="testPushBtn" type="button"
-                            class="inline-flex items-center rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-300">
-                            Send Test Push
+                    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-gray-700">Push Notification Test</h2>
+                        <button onclick="askForPermission()"
+                            class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                            Enable Notification
                         </button>
-                        <div id="pushStatus" class="text-sm text-gray-600">Status: <span id="pushStatusText"
-                                class="font-medium">Not enabled</span></div>
                     </div>
-                    <p class="text-[11px] text-gray-400 mt-2">Supported on modern browsers (desktop & mobile). You will be
-                        asked to give permission and, when applicable, register a service worker for background delivery.
-                    </p>
+                    <div class="p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for='title' class="block text-sm font-medium text-gray-700">{{ __('title') }}</label>
+                                <input type='text'
+                                    class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
+                                    id='title' name='title'>
+                            </div>
+                            <div>
+                                <label for='body' class="block text-sm font-medium text-gray-700">{{ __('body') }}</label>
+                                <input type='text'
+                                    class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
+                                    id='body' name='body'>
+                            </div>
+                            <div>
+                                <label for='idOfProduct'
+                                    class="block text-sm font-medium text-gray-700">{{ __('ID Of Product') }}</label>
+                                <input type='text'
+                                    class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
+                                    id='idOfProduct' name='idOfProduct'>
+                            </div>
+                            <div class="flex items-end">
+                                <div>
+                                    <input type="button" value="{{ 'Send Notification' }}" onclick="sendNotification()"
+                                        class="inline-flex items-center bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2" />
+                                    <p class="mt-2 text-xs text-gray-500">Please enable push notifications before sending.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -219,15 +234,24 @@
                     };
                     reader.readAsDataURL(file);
                 });
+            // Push notifications: copied from PushNotification/push-test.blade.php
+            // Register service worker relative to current path so it resolves correctly
+            // when the app is served under a subpath like /public/.
+            try {
+                navigator.serviceWorker.register("{{ url('sw.js') }}", {
+                    scope: './'
+                });
+            } catch (e) {
+                // ignore registration errors here; SW may already be registered or unavailable
+                console.warn('Service worker registration (profile) failed', e);
             }
-            // --- copied enable/subscribe logic from PushNotification/push-test.blade.php ---
+
             function askForPermission() {
                 Notification.requestPermission().then((permission) => {
                     if (permission === 'granted') {
                         // get service worker
                         navigator.serviceWorker.ready.then((sw) => {
-                            // subscribe; some browsers expect a Uint8Array for the key,
-                            // but the backend accepts both shapes. Using raw VAPID here like push-test.
+                            // subscribe
                             sw.pushManager.subscribe({
                                 userVisibleOnly: true,
                                 applicationServerKey: '{{ env('PUBLIC_KEY') }}'
@@ -236,26 +260,27 @@
                                     console.log(JSON.stringify(subscription));
                                 } catch (_) {}
                                 saveSub(JSON.stringify(subscription));
-                            }).catch(err => {
+                            }).catch(function (err) {
                                 console.error('Push subscription failed', err);
-                                if (statusText) statusText.textContent = 'Error';
+                                alert('Push subscription failed: ' + (err && err.message ? err.message : 'unknown'));
                             });
-                        }).catch(err => {
+                        }).catch(function (err) {
                             console.error('Service worker ready failed', err);
-                            if (statusText) statusText.textContent = 'Error';
+                            alert('Service worker not ready: ' + (err && err.message ? err.message : 'unknown'));
                         });
                     } else {
-                        if (statusText) statusText.textContent = permission === 'denied' ? 'Blocked' :
-                            'Not enabled';
+                        // Permission was denied or dismissed - no action required
+                        console.info('Notification permission result:', permission);
                     }
                 }).catch(err => {
                     console.error('Permission request failed', err);
-                    if (statusText) statusText.textContent = 'Error';
+                    alert('Permission request failed: ' + (err && err.message ? err.message : 'unknown'));
                 });
             }
 
-            // Save subscription to DB (accepts JSON string or object)
+            // Save subscription to DB
             function saveSub(sub) {
+                // sub may be a JSON-stringified subscription or an object
                 let payload;
                 try {
                     payload = (typeof sub === 'string') ? JSON.parse(sub) : sub;
@@ -264,141 +289,68 @@
                     return;
                 }
 
-                const body = {
-                    subscription: payload
-                };
+                const body = { subscription: payload };
 
                 if (window.axios && typeof window.axios.post === 'function') {
                     window.axios.post("{{ route('push.subscribe') }}", body)
-                        .then(function(response) {
+                        .then(function (response) {
                             console.log('Subscription saved', response.data);
-                            if (statusText) statusText.textContent = 'Enabled';
-                            if (enableBtn) enableBtn.disabled = true;
+                            // Optionally show a small success hint
+                            try { alert('Push subscription saved'); } catch (_) {}
                         })
-                        .catch(function(error) {
+                        .catch(function (error) {
                             console.error('Failed to save subscription via axios:', error);
-                            if (statusText) statusText.textContent = 'Error';
+                            alert('Failed to save subscription');
                         });
                 } else {
                     // Fallback to fetch (include CSRF token)
                     fetch("{{ route('push.subscribe') }}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-                            body: JSON.stringify(body)
-                        })
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify(body)
+                    })
                         .then(r => r.json())
                         .then(data => {
                             console.log('Subscription saved (fetch)', data);
-                            if (statusText) statusText.textContent = 'Enabled';
-                            if (enableBtn) enableBtn.disabled = true;
+                            try { alert('Push subscription saved'); } catch (_) {}
                         })
                         .catch(err => {
                             console.error('Failed to save subscription via fetch:', err);
-                            if (statusText) statusText.textContent = 'Error';
+                            alert('Failed to save subscription');
                         });
                 }
             }
 
-            // Proactively ensure the service worker is registered (no permission prompt required)
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistration().then(function(reg) {
-                    if (!reg) {
-                        registerServiceWorker().catch(function(e) {
-                            console.warn('SW registration failed', e);
-                        });
-                    }
-                }).catch(function(e) {
-                    console.warn('SW getRegistration failed', e);
-                });
-            }
-
-            const testPushBtn = document.getElementById('testPushBtn');
-
-            if (enableBtn) {
-                // Use the copied askForPermission flow tied to the Enable button
-                enableBtn.addEventListener('click', askForPermission);
-            }
-            if (testPushBtn) {
-                testPushBtn.addEventListener('click', async function() {
-                    try {
-                        if (!('Notification' in window)) {
-                            alert('Notifications are not supported by this browser.');
-                            return;
-                        }
-
-                        // Ensure permission and an active subscription before sending a test push
-                        if (Notification.permission !== 'granted') {
-                            await subscribeUser();
-                            if (Notification.permission !== 'granted') {
-                                alert(
-                                    'Please click "Enable Push Notifications" and allow permission first.');
-                                return;
-                            }
-                        }
-
-                        // Double-check service worker registration and subscription exist
-                        const reg = await navigator.serviceWorker.getRegistration() ||
-                            await registerServiceWorker();
-                        let sub = reg ? await reg.pushManager.getSubscription() : null;
-                        if (!sub) {
-                            if (!publicVapidKey) {
-                                console.error('VAPID public key missing; cannot subscribe.');
-                                alert('VAPID key missing; contact administrator.');
-                                return;
-                            }
-                            sub = await reg.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-                            });
-                            await sendSubscriptionToServer(sub);
-                        }
-
-                        const res = await fetch('{{ route('push.send') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            credentials: 'same-origin',
-                            body: JSON.stringify({
-                                title: 'Test notification',
-                                body: 'Push is working!',
-                                data: {
-                                    url: '/staff/dashboard'
-                                }
-                            })
-                        });
-                        if (!res.ok) {
-                            try {
-                                console.warn('Test push failed', await res.text());
-                            } catch (_) {}
-                            alert('Test push failed. Check server logs.');
-                        } else {
-                            alert(
-                                'Test push sent. If permission is granted and SW is active, a notification should appear.');
-                        }
-                    } catch (e) {
-                        console.error('Test push error', e);
-                        alert('Network or permission error while sending test push.');
-                    }
-                });
-            }
-
-            // Initialize UI state
-            if (statusText) {
-                if (!('Notification' in window)) {
-                    statusText.textContent = 'Not supported';
-                    if (enableBtn) enableBtn.disabled = true;
-                } else if (Notification.permission === 'granted') {
-                    statusText.textContent = 'Enabled';
-                    if (enableBtn) enableBtn.disabled = true;
-                } else if (Notification.permission === 'denied') {
-                    statusText.textContent = 'Blocked';
+            function sendNotification() {
+                if (window.axios && typeof window.axios.post === 'function') {
+                    window.axios.post("{{ route('push.send') }}", {
+                        title: document.getElementById('title').value,
+                        body: document.getElementById('body').value,
+                        idOfProduct: document.getElementById('idOfProduct').value
+                    }).then(function (response) {
+                        alert('Send successful');
+                        console.log(response.data);
+                    }).catch(function (error) {
+                        console.error('Send failed:', error);
+                        alert('Send failed');
+                    });
                 } else {
-                    statusText.textContent = 'Not enabled';
+                    // Fallback to fetch if axios isn't available
+                    fetch("{{ route('push.send') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            title: document.getElementById('title').value,
+                            body: document.getElementById('body').value,
+                            idOfProduct: document.getElementById('idOfProduct').value
+                        })
+                    }).then(r => r.json()).then(data => { alert('Send successful'); console.log(data); }).catch(err => { console.error(err); alert('Send failed'); });
                 }
             }
         })();
