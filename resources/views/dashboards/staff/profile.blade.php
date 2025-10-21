@@ -353,6 +353,6 @@
                     }).then(r => r.json()).then(data => { alert('Send successful'); console.log(data); }).catch(err => { console.error(err); alert('Send failed'); });
                 }
             }
-        })();
+        }();
     </script>
 @endsection
