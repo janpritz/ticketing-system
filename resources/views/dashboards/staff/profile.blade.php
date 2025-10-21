@@ -277,6 +277,8 @@
                     alert('Permission request failed: ' + (err && err.message ? err.message : 'unknown'));
                 });
             }
+            // expose to global scope so inline onclick handlers work
+            window.askForPermission = askForPermission;
 
             // Save subscription to DB
             function saveSub(sub) {
@@ -353,6 +355,8 @@
                     }).then(r => r.json()).then(data => { alert('Send successful'); console.log(data); }).catch(err => { console.error(err); alert('Send failed'); });
                 }
             }
+            // expose to global scope so inline onclick handlers work
+            window.sendNotification = sendNotification;
         }();
     </script>
 @endsection
