@@ -120,14 +120,13 @@ class TicketController extends Controller
                 try {
                     // Provide both top-level url/ticket_id and a data block so different clients/service-worker payload formats
                     // will consistently receive the destination and ticket identifier.
-                    // Build an absolute URL that points to the dedicated staff ticket page so
-                    // clicking the push notification opens the ticket in a new tab.
-                    $ticketUrl = url('/staff/tickets/' . $ticket->id);
+                    // Build an absolute URL that points to the ticket page so clicking opens {APP_URL}/tickets/{ticket_id}
+                    $ticketUrl = url('/tickets/' . $ticket->id);
                     $payload = [
                         'title'     => 'You have received a new ticket',
                         // Use the ticket's question/message as the notification body
                         'body'      => $ticket->question,
-                        // Absolute URL to the staff ticket detail page
+                        // Absolute URL to the ticket page
                         'url'       => $ticketUrl,
                         // Top-level ticket id for convenience
                         'ticket_id' => $ticket->id,

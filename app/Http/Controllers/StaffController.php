@@ -317,10 +317,17 @@ class StaffController extends Controller
         // Send push to the newly assigned staff if available (non-blocking)
         if ($newStaff && $newStaff->id) {
             try {
+                // Push notification to the newly assigned staff with direct link to ticket details
+                $ticketUrl = url('/tickets/' . $ticket->id);
                 $payload = [
-                    'title' => 'Ticket rerouted to you',
-                    'body'  => 'Ticket #' . $ticket->id . ' has been rerouted to you.',
-                    'data'  => ['url' => '/staff/dashboard']
+                    'title'     => 'A ticket is assigned to you',
+                    'body'      => $ticket->question,
+                    'url'       => $ticketUrl,
+                    'ticket_id' => $ticket->id,
+                    'data'      => [
+                        'url'       => $ticketUrl,
+                        'ticket_id' => $ticket->id
+                    ],
                 ];
                 app(\App\Services\PushService::class)->sendToUser($newStaff->id, $payload);
             } catch (\Throwable $e) {

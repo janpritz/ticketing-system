@@ -40,6 +40,11 @@ Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('gu
 Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
 Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
+Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
+    ->whereNumber('ticket')
+    ->middleware('auth')
+    ->name('tickets.show');
+
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
 Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');

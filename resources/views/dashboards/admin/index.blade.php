@@ -281,12 +281,10 @@
                         <tbody id="openListBody" class="divide-y divide-gray-100">
                             @forelse(($openList ?? []) as $t)
                             @php
-                            $year = \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y');
-                            $ticketNo = 'T-' . $year . '-' . str_pad($t->id, 4, '0', STR_PAD_LEFT);
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="py-3 pl-5 pr-3 align-top">
-                                    <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
+                                    <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
                                         {{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y-m-d h:i a') }}
                                     </div>
@@ -340,12 +338,10 @@
                         <tbody id="inProgressListBody" class="divide-y divide-gray-100">
                             @forelse(($inProgressList ?? []) as $t)
                             @php
-                            $year = \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y');
-                            $ticketNo = 'T-' . $year . '-' . str_pad($t->id, 4, '0', STR_PAD_LEFT);
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="py-3 pl-5 pr-3 align-top">
-                                    <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
+                                    <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
                                         Updated {{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('Y-m-d h:i a') }}
                                     </div>
@@ -711,8 +707,7 @@
             const tbody = document.getElementById('openListBody');
             if (!tbody) return;
             const rows = Array.isArray(list) ? list.map(t => {
-                const year = t.date_created ? new Date(t.date_created).getFullYear() : (t.created_at ? new Date(t.created_at).getFullYear() : new Date().getFullYear());
-                const ticketNo = `T-${year}-${adminPad(t.id, 4)}`;
+                const ticketNo = String(t.id);
                 const createdAt = adminFmtDate(t.date_created || t.created_at);
                 const email = t.email || '—';
                 const category = t.category || '';
@@ -747,8 +742,7 @@
             const tbody = document.getElementById('inProgressListBody');
             if (!tbody) return;
             const rows = Array.isArray(list) ? list.map(t => {
-                const year = t.date_created ? new Date(t.date_created).getFullYear() : (t.created_at ? new Date(t.created_at).getFullYear() : new Date().getFullYear());
-                const ticketNo = `T-${year}-${adminPad(t.id, 4)}`;
+                const ticketNo = String(t.id);
                 const updatedAt = adminFmtDate(t.updated_at || t.date_created || t.created_at);
                 const email = t.email || '—';
                 const staffName = t.staff && t.staff.name ? `Staff: ${t.staff.name}` : '';
@@ -1008,7 +1002,7 @@
   async function loadAndShowTicket(id){
     if (!id) return;
     // Use /public prefix for deployments that serve the app under the public folder (e.g. example.com/public/...)
-    const url = "/public/admin/tickets/" + encodeURIComponent(id);
+    const url = "{{ url('/admin/tickets') }}/" + encodeURIComponent(id);
     try {
       const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
       if (!res.ok) {

@@ -247,13 +247,12 @@
 
                                     @forelse(($recentTickets ?? []) as $t)
                                     @php
-                                    $ticketNo = 'T-' . \Illuminate\Support\Carbon::parse($t->date_created)->format('Y') . '-' . str_pad($t->id, 4, '0', STR_PAD_LEFT);
                                     $style = $statusStyles[$t->status] ?? 'text-slate-700 bg-slate-50 ring-slate-600/20';
                                     @endphp
                                     <tr class="hover:bg-gray-50">
                                         <!-- Ticket -->
                                         <td class="py-4 pl-5 pr-3 align-top">
-                                            <div class="text-indigo-700 font-medium">{{ $ticketNo }}</div>
+                                            <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
                                             <div class="mt-1 text-xs text-gray-500">
                                                 {{ \Illuminate\Support\Carbon::parse($t->date_created)->format('Y-m-d h:i a') }}
                                             </div>
@@ -570,8 +569,7 @@
 
             // Build HTML rows
             const rows = tickets.map(t => {
-                const year = t.date_created ? new Date(t.date_created).getFullYear() : (new Date(t.created_at || Date.now())).getFullYear();
-                const ticketNo = `T-${year}-${pad(t.id, 4)}`;
+                const ticketNo = String(t.id);
                 const style = statusStyles[t.status] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
                 const updatedAt = fmtDate(t.updated_at);
                 const createdAt = fmtDate(t.date_created || t.created_at);
@@ -948,8 +946,7 @@ function renderWeekly(wt) {
 
         function openModalFrom(ticket) {
             if (!modalEl || !ticket) return;
-            const year = ticket.date_created ? new Date(ticket.date_created).getFullYear() : (new Date(ticket.created_at || Date.now())).getFullYear();
-            const ticketNo = `T-${year}-${pad(ticket.id, 4)}`;
+            const ticketNo = String(ticket.id);
             const createdAt = fmtDate(ticket.date_created || ticket.created_at);
             const updatedAt = fmtDate(ticket.updated_at);
             const category = ticket.category ?? '';

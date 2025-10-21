@@ -313,8 +313,7 @@
       return;
     }
     ticketsTbody.innerHTML = items.map(t => {
-      const year = t.date_created ? new Date(t.date_created).getFullYear() : (new Date().getFullYear());
-      const ticketNo = `T-${year}-${String(t.id).padStart(4,'0')}`;
+      const ticketNo = String(t.id);
       return `
         <tr class="hover:bg-gray-50">
           <td class="py-4 pl-5 pr-3">${ticketNo}</td>

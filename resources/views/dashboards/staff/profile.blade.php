@@ -144,7 +144,7 @@
                                     @forelse($recentTickets as $t)
                                         <tr class="hover:bg-gray-50">
                                             <td class="py-2 px-3">
-                                                T-{{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y') }}-{{ str_pad($t->id, 4, '0', STR_PAD_LEFT) }}
+                                                {{ $t->id }}
                                             </td>
                                             <td class="py-2 px-3">{{ $t->category ?? '-' }}</td>
                                             <td class="py-2 px-3">{{ $t->status }}</td>
@@ -154,7 +154,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="py-6 px-3 text-center text-sm text-gray-500">No recently closed tickets.</td>
+                                            <td colspan="4" class="py-6 px-3 text-center text-sm text-gray-500">No recently resolved tickets.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

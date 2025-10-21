@@ -22,7 +22,7 @@
                                     </td>
                                     <td align="right" style="vertical-align:middle;">
                                         <div style="font-size:12px;opacity:.85;">Response to your ticket</div>
-                                        <div style="font-size:12px;font-weight:600;">{{ $ticketNo ?? '' }}</div>
+                                        <div style="font-size:12px;font-weight:600;">{{ $ticket->id ?? '' }}</div>
                                     </td>
                                 </tr>
                             </table>
@@ -48,7 +48,7 @@
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:12px;color:#4b5563;">
                                     <tr>
                                         <td style="padding:6px 0;width:140px;color:#6b7280;">Ticket</td>
-                                        <td style="padding:6px 0;font-weight:600;color:#111827;">{{ $ticketNo ?? '' }}</td>
+                                        <td style="padding:6px 0;font-weight:600;color:#111827;">{{ $ticket->id ?? '' }}</td>
                                     </tr>
                                     <tr>
                                         <td style="padding:6px 0;color:#6b7280;">Status</td>
