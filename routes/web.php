@@ -26,16 +26,11 @@ Route::get('/', function () {
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
 Route::get('/sw.js', function () {
-    $path = public_path('sw.js');
-    if (!file_exists($path)) {
-        abort(404);
-    }
-    return response()->file($path, [
-        'Content-Type' => 'application/javascript; charset=utf-8',
-        'Service-Worker-Allowed' => '/',
-        'Cache-Control' => 'public, max-age=0, must-revalidate',
+    return response()->file(base_path('sw.js'), [
+        'Content-Type' => 'application/javascript',
     ]);
-})->name('sw');
+});
+
 
 Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
