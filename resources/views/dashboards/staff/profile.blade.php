@@ -129,7 +129,7 @@
                     </div>
 
                     <div>
-                        <div class="text-sm font-semibold text-gray-700 mb-2">Last 5 Tickets</div>
+                        <div class="text-sm font-semibold text-gray-700 mb-2">Last 5 Resolved Tickets</div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-50 text-gray-600">
@@ -149,13 +149,12 @@
                                             <td class="py-2 px-3">{{ $t->category ?? '-' }}</td>
                                             <td class="py-2 px-3">{{ $t->status }}</td>
                                             <td class="py-2 px-3">
-                                                {{ \Illuminate\Support\Carbon::parse($t->updated_at ?? $t->date_created)->format('Y-m-d h:i a') }}
+                                                {{ \Illuminate\Support\Carbon::parse($t->date_closed ?? $t->updated_at ?? $t->date_created)->format('Y-m-d h:i a') }}
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="py-6 px-3 text-center text-sm text-gray-500">No recent
-                                                tickets.</td>
+                                            <td colspan="4" class="py-6 px-3 text-center text-sm text-gray-500">No recently closed tickets.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -166,13 +165,13 @@
 
                 <div id="pushNotificationCard" class="mt-6 bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
                     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                        <h2 class="text-sm font-semibold text-gray-700">Push Notification Test</h2>
+                        <h2 class="text-sm font-semibold text-gray-700">Push Notifications</h2>
                         <button onclick="askForPermission()"
                             class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                             Enable Notification
                         </button>
                     </div>
-                    <div class="p-4">
+                    {{-- <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label for='title'
@@ -204,7 +203,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
                 </div>
             </div>
         </div>

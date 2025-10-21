@@ -164,38 +164,73 @@
             });
         });
 
-        // Add event listeners to all delete buttons
+        // Add event listeners to all delete buttons (SweetAlert2 confirmation)
         document.querySelectorAll('.delete-ticket-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const ticketId = this.getAttribute('data-id');
                 const category = this.getAttribute('data-category');
 
-                if (confirm(`Are you sure you want to delete the ticket "${category}"?`)) {
-                    // Create a form dynamically
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/tickets/${ticketId}`;
+                if (window.Swal) {
+                    Swal.fire({
+                        title: 'Delete ticket?',
+                        text: `Are you sure you want to delete the ticket "${category}"? This action cannot be undone.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Yes, delete',
+                        cancelButtonText: 'Cancel',
+                        reverseButtons: true,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Create a form dynamically
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = `/tickets/${ticketId}`;
 
-                    // Add CSRF token
-                    const csrfToken = document.createElement('input');
-                    csrfToken.type = 'hidden';
-                    csrfToken.name = '_token';
-                    csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    form.appendChild(csrfToken);
+                            // Add CSRF token
+                            const csrfToken = document.createElement('input');
+                            csrfToken.type = 'hidden';
+                            csrfToken.name = '_token';
+                            csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                            form.appendChild(csrfToken);
 
-                    // Add method field for DELETE
-                    const methodField = document.createElement('input');
-                    methodField.type = 'hidden';
-                    methodField.name = '_method';
-                    methodField.value = 'DELETE';
-                    form.appendChild(methodField);
+                            // Add method field for DELETE
+                            const methodField = document.createElement('input');
+                            methodField.type = 'hidden';
+                            methodField.name = '_method';
+                            methodField.value = 'DELETE';
+                            form.appendChild(methodField);
 
-                    // Submit the form
-                    try {
-                        localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                    } catch (e) {}
-                    document.body.appendChild(form);
-                    form.submit();
+                            // Submit the form
+                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    });
+                } else {
+                    // Fallback if SweetAlert2 is not available
+                    if (confirm(`Are you sure you want to delete the ticket "${category}"?`)) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = `/tickets/${ticketId}`;
+
+                        const csrfToken = document.createElement('input');
+                        csrfToken.type = 'hidden';
+                        csrfToken.name = '_token';
+                        csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                        form.appendChild(csrfToken);
+
+                        const methodField = document.createElement('input');
+                        methodField.type = 'hidden';
+                        methodField.name = '_method';
+                        methodField.value = 'DELETE';
+                        form.appendChild(methodField);
+
+                        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
                 }
             });
         });

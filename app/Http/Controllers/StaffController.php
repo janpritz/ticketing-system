@@ -65,7 +65,9 @@ class StaffController extends Controller
 
         $assignedCount = Ticket::where('staff_id', $user->id)->count();
         $resolvedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
+        // Last 5 closed tickets for activity list
         $recentTickets = Ticket::where('staff_id', $user->id)
+            ->where('status', 'Closed')
             ->orderByDesc('updated_at')
             ->take(5)
             ->get();
