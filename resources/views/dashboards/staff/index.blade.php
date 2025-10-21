@@ -119,8 +119,6 @@
                 </div>
             </div>
         </nav>
-
-
         <main>
             <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-12 gap-6">
@@ -389,10 +387,11 @@
 @endsection
 
 <!-- Ticket View Modal -->
-<div id="ticketModal" class="fixed inset-0 z-50 hidden">
+<div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
+    <!-- Centered panel with internal scrolling when content exceeds viewport -->
     <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
-        <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5">
+        <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 max-h-[90vh] overflow-auto">
             <div class="flex items-center justify-between px-5 py-4 border-b">
                 <div>
                     <div id="tmTicketNo" class="text-sm font-semibold text-gray-900">Ticket</div>
