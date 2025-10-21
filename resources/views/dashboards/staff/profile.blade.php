@@ -238,7 +238,7 @@
             }
 
             async function sendSubscriptionToServer(subscription) {
-                await fetch('{{ route('staff.push.subscribe') }}', {
+                await fetch('{{ route('push.subscribe') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -335,7 +335,7 @@
                             await sendSubscriptionToServer(sub);
                         }
 
-                        const res = await fetch('{{ route('staff.push.test') }}', {
+                        const res = await fetch('{{ route('push.send') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
