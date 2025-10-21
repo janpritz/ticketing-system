@@ -234,9 +234,10 @@
 
             async function registerServiceWorker() {
                 if (!('serviceWorker' in navigator)) throw new Error('Service workers not supported');
-                return navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                // Register via absolute URL so it works when the app is served from a subpath
+                return navigator.serviceWorker.register("{{ url('sw.js') }}", { scope: './' });
             }
-
+    
             async function sendSubscriptionToServer(subscription) {
                 await fetch('{{ route('push.subscribe') }}', {
                     method: 'POST',
@@ -248,46 +249,84 @@
                     body: JSON.stringify({ subscription })
                 });
             }
-
-            async function subscribeUser() {
-                try {
-                    if (!('Notification' in window)) {
-                        if (statusText) statusText.textContent = 'Not supported';
-                        return;
-                    }
-
-                    // Must be triggered by a user gesture to show the permission prompt
-                    const permission = await Notification.requestPermission();
-                    if (permission !== 'granted') {
-                        if (statusText) statusText.textContent = permission === 'denied' ? 'Blocked' : 'Not enabled';
-                        return;
-                    }
-
-                    const reg = await registerServiceWorker();
-
-                    let sub = await reg.pushManager.getSubscription();
-                    if (!sub) {
-                        if (!publicVapidKey) {
-                            console.error('VAPID_PUBLIC_KEY is not configured.');
-                            if (statusText) statusText.textContent = 'VAPID key missing';
-                            return;
-                        }
-                        sub = await reg.pushManager.subscribe({
-                            userVisibleOnly: true,
-                            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+    
+            // --- copied enable/subscribe logic from PushNotification/push-test.blade.php ---
+            function askForPermission() {
+                Notification.requestPermission().then((permission) => {
+                    if (permission === 'granted') {
+                        // get service worker
+                        navigator.serviceWorker.ready.then((sw) => {
+                            // subscribe; some browsers expect a Uint8Array for the key,
+                            // but the backend accepts both shapes. Using raw VAPID here like push-test.
+                            sw.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: '{{ env('PUBLIC_KEY') }}'
+                            }).then((subscription) => {
+                                try { console.log(JSON.stringify(subscription)); } catch(_) {}
+                                saveSub(JSON.stringify(subscription));
+                            }).catch(err => {
+                                console.error('Push subscription failed', err);
+                                if (statusText) statusText.textContent = 'Error';
+                            });
+                        }).catch(err => {
+                            console.error('Service worker ready failed', err);
+                            if (statusText) statusText.textContent = 'Error';
                         });
+                    } else {
+                        if (statusText) statusText.textContent = permission === 'denied' ? 'Blocked' : 'Not enabled';
                     }
-
-                    await sendSubscriptionToServer(sub);
-
-                    if (statusText) statusText.textContent = 'Enabled';
-                    if (enableBtn) enableBtn.disabled = true;
-                } catch (err) {
-                    console.error('Subscription error', err);
+                }).catch(err => {
+                    console.error('Permission request failed', err);
                     if (statusText) statusText.textContent = 'Error';
+                });
+            }
+    
+            // Save subscription to DB (accepts JSON string or object)
+            function saveSub(sub) {
+                let payload;
+                try {
+                    payload = (typeof sub === 'string') ? JSON.parse(sub) : sub;
+                } catch (e) {
+                    console.error('Invalid subscription payload', e);
+                    return;
+                }
+    
+                const body = { subscription: payload };
+    
+                if (window.axios && typeof window.axios.post === 'function') {
+                    window.axios.post("{{ route('push.subscribe') }}", body)
+                        .then(function (response) {
+                            console.log('Subscription saved', response.data);
+                            if (statusText) statusText.textContent = 'Enabled';
+                            if (enableBtn) enableBtn.disabled = true;
+                        })
+                        .catch(function (error) {
+                            console.error('Failed to save subscription via axios:', error);
+                            if (statusText) statusText.textContent = 'Error';
+                        });
+                } else {
+                    // Fallback to fetch (include CSRF token)
+                    fetch("{{ route('push.subscribe') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify(body)
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('Subscription saved (fetch)', data);
+                        if (statusText) statusText.textContent = 'Enabled';
+                        if (enableBtn) enableBtn.disabled = true;
+                    })
+                    .catch(err => {
+                        console.error('Failed to save subscription via fetch:', err);
+                        if (statusText) statusText.textContent = 'Error';
+                    });
                 }
             }
-
+    
             // Proactively ensure the service worker is registered (no permission prompt required)
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistration().then(function(reg) {
@@ -296,11 +335,12 @@
                     }
                 }).catch(function(e){ console.warn('SW getRegistration failed', e); });
             }
-
+    
             const testPushBtn = document.getElementById('testPushBtn');
-
+    
             if (enableBtn) {
-                enableBtn.addEventListener('click', subscribeUser);
+                // Use the copied askForPermission flow tied to the Enable button
+                enableBtn.addEventListener('click', askForPermission);
             }
             if (testPushBtn) {
                 testPushBtn.addEventListener('click', async function () {
