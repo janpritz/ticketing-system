@@ -378,4 +378,28 @@
             }
         })();
     </script>
+
+    @if(session('status'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                try {
+                    const msg = @json(session('status'));
+                    if (typeof Swal === 'function') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Profile updated',
+                            text: msg || 'Your profile was updated.',
+                            showConfirmButton: false,
+                            timer: 1600
+                        });
+                    } else {
+                        // Fallback to global toast if SweetAlert isn't available
+                        (window.showToast || function(t,m){ alert(m); })('success', msg || 'Your profile was updated.');
+                    }
+                } catch (e) {
+                    console.error('Profile update notification failed', e);
+                }
+            });
+        </script>
+    @endif
 @endsection
