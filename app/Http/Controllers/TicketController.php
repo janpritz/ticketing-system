@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 
 
@@ -111,51 +112,59 @@ class TicketController extends Controller
         
         // Send push notification to the assigned staff (if any)
         if ($ticket->staff_id) {
-            try {
-                $payload = [
-                    'title' => 'New ticket assigned',
-                    'body'  => 'A new ticket (ID: ' . $ticket->id . ') has been assigned to you.',
-                    'data'  => ['url' => '/staff/dashboard']
-                ];
+            // Only attempt to send a push if the staff has explicitly registered a subscription file.
+            $subscriptionPath = 'push_subscriptions/user-' . $ticket->staff_id . '.json';
+            if (Storage::exists($subscriptionPath)) {
+                try {
+                    $payload = [
+                        'title' => 'You have received a new ticket',
+                        // Use the ticket's question/message as the notification body
+                        'body'  => $ticket->question,
+                        'data'  => ['url' => '/staff/dashboard', 'ticket_id' => $ticket->id]
+                    ];
 
-                // Attempt to deliver via PushService and log result details for production audit.
-                $pushService = app(\App\Services\PushService::class);
-                $results = $pushService->sendToUser($ticket->staff_id, $payload);
+                    // Attempt to deliver via PushService and log result details for production audit.
+                    $pushService = app(\App\Services\PushService::class);
+                    $results = $pushService->sendToUser($ticket->staff_id, $payload);
 
-                if (empty($results)) {
-                    // No subscription found or nothing to send
-                    Log::info('PushService: no subscription found for user ' . $ticket->staff_id . ' when assigning ticket ' . $ticket->id);
-                } else {
-                    // Results may be an array of reports; log any failures for investigation.
-                    foreach ($results as $report) {
-                        // Report may be nested arrays when sendToSubscription aggregates multiple results.
-                        if (is_array($report)) {
-                            // If a single report structure
-                            if (isset($report['success'])) {
-                                if (!$report['success']) {
-                                    Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' reason=' . ($report['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                    if (empty($results)) {
+                        // No subscription found or nothing to send
+                        Log::info('PushService: no subscription found for user ' . $ticket->staff_id . ' when assigning ticket ' . $ticket->id);
+                    } else {
+                        // Results may be an array of reports; log any failures for investigation.
+                        foreach ($results as $report) {
+                            // Report may be nested arrays when sendToSubscription aggregates multiple results.
+                            if (is_array($report)) {
+                                // If a single report structure
+                                if (isset($report['success'])) {
+                                    if (!$report['success']) {
+                                        Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' reason=' . ($report['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                    } else {
+                                        Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                    }
                                 } else {
-                                    Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                }
-                            } else {
-                                // Possibly an array of report arrays
-                                foreach ($report as $r) {
-                                    if (isset($r['success']) && !$r['success']) {
-                                        Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' reason=' . ($r['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                    } elseif (isset($r['success'])) {
-                                        Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                    // Possibly an array of report arrays
+                                    foreach ($report as $r) {
+                                        if (isset($r['success']) && !$r['success']) {
+                                            Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' reason=' . ($r['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                        } elseif (isset($r['success'])) {
+                                            Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
+                                        }
                                     }
                                 }
+                            } else {
+                                // Unexpected report format — stringify for diagnostics
+                                Log::info('PushService: push report for user ' . $ticket->staff_id . ' ticket=' . $ticket->id . ' report=' . json_encode($report));
                             }
-                        } else {
-                            // Unexpected report format — stringify for diagnostics
-                            Log::info('PushService: push report for user ' . $ticket->staff_id . ' ticket=' . $ticket->id . ' report=' . json_encode($report));
                         }
                     }
+                } catch (\Throwable $e) {
+                    // Log and continue — notification failure must not block ticket creation
+                    Log::warning('Push send failed for ticket assignment (exception): ' . $e->getMessage() . ' ticket=' . $ticket->id . ' staff=' . $ticket->staff_id);
                 }
-            } catch (\Throwable $e) {
-                // Log and continue — notification failure must not block ticket creation
-                Log::warning('Push send failed for ticket assignment (exception): ' . $e->getMessage() . ' ticket=' . $ticket->id . ' staff=' . $ticket->staff_id);
+            } else {
+                // Staff has not registered for push notifications; do not attempt to send
+                Log::info('PushService: subscription file not found for user ' . $ticket->staff_id . '; skipping push for ticket ' . $ticket->id);
             }
         }
         
