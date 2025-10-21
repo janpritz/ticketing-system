@@ -1,55 +1,72 @@
-self.addEventListener("push", (event) => {
-    // Parse payload (may contain top-level url/ticket_id or nested data)
-    let notification = {};
-    try {
-        notification = event.data.json();
-    } catch (e) {
-        // malformed payload - show a generic notification
-        notification = {
-            title: "New notification",
-            body: "You have a new notification",
-        };
-    }
+self.addEventListener('push', (event) => {
+  // Parse payload (may contain top-level url/ticket_id or nested data)
+  let notification = {};
+  try {
+    notification = event.data.json();
+  } catch (e) {
+    // malformed payload - show a generic notification
+    notification = {
+      title: 'New notification',
+      body: 'You have a new notification',
+    };
+  }
 
-    // Determine destination URL robustly
-    let destUrl = notification.url || (notification.data && notification.data.url) || '/staff/dashboard';
-    const ticketId = notification.ticket_id || (notification.data && notification.data.ticket_id);
+  // Determine destination URL robustly and make it absolute.
+  // If notification.url is relative (e.g. '/staff/tickets/123'), new URL(...) will resolve it against the SW origin.
+  const rawUrl = notification.url || (notification.data && notification.data.url) || '/staff/dashboard';
+  const ticketId = notification.ticket_id || (notification.data && notification.data.ticket_id);
 
-    if (ticketId) {
-        const sep = destUrl.includes('?') ? '&' : '?';
-        destUrl = destUrl + sep + 'ticket_id=' + encodeURIComponent(ticketId);
-    }
+  let destUrl;
+  try {
+    destUrl = new URL(rawUrl, self.location.origin).href;
+  } catch (_) {
+    // fallback: join manually
+    destUrl = (rawUrl.startsWith('/') ? self.location.origin : self.location.origin + '/') + rawUrl.replace(/^\//, '');
+  }
 
-    event.waitUntil(
-        self.registration.showNotification(notification.title || 'Notification', {
-            body: notification.body || '',
-            icon: "public/logo.png",
-            data: {
-                url: destUrl,
-                ticket_id: ticketId || null
-            }
-        })
-    );
+  if (ticketId) {
+    destUrl += (destUrl.includes('?') ? '&' : '?') + 'ticket_id=' + encodeURIComponent(ticketId);
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(notification.title || 'Notification', {
+      body: notification.body || '',
+      // Use a root-relative icon path; service worker will resolve with origin.
+      icon: '/logo.png',
+      data: {
+        url: destUrl,
+        ticket_id: ticketId || null
+      }
+    })
+  );
 });
 
-self.addEventListener("notificationclick", (event) => {
-    event.notification.close();
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
 
-    const urlToOpen = event.notification.data && event.notification.data.url ? event.notification.data.url : '/staff/dashboard';
+  let urlToOpen = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/staff/dashboard';
 
-    // Focus an open client or open a new window/tab to the staff dashboard with ticket context.
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            // Try to focus an already open client first
-            for (let i = 0; i < windowClients.length; i++) {
-                const client = windowClients[i];
-                // If the client is already at the staff dashboard, just focus and post a message
-                if ('focus' in client) {
-                    client.focus();
-                }
-            }
-            // Open the URL (this will either focus existing tab or open a new one)
-            return clients.openWindow(urlToOpen);
-        })
-    );
+  try {
+    urlToOpen = new URL(urlToOpen, self.location.origin).href;
+  } catch (_) {
+    urlToOpen = (urlToOpen.startsWith('/') ? self.location.origin : self.location.origin + '/') + urlToOpen.replace(/^\//, '');
+  }
+
+  // Focus an open client matching the origin, otherwise open a new window/tab to the URL.
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        // Try to focus any client; if it matches origin we postMessage with the URL
+        if (client.url && client.url.startsWith(self.location.origin) && 'focus' in client) {
+          client.focus();
+          try {
+            client.postMessage({ type: 'notification-click', url: urlToOpen });
+          } catch (_) {}
+          return;
+        }
+      }
+      return clients.openWindow(urlToOpen);
+    })
+  );
 });

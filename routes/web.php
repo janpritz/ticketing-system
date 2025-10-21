@@ -55,6 +55,8 @@ Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
 Route::middleware('auth')->group(function () {
     // Staff dashboard
     Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
+    // Individual ticket page for staff (view + respond)
+    Route::get('/staff/tickets/{ticket}', [StaffController::class, 'showTicket'])->whereNumber('ticket')->name('staff.tickets.show');
     // Live data endpoint for staff dashboard auto-refresh
     Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
 

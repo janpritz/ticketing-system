@@ -336,6 +336,31 @@ class StaffController extends Controller
      * Send a response email to the ticket owner.
      * If sent successfully, close the ticket.
      */
+    /**
+     * Show a dedicated ticket detail page for staff (view + response form).
+     * Accessible only to the assigned staff member or Primary Administrator.
+     */
+    public function showTicket(Ticket $ticket)
+    {
+        $auth = Auth::user();
+        if (!$auth) {
+            return redirect()->route('login');
+        }
+
+        // Only assigned staff or Primary Administrator may view this page
+        if ($ticket->staff_id !== $auth->id
+            && ! (strtolower((string)($auth->role ?? '')) === 'primary administrator')
+        ) {
+            abort(403);
+        }
+
+        // Load relations needed by the view
+        $ticket->load(['staff', 'routingHistories.staff']);
+
+        return view('dashboards.staff.ticket', [
+            'ticket' => $ticket,
+        ]);
+    }
     public function respond(Request $request, Ticket $ticket)
     {
         $request->validate([

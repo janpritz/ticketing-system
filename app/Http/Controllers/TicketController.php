@@ -46,7 +46,9 @@ class TicketController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['error' => 'You already have an open ticket. Please wait for the response.'], 400);
             } else {
-                return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])->with('error', 'You already have an open ticket. Please wait for a response.');
+                // Use the configured APP_URL (keeps Hostinger's "/public" if present) when building redirects
+                $base = rtrim(config('app.url', env('APP_URL', '')), '/');
+                return redirect()->to($base . '/tickets/' . $request->recepient_id)->with('error', 'You already have an open ticket. Please wait for a response.');
             }
         }
 
@@ -118,17 +120,20 @@ class TicketController extends Controller
                 try {
                     // Provide both top-level url/ticket_id and a data block so different clients/service-worker payload formats
                     // will consistently receive the destination and ticket identifier.
+                    // Build an absolute URL that points to the dedicated staff ticket page so
+                    // clicking the push notification opens the ticket in a new tab.
+                    $ticketUrl = url('/staff/tickets/' . $ticket->id);
                     $payload = [
                         'title'     => 'You have received a new ticket',
                         // Use the ticket's question/message as the notification body
                         'body'      => $ticket->question,
-                        // Absolute URL to staff dashboard (so clients receive a fully-qualified URL)
-                        'url'       => url('/staff/dashboard'),
+                        // Absolute URL to the staff ticket detail page
+                        'url'       => $ticketUrl,
                         // Top-level ticket id for convenience
                         'ticket_id' => $ticket->id,
                         // Keep data block for clients expecting a `data` object
                         'data'      => [
-                            'url'       => url('/staff/dashboard'),
+                            'url'       => $ticketUrl,
                             'ticket_id' => $ticket->id
                         ],
                     ];
@@ -185,8 +190,8 @@ class TicketController extends Controller
         }
         
         // For web requests, redirect to tickets page for the recepient id.
-        // Use named route so URL generation follows APP_URL (which may include /public on Hostinger).
-        return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])
+        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
+        return redirect()->to(url('/tickets/' . $request->recepient_id))
             ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.')
             ->with('assigned_staff_id', $ticket->staff_id);
     }

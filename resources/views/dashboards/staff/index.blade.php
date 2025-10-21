@@ -1221,3 +1221,17 @@ function renderWeekly(wt) {
     })();
 </script>
 @endsection
+<script>
+// Handle service-worker notification clicks forwarded to the page.
+// When the service worker focuses an existing client it posts a message:
+// { type: 'notification-click', url: 'https://.../staff/tickets/123?ticket_id=123' }
+// We navigate the focused tab to that URL so the staff sees the ticket detail.
+window.addEventListener('message', function (e) {
+    try {
+        if (e.data && e.data.type === 'notification-click' && e.data.url) {
+            // Safely navigate to the provided URL in the current tab
+            window.location.href = e.data.url;
+        }
+    } catch (_) { /* ignore */ }
+});
+</script>
