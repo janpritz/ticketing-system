@@ -19,7 +19,9 @@ class PushNotificationController extends Controller
     {
         $auth = [
             'VAPID' => [
-                'subject' => 'https://fritzcabalhin.com/public/', // can be a mailto: or your website address
+                // Build the VAPID subject from the configured app URL so it follows APP_URL
+                // (Hostinger may include "/public" in APP_URL; keep it as-is).
+                'subject' => rtrim(config('app.url', env('APP_URL', '')), '/') . '/', // can be a mailto: or your website address
                 'publicKey' => env('PUBLIC_KEY'), // (recommended) uncompressed public key P-256 encoded in Base64-URL
                 'privateKey' => env('PRIVATE_KEY'), // (recommended) in fact the secret multiplier of the private key encoded in Base64-URL
             ],

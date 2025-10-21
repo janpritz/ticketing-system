@@ -184,11 +184,9 @@ class TicketController extends Controller
             return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
         }
         
-        // For web requests, redirect to index page with success message
-        // Include the assigned staff id in the session so the client can optionally trigger
-        // a follow-up notification (useful when subscriptions are managed via the web UI).
-        return redirect()
-            ->route('tickets.index', ['recepient_id' => $request->recepient_id])
+        // For web requests, redirect to tickets page for the recepient id.
+        // Use named route so URL generation follows APP_URL (which may include /public on Hostinger).
+        return redirect()->route('tickets.index', ['recepient_id' => $request->recepient_id])
             ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.')
             ->with('assigned_staff_id', $ticket->staff_id);
     }
