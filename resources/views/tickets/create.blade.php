@@ -191,7 +191,7 @@
 
                                     if (res.ok) {
                                         // On success redirect to My Tickets (include recepient_id as query param)
-                                        const redirectUrl = '/tickets?recepient_id=' + encodeURIComponent(payload.recepient_id);
+                                        const redirectUrl = "{{ url('/tickets') }}/" + encodeURIComponent(payload.recepient_id);
                                         window.location.href = redirectUrl;
                                     } else {
                                         // Build a readable HTML message for SweetAlert
