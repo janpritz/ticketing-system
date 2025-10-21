@@ -175,13 +175,15 @@
                     <div class="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                                <label for='title' class="block text-sm font-medium text-gray-700">{{ __('title') }}</label>
+                                <label for='title'
+                                    class="block text-sm font-medium text-gray-700">{{ __('title') }}</label>
                                 <input type='text'
                                     class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
                                     id='title' name='title'>
                             </div>
                             <div>
-                                <label for='body' class="block text-sm font-medium text-gray-700">{{ __('body') }}</label>
+                                <label for='body'
+                                    class="block text-sm font-medium text-gray-700">{{ __('body') }}</label>
                                 <input type='text'
                                     class='mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'
                                     id='body' name='body'>
@@ -197,7 +199,8 @@
                                 <div>
                                     <input type="button" value="{{ 'Send Notification' }}" onclick="sendNotification()"
                                         class="inline-flex items-center bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2" />
-                                    <p class="mt-2 text-xs text-gray-500">Please enable push notifications before sending.</p>
+                                    <p class="mt-2 text-xs text-gray-500">Please enable push notifications before sending.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -210,103 +213,71 @@
 
 @section('scripts')
     <script>
-        (function() {
-            // Photo preview (kept separate and intact)
-            const input = document.getElementById('photo');
-            const preview = document.getElementById('photoPreview');
-            if (input && preview) {
-                input.addEventListener('change', function() {
-                    const file = this.files && this.files[0];
-                    if (!file) return;
-                    if (!/^image\/(png|jpeg|jpg)$/.test(file.type)) {
-                        alert('Invalid file type. Please select a JPG or PNG image.');
-                        this.value = '';
-                        return;
-                    }
-                    if (file.size > 5 * 1024 * 1024) {
-                        alert('File is too large. Maximum size is 5MB.');
-                        this.value = '';
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        preview.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                });
-            // Push notifications: copied from PushNotification/push-test.blade.php
-            // Register service worker relative to current path so it resolves correctly
-            // when the app is served under a subpath like /public/.
-            try {
-                navigator.serviceWorker.register("{{ url('sw.js') }}", {
-                    scope: './'
-                });
-            } catch (e) {
-                // ignore registration errors here; SW may already be registered or unavailable
-                console.warn('Service worker registration (profile) failed', e);
-            }
-
-            function askForPermission() {
-                Notification.requestPermission().then((permission) => {
-                    if (permission === 'granted') {
-                        // get service worker
-                        navigator.serviceWorker.ready.then((sw) => {
-                            // subscribe
-                            sw.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: '{{ env('PUBLIC_KEY') }}'
-                            }).then((subscription) => {
-                                try {
-                                    console.log(JSON.stringify(subscription));
-                                } catch (_) {}
-                                saveSub(JSON.stringify(subscription));
-                            }).catch(function (err) {
-                                console.error('Push subscription failed', err);
-                                alert('Push subscription failed: ' + (err && err.message ? err.message : 'unknown'));
-                            });
-                        }).catch(function (err) {
-                            console.error('Service worker ready failed', err);
-                            alert('Service worker not ready: ' + (err && err.message ? err.message : 'unknown'));
+        function askForPermission() {
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    // get service worker
+                    navigator.serviceWorker.ready.then((sw) => {
+                        // subscribe
+                        sw.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: '{{ env('PUBLIC_KEY') }}'
+                        }).then((subscription) => {
+                            try {
+                                console.log(JSON.stringify(subscription));
+                            } catch (_) {}
+                            saveSub(JSON.stringify(subscription));
+                        }).catch(function(err) {
+                            console.error('Push subscription failed', err);
+                            alert('Push subscription failed: ' + (err && err.message ? err.message :
+                                'unknown'));
                         });
-                    } else {
-                        // Permission was denied or dismissed - no action required
-                        console.info('Notification permission result:', permission);
-                    }
-                }).catch(err => {
-                    console.error('Permission request failed', err);
-                    alert('Permission request failed: ' + (err && err.message ? err.message : 'unknown'));
-                });
-            }
-            // expose to global scope so inline onclick handlers work
-            window.askForPermission = askForPermission;
-
-            // Save subscription to DB
-            function saveSub(sub) {
-                // sub may be a JSON-stringified subscription or an object
-                let payload;
-                try {
-                    payload = (typeof sub === 'string') ? JSON.parse(sub) : sub;
-                } catch (e) {
-                    console.error('Invalid subscription payload', e);
-                    return;
-                }
-
-                const body = { subscription: payload };
-
-                if (window.axios && typeof window.axios.post === 'function') {
-                    window.axios.post("{{ route('push.subscribe') }}", body)
-                        .then(function (response) {
-                            console.log('Subscription saved', response.data);
-                            // Optionally show a small success hint
-                            try { alert('Push subscription saved'); } catch (_) {}
-                        })
-                        .catch(function (error) {
-                            console.error('Failed to save subscription via axios:', error);
-                            alert('Failed to save subscription');
-                        });
+                    }).catch(function(err) {
+                        console.error('Service worker ready failed', err);
+                        alert('Service worker not ready: ' + (err && err.message ? err.message :
+                            'unknown'));
+                    });
                 } else {
-                    // Fallback to fetch (include CSRF token)
-                    fetch("{{ route('push.subscribe') }}", {
+                    // Permission was denied or dismissed - no action required
+                    console.info('Notification permission result:', permission);
+                }
+            }).catch(err => {
+                console.error('Permission request failed', err);
+                alert('Permission request failed: ' + (err && err.message ? err.message : 'unknown'));
+            });
+        }
+
+        // Save subscription to DB
+        function saveSub(sub) {
+            // sub may be a JSON-stringified subscription or an object
+            let payload;
+            try {
+                payload = (typeof sub === 'string') ? JSON.parse(sub) : sub;
+            } catch (e) {
+                console.error('Invalid subscription payload', e);
+                return;
+            }
+
+            const body = {
+                subscription: payload
+            };
+
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post("{{ route('push.subscribe') }}", body)
+                    .then(function(response) {
+                        console.log('Subscription saved', response.data);
+                        // Optionally show a small success hint
+                        try {
+                            alert('Push subscription saved');
+                        } catch (_) {}
+                    })
+                    .catch(function(error) {
+                        console.error('Failed to save subscription via axios:', error);
+                        alert('Failed to save subscription');
+                    });
+            } else {
+                // Fallback to fetch (include CSRF token)
+                fetch("{{ route('push.subscribe') }}", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -314,49 +285,98 @@
                         },
                         body: JSON.stringify(body)
                     })
-                        .then(r => r.json())
-                        .then(data => {
-                            console.log('Subscription saved (fetch)', data);
-                            try { alert('Push subscription saved'); } catch (_) {}
-                        })
-                        .catch(err => {
-                            console.error('Failed to save subscription via fetch:', err);
-                            alert('Failed to save subscription');
-                        });
-                }
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('Subscription saved (fetch)', data);
+                        try {
+                            alert('Push subscription saved');
+                        } catch (_) {}
+                    })
+                    .catch(err => {
+                        console.error('Failed to save subscription via fetch:', err);
+                        alert('Failed to save subscription');
+                    });
             }
+        }
 
-            function sendNotification() {
-                if (window.axios && typeof window.axios.post === 'function') {
-                    window.axios.post("{{ route('push.send') }}", {
+        function sendNotification() {
+            if (window.axios && typeof window.axios.post === 'function') {
+                window.axios.post("{{ route('push.send') }}", {
+                    title: document.getElementById('title').value,
+                    body: document.getElementById('body').value,
+                    idOfProduct: document.getElementById('idOfProduct').value
+                }).then(function(response) {
+                    alert('Send successful');
+                    console.log(response.data);
+                }).catch(function(error) {
+                    console.error('Send failed:', error);
+                    alert('Send failed');
+                });
+            } else {
+                // Fallback to fetch if axios isn't available
+                fetch("{{ route('push.send') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
                         title: document.getElementById('title').value,
                         body: document.getElementById('body').value,
                         idOfProduct: document.getElementById('idOfProduct').value
-                    }).then(function (response) {
-                        alert('Send successful');
-                        console.log(response.data);
-                    }).catch(function (error) {
-                        console.error('Send failed:', error);
-                        alert('Send failed');
-                    });
-                } else {
-                    // Fallback to fetch if axios isn't available
-                    fetch("{{ route('push.send') }}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            title: document.getElementById('title').value,
-                            body: document.getElementById('body').value,
-                            idOfProduct: document.getElementById('idOfProduct').value
-                        })
-                    }).then(r => r.json()).then(data => { alert('Send successful'); console.log(data); }).catch(err => { console.error(err); alert('Send failed'); });
-                }
+                    })
+                }).then(r => r.json()).then(data => {
+                    alert('Send successful');
+                    console.log(data);
+                }).catch(err => {
+                    console.error(err);
+                    alert('Send failed');
+                });
             }
-            // expose to global scope so inline onclick handlers work
-            window.sendNotification = sendNotification;
-        }();
+        }
+    </script>
+    <script>
+        (function() {
+            // Photo preview (kept separate and intact)
+            const input = document.getElementById('photo');
+            const preview = document.getElementById('photoPreview');
+
+            if (input && preview) {
+                input.addEventListener('change', function() {
+                    const file = this.files && this.files[0];
+                    if (!file) return;
+
+                    // Validate file type
+                    if (!/^image\/(png|jpeg|jpg)$/.test(file.type)) {
+                        alert('Invalid file type. Please select a JPG or PNG image.');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Validate file size (max 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File is too large. Maximum size is 5MB.');
+                        this.value = '';
+                        return;
+                    }
+
+                    // Preview image
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        preview.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // Push notifications registration
+            try {
+                navigator.serviceWorker.register("{{ url('sw.js') }}", {
+                    scope: './'
+                });
+            } catch (e) {
+                console.warn('Service worker registration (profile) failed', e);
+            }
+        })();
     </script>
 @endsection
