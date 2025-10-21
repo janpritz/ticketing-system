@@ -7,6 +7,7 @@ use App\Models\PushNotificationMsgs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -100,7 +101,21 @@ class PushNotificationController extends Controller
 
         $push = new PushNotification();
         $push->subscriptions = $payload;
+
+        // Persist to DB for audit/history
         $push->save();
+
+        // Also write a user-specific subscription file so PushService::sendToUser can find it.
+        // This is important because PushService currently looks for files at:
+        // storage/app/push_subscriptions/user-{userId}.json
+        if ($user = $request->user()) {
+            try {
+                Storage::put('push_subscriptions/user-' . $user->id . '.json', json_encode($payload));
+            } catch (\Throwable $e) {
+                // Log but do not fail the request — subscription still saved to DB.
+                Log::warning('Failed to write push subscription file for user ' . $user->id . ': ' . $e->getMessage());
+            }
+        }
 
         return response()->json(['message' => 'added successfully', 'id' => $push->id], 201);
     }
