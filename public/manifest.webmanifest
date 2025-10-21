@@ -8,7 +8,7 @@
   "theme_color": "#184c1c",
   "description": "Chatbot integrated ticketing system",
   "icons": [
-    { "src": "/homescreen-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/homescreen-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "public/homescreen-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "public/homescreen-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
