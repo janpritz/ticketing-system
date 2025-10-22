@@ -23,7 +23,8 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 
-    #Forward to /public
+    # If the request is NOT already pointing to /public
     RewriteCond %{REQUEST_URI} !^/public/
+    # Redirect everything else to /public/
     RewriteRule ^(.*)$ /public/$1 [L]
 </IfModule>
