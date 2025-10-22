@@ -21,7 +21,7 @@ Route::get('/', function () {
     }
 
     // Guests still see the public ticket create page
-    return view('/login');
+    return view('/public/login');
 });
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
