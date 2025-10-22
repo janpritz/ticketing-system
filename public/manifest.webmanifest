@@ -1,8 +1,8 @@
 {
   "name": "Sangkay Ticketing System",
   "short_name": "Sangkay",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "public/?source=pwa",
+  "scope": "public/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#184c1c",
