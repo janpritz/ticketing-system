@@ -1,11 +1,11 @@
 {
   "name": "Sangkay Ticketing System",
-  "short_name": "Sangkay",
-  "start_url": "public/?source=pwa",
-  "scope": "public/",
+  "short_name": "Sangkay Ticketing System",
+  "start_url": "/login",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#184c1c",
+  "background_color": "#ff9d00",
+  "theme_color": "#ff9d00",
   "description": "Chatbot integrated ticketing system",
   "icons": [
     { "src": "public/homescreen-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
