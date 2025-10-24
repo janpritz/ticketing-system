@@ -21,7 +21,7 @@ Route::get('/', function () {
     }
 
     // Guests still see the public ticket create page
-    return view('/public/login');
+    return view('login');
 });
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
@@ -113,7 +113,7 @@ Route::middleware('auth')->group(function () {
         }
 
         // Guests still see the public ticket create page
-        return view('/login');
+        return view('login');
     });
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     // Live data endpoint for admin dashboard auto-refresh
