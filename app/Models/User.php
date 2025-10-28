@@ -124,7 +124,7 @@ class User extends Authenticatable
      */
     public function assignedTickets(): HasMany
     {
-        return $this->hasMany(\App\Models\Ticket::class, 'staff_id');
+        return $this->hasMany(\App\Models\Ticket::class, 'id');
     }
  
     /**

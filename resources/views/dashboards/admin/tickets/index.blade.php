@@ -161,7 +161,7 @@
           <textarea id="tmResponse" class="w-full rounded-md border-gray-300 px-3 py-2 text-sm" rows="4"></textarea>
         </div>
         <div>
-          <label class="block text-xs text-gray-500">Reroute to</label>
+          <label class="block text-xs text-gray-500">Forward to</label>
           <div class="flex items-center gap-2">
             <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
               <option value="" selected disabled>Select role</option>
@@ -177,14 +177,14 @@
               <option>Graduation</option>
               <option>Athletics and Sports</option>
             </select>
-            <!-- Inline reroute button shown only when a role is selected -->
-            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+            <!-- Inline forward button shown only when a role is selected -->
+            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Forward</button>
           </div>
 
           <!-- Collapsible reroute history (hidden when empty) -->
           <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
             <button type="button" id="tmHistoryToggle" class="w-full text-left text-sm text-slate-600 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center justify-between">
-              <span>Reroute History</span>
+              <span>Forward History</span>
               <svg id="tmHistoryIcon" class="h-4 w-4 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -666,21 +666,21 @@
           try {
             const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
             if (resp && resp.ok) {
-              try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
-              fetchList(currentPage);
-              ticketModal.classList.add('hidden');
-              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Rerouted', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
+                fetchList(currentPage);
+                ticketModal.classList.add('hidden');
+                if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Forwarded', showConfirmButton: false, timer: 3000, timerProgressBar: true });
             } else {
-              const txt = resp ? await resp.text().catch(()=> '') : '';
-              console.error('Reroute failed', txt);
-              ticketModal.classList.add('hidden');
-              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                const txt = resp ? await resp.text().catch(()=> '') : '';
+                console.error('Forward failed', txt);
+                ticketModal.classList.add('hidden');
+                if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Forward failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
             }
-          } catch(err){
-            console.error('Error rerouting', err);
+        } catch(err){
+            console.error('Error forwarding', err);
             ticketModal.classList.add('hidden');
-            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-          }
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Forward error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+        }
         };
       }
     } catch(err){

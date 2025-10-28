@@ -259,14 +259,120 @@
                                             </div>
                                         </td>
 
+<<<<<<< Updated upstream
                                         <!-- Subject -->
                                         <td class="px-3 py-4 align-top">
                                             <div class="text-gray-900">{{ \Illuminate\Support\Str::limit($t->question, 80) }}</div>
                                             <div class="mt-1 text-xs text-gray-500 flex items-center gap-2">
                                                 <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">{{ $t->category }}</span>
+=======
+                    <!-- Main content -->
+                    <section class="col-span-12 md:col-span-9 space-y-6 row-start-1 md:row-start-auto flex flex-col">
+                        <!-- KPI cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 order-2 md:order-1 mt-4 md:mt-0">
+                            <!-- Open -->
+                            <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm text-gray-500">Open</div>
+                                        <div class="mt-2 text-3xl font-semibold text-gray-900"><span
+                                                id="openCount">{{ $openCount ?? 0 }}</span></div>
+                                    </div>
+                                    <div class="rounded-full bg-blue-50 text-blue-600 p-3 ring-1 ring-blue-600/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M3 7.5h18M3 12h18M3 16.5h18" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Re-routed -->
+                            <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm text-gray-500">Forwarded</div>
+                                        <div class="mt-2 text-3xl font-semibold text-gray-900"><span
+                                                id="inProgressCount">{{ $inProgressCount ?? 0 }}</span></div>
+                                    </div>
+                                    <div class="rounded-full bg-amber-50 text-amber-600 p-3 ring-1 ring-amber-600/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M12 6v6l3 3" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Resolved -->
+                            <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm text-gray-500">Resolved</div>
+                                        <div class="mt-2 text-3xl font-semibold text-gray-900"><span
+                                                id="closedCount">{{ $closedCount ?? 0 }}</span></div>
+                                    </div>
+                                    <div
+                                        class="rounded-full bg-emerald-50 text-emerald-600 p-3 ring-1 ring-emerald-600/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Total -->
+                            <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm text-gray-500">Total</div>
+                                        <div class="mt-2 text-3xl font-semibold text-gray-900"><span
+                                                id="totalCount">{{ $totalCount ?? 0 }}</span></div>
+                                    </div>
+                                    <div class="rounded-full bg-slate-50 text-slate-600 p-3 ring-1 ring-slate-600/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M4 6h16M4 12h16M4 18h16" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tickets Table -->
+                        <div id="openTicketsSection"
+                            class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 order-1 md:order-2 pb-6 md:pb-5">
+                            <!-- Header -->
+                            <div class="px-5 py-4 flex items-center justify-between">
+                                <h2 id="ticketsHeading" class="text-base font-semibold text-gray-800">Open Tickets</h2>
+                                <div class="flex items-center gap-4 flex-wrap justify-end">
+                                    <div class="flex items-center gap-2">
+                                        <span class="hidden sm:inline text-sm text-gray-700">Show</span>
+                                        <select id="perPageSelect"
+                                            class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="10">10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                        <span class="hidden sm:inline text-sm text-gray-700">per page</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm text-gray-700">View All My Tickets</span>
+                                        <label class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="toggleViewAll" aria-label="View all my tickets"
+                                                class="sr-only peer">
+                                            <div
+                                                class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+>>>>>>> Stashed changes
                                             </div>
                                         </td>
 
+<<<<<<< Updated upstream
                                         <!-- Status -->
                                         <td class="px-3 py-4 align-top">
                                             <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 {{ $style }}">
@@ -276,6 +382,28 @@
                                                 {{ $t->status }}
                                             </span>
                                         </td>
+=======
+                            <!-- Table -->
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 text-gray-600">
+                                        <tr>
+                                            <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
+                                            <th class="px-3 py-3 text-left font-medium">Subject</th>
+                                            <th class="px-3 py-3 text-left font-medium">Status</th>
+                                            <th class="px-3 py-3 text-left font-medium">Assignee</th>
+                                            <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100" id="ticketsBody">
+                                        @php
+                                            $statusStyles = [
+                                                'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
+                                                'Forwarded' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+                                                'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
+                                            ];
+                                        @endphp
+>>>>>>> Stashed changes
 
                                         <!-- Assignee -->
                                         <td class="px-3 py-4 align-top">
@@ -347,9 +475,20 @@
                                 <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
                             </svg>
                         </button>
+<<<<<<< Updated upstream
                         <div id="tmOptionsMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black/5 hidden z-10">
                             <button type="button" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="toggle-history">Show History</button>
                             <button type="button" id="tmOptionReroute" class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50" data-option="show-reroute">Reroute…</button>
+=======
+                        <div id="tmOptionsMenu"
+                            class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black/5 hidden z-10">
+                            <button type="button"
+                                class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                                data-option="toggle-history">Show History</button>
+                            <button type="button" id="tmOptionReroute"
+                                class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+                                data-option="show-reroute">Forward…</button>
+>>>>>>> Stashed changes
                         </div>
                     </div>
                     <button type="button" class="text-gray-500 hover:text-gray-700" aria-label="Close" data-modal-close>
@@ -393,7 +532,7 @@
             </div>
             <div class="px-5 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <label for="tmRerouteSelect" class="text-xs text-gray-500">Reroute to</label>
+                    <label for="tmRerouteSelect" class="text-xs text-gray-500">Forward to</label>
                     @php
                         // Load roles from DB so roles are manageable via CRUD
                         $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
@@ -540,11 +679,19 @@
             }
             let ticketsMap = new Map();
 
+<<<<<<< Updated upstream
         const statusStyles = {
             'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
             'Re-routed': 'text-amber-700 bg-amber-50 ring-amber-600/20',
             'Closed': 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
         };
+=======
+            const statusStyles = {
+                'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
+                'Forwarded': 'text-amber-700 bg-amber-50 ring-amber-600/20',
+                'Closed': 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
+            };
+>>>>>>> Stashed changes
 
         let lastSnapshot = '';
 
@@ -681,11 +828,150 @@ function renderWeekly(wt) {
                     const pct = v > 0 ? v : (countVal > 0 ? 4 : 0);
                     el.style.height = pct + '%';
                 });
-            }
-
-            if (weeklyTotalEl) {
+            }            if (weeklyTotalEl) {
                 const total = series.reduce((a, b) => a + Number(b || 0), 0);
                 weeklyTotalEl.textContent = 'Week total: ' + total;
+            async function fetchData() {
+                // Avoid background polling to save resources
+                if (document.hidden) return;
+    
+                // Determine current filter (view all vs open-only) BEFORE the request
+                const viewAll = toggleEl ? toggleEl.checked : false;
+                const url = dataUrl + '?viewAll=' + (viewAll ? 'true' : 'false') + '&page=' + currentPage +
+                    '&perPage=' + perPage;
+    
+                try {
+                    // Build a client-side cache key (per-user, per-mode, per-page/perPage)
+                    const userId = "{{ $user->id }}";
+                    const clientCacheKey = 'ts_staff_cache_' + userId + '_' + (viewAll ? 'all' : 'open') + '_p' + currentPage + '_pp' + perPage;
+                    const clientETagKey = clientCacheKey + '_etag';
+    
+                    // If we have a cached payload, render it immediately (optimistic, avoids extra DB hits)
+                    try {
+                        const cached = localStorage.getItem(clientCacheKey);
+                        if (cached) {
+                            const data = JSON.parse(cached);
+                            // Update KPIs
+                            if (openCountEl) openCountEl.textContent = data.openCount ?? 0;
+                            if (inProgressCountEl) inProgressCountEl.textContent = data.inProgressCount ?? 0;
+                            if (closedCountEl) closedCountEl.textContent = data.closedCount ?? 0;
+                            if (totalCountEl) totalCountEl.textContent = data.totalCount ?? 0;
+                            if (weeklyChartEl && data.weeklyThroughput) renderWeekly(data.weeklyThroughput);
+    
+                            if (ticketsHeadingEl) {
+                                ticketsHeadingEl.textContent = viewAll ? 'My Tickets' : 'Open Tickets';
+                            }
+    
+                            const list = Array.isArray(data.recentTickets) ? data.recentTickets : [];
+                            ticketsMap = new Map(list.map(t => [String(t.id), t]));
+                            const filtered = viewAll ? list : list.filter(t => (['Open','Forwarded','Re-routed'].includes(t.status)));
+    
+                            // Render immediately if snapshot differs
+                            const snap = JSON.stringify({
+                                mode: viewAll ? 'all' : 'open',
+                                total: data.totalCount,
+                                ids: filtered.map(t => t.id)
+                            });
+                            if (snap !== lastSnapshot) {
+                                renderTickets(filtered);
+                                lastSnapshot = snap;
+                            }
+    
+                            // Update pagination UI from cached payload
+                            var pg = data.pagination || {};
+                            currentPage = Number(pg.currentPage || 1);
+                            lastPage = Number(pg.lastPage || 1);
+                            if (pagerInfo) {
+                                const totalTxt = (typeof pg.total !== 'undefined') ? (' • ' + pg.total + ' total') : '';
+                                pagerInfo.textContent = 'Page ' + currentPage + ' of ' + (lastPage || 1) + totalTxt;
+                            }
+                            if (pagerPrev) pagerPrev.disabled = currentPage <= 1;
+                            if (pagerNext) pagerNext.disabled = currentPage >= lastPage;
+                        }
+                    } catch (_) {
+                        // Ignore localStorage parsing problems
+                    }
+    
+                    // Send conditional request using stored ETag to avoid hitting DB when nothing changed
+                    const storedETag = localStorage.getItem(clientETagKey) || '';
+                    const headers = {
+                        'Accept': 'application/json'
+                    };
+                    if (storedETag) headers['If-None-Match'] = storedETag;
+    
+                    const res = await fetch(url, {
+                        method: 'GET',
+                        headers,
+                        credentials: 'same-origin'
+                    });
+    
+                    if (res.status === 401) {
+                        // Session expired or not authenticated
+                        window.location.href = "{{ route('login') }}";
+                        return;
+                    }
+    
+                    if (res.status === 304) {
+                        // Not modified — cached payload is still valid; nothing to do
+                        return;
+                    }
+    
+                    if (!res.ok) return;
+    
+                    const data = await res.json();
+    
+                    // Persist server payload + ETag to localStorage for future loads
+                    try {
+                        const etag = res.headers.get('ETag') || '';
+                        localStorage.setItem(clientCacheKey, JSON.stringify(data));
+                        if (etag) localStorage.setItem(clientETagKey, etag);
+                    } catch (_) {
+                        // ignore localStorage write errors (e.g. quota)
+                    }
+    
+                    // Update KPIs
+                    if (openCountEl) openCountEl.textContent = data.openCount ?? 0;
+                    if (inProgressCountEl) inProgressCountEl.textContent = data.inProgressCount ?? 0;
+                    if (closedCountEl) closedCountEl.textContent = data.closedCount ?? 0;
+                    if (totalCountEl) totalCountEl.textContent = data.totalCount ?? 0;
+                    if (weeklyChartEl && data.weeklyThroughput) renderWeekly(data.weeklyThroughput);
+    
+                    // Update heading based on filter
+                    if (ticketsHeadingEl) {
+                        ticketsHeadingEl.textContent = viewAll ? 'My Tickets' : 'Open Tickets';
+                    }
+    
+                    // Server already applies the filter. Keep a safety client-side filter when viewAll=false.
+                    const list = Array.isArray(data.recentTickets) ? data.recentTickets : [];
+                    // Keep a fast lookup for "View" modal
+                    ticketsMap = new Map(list.map(t => [String(t.id), t]));
+                    // Show both Open and Forwarded when not viewing all
+                    const filtered = viewAll ? list : list.filter(t => (['Open','Forwarded','Re-routed'].includes(t.status)));
+    
+                    // Update pagination UI
+                    var pg = data.pagination || {};
+                    currentPage = Number(pg.currentPage || 1);
+                    lastPage = Number(pg.lastPage || 1);
+                    if (pagerInfo) {
+                        const totalTxt = (typeof pg.total !== 'undefined') ? (' • ' + pg.total + ' total') : '';
+                        pagerInfo.textContent = 'Page ' + currentPage + ' of ' + (lastPage || 1) + totalTxt;
+                    }
+                    if (pagerPrev) pagerPrev.disabled = currentPage <= 1;
+                    if (pagerNext) pagerNext.disabled = currentPage >= lastPage;
+    
+                    // Render tickets only if changed (cheap diff by filter+IDs+counts JSON)
+                    const snapshot = JSON.stringify({
+                        mode: viewAll ? 'all' : 'open',
+                        total: data.totalCount,
+                        ids: filtered.map(t => t.id)
+                    });
+                    if (snapshot !== lastSnapshot) {
+                        renderTickets(filtered);
+                        lastSnapshot = snapshot;
+                    }
+                } catch (e) {
+                    // Silently ignore transient errors; next tick will retry
+                }
             }
             if (weeklyMaxEl) {
                 weeklyMaxEl.textContent = 'Peak: ' + max;
@@ -1046,10 +1332,51 @@ function renderWeekly(wt) {
                 const btn = e.target.closest('[data-option]');
                 if (!btn) return;
                 const action = btn.getAttribute('data-option');
-
                 // Hide menu after action
                 tmOptionsMenu.classList.add('hidden');
                 tmOptionsBtn.setAttribute('aria-expanded', 'false');
+            // Reroute via select + apply
+            const tmRerouteSelect = document.getElementById('tmRerouteSelect');
+            const tmRerouteApply = document.getElementById('tmRerouteApply');
+            if (tmRerouteApply) {
+                tmRerouteApply.addEventListener('click', async () => {
+                    if (!currentTicketId) return;
+                    if (!tmRerouteSelect || !tmRerouteSelect.value) {
+                        alert('Please choose a role to forward to.');
+                        return;
+                    }
+                    const role = tmRerouteSelect.value;
+                    try {
+                        const res = await fetch(`${rerouteBase}/${currentTicketId}/reroute`, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                role
+                            })
+                        });
+                        if (res.ok) {
+                            lastSnapshot = '';
+                            try {
+                                localStorage.setItem('ts_tickets_changed', String(Date.now()));
+                            } catch (e) {}
+                            fetchData();
+                            closeModal();
+                            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Forwarded', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                        } else {
+                            console.error('Forward failed', await res.text());
+                            alert('Forward failed. Please ensure backend route is available.');
+                        }
+                    } catch (err) {
+                        console.error('Forward error', err);
+                        alert('Network error during forward.');
+                    }
+                });
+            }
 
                 if (action === 'toggle-history') {
                     const hs = ensureHistorySection().section;

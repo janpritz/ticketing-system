@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class StaffController extends Controller
 {
@@ -29,13 +30,14 @@ class StaffController extends Controller
 
         // Aggregate ticket stats for this staff member
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
+        // Count both legacy "Re-routed" and new "Forwarded" statuses for compatibility
+        $inProgressCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Forwarded', 'Re-routed'])->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
 
-        // Recent tickets assigned to this staff (default: only "Open")
+        // Recent tickets assigned to this staff (default: only active tickets: Open + Forwarded)
         $recentTickets = Ticket::where('staff_id', $user->id)
-            ->whereNotIn('status', ['Closed'])
+            ->whereIn('status', ['Open', 'Forwarded'])
             ->orderByDesc('date_created')
             ->with(['staff', 'routingHistories.staff'])
             ->get();
@@ -216,45 +218,74 @@ class StaffController extends Controller
         $user = $auth;
         $viewAll = filter_var($request->query('viewAll', 'false'), FILTER_VALIDATE_BOOLEAN);
 
-        // KPI counts (across all statuses)
-        $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
-        $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
-        $totalCount = Ticket::where('staff_id', $user->id)->count();
+        // Lightweight change-detection: last updated timestamp for this staff's tickets
+        $lastUpdated = Ticket::where('staff_id', $user->id)->max('updated_at');
+        $lastUpdatedStr = $lastUpdated ? (string) $lastUpdated : 'none';
 
-        $query = Ticket::where('staff_id', $user->id)
-            ->orderByDesc('date_created')
-            ->with(['staff', 'routingHistories.staff']);
+        // Include a server-side version counter (bumped when tickets are modified) to force cache invalidation across drivers
+        $version = Cache::get('staff_dashboard_version_' . $user->id, 0);
 
-        if (!$viewAll) {
-            // Only active tickets (Open and Re-routed)
-            $query->whereIn('status', ['Open', 'Re-routed']);
+        // Build an ETag from last-updated + view mode + version to allow client-side conditional requests
+        $etag = '"' . md5($lastUpdatedStr . '|' . ($viewAll ? '1' : '0') . '|' . $version) . '"';
+
+        // If the client already has the latest snapshot, respond 304 (no body) so client doesn't re-render or refetch data.
+        $ifNoneMatch = $request->headers->get('if-none-match');
+        if ($ifNoneMatch && trim($ifNoneMatch) === $etag) {
+            return response('', 304)->header('ETag', $etag);
         }
 
-        // Pagination support for table view
-        $perPage = min(max((int) $request->query('perPage', 10), 1), 50);
-        $page    = max((int) $request->query('page', 1), 1);
+        // Cache key includes lastUpdated and version so cached data automatically becomes stale when tickets change
+        $cacheKey = 'staff_dashboard_data_' . $user->id . '_' . ($viewAll ? 'all' : 'open') . '_v' . $version . '_lu_' . md5($lastUpdatedStr);
 
-        $paginated     = $query->paginate($perPage, ['*'], 'page', $page);
-        $recentTickets = $paginated->items();
+        $data = Cache::remember($cacheKey, 30, function () use ($user, $viewAll, $request) {
+            // KPI counts (across all statuses)
+            $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
+            // Accept both "Forwarded" (current) and "Re-routed" (legacy) when computing KPI
+            $inProgressCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Forwarded', 'Re-routed'])->count();
+            $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
+            $totalCount = Ticket::where('staff_id', $user->id)->count();
 
-        // Weekly throughput for last 7 days (per signed-in staff)
-        $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
+            $query = Ticket::where('staff_id', $user->id)
+                ->orderByDesc('date_created')
+                ->with(['staff', 'routingHistories.staff']);
 
-        return response()->json([
-            'openCount'        => $openCount,
-            'inProgressCount'  => $inProgressCount,
-            'closedCount'      => $closedCount,
-            'totalCount'       => $totalCount,
-            'recentTickets'    => $recentTickets,
-            'weeklyThroughput' => $weeklyThroughput,
-            'pagination'       => [
-                'currentPage' => $paginated->currentPage(),
-                'lastPage'    => $paginated->lastPage(),
-                'perPage'     => $paginated->perPage(),
-                'total'       => $paginated->total(),
-            ],
-        ]);
+            if (!$viewAll) {
+                // Only active tickets — accept either Forwarded (new) or Re-routed (legacy)
+                $query->whereIn('status', ['Open', 'Forwarded', 'Re-routed']);
+            }
+
+            // Pagination support for table view
+            $perPage = min(max((int) $request->query('perPage', 10), 1), 50);
+            $page    = max((int) $request->query('page', 1), 1);
+
+            $paginated     = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Convert ticket models to arrays to make the cached payload driver-agnostic
+            $recentTickets = array_map(function ($t) {
+                return $t->toArray();
+            }, $paginated->items());
+
+            // Weekly throughput for last 7 days (per signed-in staff)
+            $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
+
+            return [
+                'openCount'        => $openCount,
+                'inProgressCount'  => $inProgressCount,
+                'closedCount'      => $closedCount,
+                'totalCount'       => $totalCount,
+                'recentTickets'    => $recentTickets,
+                'weeklyThroughput' => $weeklyThroughput,
+                'pagination'       => [
+                    'currentPage' => $paginated->currentPage(),
+                    'lastPage'    => $paginated->lastPage(),
+                    'perPage'     => $paginated->perPage(),
+                    'total'       => $paginated->total(),
+                ],
+            ];
+        });
+
+        // Return cached (or freshly generated) payload with ETag for conditional client caching
+        return response()->json($data)->header('ETag', $etag);
     }
 
     /**
@@ -295,17 +326,34 @@ class StaffController extends Controller
             return response()->json(['error' => 'No staff found for the selected role'], 422);
         }
 
-        // Update ticket assignment and move to Re-routed
+        // Keep original assignee id for cross-tab/version updates
+        $oldStaffId = $ticket->staff_id;
+
+        // Update ticket assignment and move to Forwarded
         $ticket->staff_id = $newStaff->id;
-        $ticket->status = 'Re-routed';
+        $ticket->status = 'Forwarded';
         $ticket->date_closed = null;
         $ticket->save();
+
+        // Bump per-user dashboard version counters so cached dashboard snapshots become stale immediately.
+        try {
+            Cache::add('staff_dashboard_version_' . $oldStaffId, 0);
+            Cache::increment('staff_dashboard_version_' . $oldStaffId);
+        } catch (\Throwable $e) {
+            // ignore cache driver-specific issues
+        }
+        try {
+            Cache::add('staff_dashboard_version_' . $newStaff->id, 0);
+            Cache::increment('staff_dashboard_version_' . $newStaff->id);
+        } catch (\Throwable $e) {
+            // ignore
+        }
 
         // Record routing history
         TicketRoutingHistory::create([
             'ticket_id' => $ticket->id,
             'staff_id' => $newStaff->id,
-            'status' => 'Re-routed',
+            'status' => 'Forwarded',
             'routed_at' => now(),
             'notes' => $request->input('notes')
         ]);
@@ -365,6 +413,14 @@ class StaffController extends Controller
             $ticket->status = 'Closed';
             $ticket->date_closed = now();
             $ticket->save();
+
+            // Bump per-user dashboard version counter so cached dashboard snapshots become stale immediately.
+            try {
+                Cache::add('staff_dashboard_version_' . $ticket->staff_id, 0);
+                Cache::increment('staff_dashboard_version_' . $ticket->staff_id);
+            } catch (\Throwable $e) {
+                // ignore cache driver-specific issues
+            }
 
             // Record closure in routing history
             TicketRoutingHistory::create([

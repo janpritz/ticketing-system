@@ -220,27 +220,41 @@ class AdminTicketsController extends Controller
     }
 
     /**
-     * Reroute a ticket to a staff role.
+     * Forward a ticket to a staff role.
      * Expects JSON: { role: 'Enrollment' }
      */
     public function reroute(Request $request, $id)
     {
         $request->validate([
-            'role' => 'required|string',
+            'role'     => 'sometimes|string',
+            'staff_id' => 'sometimes|integer',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
         DB::beginTransaction();
         try {
-            // Find a staff with that role (using roles table)
-            $staff = User::whereHas('role', function ($q) use ($request) {
-                $q->where('name', $request->role);
-            })->inRandomOrder()->first();
+            $staff = null;
+
+            // If staff_id provided, assign directly to that user
+            if ($request->filled('staff_id')) {
+                $staff = User::select('id', 'name', 'email')->find($request->input('staff_id'));
+                if (!$staff) {
+                    return response()->json(['message' => 'Staff not found for provided staff_id'], 422);
+                }
+            } elseif ($request->filled('role')) {
+                // Find a staff with that role (using roles table)
+                $staff = User::whereHas('role', function ($q) use ($request) {
+                    $q->where('name', $request->input('role'));
+                })->inRandomOrder()->first();
+            } else {
+                return response()->json(['message' => 'Either role or staff_id is required'], 422);
+            }
 
             $ticket->staff_id = $staff ? $staff->id : null;
-            // optional: set status to Re-routed
-            $ticket->status = 'Re-routed';
+            // set status to Forwarded
+            $ticket->status = 'Forwarded';
+            $ticket->date_closed = null;
             $ticket->save();
 
             TicketRoutingHistory::create([
@@ -248,19 +262,39 @@ class AdminTicketsController extends Controller
                 'staff_id' => $ticket->staff_id,
                 'status' => $ticket->status,
                 'routed_at' => now(),
-                'notes' => 'Rerouted by admin to role: ' . $request->role,
+                'notes' => $request->input('notes') ? $request->input('notes') : ('Forwarded by admin' . ($request->filled('role') ? ' to role: ' . $request->input('role') : ' to staff_id: ' . $request->input('staff_id'))),
             ]);
 
             DB::commit();
- 
+
             // update last-changed cache
             try {
                 Cache::put('tickets_last_changed', time(), 3600);
             } catch (\Throwable $cacheEx) {
                 Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
             }
- 
-            return response()->json(['message' => 'Ticket rerouted', 'staff' => $staff]);
+
+            // Send push to the newly assigned staff if available (non-blocking)
+            if ($staff && $staff->id) {
+                try {
+                    $ticketUrl = url('/admin/tickets') . '/' . $ticket->id;
+                    $payload = [
+                        'title'     => 'A ticket was assigned to you',
+                        'body'      => \Illuminate\Support\Str::limit($ticket->question ?? 'You have a new ticket', 120),
+                        'url'       => $ticketUrl,
+                        'ticket_id' => $ticket->id,
+                        'data'      => [
+                            'url'       => $ticketUrl,
+                            'ticket_id' => $ticket->id
+                        ],
+                    ];
+                    app(\App\Services\PushService::class)->sendToUser($staff->id, $payload);
+                } catch (\Throwable $e) {
+                    Log::warning('Push send failed on admin reroute: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json(['message' => 'Ticket forwarded', 'staff' => $staff]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Failed to reroute', 'error' => $e->getMessage()], 500);
