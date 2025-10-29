@@ -9,7 +9,6 @@
       <h1 class="text-2xl font-semibold text-slate-900">Ticket Management</h1>
       <p class="text-sm text-slate-500 mt-1">Manage all tickets: respond, reroute, edit, delete.</p>
     </div>
-
     <div class="flex items-center gap-3">
       <!-- Desktop search + per-page -->
       <div class="hidden md:flex items-center gap-2">

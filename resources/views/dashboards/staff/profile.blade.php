@@ -53,7 +53,7 @@
                                 required>
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-600 mb-1" for="email">Email (read-only)</label>
+                            <label class="block text-xs text-gray-600 mb-1" for="email">Email (contact administrator for email update)</label>
                             <input type="email" id="email" value="{{ $user->email }}" readonly
                                 class="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-600">
                         </div>

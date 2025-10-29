@@ -73,22 +73,8 @@
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                   </svg>
                 </button>
-                <label class="relative block">
-                    <span class="sr-only">Search</span>
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                        </svg>
-                    </span>
-                    <input type="text" placeholder="Search tickets, users, FAQs..." class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </label>
             </div>
             <div class="flex items-center gap-4">
-                <button class="relative text-gray-500 hover:text-gray-700" title="Notifications">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 22a2 2 0 002-2H10a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v7l-2 2v1h16v-1l-2-2z" />
-                    </svg>
-                </button>
                 <div class="text-right">
                     <div class="text-xs text-slate-500">Welcome back,</div>
                     <div class="text-sm font-medium text-slate-900">{{ auth()->user()?->name ?? 'Admin User' }}</div>
@@ -335,8 +321,8 @@
                                 <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="inProgressListBody" class="divide-y divide-gray-100">
-                            @forelse(($inProgressList ?? []) as $t)
+                        <tbody id="myTicketsListBody" class="divide-y divide-gray-100">
+                            @forelse(($myTicketsList ?? []) as $t)
                             @php
                             @endphp
                             <tr class="hover:bg-gray-50">
@@ -369,7 +355,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to Primary Administrator.</td>
+                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -408,23 +394,12 @@
           <textarea id="tmResponse" class="w-full rounded-md border-gray-300 px-3 py-2 text-sm" rows="4"></textarea>
         </div>
         <div>
-          <label class="block text-xs text-gray-500">Reroute to</label>
+          <label class="block text-xs text-gray-500">Forward to</label>
           <div class="flex items-center gap-2">
             <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
-              <option value="" selected disabled>Select role</option>
-              <option>Primary Administrator</option>
-              <option>Enrollment</option>
-              <option>Finance and Payments</option>
-              <option>Scholarships</option>
-              <option>Academic Concerns</option>
-              <option>Exams</option>
-              <option>Student Services</option>
-              <option>Library Services</option>
-              <option>IT Support</option>
-              <option>Graduation</option>
-              <option>Athletics and Sports</option>
+              <option value="" selected disabled>Select user</option>
             </select>
-            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Apply</button>
           </div>
 
           <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
@@ -441,7 +416,7 @@
       <div class="px-5 py-3 border-t flex items-center justify-between gap-3">
         <div></div>
         <div class="flex items-center gap-2">
-          <button id="tmSendResponse" type="button" disabled class="rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm">Send</button>
+          <button id="tmSendResponse" type="button" disabled class="rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm">Respond</button>
         </div>
       </div>
     </div>
@@ -559,6 +534,11 @@
 
         // Auto-refresh admin dashboard data
         const fmt = new Intl.NumberFormat('en-US');
+
+        // Background fetch data every 10 seconds
+        setInterval(() => {
+            refreshAdminData();
+        }, 20000);
 
         function updateCounts(payload) {
             const elOpen = document.getElementById('openTicketsCount');
@@ -738,8 +718,8 @@
             }) : [];
             tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No open tickets.</td></tr>`;
         }
-        function updateInProgressList(list) {
-            const tbody = document.getElementById('inProgressListBody');
+        function updateMyTicketsList(list) {
+            const tbody = document.getElementById('myTicketsListBody');
             if (!tbody) return;
             const rows = Array.isArray(list) ? list.map(t => {
                 const ticketNo = String(t.id);
@@ -808,7 +788,7 @@
                 // Update top senders table and lists
                 updateTopSenders(data);
                 updateOpenList(data.openList || []);
-                updateInProgressList(data.inProgressList || []);
+                updateMyTicketsList(data.myTicketsList || []);
 
                 // Keep active staff list fresh for drawer
                 if (Array.isArray(data.activeStaff)) {
@@ -1000,6 +980,7 @@
   function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,"&#039;"); }
 
   async function loadAndShowTicket(id){
+    currentTicketId = id;
     if (!id) return;
     // Use /public prefix for deployments that serve the app under the public folder (e.g. example.com/public/...)
     const url = "{{ url('/admin/tickets') }}/" + encodeURIComponent(id);
@@ -1015,6 +996,18 @@
       if (tmInfo) tmInfo.textContent = `#${t.id} • ${t.email || '-'} • ${t.category || ''}`;
       if (tmQuestion) tmQuestion.textContent = t.question || '';
       if (tmResponse) tmResponse.value = '';
+
+      // Populate reroute select with users
+      const select = document.getElementById('tmRerouteSelect');
+      if (select && t.users) {
+        select.innerHTML = '<option value="" selected disabled>Select user</option>';
+        t.users.forEach(user => {
+          const option = document.createElement('option');
+          option.value = user.id;
+          option.textContent = user.name;
+          select.appendChild(option);
+        });
+      }
 
       // Render reroute history
       try {
@@ -1070,6 +1063,37 @@
     if (!id) return;
     loadAndShowTicket(id);
   });
+
+  // Show/hide Apply button based on Forward to select
+  const tmRerouteSelect = document.getElementById('tmRerouteSelect');
+  const tmRerouteInlineBtn = document.getElementById('tmRerouteInlineBtn');
+
+  if (tmRerouteSelect && tmRerouteInlineBtn) {
+    tmRerouteSelect.addEventListener('change', function() {
+      if (this.value) {
+        tmRerouteInlineBtn.classList.remove('hidden');
+      } else {
+        tmRerouteInlineBtn.classList.add('hidden');
+      }
+    });
+  }
+
+  // Enable/disable Respond button based on Response textarea content
+  const tmSendResponse = document.getElementById('tmSendResponse');
+
+  if (tmResponse && tmSendResponse) {
+    tmResponse.addEventListener('input', function() {
+      if (this.value.trim()) {
+        tmSendResponse.removeAttribute('disabled');
+        tmSendResponse.classList.remove('bg-gray-300');
+        tmSendResponse.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      } else {
+        tmSendResponse.setAttribute('disabled', 'disabled');
+        tmSendResponse.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        tmSendResponse.classList.add('bg-gray-300');
+      }
+    });
+  }
 
   // Close modal handlers
   document.addEventListener('click', function (e) {

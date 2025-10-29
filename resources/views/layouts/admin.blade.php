@@ -79,11 +79,6 @@
         <!-- Header search removed as requested -->
       </div>
       <div class="flex items-center gap-4">
-        <button class="relative text-gray-500 hover:text-gray-700" title="Notifications">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 22a2 2 0 002-2H10a2 2 0 002 2zm6-6V9a6 6 0 10-12 0v7l-2 2v1h16v-1l-2-2z" />
-          </svg>
-        </button>
         <div class="text-right">
           <div class="text-xs text-slate-500">Welcome back,</div>
           <div class="text-sm font-medium text-slate-900">{{ auth()->user()->name ?? 'Admin User' }}</div>

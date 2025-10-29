@@ -140,9 +140,12 @@ class AdminTicketsController extends Controller
                   ->orderBy('routed_at', 'desc');
             }
         ])->select('tickets.*')->findOrFail($id);
- 
+
+        // Get list of users with roles (staff) for rerouting
+        $users = User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
+
         // Normalize a bit for the UI
-        return response()->json($ticket);
+        return response()->json(array_merge($ticket->toArray(), ['users' => $users]));
     }
 
     /**
@@ -220,25 +223,22 @@ class AdminTicketsController extends Controller
     }
 
     /**
-     * Reroute a ticket to a staff role.
-     * Expects JSON: { role: 'Enrollment' }
+     * Reroute a ticket to a specific user.
+     * Expects JSON: { user_id: 123 }
      */
     public function reroute(Request $request, $id)
     {
         $request->validate([
-            'role' => 'required|string',
+            'user_id' => 'required|integer|exists:users,id',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
         DB::beginTransaction();
         try {
-            // Find a staff with that role (using roles table)
-            $staff = User::whereHas('role', function ($q) use ($request) {
-                $q->where('name', $request->role);
-            })->inRandomOrder()->first();
+            $user = User::findOrFail($request->user_id);
 
-            $ticket->staff_id = $staff ? $staff->id : null;
+            $ticket->staff_id = $user->id;
             // optional: set status to Re-routed
             $ticket->status = 'Re-routed';
             $ticket->save();
@@ -248,19 +248,19 @@ class AdminTicketsController extends Controller
                 'staff_id' => $ticket->staff_id,
                 'status' => $ticket->status,
                 'routed_at' => now(),
-                'notes' => 'Rerouted by admin to role: ' . $request->role,
+                'notes' => 'Rerouted by admin to user: ' . $user->name,
             ]);
 
             DB::commit();
- 
+
             // update last-changed cache
             try {
                 Cache::put('tickets_last_changed', time(), 3600);
             } catch (\Throwable $cacheEx) {
                 Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
             }
- 
-            return response()->json(['message' => 'Ticket rerouted', 'staff' => $staff]);
+
+            return response()->json(['message' => 'Ticket rerouted', 'staff' => $user]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => 'Failed to reroute', 'error' => $e->getMessage()], 500);

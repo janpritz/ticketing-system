@@ -24,7 +24,7 @@ class AdminController extends Controller
     {
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
-        $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
+        $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
         $faqCount = Faq::count();
         // number of untrained FAQs (displayed under Total FAQs on dashboard)
         $faqPendingCount = Faq::where('status', 'untrained')->count();
@@ -142,23 +142,21 @@ class AdminController extends Controller
 
         // Recent lists
         $openList = Ticket::with('staff')
-            ->where('status', 'Open')
+            ->whereIn('status', ['Open', 'Forwarded'])
             ->orderByDesc('date_created')
             ->take(6)
             ->get();
 
-        // Show recent tickets assigned to Primary Administrator (My Tickets)
-        $primaryRole = Role::where('name', 'Primary Administrator')->first();
-        $adminUserIds = $primaryRole ? User::where('role_id', $primaryRole->id)->pluck('id')->toArray() : [];
-        $inProgressList = Ticket::with('staff')
-            ->when(count($adminUserIds) > 0, fn($q) => $q->whereIn('staff_id', $adminUserIds))
+        // Show recent tickets assigned to Primary Administrator (staff_id = 1) (My Tickets)
+        $myTicketsList = Ticket::with('staff')
+            ->where('staff_id', 1)
             ->orderByDesc('updated_at')
             ->take(6)
             ->get();
 
         return view('dashboards.admin.index', [
             'openTickets'       => $openTickets,
-            'inProgressTickets' => $inProgressTickets,
+            'forwardedTickets' => $forwardedTickets,
             'faqCount'          => $faqCount,
             // pending FAQs count used by dashboard UI
             'faqPendingCount'   => $faqPendingCount,
@@ -170,7 +168,7 @@ class AdminController extends Controller
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
             'openList'          => $openList,
-            'inProgressList'    => $inProgressList,
+            'myTicketsList'    => $myTicketsList,
             'activeStaff'       => $activeStaff,
             'staffContacts'     => $staffContacts,
         ]);
@@ -183,7 +181,7 @@ class AdminController extends Controller
     {
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
-        $inProgressTickets = Ticket::where('status', 'Re-routed')->count();
+        $forwardedTickets = Ticket::where('status', 'Re-routed')->count();
         $faqCount = Faq::count();
         // include untrained FAQ count for live admin data
         $faqPendingCount = Faq::where('status', 'untrained')->count();
@@ -326,8 +324,28 @@ class AdminController extends Controller
         ->values()
         ->toArray();
 
-        $inProgressListArr = Ticket::with('staff')
+        $forwardedListArr = Ticket::with('staff')
             ->where('status', 'Re-routed')
+            ->orderByDesc('updated_at')
+            ->take(6)
+            ->get()
+            ->map(function ($t) {
+            return [
+                'id'           => (int) $t->id,
+                'status'       => (string) $t->status,
+                'email'        => (string) ($t->email ?? ''),
+                'category'     => (string) ($t->category ?? ''),
+                'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
+                'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
+                'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
+                'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
+            ];
+        })
+        ->values()
+        ->toArray();
+
+        $myTicketsListArr = Ticket::with('staff')
+            ->where('staff_id', 1)
             ->orderByDesc('updated_at')
             ->take(6)
             ->get()
@@ -348,7 +366,7 @@ class AdminController extends Controller
 
         return response()->json([
             'openTickets'       => (int) $openTickets,
-            'inProgressTickets' => (int) $inProgressTickets,
+            'forwardedTickets' => (int) $forwardedTickets,
             'faqCount'          => (int) $faqCount,
             'faqPendingCount'   => (int) $faqPendingCount,
             'userCount'         => (int) $userCount,
@@ -359,13 +377,13 @@ class AdminController extends Controller
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
             'openList'          => $openListArr,
-            'inProgressList'    => $inProgressListArr,
+            'forwardedList'    => $forwardedListArr,
+            'myTicketsList'    => $myTicketsListArr,
             'activeStaff'       => $activeStaffArr,
             'staffContacts'     => $staffContactsArr,
         ])
-        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        ->header('Pragma', 'no-cache')
-        ->header('Expires', '0');
+        ->header('Cache-Control', 'public, max-age=10')
+        ->header('Pragma', 'cache');
     }
 
     /**
