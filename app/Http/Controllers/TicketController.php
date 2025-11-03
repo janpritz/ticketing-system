@@ -10,8 +10,7 @@ use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-
-
+use Illuminate\Support\Facades\Cache;
 
 class TicketController extends Controller
 {
@@ -111,6 +110,9 @@ class TicketController extends Controller
             'routed_at' => now(),
             'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
         ]);
+
+        // Clear tickets cache on creation
+        Cache::tags(['tickets'])->flush();
         
         // Send push notification to the assigned staff (if any)
         if ($ticket->staff_id) {
@@ -282,15 +284,22 @@ class TicketController extends Controller
     {
         $recepient_id = $request->recepient_id;
 
+        // Cache key for user tickets
+        $cacheKey = 'user_tickets_' . $recepient_id;
+
         // For API requests, return JSON
         if ($request->wantsJson()) {
-            // Retrieve all tickets for the specified recepient_id
-            $tickets = Ticket::where('recepient_id', $recepient_id)->get();
+            // Retrieve all tickets for the specified recepient_id with caching
+            $tickets = Cache::remember($cacheKey, 20, function () use ($recepient_id) {
+                return Ticket::where('recepient_id', $recepient_id)->get();
+            });
             return response()->json($tickets);
         }
 
         // For web requests, return a view with the tickets
-        $tickets = Ticket::where('recepient_id', $recepient_id)->get();
+        $tickets = Cache::tags(['tickets'])->remember($cacheKey, 20, function () use ($recepient_id) {
+            return Ticket::where('recepient_id', $recepient_id)->get();
+        });
         return view('tickets.index', compact('tickets'));
     }
 
@@ -328,6 +337,9 @@ class TicketController extends Controller
             'question' => $request->question,
         ]);
 
+        // Clear tickets cache on update
+        Cache::tags(['tickets'])->flush();
+
         if ($request->wantsJson()) {
             return response()->json($ticket);
         }
@@ -341,6 +353,9 @@ class TicketController extends Controller
 
         // Delete the ticket
         $ticket->delete();
+
+        // Clear tickets cache on delete
+        Cache::tags(['tickets'])->flush();
 
         if ($request->wantsJson()) {
             return response()->json(['deleted' => true]);
