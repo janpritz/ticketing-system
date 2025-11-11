@@ -17,6 +17,16 @@ class TicketController extends Controller
     // Show the ticket creation form
     public function showCreateForm($recepient_id = null)
     {
+        // Check if the user already has an open ticket
+        $existingOpenTicket = Ticket::where('recepient_id', $recepient_id)
+            ->where('status', '!=', 'Closed')
+            ->first();
+
+        if ($existingOpenTicket) {
+            // If there is already an open ticket, redirect to tickets page
+            return redirect()->to(url('/tickets/' . $recepient_id))->with('error', 'You already have an open ticket. Please wait for the response.');
+        }
+
         // Fetch categories from DB at page load (we show categories only; role is resolved from category)
         $categories = Category::orderBy('name')->pluck('name')->toArray();
 
@@ -33,6 +43,8 @@ class TicketController extends Controller
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
         ]);
 
         // Check if the user already has an open ticket
@@ -100,7 +112,19 @@ class TicketController extends Controller
             'staff_id' => $staff ? $staff->id : null,
             'date_created' => now(),
             'date_closed' => null,
+            'attachments' => null, // will update after storing files
         ]);
+
+        // Handle attachments
+        $attachmentsPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('attachments', $filename);
+                $attachmentsPaths[] = $path;
+            }
+            $ticket->update(['attachments' => json_encode($attachmentsPaths)]);
+        }
 
         // Record initial routing history at ticket creation
         TicketRoutingHistory::create([
@@ -112,7 +136,7 @@ class TicketController extends Controller
         ]);
 
         // Clear tickets cache on creation
-        Cache::tags(['tickets'])->flush();
+        Cache::flush();
         
         // Send push notification to the assigned staff (if any)
         if ($ticket->staff_id) {
@@ -297,7 +321,7 @@ class TicketController extends Controller
         }
 
         // For web requests, return a view with the tickets
-        $tickets = Cache::tags(['tickets'])->remember($cacheKey, 20, function () use ($recepient_id) {
+        $tickets = Cache::remember($cacheKey, 20, function () use ($recepient_id) {
             return Ticket::where('recepient_id', $recepient_id)->get();
         });
         return view('tickets.index', compact('tickets'));
@@ -338,7 +362,7 @@ class TicketController extends Controller
         ]);
 
         // Clear tickets cache on update
-        Cache::tags(['tickets'])->flush();
+        Cache::flush();
 
         if ($request->wantsJson()) {
             return response()->json($ticket);
@@ -355,7 +379,7 @@ class TicketController extends Controller
         $ticket->delete();
 
         // Clear tickets cache on delete
-        Cache::tags(['tickets'])->flush();
+        Cache::flush();
 
         if ($request->wantsJson()) {
             return response()->json(['deleted' => true]);

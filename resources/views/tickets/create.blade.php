@@ -71,7 +71,7 @@
                             <div class="mt-1">
                                 <input list="category-list" name="category" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required onchange="showDynamicFields()" value="{{ old('category') }}">
+                                    required value="{{ old('category') }}">
                                 <datalist id="category-list">
                                     @if(isset($categories) && count($categories))
                                         @foreach($categories as $c)
@@ -148,6 +148,14 @@
                                     required>{{ old('question') }}</textarea>
                             </div>
                         </div>
+                         <div>
+                             <label for="attachments" class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per image)</label>
+                             <div class="mt-1">
+                                 <input type="file" name="attachments[]" id="attachments" multiple accept="image/*"
+                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                 <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files are allowed.)</p>
+                             </div>
+                         </div>
 
                         <div class="flex items-center justify-end">
                             <button id="submitTicketBtn" type="submit"
@@ -165,26 +173,43 @@
                             const form = document.getElementById('ticketForm');
                             const submitBtn = document.getElementById('submitTicketBtn');
 
+                            // Validate attachments count
+                            document.getElementById('attachments').addEventListener('change', function (e) {
+                                const files = e.target.files;
+                                if (files.length > 5) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Too many files',
+                                        text: 'You can upload a maximum of 5 images.'
+                                    });
+                                    e.target.value = ''; // Clear selection
+                                }
+                            });
+
                             form.addEventListener('submit', async function (e) {
                                 e.preventDefault();
                                 submitBtn.disabled = true;
 
-                                const payload = {
-                                    recepient_id: document.getElementById('recepient_id').value,
-                                    email: document.getElementById('email').value,
-                                    category: document.getElementById('category').value,
-                                    question: document.getElementById('question').value
-                                };
+                                const formData = new FormData();
+                                formData.append('recepient_id', document.getElementById('recepient_id').value);
+                                formData.append('email', document.getElementById('email').value);
+                                formData.append('category', document.getElementById('category').value);
+                                formData.append('question', document.getElementById('question').value);
+                                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+                                // Add attachments
+                                const attachments = document.getElementById('attachments').files;
+                                for (let i = 0; i < attachments.length; i++) {
+                                    formData.append('attachments[]', attachments[i]);
+                                }
 
                                 try {
                                     const res = await fetch(form.action, {
                                         method: 'POST',
                                         headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                            'Accept': 'application/json'
                                         },
-                                        body: JSON.stringify(payload)
+                                        body: formData
                                     });
 
                                     const json = await res.json();
