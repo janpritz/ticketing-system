@@ -61,6 +61,16 @@
   </div>
 </div>
 
+<!-- Image Lightbox -->
+<div id="imageLightbox" class="fixed inset-0 z-60 hidden bg-black bg-opacity-75 flex items-center justify-center">
+  <div class="relative w-full h-full">
+    <img id="lightboxImage" src="" alt="" class="w-full h-full object-contain">
+    <button id="lightboxPrev" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&larr;</button>
+    <button id="lightboxNext" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&rarr;</button>
+    <button id="lightboxClose" class="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&times;</button>
+  </div>
+</div>
+
 <div id="ticketsDrawerOverlay" class="hidden fixed inset-0 bg-black/30 z-40"></div>
 <!-- Bottom drawer: Filters & Sort -->
 <div id="ticketsBottomDrawer" class="fixed left-0 right-0 bottom-0 z-50 bg-white border-t border-gray-200 shadow-lg transform translate-y-full transition-transform duration-200">
@@ -154,6 +164,10 @@
         <div>
           <label class="block text-xs text-gray-500">Question</label>
           <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+        </div>
+        <div id="tmAttachmentsBlock" class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 hidden">
+          <div class="text-xs font-semibold text-gray-700 mb-2">Attachments</div>
+          <div id="tmAttachmentsList" class="flex flex-wrap gap-2"></div>
         </div>
         <div>
           <label class="block text-xs text-gray-500">Response (send email)</label>
@@ -529,6 +543,37 @@
       // populate modal
       document.getElementById('tmInfo').textContent = `#${t.id} • ${t.email || '-'} • ${t.category || ''}`;
       document.getElementById('tmQuestion').textContent = t.question || '';
+
+      // Handle attachments
+      const attachmentsBlock = document.getElementById('tmAttachmentsBlock');
+      const attachmentsList = document.getElementById('tmAttachmentsList');
+      if (attachmentsBlock && attachmentsList) {
+        attachmentsList.innerHTML = '';
+        if (t.attachments) {
+          let attachments = [];
+          try {
+            attachments = JSON.parse(t.attachments);
+          } catch (e) {
+            attachments = [];
+          }
+          if (attachments.length > 0) {
+            attachments.forEach((path, index) => {
+              const img = document.createElement('img');
+              img.src = '/storage/' + path;
+              img.alt = 'Attachment ' + (index + 1);
+              img.className = 'max-w-24 max-h-24 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
+              img.onclick = () => openLightbox(attachments, index);
+              attachmentsList.appendChild(img);
+            });
+            attachmentsBlock.classList.remove('hidden');
+          } else {
+            attachmentsBlock.classList.add('hidden');
+          }
+        } else {
+          attachmentsBlock.classList.add('hidden');
+        }
+      }
+
       const respEl = document.getElementById('tmResponse');
       const sendBtn = document.getElementById('tmSendResponse');
       const rerouteSelect = document.getElementById('tmRerouteSelect');
@@ -687,6 +732,56 @@
     }
   }
 
+  // Lightbox functions
+  let currentLightboxImages = [];
+  let currentLightboxIndex = 0;
+
+  function openLightbox(images, index) {
+    currentLightboxImages = images;
+    currentLightboxIndex = index;
+    const lightbox = document.getElementById('imageLightbox');
+    const img = document.getElementById('lightboxImage');
+    if (lightbox && img) {
+      img.src = '/storage/' + images[index];
+      lightbox.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      updateLightboxButtons();
+    }
+  }
+
+  function closeLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    if (lightbox) {
+      lightbox.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
+
+  function updateLightboxButtons() {
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+    if (prevBtn) prevBtn.style.display = currentLightboxIndex > 0 ? 'flex' : 'none';
+    if (nextBtn) nextBtn.style.display = currentLightboxIndex < currentLightboxImages.length - 1 ? 'flex' : 'none';
+  }
+
+  function prevImage() {
+    if (currentLightboxIndex > 0) {
+      currentLightboxIndex--;
+      const img = document.getElementById('lightboxImage');
+      if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+      updateLightboxButtons();
+    }
+  }
+
+  function nextImage() {
+    if (currentLightboxIndex < currentLightboxImages.length - 1) {
+      currentLightboxIndex++;
+      const img = document.getElementById('lightboxImage');
+      if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+      updateLightboxButtons();
+    }
+  }
+
   // inline save edit
   async function saveEdit(id, payload){
     try {
@@ -718,6 +813,32 @@
     }
     if (e.target && e.target.closest && e.target.closest('[data-modal-close]')) {
       ticketModal.classList.add('hidden');
+    }
+  });
+
+  // Lightbox event listeners
+  const lightboxCloseBtn = document.getElementById('lightboxClose');
+  const lightboxPrevBtn = document.getElementById('lightboxPrev');
+  const lightboxNextBtn = document.getElementById('lightboxNext');
+  const lightboxEl = document.getElementById('imageLightbox');
+
+  if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+  if (lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', prevImage);
+  if (lightboxNextBtn) lightboxNextBtn.addEventListener('click', nextImage);
+
+  // Close lightbox on background click
+  if (lightboxEl) {
+    lightboxEl.addEventListener('click', (e) => {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+  }
+
+  // Keyboard navigation for lightbox
+  document.addEventListener('keydown', (e) => {
+    if (lightboxEl && !lightboxEl.classList.contains('hidden')) {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') prevImage();
+      else if (e.key === 'ArrowRight') nextImage();
     }
   });
 
