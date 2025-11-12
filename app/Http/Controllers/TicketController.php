@@ -120,7 +120,7 @@ class TicketController extends Controller
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('attachments', $filename);
+                $path = $file->storeAs('attachments', $filename, 'public');
                 $attachmentsPaths[] = $path;
             }
             $ticket->update(['attachments' => json_encode($attachmentsPaths)]);

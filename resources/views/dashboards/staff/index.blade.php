@@ -390,8 +390,8 @@
 <div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
     <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
     <!-- Centered panel with internal scrolling when content exceeds viewport -->
-    <div class="relative mx-auto my-10 w-[90%] max-w-3xl">
-        <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 max-h-[90vh] overflow-auto">
+    <div class="relative mx-auto my-0 sm:my-10 w-full h-full sm:h-auto sm:w-[90%] max-w-3xl">
+        <div class="bg-white shadow-xl ring-1 ring-black/5 h-full sm:h-auto sm:max-h-[90vh] overflow-auto sm:rounded-xl">
             <div class="flex items-center justify-between px-5 py-4 border-b">
                 <div>
                     <div id="tmTicketNo" class="text-sm font-semibold text-gray-900">Ticket</div>
@@ -458,6 +458,10 @@
                     <div class="text-xs font-semibold text-emerald-700 mb-1">Sent Response</div>
                     <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
                 </div>
+                <div id="tmAttachmentsBlock" class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 hidden">
+                    <div class="text-xs font-semibold text-gray-700 mb-2">Attachments</div>
+                    <div id="tmAttachmentsList" class="flex flex-wrap gap-2"></div>
+                </div>
                 <div class="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
                     <label for="tmResponse" class="block text-xs font-semibold text-indigo-700 mb-1">Response
                         Message</label>
@@ -499,6 +503,16 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Image Lightbox -->
+<div id="imageLightbox" class="fixed inset-0 z-60 hidden bg-black bg-opacity-75 flex items-center justify-center">
+    <div class="relative w-full h-full">
+        <img id="lightboxImage" src="" alt="" class="w-full h-full object-contain">
+        <button id="lightboxPrev" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&larr;</button>
+        <button id="lightboxNext" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&rarr;</button>
+        <button id="lightboxClose" class="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&times;</button>
     </div>
 </div>
 
@@ -1081,6 +1095,36 @@
                 if (tmRecepient) tmRecepient.textContent = recepient;
                 if (tmResponse) tmResponse.value = '';
 
+                // Handle attachments
+                const attachmentsBlock = document.getElementById('tmAttachmentsBlock');
+                const attachmentsList = document.getElementById('tmAttachmentsList');
+                if (attachmentsBlock && attachmentsList) {
+                    attachmentsList.innerHTML = '';
+                    if (ticket.attachments) {
+                        let attachments = [];
+                        try {
+                            attachments = JSON.parse(ticket.attachments);
+                        } catch (e) {
+                            attachments = [];
+                        }
+                        if (attachments.length > 0) {
+                            attachments.forEach((path, index) => {
+                                const img = document.createElement('img');
+                                img.src = '/storage/' + path;
+                                img.alt = 'Attachment ' + (index + 1);
+                                img.className = 'max-w-24 max-h-24 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
+                                img.onclick = () => openLightbox(attachments, index);
+                                attachmentsList.appendChild(img);
+                            });
+                            attachmentsBlock.classList.remove('hidden');
+                        } else {
+                            attachmentsBlock.classList.add('hidden');
+                        }
+                    } else {
+                        attachmentsBlock.classList.add('hidden');
+                    }
+                }
+
                 // Hide reroute controls initially
                 const tmRerouteSelectEl = document.getElementById('tmRerouteSelect');
                 const tmRerouteControls = tmRerouteSelectEl ? tmRerouteSelectEl.parentElement : null;
@@ -1131,6 +1175,56 @@
                 currentTicketId = null;
             }
 
+            // Lightbox functions
+            let currentLightboxImages = [];
+            let currentLightboxIndex = 0;
+
+            function openLightbox(images, index) {
+                currentLightboxImages = images;
+                currentLightboxIndex = index;
+                const lightbox = document.getElementById('imageLightbox');
+                const img = document.getElementById('lightboxImage');
+                if (lightbox && img) {
+                    img.src = '/storage/' + images[index];
+                    lightbox.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    updateLightboxButtons();
+                }
+            }
+
+            function closeLightbox() {
+                const lightbox = document.getElementById('imageLightbox');
+                if (lightbox) {
+                    lightbox.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            }
+
+            function updateLightboxButtons() {
+                const prevBtn = document.getElementById('lightboxPrev');
+                const nextBtn = document.getElementById('lightboxNext');
+                if (prevBtn) prevBtn.style.display = currentLightboxIndex > 0 ? 'flex' : 'none';
+                if (nextBtn) nextBtn.style.display = currentLightboxIndex < currentLightboxImages.length - 1 ? 'flex' : 'none';
+            }
+
+            function prevImage() {
+                if (currentLightboxIndex > 0) {
+                    currentLightboxIndex--;
+                    const img = document.getElementById('lightboxImage');
+                    if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                    updateLightboxButtons();
+                }
+            }
+
+            function nextImage() {
+                if (currentLightboxIndex < currentLightboxImages.length - 1) {
+                    currentLightboxIndex++;
+                    const img = document.getElementById('lightboxImage');
+                    if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                    updateLightboxButtons();
+                }
+            }
+
             // Delegate click on "View"
             if (ticketsBodyEl) {
                 ticketsBodyEl.addEventListener('click', (e) => {
@@ -1167,6 +1261,32 @@
             }
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') closeModal();
+            });
+
+            // Lightbox event listeners
+            const lightboxCloseBtn = document.getElementById('lightboxClose');
+            const lightboxPrevBtn = document.getElementById('lightboxPrev');
+            const lightboxNextBtn = document.getElementById('lightboxNext');
+            const lightboxEl = document.getElementById('imageLightbox');
+
+            if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+            if (lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', prevImage);
+            if (lightboxNextBtn) lightboxNextBtn.addEventListener('click', nextImage);
+
+            // Close lightbox on background click
+            if (lightboxEl) {
+                lightboxEl.addEventListener('click', (e) => {
+                    if (e.target === lightboxEl) closeLightbox();
+                });
+            }
+
+            // Keyboard navigation for lightbox
+            document.addEventListener('keydown', (e) => {
+                if (lightboxEl && !lightboxEl.classList.contains('hidden')) {
+                    if (e.key === 'Escape') closeLightbox();
+                    else if (e.key === 'ArrowLeft') prevImage();
+                    else if (e.key === 'ArrowRight') nextImage();
+                }
             });
 
             // Options dropdown
@@ -1354,3 +1474,4 @@
         }
     });
 </script>
+
