@@ -321,7 +321,7 @@ class StaffController extends Controller
      * Show a dedicated ticket detail page for staff (view + response form).
      * Accessible only to the assigned staff member or Primary Administrator.
      */
-    public function showTicket(Ticket $ticket)
+    public function showTicket(Ticket $tickett)
     {
         $auth = Auth::user();
         if (!$auth) {
