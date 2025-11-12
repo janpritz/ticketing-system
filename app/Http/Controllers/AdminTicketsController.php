@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TicketResponseMail;
+use App\Jobs\SendTicketResponseJob;
 
 class AdminTicketsController extends Controller
 {
@@ -207,26 +208,20 @@ class AdminTicketsController extends Controller
                 Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
             }
 
-            // Attempt to send response email to the ticket owner.
-            // We send after committing the DB so the saved response is durable.
+            // Dispatch job to send response email to the ticket owner.
+            // We dispatch after committing the DB so the saved response is durable.
             $mailSent = true;
             $mailError = null;
-            try {
-                if (!empty($ticket->email)) {
-                    Mail::to($ticket->email)->send(
-                        new TicketResponseMail($ticket, $request->input('message'), optional($request->user())->name)
-                    );
-                } else {
-                    // No recipient email configured on ticket
-                    $mailSent = false;
-                    $mailError = 'Ticket has no email address';
-                }
-            } catch (\Throwable $mailEx) {
-                // Record the mail error but do not roll back the ticket update.
+            if (!empty($ticket->email)) {
+                SendTicketResponseJob::dispatch(
+                    $ticket->id,
+                    $request->input('message'),
+                    optional($request->user())->name
+                );
+            } else {
+                // No recipient email configured on ticket
                 $mailSent = false;
-                $mailError = $mailEx->getMessage();
-                // Optionally log the mail exception for diagnostics
-                Log::error('Ticket response email failed: ' . $mailError);
+                $mailError = 'Ticket has no email address';
             }
 
             return response()->json([
