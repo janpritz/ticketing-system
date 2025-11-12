@@ -86,11 +86,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:5,1')
         ->name('staff.profile.password.update');
 
-    // Ticket reroute (records history)
-    Route::post('/staff/tickets/{ticket}/reroute', [StaffController::class, 'reroute'])
+    // Ticket forward (records history)
+    Route::post('/staff/tickets/{ticket}/forward', [StaffController::class, 'forward'])
         ->whereNumber('ticket')
         ->middleware('throttle:30,1')
-        ->name('staff.tickets.reroute');
+        ->name('staff.tickets.forward');
 
     // Ticket respond (send email)
     Route::post('/staff/tickets/{ticket}/respond', [StaffController::class, 'respond'])
@@ -182,8 +182,8 @@ Route::middleware('auth')->group(function () {
         // respond (send email / close)
         Route::post('/{ticket}/respond', [\App\Http\Controllers\AdminTicketsController::class, 'respond'])->whereNumber('ticket')->name('respond');
 
-        // reroute to role (records history)
-        Route::post('/{ticket}/reroute', [\App\Http\Controllers\AdminTicketsController::class, 'reroute'])->whereNumber('ticket')->name('reroute');
+        // forward to user (records history)
+        Route::post('/{ticket}/forward', [\App\Http\Controllers\AdminTicketsController::class, 'forward'])->whereNumber('ticket')->name('forward');
 
         // update ticket fields (PUT)
         Route::put('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'update'])->whereNumber('ticket')->name('update');

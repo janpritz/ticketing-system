@@ -7,7 +7,7 @@
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold text-slate-900">Ticket Management</h1>
-      <p class="text-sm text-slate-500 mt-1">Manage all tickets: respond, reroute, edit, delete.</p>
+      <p class="text-sm text-slate-500 mt-1">Manage all tickets: respond, forward, edit, delete.</p>
     </div>
     <div class="flex items-center gap-3">
       <!-- Desktop search + per-page -->
@@ -86,7 +86,7 @@
       <select id="filterStatus" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
         <option value="">All</option>
         <option value="Open">Open</option>
-        <option value="Re-routed">Re-routed</option>
+        <option value="Forwarded">Forwarded</option>
         <option value="Closed">Closed</option>
       </select>
     </div>
@@ -176,7 +176,7 @@
         <div>
           <label class="block text-xs text-gray-500">Reroute to</label>
           <div class="flex items-center gap-2">
-            <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
+            <select id="tmForwardSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
               <option value="" selected disabled>Select role</option>
               <option>Primary Administrator</option>
               <option>Enrollment</option>
@@ -190,12 +190,12 @@
               <option>Graduation</option>
               <option>Athletics and Sports</option>
             </select>
-            <!-- Inline reroute button shown only when a role is selected -->
-            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
+            <!-- Inline forward button shown only when a role is selected -->
+            <button id="tmForwardInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Forward</button>
           </div>
 
-          <!-- Collapsible reroute history (hidden when empty) -->
-          <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
+          <!-- Collapsible forward history (hidden when empty) -->
+          <div id="tmForwardHistoryContainer" class="mt-3 hidden">
             <button type="button" id="tmHistoryToggle" class="w-full text-left text-sm text-slate-600 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center justify-between">
               <span>Reroute History</span>
               <svg id="tmHistoryIcon" class="h-4 w-4 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -228,14 +228,14 @@
   // Use a raw URL template here (avoid route() encoding the placeholder)
   state.setAttribute('data-show-url-template', "{{ url('/admin/tickets') }}/__ID__");
   state.setAttribute('data-respond-url-template', "{{ url('/admin/tickets') }}/__ID__/respond");
-  state.setAttribute('data-reroute-url-template', "{{ url('/admin/tickets') }}/__ID__/reroute");
+  state.setAttribute('data-forward-url-template', "{{ url('/admin/tickets') }}/__ID__/forward");
   state.setAttribute('data-destroy-url-template', "{{ url('/admin/tickets') }}/__ID__");
   document.body.appendChild(state);
 
   const LIST_URL = state.getAttribute('data-list-url');
   const SHOW_TEMPLATE = state.getAttribute('data-show-url-template');
   const RESPOND_TEMPLATE = state.getAttribute('data-respond-url-template');
-  const REROUTE_TEMPLATE = state.getAttribute('data-reroute-url-template');
+  const FORWARD_TEMPLATE = state.getAttribute('data-forward-url-template');
   const DESTROY_TEMPLATE = state.getAttribute('data-destroy-url-template');
   const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -576,8 +576,8 @@
 
       const respEl = document.getElementById('tmResponse');
       const sendBtn = document.getElementById('tmSendResponse');
-      const rerouteSelect = document.getElementById('tmRerouteSelect');
-      const rerouteInlineBtn = document.getElementById('tmRerouteInlineBtn');
+      const forwardSelect = document.getElementById('tmForwardSelect');
+      const forwardInlineBtn = document.getElementById('tmForwardInlineBtn');
 
       // reset response field and UI
       if (respEl) respEl.value = '';
@@ -603,24 +603,24 @@
       // initial toggle
       toggleSendButton();
 
-      // Show/hide inline reroute button when a role is selected
-      if (rerouteSelect && rerouteInlineBtn) {
+      // Show/hide inline forward button when a role is selected
+      if (forwardSelect && forwardInlineBtn) {
         // initialize visibility
-        rerouteInlineBtn.classList.toggle('hidden', !rerouteSelect.value);
-        rerouteSelect.removeEventListener('change', () => {});
-        rerouteSelect.addEventListener('change', () => {
-          rerouteInlineBtn.classList.toggle('hidden', !rerouteSelect.value);
+        forwardInlineBtn.classList.toggle('hidden', !forwardSelect.value);
+        forwardSelect.removeEventListener('change', () => {});
+        forwardSelect.addEventListener('change', () => {
+          forwardInlineBtn.classList.toggle('hidden', !forwardSelect.value);
         });
       }
 
-      // Render reroute history if present. The server returns routing histories under either
+      // Render forward history if present. The server returns routing histories under either
       // `routingHistories` or `routing_histories` depending on how Eloquent serialized it.
-      const historyContainer = document.getElementById('tmRerouteHistoryContainer');
+      const historyContainer = document.getElementById('tmForwardHistoryContainer');
       const historyPanel = document.getElementById('tmHistoryPanel');
       const historyToggle = document.getElementById('tmHistoryToggle');
       const historyIcon = document.getElementById('tmHistoryIcon');
 
-      function renderRerouteHistory(histories) {
+      function renderForwardHistory(histories) {
         if (!historyContainer || !historyPanel || !historyToggle) return;
         const list = histories || (t.routingHistories || t.routing_histories) || [];
         if (!Array.isArray(list) || list.length === 0) {
@@ -660,9 +660,9 @@
 
       // Populate history based on returned ticket
       try {
-        renderRerouteHistory(t.routingHistories || t.routing_histories || []);
+        renderForwardHistory(t.routingHistories || t.routing_histories || []);
       } catch (e) {
-        console.warn('Failed to render reroute history', e);
+        console.warn('Failed to render forward history', e);
         if (historyContainer) historyContainer.classList.add('hidden');
       }
 
@@ -697,32 +697,32 @@
         };
       }
 
-      // Reroute handler (inline button) - safe attach
-      if (rerouteInlineBtn) {
-        rerouteInlineBtn.onclick = async () => {
-          const role = rerouteSelect ? rerouteSelect.value : '';
+      // Forward handler (inline button) - safe attach
+      if (forwardInlineBtn) {
+        forwardInlineBtn.onclick = async () => {
+          const role = forwardSelect ? forwardSelect.value : '';
           if (!role) {
             if (window.Swal) Swal.fire({ position: 'top-end', icon: 'warning', toast: true, title: 'Choose a role', showConfirmButton: false, timer: 3000, timerProgressBar: true });
             return;
           }
-          const rUrl = REROUTE_TEMPLATE.replace('__ID__', id);
+          const fUrl = FORWARD_TEMPLATE.replace('__ID__', id);
           try {
-            const resp = await fetch(rUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
+            const resp = await fetch(fUrl, { method: 'POST', headers: { 'Content-Type':'application/json','X-CSRF-TOKEN':csrf }, body: JSON.stringify({ role })});
             if (resp && resp.ok) {
               try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch(e){}
               fetchList(currentPage);
               ticketModal.classList.add('hidden');
-              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Rerouted', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'success', toast: true, title: 'Forwarded', showConfirmButton: false, timer: 3000, timerProgressBar: true });
             } else {
               const txt = resp ? await resp.text().catch(()=> '') : '';
-              console.error('Reroute failed', txt);
+              console.error('Forward failed', txt);
               ticketModal.classList.add('hidden');
-              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+              if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Forward failed', showConfirmButton: false, timer: 3000, timerProgressBar: true });
             }
           } catch(err){
-            console.error('Error rerouting', err);
+            console.error('Error forwarding', err);
             ticketModal.classList.add('hidden');
-            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Reroute error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            if (window.Swal) Swal.fire({ position: 'top-end', icon: 'error', toast: true, title: 'Forward error', showConfirmButton: false, timer: 3000, timerProgressBar: true });
           }
         };
       }

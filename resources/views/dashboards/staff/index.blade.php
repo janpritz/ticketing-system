@@ -415,7 +415,7 @@
                                 data-option="toggle-history">Show History</button>
                             <button type="button" id="tmOptionReroute"
                                 class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                                data-option="show-reroute">Reroute…</button>
+                                data-option="show-forward">Forward…</button>
                         </div>
                     </div>
                     <button type="button" class="text-gray-500 hover:text-gray-700" aria-label="Close"
@@ -1125,8 +1125,8 @@
                     }
                 }
 
-                // Hide reroute controls initially
-                const tmRerouteSelectEl = document.getElementById('tmRerouteSelect');
+                // Hide forward controls initially
+                const tmForwardSelectEl = document.getElementById('tmForwardSelect');
                 const tmRerouteControls = tmRerouteSelectEl ? tmRerouteSelectEl.parentElement : null;
                 if (tmRerouteControls) tmRerouteControls.classList.add('hidden');
 

@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\TicketResponseMail;
 use App\Jobs\SendTicketResponseJob;
+use App\Jobs\SendTicketForwardJob;
+use App\Jobs\SendPushNotificationJob;
 
 class AdminTicketsController extends Controller
 {
@@ -198,6 +201,7 @@ class AdminTicketsController extends Controller
 
             DB::commit();
 
+
             // Clear tickets cache on update
             Cache::flush();
 
@@ -236,10 +240,10 @@ class AdminTicketsController extends Controller
     }
 
     /**
-     * Reroute a ticket to a specific user.
+     * Forward a ticket to a specific user.
      * Expects JSON: { user_id: 123 }
      */
-    public function reroute(Request $request, $id)
+    public function forward(Request $request, $id)
     {
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
@@ -247,45 +251,28 @@ class AdminTicketsController extends Controller
 
         $ticket = Ticket::findOrFail($id);
 
-        DB::beginTransaction();
+        // Dispatch job to handle ticket forwarding asynchronously
+        $user = User::findOrFail($request->user_id);
+        SendTicketForwardJob::dispatch(
+            $ticket->id,
+            $request->user_id,
+            optional(request()->user())->id,
+            'Forwarded by admin to user: ' . $user->name
+        );
+
+        // Clear tickets cache on update
+        Cache::flush();
+
+        // update last-changed cache
         try {
-            $user = User::findOrFail($request->user_id);
-
-            $ticket->staff_id = $user->id;
-            // optional: set status to Re-routed
-            $ticket->status = 'Re-routed';
-            $ticket->save();
-
-            TicketRoutingHistory::create([
-                'ticket_id' => $ticket->id,
-                'staff_id' => $ticket->staff_id,
-                'status' => $ticket->status,
-                'routed_at' => now(),
-                'notes' => 'Rerouted by admin to user: ' . $user->name,
-            ]);
-
-            DB::commit();
-
-            // Clear tickets cache on update
-            Cache::flush();
-
-            // update last-changed cache
-            try {
-                Cache::put('tickets_last_changed', time(), 3600);
-            } catch (\Throwable $cacheEx) {
-                Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-            }
-
-            return response()->json(['message' => 'Ticket rerouted', 'staff' => $user]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Failed to reroute', 'error' => $e->getMessage()], 500);
+            Cache::put('tickets_last_changed', time(), 3600);
+        } catch (\Throwable $cacheEx) {
+            Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
         }
+
+        return response()->json(['message' => 'Ticket forwarding initiated', 'staff' => $user]);
     }
 
-    /**
-     * Update ticket fields (currently allows editing question).
-     */
     public function update(Request $request, $id)
     {
         $request->validate([

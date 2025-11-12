@@ -243,7 +243,7 @@
             @php
             $badge = fn($status) => match($status) {
             'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
-            'Re-routed' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+            'Forwarded' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
             'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
             default => 'text-slate-700 bg-slate-50 ring-slate-600/20',
             };
@@ -692,7 +692,7 @@
         function adminBadgeClass(status) {
             switch (status) {
                 case 'Open': return 'text-blue-700 bg-blue-50 ring-blue-600/20';
-                case 'Re-routed': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
+                case 'Forwarded': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
                 case 'Closed': return 'text-emerald-700 bg-emerald-50 ring-emerald-600/20';
                 default: return 'text-slate-700 bg-slate-50 ring-slate-600/20';
             }

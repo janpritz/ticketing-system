@@ -181,7 +181,7 @@ class AdminController extends Controller
     {
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
-        $forwardedTickets = Ticket::where('status', 'Re-routed')->count();
+        $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
         $faqCount = Faq::count();
         // include untrained FAQ count for live admin data
         $faqPendingCount = Faq::where('status', 'untrained')->count();
@@ -325,7 +325,7 @@ class AdminController extends Controller
         ->toArray();
 
         $forwardedListArr = Ticket::with('staff')
-            ->where('status', 'Re-routed')
+            ->where('status', 'Forwarded')
             ->orderByDesc('updated_at')
             ->take(6)
             ->get()
