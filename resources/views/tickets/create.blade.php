@@ -44,8 +44,8 @@
                         </div>
                     @endif
 
-                    <!-- Ticket Creation Form (AJAX submission) -->
-                    <form id="ticketForm" action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate>
+                    <!-- Ticket Creation Form -->
+                    <form action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate enctype="multipart/form-data">
                         @csrf
 
                         <div>
@@ -157,6 +157,16 @@
                              </div>
                          </div>
 
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Verification</label>
+                            <div class="mt-1">
+                                {!! app('captcha')->display() !!}
+                                @error('g-recaptcha-response')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-end">
                             <button id="submitTicketBtn" type="submit"
                                 class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -165,14 +175,10 @@
                         </div>
                     </form>
 
-                    <div id="ajaxResponse" class="mt-4"></div>
-
+                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                     <script>
                         document.addEventListener('DOMContentLoaded', function () {
-                            const form = document.getElementById('ticketForm');
-                            const submitBtn = document.getElementById('submitTicketBtn');
-
                             // Validate attachments count
                             document.getElementById('attachments').addEventListener('change', function (e) {
                                 const files = e.target.files;
@@ -183,72 +189,6 @@
                                         text: 'You can upload a maximum of 5 images.'
                                     });
                                     e.target.value = ''; // Clear selection
-                                }
-                            });
-
-                            form.addEventListener('submit', async function (e) {
-                                e.preventDefault();
-                                submitBtn.disabled = true;
-
-                                const formData = new FormData();
-                                formData.append('recepient_id', document.getElementById('recepient_id').value);
-                                formData.append('email', document.getElementById('email').value);
-                                formData.append('category', document.getElementById('category').value);
-                                formData.append('question', document.getElementById('question').value);
-                                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-
-                                // Add attachments
-                                const attachments = document.getElementById('attachments').files;
-                                for (let i = 0; i < attachments.length; i++) {
-                                    formData.append('attachments[]', attachments[i]);
-                                }
-
-                                try {
-                                    const res = await fetch(form.action, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Accept': 'application/json'
-                                        },
-                                        body: formData
-                                    });
-
-                                    const json = await res.json();
-
-                                    if (res.ok) {
-                                        // On success redirect to My Tickets (include recepient_id as query param)
-                                        const redirectUrl = "{{ url('/tickets') }}/" + encodeURIComponent(json.ticket.recepient_id);
-                                        window.location.href = redirectUrl;
-                                    } else {
-                                        // Build a readable HTML message for SweetAlert
-                                        let messageHtml = '';
-                                        if (json && json.errors) {
-                                            messageHtml += '<ul style="text-align:left;">';
-                                            Object.keys(json.errors).forEach(function (k) {
-                                                json.errors[k].forEach(function (m) {
-                                                    messageHtml += '<li>' + m + '</li>';
-                                                });
-                                            });
-                                            messageHtml += '</ul>';
-                                        } else if (json && json.error) {
-                                            messageHtml = '<p>' + (json.error || 'An error occurred') + '</p>';
-                                        } else {
-                                            messageHtml = '<p>An error occurred while creating the ticket.</p>';
-                                        }
-
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Failed to create ticket',
-                                            html: messageHtml,
-                                        });
-                                    }
-                                } catch (err) {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Network error',
-                                        text: err && err.message ? err.message : 'Unknown network error'
-                                    });
-                                } finally {
-                                    submitBtn.disabled = false;
                                 }
                             });
                         });

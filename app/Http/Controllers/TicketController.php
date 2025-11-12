@@ -11,26 +11,27 @@ use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
+use App\Jobs\ProcessTicketCreation;
 
 class TicketController extends Controller
 {
     // Show the ticket creation form
-    public function showCreateForm($recepient_id = null)
+    public function showCreateForm(Request $request, $recepient_id = null)
     {
-        // Check if the user already has an open ticket
-        $existingOpenTicket = Ticket::where('recepient_id', $recepient_id)
-            ->where('status', '!=', 'Closed')
-            ->first();
-
-        if ($existingOpenTicket) {
-            // If there is already an open ticket, redirect to tickets page
-            return redirect()->to(url('/tickets/' . $recepient_id))->with('error', 'You already have an open ticket. Please wait for the response.');
+        // Check if the user has reached the maximum number of tickets (4 tickets max)
+        // We need email from the request since it's not in the URL
+        $email = $request->query('email');
+        if ($email) {
+            $ticketCount = Ticket::where('email', $email)->count();
+            if ($ticketCount >= 4) {
+                return redirect()->to(url('/tickets/' . urlencode($email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
+            }
         }
 
         // Fetch categories from DB at page load (we show categories only; role is resolved from category)
         $categories = Category::orderBy('name')->pluck('name')->toArray();
 
-        return view('tickets.create', compact('recepient_id', 'categories'));
+        return view('tickets.create', compact('recepient_id', 'categories', 'email'));
     }
 
     public function store(Request $request)
@@ -45,61 +46,28 @@ class TicketController extends Controller
             'email' => 'required|email|max:255',
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'g-recaptcha-response' => 'required|captcha',
         ]);
 
-        // Check if the user already has an open ticket
-        $existingOpenTicket = Ticket::where('recepient_id', $request->recepient_id)
-            ->where('status', 'Open')
-            ->first();
+        // Check if the user has reached the maximum number of tickets (4 tickets max per email)
+        $ticketCount = Ticket::where('email', $request->email)->count();
 
-        if ($existingOpenTicket) {
-            // If there is already an open ticket, prevent creating a new one and return an error
+        if ($ticketCount >= 4) {
+            // If there are already 4 or more tickets, redirect to tickets page with email
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'You already have an open ticket. Please wait for the response.'], 400);
+                return response()->json(['error' => 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.', 'redirect' => url('/tickets/' . urlencode($request->email))], 400);
             } else {
-                // Use the configured APP_URL (keeps Hostinger's "/public" if present) when building redirects
-                $base = rtrim(config('app.url', env('APP_URL', '')), '/');
-                return redirect()->to($base . '/tickets/' . $request->recepient_id)->with('error', 'You already have an open ticket. Please wait for a response.');
+                return redirect()->to(url('/tickets/' . urlencode($request->email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
             }
         }
 
-        // Determine role based on the selected category (lookup from DB).
-        // Role selection via the form has been removed; we resolve role by the category chosen.
-        $roleModel = null;
-        $categoryModel = Category::where('name', $request->category)->with('role')->first();
-        if ($categoryModel && $categoryModel->role) {
-            $roleModel = $categoryModel->role;
-        } else {
-            // If the category does not exist in the categories table, create/assign it to Primary Administrator.
-            // This makes the mapping persistent so future tickets with the same category route to Primary Administrator.
-            $primaryRole = Role::where('name', 'Primary Administrator')->first();
-
-            if ($primaryRole) {
-                // Create the category assigned to Primary Administrator (idempotent).
-                $categoryModel = Category::firstOrCreate(
-                    ['name' => $request->category, 'role_id' => $primaryRole->id],
-                    ['description' => null]
-                );
-            }
-
-            // Use the category's role if present, otherwise fallback to the primary role.
-            $roleModel = ($categoryModel && $categoryModel->role) ? $categoryModel->role : $primaryRole;
-        }
-
-        // Find staff with the lowest open-ticket load within the selected role
-        $staff = null;
-        if ($roleModel) {
-            $candidates = User::where('role_id', $roleModel->id)
-                ->withCount(['assignedTickets as open_tickets_count' => function ($q) {
-                    $q->where('status', 'Open');
-                }])
-                ->get();
-
-            if ($candidates->isNotEmpty()) {
-                // pick the minimum load then randomize among equals to avoid hot-spotting a single user
-                $min = $candidates->min('open_tickets_count');
-                $ties = $candidates->where('open_tickets_count', $min);
-                $staff = $ties->count() ? $ties->random() : $ties->first();
+        // Handle attachments first
+        $attachmentsPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('attachments', $filename, 'public');
+                $attachmentsPaths[] = $path;
             }
         }
 
@@ -109,116 +77,28 @@ class TicketController extends Controller
             'recepient_id' => $request->recepient_id,
             'email' => $request->email,
             'status' => 'Open',
-            'staff_id' => $staff ? $staff->id : null,
+            'staff_id' => null, // will be set by job
             'date_created' => now(),
             'date_closed' => null,
-            'attachments' => null, // will update after storing files
-        ]);
-
-        // Handle attachments
-        $attachmentsPaths = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('attachments', $filename, 'public');
-                $attachmentsPaths[] = $path;
-            }
-            $ticket->update(['attachments' => json_encode($attachmentsPaths)]);
-        }
-
-        // Record initial routing history at ticket creation
-        TicketRoutingHistory::create([
-            'ticket_id' => $ticket->id,
-            'staff_id' => $ticket->staff_id, // may be null if not assigned
-            'status' => 'Open',
-            'routed_at' => now(),
-            'notes' => 'Ticket created' . ($ticket->staff_id ? ' and assigned' : ''),
+            'attachments' => json_encode($attachmentsPaths),
         ]);
 
         // Clear tickets cache on creation
         Cache::flush();
-        
-        // Send push notification to the assigned staff (if any)
-        if ($ticket->staff_id) {
-            // Only attempt to send a push if the staff has explicitly registered a subscription file.
-            $subscriptionPath = 'push_subscriptions/user-' . $ticket->staff_id . '.json';
-            if (Storage::exists($subscriptionPath)) {
-                try {
-                    // Provide both top-level url/ticket_id and a data block so different clients/service-worker payload formats
-                    // will consistently receive the destination and ticket identifier.
-                    // Build an absolute URL that points to the ticket page so clicking opens {APP_URL}/tickets/{ticket_id}
-                    $ticketUrl = url('/tickets/' . $ticket->id);
-                    $payload = [
-                        'title'     => 'You have received a new ticket',
-                        // Use the ticket's question/message as the notification body
-                        'body'      => $ticket->question,
-                        // Absolute URL to the ticket page
-                        'url'       => $ticketUrl,
-                        // Top-level ticket id for convenience
-                        'ticket_id' => $ticket->id,
-                        // Keep data block for clients expecting a `data` object
-                        'data'      => [
-                            'url'       => $ticketUrl,
-                            'ticket_id' => $ticket->id
-                        ],
-                    ];
 
-                    // Attempt to deliver via PushService and log result details for production audit.
-                    $pushService = app(\App\Services\PushService::class);
-                    $results = $pushService->sendToUser($ticket->staff_id, $payload);
+        // Dispatch job to process the rest
+        ProcessTicketCreation::dispatch($ticket->id, $request->all());
 
-                    if (empty($results)) {
-                        // No subscription found or nothing to send
-                        Log::info('PushService: no subscription found for user ' . $ticket->staff_id . ' when assigning ticket ' . $ticket->id);
-                    } else {
-                        // Results may be an array of reports; log any failures for investigation.
-                        foreach ($results as $report) {
-                            // Report may be nested arrays when sendToSubscription aggregates multiple results.
-                            if (is_array($report)) {
-                                // If a single report structure
-                                if (isset($report['success'])) {
-                                    if (!$report['success']) {
-                                        Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' reason=' . ($report['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                    } else {
-                                        Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($report['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                    }
-                                } else {
-                                    // Possibly an array of report arrays
-                                    foreach ($report as $r) {
-                                        if (isset($r['success']) && !$r['success']) {
-                                            Log::warning('PushService: push failed for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' reason=' . ($r['reason'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                        } elseif (isset($r['success'])) {
-                                            Log::info('PushService: push succeeded for user ' . $ticket->staff_id . ' endpoint=' . ($r['endpoint'] ?? 'unknown') . ' ticket=' . $ticket->id);
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Unexpected report format — stringify for diagnostics
-                                Log::info('PushService: push report for user ' . $ticket->staff_id . ' ticket=' . $ticket->id . ' report=' . json_encode($report));
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Log and continue — notification failure must not block ticket creation
-                    Log::warning('Push send failed for ticket assignment (exception): ' . $e->getMessage() . ' ticket=' . $ticket->id . ' staff=' . $ticket->staff_id);
-                }
-            } else {
-                // Staff has not registered for push notifications; do not attempt to send
-                Log::info('PushService: subscription file not found for user ' . $ticket->staff_id . '; skipping push for ticket ' . $ticket->id);
-            }
-        }
-        
         // For API requests, return JSON
         if ($request->wantsJson()) {
             // Include assigned staff explicitly for client-side flows (AJAX form)
             return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
         }
-        
+
         // For web requests, redirect to tickets page for the recepient id.
         // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
         return redirect()->to(url('/tickets/' . $request->recepient_id))
-            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.')
-            ->with('assigned_staff_id', $ticket->staff_id);
+            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }
 
 
@@ -304,30 +184,48 @@ class TicketController extends Controller
         ];
     }
 
-    public function index(Request $request)
+    public function index(Request $request, $identifier = null)
     {
-        $recepient_id = $request->recepient_id;
+        // Support both recepient_id and email as identifier
+        $identifier = $identifier ?? $request->query('email') ?? $request->recepient_id;
+
+        if (!$identifier) {
+            return redirect()->route('login')->with('error', 'Invalid access. Please provide a valid identifier.');
+        }
+
+        // Determine if identifier is email or recepient_id
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
         // Cache key for user tickets
-        $cacheKey = 'user_tickets_' . $recepient_id;
+        $cacheKey = 'user_tickets_' . ($isEmail ? 'email_' : 'recepient_') . $identifier;
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
-            // Retrieve all tickets for the specified recepient_id with caching
-            $tickets = Cache::remember($cacheKey, 20, function () use ($recepient_id) {
-                return Ticket::where('recepient_id', $recepient_id)->get();
+            // Retrieve all tickets for the specified identifier with caching
+            $tickets = Cache::remember($cacheKey, 20, function () use ($identifier, $isEmail) {
+                $query = Ticket::query();
+                if ($isEmail) {
+                    $query->where('email', $identifier);
+                } else {
+                    $query->where('recepient_id', $identifier);
+                }
+                return $query->orderBy('date_created', 'desc')->get();
             });
             return response()->json($tickets);
         }
 
         // For web requests, return a view with the tickets
-        $tickets = Cache::remember($cacheKey, 20, function () use ($recepient_id) {
-            return Ticket::where('recepient_id', $recepient_id)->get();
+        $tickets = Cache::remember($cacheKey, 20, function () use ($identifier, $isEmail) {
+            $query = Ticket::query();
+            if ($isEmail) {
+                $query->where('email', $identifier);
+            } else {
+                $query->where('recepient_id', $identifier);
+            }
+            return $query->orderBy('date_created', 'desc')->get();
         });
-        return view('tickets.index', compact('tickets'));
+        return view('tickets.index', compact('tickets', 'identifier', 'isEmail'));
     }
-
-
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

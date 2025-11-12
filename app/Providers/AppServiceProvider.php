@@ -24,5 +24,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register model observers
         Faq::observe(FaqObserver::class);
+
+        // Register NoCaptcha service provider for reCAPTCHA
+        $this->app->register(\Anhskohbo\NoCaptcha\NoCaptchaServiceProvider::class);
     }
 }
