@@ -7,7 +7,6 @@
 </FilesMatch>
 
 # Block access to .git, node_modules, storage, and other private folders
-RedirectMatch 404 /(vendor|storage|bootstrap|node_modules|tests|config)/
 
 # ----------------------------------------------------------------------
 # Redirect all traffic to the public folder

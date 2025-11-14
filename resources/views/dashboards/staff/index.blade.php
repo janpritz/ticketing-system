@@ -184,11 +184,11 @@
                                 </div>
                             </div>
 
-                            <!-- Re-routed -->
+                            <!-- Forwarded -->
                             <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-5">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-sm text-gray-500">Re-routed</div>
+                                        <div class="text-sm text-gray-500">Forwarded</div>
                                         <div class="mt-2 text-3xl font-semibold text-gray-900"><span
                                                 id="inProgressCount">{{ $inProgressCount ?? 0 }}</span></div>
                                     </div>
@@ -286,7 +286,7 @@
                                         @php
                                             $statusStyles = [
                                                 'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
-                                                'Re-routed' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+                                                'Forwarded' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
                                                 'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
                                             ];
                                         @endphp
@@ -413,7 +413,7 @@
                             <button type="button"
                                 class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
                                 data-option="toggle-history">Show History</button>
-                            <button type="button" id="tmOptionReroute"
+                            <button type="button" id="tmOptionForward"
                                 class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
                                 data-option="show-forward">Forward…</button>
                         </div>
@@ -472,12 +472,12 @@
             </div>
             <div class="px-5 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <label for="tmRerouteSelect" class="text-xs text-gray-500">Reroute to</label>
+                    <label for="tmForwardSelect" class="text-xs text-gray-500">Forward to</label>
                     @php
                         // Load roles from DB so roles are manageable via CRUD
                         $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
                     @endphp
-                    <select id="tmRerouteSelect"
+                    <select id="tmForwardSelect"
                         class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500">
                         <option value="" selected disabled>Select a role</option>
                         @foreach ($roles as $role)
@@ -486,7 +486,7 @@
                     </select>
                     <button type="button"
                         class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                        id="tmRerouteApply">Apply</button>
+                        id="tmForwardApply">Apply</button>
                 </div>
                 <div class="flex items-center gap-2 ml-auto">
                     <button type="button"
@@ -653,7 +653,7 @@
 
             const statusStyles = {
                 'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
-                'Re-routed': 'text-amber-700 bg-amber-50 ring-amber-600/20',
+                'Forwarded': 'text-amber-700 bg-amber-50 ring-amber-600/20',
                 'Closed': 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
             };
 
@@ -848,9 +848,9 @@
                     const list = Array.isArray(data.recentTickets) ? data.recentTickets : [];
                     // Keep a fast lookup for "View" modal
                     ticketsMap = new Map(list.map(t => [String(t.id), t]));
-                    // Show both Open and Re-routed when not viewing all
+                    // Show both Open and Forwarded when not viewing all
                     const filtered = viewAll ? list : list.filter(t => (t.status === 'Open' || t.status ===
-                        'Re-routed'));
+                        'Forwarded'));
 
                     // Update pagination UI
                     var pg = data.pagination || {};
@@ -999,12 +999,12 @@
             const tmSendResponse = document.getElementById('tmSendResponse');
             const tmOptionsBtn = document.getElementById('tmOptionsBtn');
             const tmOptionsMenu = document.getElementById('tmOptionsMenu');
-            const tmOptionReroute = document.getElementById('tmOptionReroute');
+            const tmOptionForward = document.getElementById('tmOptionForward');
             const tmStoredResponseBlock = document.getElementById('tmStoredResponseBlock');
             const tmStoredResponse = document.getElementById('tmStoredResponse');
 
             const csrfToken = '{{ csrf_token() }}';
-            const rerouteBase = "{{ url('/staff/tickets') }}";
+            const forwardBase = "{{ url('/staff/tickets') }}";
             let currentTicketId = null;
 
             function statusClassFor(s) {
@@ -1127,8 +1127,8 @@
 
                 // Hide forward controls initially
                 const tmForwardSelectEl = document.getElementById('tmForwardSelect');
-                const tmRerouteControls = tmRerouteSelectEl ? tmRerouteSelectEl.parentElement : null;
-                if (tmRerouteControls) tmRerouteControls.classList.add('hidden');
+                const tmForwardControls = tmForwardSelectEl ? tmForwardSelectEl.parentElement : null;
+                if (tmForwardControls) tmForwardControls.classList.add('hidden');
 
                 // Prepare and render history; keep hidden by default until toggled in Options
                 const hsObj = ensureHistorySection();
@@ -1136,10 +1136,10 @@
                 const histories = ticket.routing_histories || ticket.routingHistories || [];
                 renderHistory(Array.isArray(histories) ? histories : []);
 
-                // Toggle reroute option and response display based on status
+                // Toggle forward option and response display based on status
                 const isClosed = (ticket.status === 'Closed');
-                if (tmOptionReroute) tmOptionReroute.classList.toggle('hidden', isClosed);
-                if (tmRerouteControls) tmRerouteControls.classList.toggle('hidden', isClosed);
+                if (tmOptionForward) tmOptionForward.classList.toggle('hidden', isClosed);
+                if (tmForwardControls) tmForwardControls.classList.toggle('hidden', isClosed);
                 if (tmStoredResponseBlock) {
                     if (isClosed) {
                         tmStoredResponseBlock.classList.remove('hidden');
@@ -1321,27 +1321,27 @@
                             hs.classList.toggle('hidden');
                             btn.textContent = willShow ? 'Hide History' : 'Show History';
                         }
-                    } else if (action === 'show-reroute') {
-                        const tmRerouteSelectEl = document.getElementById('tmRerouteSelect');
-                        const tmRerouteControls = tmRerouteSelectEl ? tmRerouteSelectEl.parentElement : null;
-                        if (tmRerouteControls) tmRerouteControls.classList.remove('hidden');
+                    } else if (action === 'show-forward') {
+                        const tmForwardSelectEl = document.getElementById('tmForwardSelect');
+                        const tmForwardControls = tmForwardSelectEl ? tmForwardSelectEl.parentElement : null;
+                        if (tmForwardControls) tmForwardControls.classList.remove('hidden');
                     }
                 });
             }
 
-            // Reroute via select + apply
-            const tmRerouteSelect = document.getElementById('tmRerouteSelect');
-            const tmRerouteApply = document.getElementById('tmRerouteApply');
-            if (tmRerouteApply) {
-                tmRerouteApply.addEventListener('click', async () => {
+            // Forward via select + apply
+            const tmForwardSelect = document.getElementById('tmForwardSelect');
+            const tmForwardApply = document.getElementById('tmForwardApply');
+            if (tmForwardApply) {
+                tmForwardApply.addEventListener('click', async () => {
                     if (!currentTicketId) return;
-                    if (!tmRerouteSelect || !tmRerouteSelect.value) {
-                        alert('Please choose a role to reroute to.');
+                    if (!tmForwardSelect || !tmForwardSelect.value) {
+                        alert('Please choose a role to forward to.');
                         return;
                     }
-                    const role = tmRerouteSelect.value;
+                    const role = tmForwardSelect.value;
                     try {
-                        const res = await fetch(`${rerouteBase}/${currentTicketId}/reroute`, {
+                        const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
                             method: 'POST',
                             headers: {
                                 'Accept': 'application/json',
@@ -1361,12 +1361,12 @@
                             fetchData();
                             closeModal();
                         } else {
-                            console.error('Reroute failed', await res.text());
-                            alert('Reroute failed. Please ensure backend route is available.');
+                            console.error('Forward failed', await res.text());
+                            alert('Forward failed. Please ensure backend route is available.');
                         }
                     } catch (err) {
-                        console.error('Reroute error', err);
-                        alert('Network error during reroute.');
+                        console.error('Forward error', err);
+                        alert('Network error during forward.');
                     }
                 });
             }
