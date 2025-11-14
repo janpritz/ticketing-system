@@ -20,15 +20,15 @@ class ProcessTicketCreation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $ticketId;
-    protected $requestData;
+    protected $category;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($ticketId, $requestData)
+    public function __construct($ticketId, $category)
     {
         $this->ticketId = $ticketId;
-        $this->requestData = $requestData;
+        $this->category = $category;
     }
 
     /**
@@ -43,14 +43,14 @@ class ProcessTicketCreation implements ShouldQueue
 
         // Determine role based on the selected category
         $roleModel = null;
-        $categoryModel = Category::where('name', $this->requestData['category'])->with('role')->first();
+        $categoryModel = Category::where('name', $this->category)->with('role')->first();
         if ($categoryModel && $categoryModel->role) {
             $roleModel = $categoryModel->role;
         } else {
             $primaryRole = Role::where('name', 'Primary Administrator')->first();
             if ($primaryRole) {
                 $categoryModel = Category::firstOrCreate(
-                    ['name' => $this->requestData['category'], 'role_id' => $primaryRole->id],
+                    ['name' => $this->category, 'role_id' => $primaryRole->id],
                     ['description' => null]
                 );
             }
@@ -75,17 +75,6 @@ class ProcessTicketCreation implements ShouldQueue
 
         // Update ticket with staff_id
         $ticket->update(['staff_id' => $staff ? $staff->id : null]);
-
-        // Handle attachments
-        $attachmentsPaths = [];
-        if (isset($this->requestData['attachments']) && is_array($this->requestData['attachments'])) {
-            foreach ($this->requestData['attachments'] as $file) {
-                // Assuming files are uploaded and paths are stored
-                // In job, we need to handle files differently, but since it's async, perhaps store paths
-                // Wait, in controller, we need to handle files before dispatching job
-                // Actually, better to handle attachments in controller before dispatching
-            }
-        }
 
         // Record initial routing history
         TicketRoutingHistory::create([

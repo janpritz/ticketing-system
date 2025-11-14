@@ -87,7 +87,7 @@ class TicketController extends Controller
         Cache::flush();
 
         // Dispatch job to process the rest
-        ProcessTicketCreation::dispatch($ticket->id, $request->all());
+        ProcessTicketCreation::dispatch($ticket->id, $request->category);
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
