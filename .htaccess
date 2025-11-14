@@ -12,16 +12,11 @@ RedirectMatch 404 /(vendor|storage|bootstrap|node_modules|tests|config)/
 # ----------------------------------------------------------------------
 # Redirect all traffic to the public folder
 # ----------------------------------------------------------------------
-RewriteEngine On
-
-# If the request is not for the "public" directory
-RewriteCond %{REQUEST_URI} !^/public/
-# and it's not an existing file or directory
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-# then forward it to the "public" directory
-RewriteRule ^(.*)$ public/$1 [L]
-
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Redirect everything to the /public folder
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
 # ----------------------------------------------------------------------
 # SECURITY HEADERS (optional but recommended)
 # ----------------------------------------------------------------------

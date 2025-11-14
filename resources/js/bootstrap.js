@@ -34,22 +34,23 @@ if (csrf && csrf.content) {
     const registration = await navigator.serviceWorker.register('/sw.js');
     console.debug('[sw] Registered service worker:', registration);
 
+    // Request permission for notifications first
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.debug('[push] Notification permission not granted:', permission);
+      return;
+    }
+
     // Ensure we have a VAPID public key exposed by the server in the page
     const vapidPublicKey = window.VAPID_PUBLIC_KEY || null;
     if (!vapidPublicKey) {
-// Only subscribe when authenticated to avoid 401s on guest pages
-if (window.APP_AUTHENTICATED !== true) {
-  console.debug('[push] Skip subscription for guest user');
-  return;
-}
       console.debug('[push] No VAPID public key available on window.VAPID_PUBLIC_KEY. Subscription skipped.');
       return;
     }
 
-    // Request permission for notifications
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.debug('[push] Notification permission not granted:', permission);
+    // Only subscribe when authenticated to avoid 401s on guest pages
+    if (window.APP_AUTHENTICATED !== true) {
+      console.debug('[push] Skip subscription for guest user');
       return;
     }
 
