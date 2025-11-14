@@ -386,120 +386,181 @@
     </div>
 @endsection
 
-<!-- Ticket View Modal -->
+<!-- Ticket View Modal - Redesigned with Minimal Aesthetic -->
 <div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="absolute inset-0 bg-black/50" data-modal-backdrop></div>
-    <!-- Centered panel with internal scrolling when content exceeds viewport -->
-    <div class="relative mx-auto my-0 sm:my-10 w-full h-full sm:h-auto sm:w-[90%] max-w-3xl">
-        <div class="bg-white shadow-xl ring-1 ring-black/5 h-full sm:h-auto sm:max-h-[90vh] overflow-auto sm:rounded-xl">
-            <div class="flex items-center justify-between px-5 py-4 border-b">
-                <div>
-                    <div id="tmTicketNo" class="text-sm font-semibold text-gray-900">Ticket</div>
-                    <div id="tmDates" class="text-xs text-gray-500"></div>
-                </div>
-                <div class="relative flex items-center gap-2">
-                    <div class="relative">
-                        <button type="button" id="tmOptionsBtn"
-                            class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
-                            aria-haspopup="true" aria-expanded="false" title="Options">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                fill="currentColor">
-                                <path
-                                    d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
-                            </svg>
-                        </button>
-                        <div id="tmOptionsMenu"
-                            class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black/5 hidden z-10">
-                            <button type="button"
-                                class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                                data-option="toggle-history">Show History</button>
-                            <button type="button" id="tmOptionForward"
-                                class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-                                data-option="show-forward">Forward…</button>
-                        </div>
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" data-modal-backdrop></div>
+    <!-- Centered panel with modern minimal design -->
+    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl">
+        <div class="bg-white shadow-2xl h-full sm:h-auto sm:max-h-[92vh] overflow-hidden sm:rounded-2xl flex flex-col">
+            
+            <!-- Header - Minimal & Clean -->
+            <div class="px-6 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 id="tmTicketNo" class="text-lg font-semibold text-gray-900">Ticket #</h3>
+                        <span id="tmStatus" class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1"></span>
                     </div>
-                    <button type="button" class="text-gray-500 hover:text-gray-700" aria-label="Close"
-                        data-modal-close>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    {{-- <p id="tmSubject" class="text-sm text-gray-600 line-clamp-2"></p> --}}
                 </div>
+                <button type="button" class="ml-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
-            <div class="px-5 py-4 space-y-4">
-                <div class="flex items-center gap-2">
-                    <span id="tmStatus"
-                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1"></span>
-                    <span id="tmCategory"
-                        class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700"></span>
-                </div>
-                <div>
-                    <div class="text-xs text-gray-500">Subject</div>
-                    <div id="tmSubject" class="text-sm font-medium text-gray-900"></div>
-                </div>
-                <div>
-                    <div class="text-xs text-gray-500">Question</div>
-                    <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <div class="text-xs text-gray-500">Email</div>
-                        <div id="tmEmail" class="text-sm text-gray-800"></div>
+
+            <!-- Content - Scrollable -->
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                
+                <!-- Question/Issue - Primary Focus -->
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Issue</span>
                     </div>
-                    <div>
-                        <div class="text-xs text-gray-500">Recipient ID</div>
-                        <div id="tmRecepient" class="text-sm text-gray-800"></div>
+                    <div id="tmQuestion" class="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed"></div>
+                </div>
+
+                <!-- Attachments - Visible when present -->
+                <div id="tmAttachmentsBlock" class="hidden">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span class="text-xs font-medium text-gray-700">Attachments</span>
                     </div>
-                </div>
-                <div id="tmStoredResponseBlock"
-                    class="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 hidden">
-                    <div class="text-xs font-semibold text-emerald-700 mb-1">Sent Response</div>
-                    <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
-                </div>
-                <div id="tmAttachmentsBlock" class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 hidden">
-                    <div class="text-xs font-semibold text-gray-700 mb-2">Attachments</div>
                     <div id="tmAttachmentsList" class="flex flex-wrap gap-2"></div>
                 </div>
-                <div class="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
-                    <label for="tmResponse" class="block text-xs font-semibold text-indigo-700 mb-1">Response
-                        Message</label>
-                    <textarea id="tmResponse"
-                        class="w-full rounded-md border-indigo-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
-                        rows="5" placeholder="Type your response..."></textarea>
+
+                <!-- Sent Response - For closed tickets -->
+                <div id="tmStoredResponseBlock" class="hidden bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Sent Response</span>
+                    </div>
+                    <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
                 </div>
-            </div>
-            <div class="px-5 py-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div class="flex items-center gap-2">
-                    <label for="tmForwardSelect" class="text-xs text-gray-500">Forward to</label>
-                    @php
-                        // Load roles from DB so roles are manageable via CRUD
-                        $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
-                    @endphp
-                    <select id="tmForwardSelect"
-                        class="rounded-md border-gray-300 text-xs focus:ring-2 focus:ring-indigo-500">
-                        <option value="" selected disabled>Select a role</option>
-                        @foreach ($roles as $role)
-                            <option value="{{ $role }}">{{ $role }}</option>
-                        @endforeach
-                    </select>
-                    <button type="button"
-                        class="inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                        id="tmForwardApply">Apply</button>
-                </div>
-                <div class="flex items-center gap-2 ml-auto">
-                    <button type="button"
-                        class="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                        data-modal-close>Close</button>
-                    <button type="button" title="Send response" aria-label="Send response"
-                        class="inline-flex items-center justify-center rounded-full bg-indigo-600 size-8 text-white hover:bg-indigo-700"
-                        id="tmSendResponse">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
-                            fill="currentColor">
-                            <path d="M3 12l18-9-9 18-2-7-7-2z" />
+
+                <!-- Collapsible Details Section -->
+                <div id="tmDetailsSection" class="border-t border-gray-100 pt-4">
+                    <button type="button" id="tmToggleDetails" class="flex items-center justify-between w-full text-left group">
+                        <span class="text-sm font-medium text-gray-700 group-hover:text-gray-900">Show Details</span>
+                        <svg id="tmDetailsChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
+                    
+                    <div id="tmDetailsContent" class="hidden mt-4 space-y-4 pb-2">
+                        <!-- Category & Dates -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Category</label>
+                                <div id="tmCategory" class="mt-1 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"></div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Timeline</label>
+                                <div id="tmDates" class="mt-1 text-xs text-gray-700"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                                <div id="tmEmail" class="mt-1 text-sm text-gray-800"></div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Recipient ID</label>
+                                <div id="tmRecepient" class="mt-1 text-sm text-gray-800"></div>
+                            </div>
+                        </div>
+
+                        <!-- Routing History -->
+                        <div id="tmHistorySection" class="hidden">
+                            <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Routing History</label>
+                            <ul id="tmHistoryList" class="mt-2 space-y-2"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Response Input -->
+                <div class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100">
+                    <label for="tmResponse" class="flex items-center gap-2 text-sm font-medium text-indigo-900 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Your Response
+                    </label>
+                    <textarea id="tmResponse"
+                        class="w-full rounded-lg border-indigo-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm resize-none"
+                        rows="4" placeholder="Type your response message here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Footer - Actions -->
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+                <!-- Forward Controls (Hidden by default) -->
+                <div id="tmForwardControls" class="hidden mb-3 pb-3 border-b border-gray-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <label for="tmForwardSelect" class="text-xs font-medium text-gray-700">Forward to:</label>
+                        @php
+                            $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+                        @endphp
+                        <select id="tmForwardSelect" class="flex-1 sm:flex-none rounded-lg border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="" selected disabled>Select a role</option>
+                            @foreach ($roles as $role)
+                                <option value="{{ $role }}">{{ $role }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" id="tmForwardApply"
+                            class="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors">
+                            Forward Ticket
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Actions -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <!-- Options Menu -->
+                        <div class="relative">
+                            <button type="button" id="tmOptionsBtn"
+                                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                                aria-haspopup="true" aria-expanded="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                                </svg>
+                                Options
+                            </button>
+                            <div id="tmOptionsMenu"
+                                class="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
+                                <button type="button"
+                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    data-option="toggle-history">Show History</button>
+                                <button type="button" id="tmOptionForward"
+                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                                    data-option="show-forward">Forward Ticket</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 transition-colors"
+                            data-modal-close>Cancel</button>
+                        <button type="button" title="Send response" aria-label="Send response"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                            id="tmSendResponse">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 12l18-9-9 18-2-7-7-2z" />
+                            </svg>
+                            Send Response
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1013,20 +1074,7 @@
             }
 
             function ensureHistorySection() {
-                const resp = document.getElementById('tmResponse');
-                const container = resp ? resp.closest('.space-y-4') : null;
                 let section = document.getElementById('tmHistorySection');
-                if (!section && container) {
-                    section = document.createElement('div');
-                    section.id = 'tmHistorySection';
-                    section.className = 'rounded-lg border border-gray-200 bg-gray-50/50 p-3 hidden';
-                    section.innerHTML = `
-                  <div class="text-xs font-semibold text-gray-700 mb-2">Routing History</div>
-                  <ul id="tmHistoryList" class="space-y-2"></ul>
-                `;
-                    const responseBlock = resp ? resp.parentElement : null;
-                    if (responseBlock) container.insertBefore(section, responseBlock);
-                }
                 const list = document.getElementById('tmHistoryList');
                 return {
                     section,
@@ -1078,12 +1126,12 @@
                 const recepient = ticket.recepient_id ?? '';
 
                 // Fill fields
-                if (tmTicketNo) tmTicketNo.textContent = ticketNo;
+                if (tmTicketNo) tmTicketNo.textContent = 'Ticket #' + ticketNo;
                 if (tmDates) tmDates.textContent = createdAt ?
                     `Created ${createdAt}${updatedAt ? ' • Updated ' + updatedAt : ''}` : '';
                 if (tmStatus) {
                     tmStatus.className =
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ' +
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ' +
                         statusClassFor(ticket.status);
                     tmStatus.innerHTML =
                         `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"></circle></svg> ${ticket.status ?? ''}`;
@@ -1094,6 +1142,14 @@
                 if (tmEmail) tmEmail.textContent = email;
                 if (tmRecepient) tmRecepient.textContent = recepient;
                 if (tmResponse) tmResponse.value = '';
+
+                // Reset details section to collapsed state
+                const detailsContent = document.getElementById('tmDetailsContent');
+                const detailsChevron = document.getElementById('tmDetailsChevron');
+                const toggleDetailsBtn = document.getElementById('tmToggleDetails');
+                if (detailsContent) detailsContent.classList.add('hidden');
+                if (detailsChevron) detailsChevron.style.transform = 'rotate(0deg)';
+                if (toggleDetailsBtn) toggleDetailsBtn.querySelector('span').textContent = 'Show Details';
 
                 // Handle attachments
                 const attachmentsBlock = document.getElementById('tmAttachmentsBlock');
@@ -1112,7 +1168,7 @@
                                 const img = document.createElement('img');
                                 img.src = '/storage/' + path;
                                 img.alt = 'Attachment ' + (index + 1);
-                                img.className = 'max-w-24 max-h-24 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
+                                img.className = 'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
                                 img.onclick = () => openLightbox(attachments, index);
                                 attachmentsList.appendChild(img);
                             });
@@ -1126,8 +1182,7 @@
                 }
 
                 // Hide forward controls initially
-                const tmForwardSelectEl = document.getElementById('tmForwardSelect');
-                const tmForwardControls = tmForwardSelectEl ? tmForwardSelectEl.parentElement : null;
+                const tmForwardControls = document.getElementById('tmForwardControls');
                 if (tmForwardControls) tmForwardControls.classList.add('hidden');
 
                 // Prepare and render history; keep hidden by default until toggled in Options
@@ -1139,7 +1194,7 @@
                 // Toggle forward option and response display based on status
                 const isClosed = (ticket.status === 'Closed');
                 if (tmOptionForward) tmOptionForward.classList.toggle('hidden', isClosed);
-                if (tmForwardControls) tmForwardControls.classList.toggle('hidden', isClosed);
+                if (tmForwardControls) tmForwardControls.classList.add('hidden');
                 if (tmStoredResponseBlock) {
                     if (isClosed) {
                         tmStoredResponseBlock.classList.remove('hidden');
@@ -1153,7 +1208,7 @@
                 if (tmResponse) {
                     tmResponse.disabled = isClosed;
                     tmResponse.placeholder = isClosed ? 'Ticket is closed. Response cannot be edited.' :
-                        'Type your response...';
+                        'Type your response message here...';
                 }
                 if (tmSendResponse) {
                     tmSendResponse.disabled = isClosed;
@@ -1289,6 +1344,20 @@
                 }
             });
 
+            // Toggle Details Section
+            const tmToggleDetails = document.getElementById('tmToggleDetails');
+            const tmDetailsContent = document.getElementById('tmDetailsContent');
+            const tmDetailsChevron = document.getElementById('tmDetailsChevron');
+            
+            if (tmToggleDetails && tmDetailsContent && tmDetailsChevron) {
+                tmToggleDetails.addEventListener('click', () => {
+                    const isHidden = tmDetailsContent.classList.contains('hidden');
+                    tmDetailsContent.classList.toggle('hidden');
+                    tmDetailsChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+                    tmToggleDetails.querySelector('span').textContent = isHidden ? 'Hide Details' : 'Show Details';
+                });
+            }
+
             // Options dropdown
             if (tmOptionsBtn && tmOptionsMenu) {
                 tmOptionsBtn.addEventListener('click', (e) => {
@@ -1299,7 +1368,7 @@
                 });
 
                 document.addEventListener('click', (e) => {
-                    if (!tmOptionsMenu.contains(e.target) && e.target !== tmOptionsBtn) {
+                    if (!tmOptionsMenu.contains(e.target) && !tmOptionsBtn.contains(e.target)) {
                         tmOptionsMenu.classList.add('hidden');
                         tmOptionsBtn.setAttribute('aria-expanded', 'false');
                     }
@@ -1322,8 +1391,7 @@
                             btn.textContent = willShow ? 'Hide History' : 'Show History';
                         }
                     } else if (action === 'show-forward') {
-                        const tmForwardSelectEl = document.getElementById('tmForwardSelect');
-                        const tmForwardControls = tmForwardSelectEl ? tmForwardSelectEl.parentElement : null;
+                        const tmForwardControls = document.getElementById('tmForwardControls');
                         if (tmForwardControls) tmForwardControls.classList.remove('hidden');
                     }
                 });

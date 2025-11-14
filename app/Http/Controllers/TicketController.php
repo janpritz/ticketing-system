@@ -248,15 +248,42 @@ class TicketController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Only allow editing of the question; category must remain unchanged
+        // Allow editing of the question and attachments; category must remain unchanged
         $request->validate([
             'question' => 'required|string',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'delete_attachments' => 'nullable|string',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
+        // Handle attachments
+        $currentAttachments = json_decode($ticket->attachments, true) ?? [];
+
+        // Remove deleted attachments
+        if ($request->delete_attachments) {
+            $deleteList = json_decode($request->delete_attachments, true) ?? [];
+            foreach ($deleteList as $path) {
+                if (in_array($path, $currentAttachments)) {
+                    Storage::disk('public')->delete($path);
+                    $currentAttachments = array_diff($currentAttachments, [$path]);
+                }
+            }
+        }
+
+        // Add new attachments
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('attachments', $filename, 'public');
+                $currentAttachments[] = $path;
+            }
+        }
+
         $ticket->update([
             'question' => $request->question,
+            'attachments' => json_encode(array_values($currentAttachments)),
         ]);
 
         // Clear tickets cache on update

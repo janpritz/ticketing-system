@@ -149,13 +149,19 @@
                             </div>
                         </div>
                          <div>
-                             <label for="attachments" class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per image)</label>
-                             <div class="mt-1">
-                                 <input type="file" name="attachments[]" id="attachments" multiple accept="image/*"
-                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                 <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files are allowed.)</p>
-                             </div>
-                         </div>
+                              <label class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per image)</label>
+                              <div class="mt-1">
+                                  <button type="button" id="add-photo-btn-create" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                      </svg>
+                                      Add Photo
+                                  </button>
+                                  <input type="file" name="attachments[]" id="attachments" multiple accept="image/*" class="hidden">
+                                  <div id="selected-thumbnails-create" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                                  <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files are allowed.)</p>
+                              </div>
+                          </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Verification</label>
@@ -179,9 +185,17 @@
                     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                     <script>
                         document.addEventListener('DOMContentLoaded', function () {
-                            // Validate attachments count
+                            // Add photo button
+                            document.getElementById('add-photo-btn-create').addEventListener('click', function() {
+                                document.getElementById('attachments').click();
+                            });
+
+                            // Validate attachments count and display thumbnails
                             document.getElementById('attachments').addEventListener('change', function (e) {
                                 const files = e.target.files;
+                                const container = document.getElementById('selected-thumbnails-create');
+                                container.innerHTML = ''; // Clear previous
+
                                 if (files.length > 5) {
                                     Swal.fire({
                                         icon: 'error',
@@ -189,6 +203,38 @@
                                         text: 'You can upload a maximum of 5 images.'
                                     });
                                     e.target.value = ''; // Clear selection
+                                    return;
+                                }
+
+                                Array.from(files).forEach((file, index) => {
+                                    if (file.type.startsWith('image/')) {
+                                        const reader = new FileReader();
+                                        reader.onload = function(e) {
+                                            const div = document.createElement('div');
+                                            div.className = 'relative';
+                                            div.innerHTML = `
+                                                <img src="${e.target.result}" alt="Selected ${index + 1}" class="w-full h-20 object-cover rounded border">
+                                                <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs remove-selected-create" data-index="${index}">&times;</button>
+                                            `;
+                                            container.appendChild(div);
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                });
+                            });
+
+                            // Remove selected thumbnail
+                            document.addEventListener('click', function(e) {
+                                if (e.target.classList.contains('remove-selected-create')) {
+                                    const index = e.target.getAttribute('data-index');
+                                    const input = document.getElementById('attachments');
+                                    const dt = new DataTransfer();
+                                    const files = Array.from(input.files);
+                                    files.splice(index, 1);
+                                    files.forEach(file => dt.items.add(file));
+                                    input.files = dt.files;
+                                    // Re-trigger change to update thumbnails
+                                    input.dispatchEvent(new Event('change'));
                                 }
                             });
                         });
