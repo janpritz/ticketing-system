@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\FaqUpdaterService;
+use App\Services\FaqDeleterService;
 
 class AdminController extends Controller
 {
@@ -753,52 +755,12 @@ class AdminController extends Controller
             'response' => 'required|string',
         ]);
  
-        // Ensure updater endpoint is configured
-        $updaterUrl = env('FAQ_UPDATER_URL', null);
-        if (empty($updaterUrl)) {
-            return response()->json(['ok' => false, 'message' => 'FAQ updater not configured. Set FAQ_UPDATER_URL in .env'], 500);
-        }
- 
-        // Prepare payload for updater (use provided values)
-        $payload = [
-            'intent' => $validated['intent'],
-            'description' => $validated['description'],
-            // let updater decide whether to restart actions
-            'restart_actions' => true,
-        ];
-        $headers = [];
-        $secret = env('FAQ_UPDATER_SECRET', null);
-        if (!empty($secret)) {
-            $headers['X-FAQ-UPDATER-TOKEN'] = $secret;
-        }
- 
-        // Call updater and require success before saving
+        // Call updater service and require success before saving
         try {
-            $res = Http::withHeaders($headers)->timeout(8)->post($updaterUrl, $payload);
-        } catch (\Throwable $e) {
-            Log::error("FAQ updater request failed for intent={$validated['intent']}: " . $e->getMessage());
-            return response()->json(['ok' => false, 'message' => 'Failed to contact updater service'], 502);
-        }
- 
-        // Validate updater response
-        if (!$res->ok()) {
-            $body = (string) $res->body();
-            Log::error("FAQ updater returned non-200 for intent={$validated['intent']}: HTTP {$res->status()} body={$body}");
-            return response()->json(['ok' => false, 'message' => 'Updater service error', 'status' => $res->status(), 'body' => $body], 502);
-        }
- 
-        $json = null;
-        try {
-            $json = $res->json();
-        } catch (\Throwable $e) {
-            Log::error("FAQ updater returned invalid JSON for intent={$validated['intent']}: " . $e->getMessage());
-            return response()->json(['ok' => false, 'message' => 'Updater returned invalid JSON'], 502);
-        }
- 
-        // Expecting {"ok": true, ...}
-        if (empty($json['ok'])) {
-            Log::error("FAQ updater reported failure for intent={$validated['intent']}: " . json_encode($json));
-            return response()->json(['ok' => false, 'message' => 'Updater reported failure', 'details' => $json], 422);
+            $updaterService = new FaqUpdaterService();
+            $updaterService->updateFaq($validated['intent'], $validated['description'], true);
+        } catch (\Exception $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 502);
         }
  
         // Updater succeeded — persist FAQ locally
@@ -853,7 +815,20 @@ class AdminController extends Controller
         $faq = Faq::withTrashed()->findOrFail($faqId);
 
         if ($faq->trashed()) {
-            // Permanently delete the FAQ (force delete)
+            // Permanently delete the FAQ - MUST call external deleter service first and require success
+            try {
+                $deleterService = new FaqDeleterService();
+                $deleterService->deleteFaq($faq->intent, true);
+            } catch (\Exception $e) {
+                // If external deleter fails, DO NOT delete locally
+                Log::error("FAQ deleter service failed for intent={$faq->intent}: " . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to delete FAQ from external system: ' . $e->getMessage()
+                ], 502);
+            }
+
+            // Only delete locally if external service succeeded
             $faq->forceDelete();
 
             // Note: faq_revisions are configured to cascade on delete, so any revision rows

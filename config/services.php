@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'faqs_updater' => [
+        'url' => env('FAQ_UPDATER_URL'),
+        'secret' => env('FAQ_UPDATER_SECRET'),
+    ],
+
+    'faqs_deleter' => [
+        'url' => env('FAQ_DELETER_URL'),
+        'secret' => env('FAQ_DELETER_SECRET'),
+    ],
+
 ];

@@ -368,24 +368,46 @@
 
 <!-- Ticket Details Modal - Redesigned with Minimal Aesthetic -->
 <div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" data-modal-backdrop></div>
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
     <!-- Centered panel with modern minimal design -->
-    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl">
-        <div class="bg-white shadow-2xl h-full sm:h-auto sm:max-h-[92vh] overflow-hidden sm:rounded-2xl flex flex-col">
-            
+    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+        <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+
             <!-- Header - Minimal & Clean -->
-            <div class="px-6 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3 mb-2">
                         <h3 id="tmTicketNo" class="text-lg font-semibold text-gray-900">Ticket #</h3>
                         <span id="tmStatus" class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1"></span>
                     </div>
                 </div>
-                <button type="button" class="ml-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2 ml-4">
+                    <!-- Options Menu in Header -->
+                    <div class="relative">
+                        <button type="button" id="tmOptionsBtn"
+                            class="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                            aria-haspopup="true" aria-expanded="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                            </svg>
+                            <span class="hidden sm:inline">Options</span>
+                        </button>
+                        <div id="tmOptionsMenu"
+                            class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
+                            <button type="button"
+                                class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                data-option="toggle-history">Show History</button>
+                            <button type="button" id="tmOptionForward"
+                                class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                                data-option="show-forward">Forward Ticket</button>
+                        </div>
+                    </div>
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Content - Scrollable -->
