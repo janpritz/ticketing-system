@@ -274,6 +274,97 @@ def verify_secret(req) -> bool:
     print(f"[faq_updater] Received token header of length {len(token)}")
     return hmac.compare_digest(token, FAQ_UPDATER_SECRET)
 
+@app.route("/batch-update-faqs", methods=["POST"])
+def batch_update_faqs():
+    """
+    Batch update multiple FAQs in a single request.
+    Expects JSON: { "faqs": [{"id": 1, "intent": "...", "description": "...", "sync_type": "create|update|delete"}, ...] }
+    Returns: { "ok": true, "results": [{"faq_id": 1, "success": true, "intent": "..."}, ...] }
+    """
+    try:
+        print("[faq_updater] /batch-update-faqs called")
+        
+        if not verify_secret(request):
+            print("[faq_updater] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        faqs = data.get("faqs", [])
+        
+        if not isinstance(faqs, list):
+            return jsonify({"ok": False, "error": "faqs must be an array"}), 400
+
+        print(f"[faq_updater] Processing batch of {len(faqs)} FAQs")
+
+        results = []
+        for faq_data in faqs:
+            try:
+                intent = faq_data.get("intent")
+                description = faq_data.get("description", "") or ""
+                sync_type = faq_data.get("sync_type", "update")
+                faq_id = faq_data.get("id")
+
+                if not intent:
+                    results.append({
+                        "faq_id": faq_id,
+                        "success": False,
+                        "error": "intent required"
+                    })
+                    continue
+
+                intent_norm = normalize_intent(intent)
+                
+                if sync_type == "delete":
+                    # For delete operations, we would need to implement removal logic
+                    # For now, just mark as success (deletion handled by deleter service)
+                    print(f"[faq_updater] Skipping delete operation for {intent_norm} (handled by deleter service)")
+                    results.append({
+                        "faq_id": faq_id,
+                        "success": True,
+                        "intent": intent,
+                        "note": "delete handled by separate service"
+                    })
+                else:
+                    # Handle create/update/enable/disable (all use same append logic)
+                    action_appended = append_action_class(intent_norm, intent)
+                    flow_appended = append_flow(intent_norm, description)
+                    
+                    results.append({
+                        "faq_id": faq_id,
+                        "success": True,
+                        "intent": intent,
+                        "intent_normalized": intent_norm,
+                        "action_appended": action_appended,
+                        "flow_appended": flow_appended
+                    })
+
+            except Exception as e:
+                print(f"[faq_updater] Error processing FAQ {faq_data.get('id')}: {e}", file=sys.stderr)
+                traceback.print_exc()
+                results.append({
+                    "faq_id": faq_data.get("id"),
+                    "success": False,
+                    "error": str(e)
+                })
+
+        successful = sum(1 for r in results if r.get("success"))
+        print(f"[faq_updater] Batch complete: {successful}/{len(results)} successful")
+
+        return jsonify({
+            "ok": True,
+            "results": results,
+            "summary": {
+                "total": len(results),
+                "successful": successful,
+                "failed": len(results) - successful
+            }
+        })
+
+    except Exception as e:
+        print(f"[faq_updater] Unexpected error in /batch-update-faqs: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/update-faq", methods=["POST"])
 def update_faq():
     try:

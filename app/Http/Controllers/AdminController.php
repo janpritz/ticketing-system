@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Services\FaqUpdaterService;
 use App\Services\FaqDeleterService;
+use App\Events\FaqEnabled;
+use App\Events\FaqDisabled;
 
 class AdminController extends Controller
 {
@@ -1119,6 +1121,9 @@ class AdminController extends Controller
         $faq->response_disabled = true;
         $faq->save();
 
+        // Dispatch event for sync system
+        event(new FaqDisabled($faq));
+
         return response()->json(['success' => true, 'faq' => $faq]);
     }
 
@@ -1145,6 +1150,9 @@ class AdminController extends Controller
 
         $faq->response_disabled = false;
         $faq->save();
+
+        // Dispatch event for sync system
+        event(new FaqEnabled($faq));
 
         return response()->json(['success' => true, 'faq' => $faq]);
     }

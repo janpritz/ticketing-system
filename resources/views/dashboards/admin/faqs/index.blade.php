@@ -408,7 +408,9 @@
         data-revisions-url-template="{{ route('admin.faqs.revisions', ['faq' => '__ID__']) }}"
         data-restore-url-template="{{ route('admin.faqs.restore', ['faq' => '__ID__']) }}"
         data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"
-        data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"></div>
+        data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"
+        data-enable-url-template="{{ route('admin.faqs.enable', ['faq' => '__ID__']) }}"
+        data-disable-url-template="{{ route('admin.faqs.disable', ['faq' => '__ID__']) }}"></div>
 
 @endsection
 
@@ -439,6 +441,8 @@
             const RESTORE_TEMPLATE = stateEl.getAttribute('data-restore-url-template');
             const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
             const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
+            const ENABLE_TEMPLATE = stateEl.getAttribute('data-enable-url-template');
+            const DISABLE_TEMPLATE = stateEl.getAttribute('data-disable-url-template');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             const $ = (sel, root = document) => root.querySelector(sel);
@@ -634,13 +638,29 @@
         <td class="py-3 pl-3 pr-5 align-top">
           <div class="flex items-center gap-2">
             ${f.deleted_at ? (
-              // For deleted rows show both Restore and Delete actions
               `<div class="flex items-center gap-2">
                 <button class="restoreDeletedBtn inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">Restore</button>
                 <button class="deletePermanentBtn inline-flex items-center gap-1 rounded-md border border-red-200 bg-white text-red-700 px-3 py-1.5 text-sm font-medium hover:bg-red-50" data-id="${f.id}">Delete</button>
               </div>`
             ) : (
-              `<button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>`
+              `<div class="flex items-center gap-2">
+                <button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>
+                <div class="hidden sm:flex items-center gap-2">
+                  ${f.response_disabled ? (
+                    `<button class="enableFaqBtn inline-flex items-center gap-1 rounded-lg border border-green-200 bg-white px-2 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50" data-id="${f.id}" title="Enable FAQ">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                      </svg>
+                      <span class="hidden sm:inline">Enable</span>
+                    </button>`
+                  ) : (
+                    `<button class="disableFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}" title="Disable FAQ">
+                      <span class="hidden sm:inline">Disable</span>
+                    </button>`
+                  )}
+                </div>
+                <button class="mobileToggleBtn sm:hidden rounded-full px-3 py-1 text-xs font-medium ${f.response_disabled ? 'bg-gray-400 text-white' : 'bg-green-400 text-white'}" data-id="${f.id}" data-disabled="${f.response_disabled ? '1' : '0'}">${f.response_disabled ? 'Disabled' : 'Enabled'}</button>
+              </div>`
             )}
           </div>
         </td>
@@ -729,6 +749,141 @@
                         }
                     });
                 });
+
+                // Attach enable/disable handlers for desktop buttons
+                $$('.enableFaqBtn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const id = btn.getAttribute('data-id');
+                        if (!id) return;
+                        const url = ENABLE_TEMPLATE.replace('__ID__', id);
+                        
+                        // Store original content
+                        const originalHTML = btn.innerHTML;
+                        
+                        try {
+                            btn.disabled = true;
+                            // Show loading spinner
+                            btn.innerHTML = `
+                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            `;
+                            
+                            const res = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                throw new Error(json.message || 'Failed to enable FAQ');
+                            }
+                            showToast('success', 'FAQ enabled successfully');
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                            // Restore original content on error
+                            btn.innerHTML = originalHTML;
+                            btn.disabled = false;
+                        }
+                    });
+                });
+
+                $$('.disableFaqBtn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const id = btn.getAttribute('data-id');
+                        if (!id) return;
+                        const url = DISABLE_TEMPLATE.replace('__ID__', id);
+                        
+                        // Store original content
+                        const originalHTML = btn.innerHTML;
+                        
+                        try {
+                            btn.disabled = true;
+                            // Show loading spinner
+                            btn.innerHTML = `
+                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            `;
+                            
+                            const res = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                throw new Error(json.message || 'Failed to disable FAQ');
+                            }
+                            showToast('success', 'FAQ disabled successfully');
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                            // Restore original content on error
+                            btn.innerHTML = originalHTML;
+                            btn.disabled = false;
+                        }
+                    });
+                });
+
+                // Attach mobile toggle handlers
+                $$('.mobileToggleBtn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const id = btn.getAttribute('data-id');
+                        const isDisabled = btn.getAttribute('data-disabled') === '1';
+                        if (!id) return;
+                        
+                        const url = isDisabled
+                            ? ENABLE_TEMPLATE.replace('__ID__', id)
+                            : DISABLE_TEMPLATE.replace('__ID__', id);
+                        
+                        // Store original content
+                        const originalHTML = btn.innerHTML;
+                        
+                        try {
+                            btn.disabled = true;
+                            // Show loading spinner
+                            btn.innerHTML = `
+                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            `;
+                            
+                            const res = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                throw new Error(json.message || `Failed to ${isDisabled ? 'enable' : 'disable'} FAQ`);
+                            }
+                            showToast('success', `FAQ ${isDisabled ? 'enabled' : 'disabled'} successfully`);
+                            fetchList(currentPage);
+                        } catch (err) {
+                            showToast('error', err.message || 'Error');
+                            console.error(err);
+                            // Restore original content on error
+                            btn.innerHTML = originalHTML;
+                            btn.disabled = false;
+                        }
+                    });
+                });
             }
 
             function renderPagination(meta) {
@@ -771,872 +926,453 @@
             function escapeHtml(s) {
                 if (s === null || s === undefined) return '';
                 return String(s)
-                    .replaceAll('&', '&')
-                    .replaceAll('<', '<')
-                    .replaceAll('>', '>')
-                    .replaceAll('"', '"')
-                    .replaceAll("'", "&#039;");
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
             }
 
             function toggleClear(show) {
-                clearSearchBtn.classList.toggle('hidden', !show);
-            }
-
-            // Search handlers
-            searchBtn.addEventListener('click', () => fetchList(1));
-            perPageSelect.addEventListener('change', () => fetchList(1));
-            clearSearchBtn.addEventListener('click', () => {
-                qInput.value = '';
-                toggleClear(false);
-                fetchList(1);
-            });
-            qInput.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') fetchList(1);
-            });
-
-            // Show deleted toggle handler
-            if (showDeletedCheckbox) {
-                showDeletedCheckbox.addEventListener('change', () => {
-                    showDeleted = !!showDeletedCheckbox.checked;
-                    fetchList(1);
-                });
-            }
-
-            // Status preview toggle handler (All / Trained / Untrained)
-            const allBtn = $('#faqsStatusAllBtn');
-            const trainedBtn = $('#faqsStatusTrainedBtn');
-            const untrainedBtn = $('#faqsStatusUntrainedBtn');
-
-            function updateToggleUI() {
-                // helper to toggle button styles
-                const setActive = (btn, active) => {
-                    if (!btn) return;
-                    if (active) {
-                        btn.classList.remove('bg-yellow-400', 'text-white');
-                        btn.classList.add('bg-white', 'text-yellow-700');
-                    } else {
-                        btn.classList.remove('bg-white', 'text-yellow-700');
-                        btn.classList.add('bg-yellow-400', 'text-white');
-                    }
-                };
-
-                // desktop toggle
-                setActive(allBtn, currentStatus === 'all');
-                setActive(trainedBtn, currentStatus === 'trained');
-                setActive(untrainedBtn, currentStatus === 'untrained');
-
-                // mobile toggle (kept in sync with desktop)
-                const mobileAll = $('#mobileAllToggle');
-                const mobileTrained = $('#mobileTrainedToggle');
-                const mobileUntrained = $('#mobileUntrainedToggle');
-                setActive(mobileAll, currentStatus === 'all');
-                setActive(mobileTrained, currentStatus === 'trained');
-                setActive(mobileUntrained, currentStatus === 'untrained');
-            }
-            // initialize UI
-            updateToggleUI();
-            if (allBtn) {
-                allBtn.addEventListener('click', () => {
-                    if (currentStatus !== 'all') {
-                        currentStatus = 'all';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                });
-            }
-            if (trainedBtn) {
-                trainedBtn.addEventListener('click', () => {
-                    if (currentStatus !== 'trained') {
-                        currentStatus = 'trained';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                });
-            }
-            if (untrainedBtn) {
-                untrainedBtn.addEventListener('click', () => {
-                    if (currentStatus !== 'untrained') {
-                        currentStatus = 'untrained';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                });
-            }
-
-            // Mobile search UI (toggles mobile search bar) + mobile actions menu
-            const mobileSearchToggle = $('#mobileSearchToggle');
-            const mobileSearchArea = $('#mobileSearchArea');
-            const qMobile = $('#q_mobile');
-            const mobileSearchBtn = $('#mobileSearchBtn');
-            const mobileClearSearch = $('#mobileClearSearch');
-            const perPageMobile = $('#per_page_mobile');
-
-            // Mobile actions / drawer controls
-            const mobileActionsToggle = $('#mobileActionsToggle');
-            const mobileDrawer = $('#mobileDrawer');
-            const mobileDrawerOverlay = $('#mobileDrawerOverlay');
-            const mobileDrawerClose = $('#mobileDrawerClose');
-            const mobileActionSearch = $('#mobileActionSearch');
-            const mobileAllToggle = $('#mobileAllToggle');
-            const mobileTrainedToggle = $('#mobileTrainedToggle');
-            const mobileUntrainedToggle = $('#mobileUntrainedToggle');
-            const mobileActionUpdateStatus = $('#mobileActionUpdateStatus');
-            const mobileActionTrash = $('#mobileActionTrash');
-            const mobileActionAdd = $('#mobileActionAdd');
-
-            if (mobileSearchToggle) {
-                mobileSearchToggle.addEventListener('click', () => {
-                    if (mobileSearchArea) mobileSearchArea.classList.toggle('hidden');
-                    if (qMobile) qMobile.focus();
-                });
-            }
-
-            if (mobileActionsToggle) {
-                // Toggle the bottom-drawer (mobile)
-                mobileActionsToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (!mobileDrawer || !mobileDrawerOverlay) return;
-                    const isOpen = !mobileDrawer.classList.contains('translate-y-full');
-                    if (isOpen) {
-                        // close
-                        mobileDrawer.classList.add('translate-y-full');
-                        mobileDrawerOverlay.classList.add('hidden');
-                    } else {
-                        // open
-                        mobileDrawer.classList.remove('translate-y-full');
-                        mobileDrawerOverlay.classList.remove('hidden');
-                    }
-                });
-
-                // Close controls (overlay click or close button)
-                if (mobileDrawerOverlay) {
-                    mobileDrawerOverlay.addEventListener('click', () => {
-                        if (!mobileDrawer || !mobileDrawerOverlay) return;
-                        mobileDrawer.classList.add('translate-y-full');
-                        mobileDrawerOverlay.classList.add('hidden');
-                    });
-                }
-                if (mobileDrawerClose) {
-                    mobileDrawerClose.addEventListener('click', () => {
-                        if (!mobileDrawer || !mobileDrawerOverlay) return;
-                        mobileDrawer.classList.add('translate-y-full');
-                        mobileDrawerOverlay.classList.add('hidden');
-                    });
+                if (clearSearchBtn) {
+                    clearSearchBtn.classList.toggle('hidden', !show);
                 }
             }
 
-            if (mobileActionSearch) {
-                mobileActionSearch.addEventListener('click', () => {
-                    // open mobile search area and focus
-                    if (mobileSearchArea) mobileSearchArea.classList.remove('hidden');
-                    if (qMobile) qMobile.focus();
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-
-            if (mobileAllToggle) {
-                mobileAllToggle.addEventListener('click', () => {
-                    if (currentStatus !== 'all') {
-                        currentStatus = 'all';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-
-            if (mobileTrainedToggle) {
-                mobileTrainedToggle.addEventListener('click', () => {
-                    if (currentStatus !== 'trained') {
-                        currentStatus = 'trained';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-            if (mobileUntrainedToggle) {
-                mobileUntrainedToggle.addEventListener('click', () => {
-                    if (currentStatus !== 'untrained') {
-                        currentStatus = 'untrained';
-                        updateToggleUI();
-                        fetchList(1);
-                    }
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-
-            if (mobileActionUpdateStatus) {
-                mobileActionUpdateStatus.addEventListener('click', () => {
-                    const url = mobileActionUpdateStatus.dataset.pendingUrl || '';
-                    if (url) window.location.href = url;
-                });
-            }
-
-            if (mobileActionTrash) {
-                mobileActionTrash.addEventListener('click', () => {
-                    const url = mobileActionTrash.dataset.deletedUrl || '';
-                    if (url) window.location.href = url;
-                });
-            }
-
-            if (mobileActionAdd) {
-                mobileActionAdd.addEventListener('click', () => {
-                    // open create modal (same as desktop)
-                    if (createForm) createForm.reset();
-                    $('#create_intent_error').classList.add('hidden');
-                    $('#create_response_error').classList.add('hidden');
-                    if (createModal) createModal.classList.remove('hidden');
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-
-            if (mobileSearchBtn) {
-                mobileSearchBtn.addEventListener('click', () => {
-                    const v = qMobile ? qMobile.value.trim() : '';
-                    qInput.value = v;
-                    toggleClear(v !== '');
-                    fetchList(1);
-                    if (mobileActionsMenu) mobileActionsMenu.classList.add('hidden');
-                });
-            }
-
-            if (mobileClearSearch) {
-                mobileClearSearch.addEventListener('click', () => {
-                    if (qMobile) qMobile.value = '';
-                    qInput.value = '';
-                    toggleClear(false);
-                    fetchList(1);
-                });
-            }
-
-            if (perPageMobile) {
-                perPageMobile.addEventListener('change', () => {
-                    perPageSelect.value = perPageMobile.value;
-                    fetchList(1);
-                });
-            }
-
-            // Create modal handlers
-            if (createOpenBtn) createOpenBtn.addEventListener('click', () => {
-                // reset fields
-                createForm.reset();
-                $('#create_intent_error').classList.add('hidden');
-                $('#create_response_error').classList.add('hidden');
-                openModal(createModal);
-            });
-
-            // Mobile create button - open the same modal
-            const createOpenMobileBtn = $('#openCreateModalBtnMobile');
-            if (createOpenMobileBtn) {
-                createOpenMobileBtn.addEventListener('click', () => {
-                    // reset fields same as desktop open
-                    createForm.reset();
-                    $('#create_intent_error').classList.add('hidden');
-                    $('#create_response_error').classList.add('hidden');
-                    openModal(createModal);
-                });
-            }
-
-            createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
-
-            createSubmit.addEventListener('click', async () => {
-                // clear errors
-                $('#create_intent_error').classList.add('hidden');
-                $('#create_response_error').classList.add('hidden');
-                $('#create_description_error').classList.add('hidden');
- 
-                const intent = $('#create_intent').value.trim();
-                const description = $('#create_description').value.trim();
-                const response = $('#create_response').value.trim();
-                if (!intent || !description || !response) {
-                    if (!intent) {
-                        $('#create_intent_error').textContent = 'Intent is required';
-                        $('#create_intent_error').classList.remove('hidden');
-                    }
-                    if (!description) {
-                        $('#create_description_error').textContent = 'Description is required';
-                        $('#create_description_error').classList.remove('hidden');
-                    }
-                    if (!response) {
-                        $('#create_response_error').textContent = 'Response is required';
-                        $('#create_response_error').classList.remove('hidden');
-                    }
-                    return;
-                }
- 
-                try {
-                    createSubmit.disabled = true;
-                    const res = await fetch(STORE_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify({
-                            intent,
-                            description,
-                            response
-                        })
-                    });
-                    const json = await res.json();
-                    if (!res.ok) {
-                        const err = (json.errors && Object.values(json.errors).flat().join(' ')) || json
-                            .message || 'Failed to create FAQ';
-                        throw new Error(err);
-                    }
-                    showToast('success', 'FAQ created');
-                    closeModal(createModal);
-                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                    fetchList(1);
-                } catch (err) {
-                    showToast('error', err.message || 'Error');
-                    console.error(err);
-                } finally {
-                    createSubmit.disabled = false;
-                }
-            });
-
-            // View modal handlers
-            viewCloseEls.forEach(el => el.addEventListener('click', () => closeModal(viewModal)));
-            let activeFaqId = null;
-
+            // View FAQ click handler
             async function onViewClick(e) {
                 const id = e.currentTarget.getAttribute('data-id');
                 if (!id) return;
-                activeFaqId = id;
-                // fetch details
-                const showUrl = SHOW_TEMPLATE.replace('__ID__', id);
+                const url = SHOW_TEMPLATE.replace('__ID__', id);
                 try {
-                    const res = await fetch(showUrl, {
+                    const res = await fetch(url, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
                     if (!res.ok) throw new Error('Failed to load FAQ');
-                    const f = await res.json();
-                    // populate
-                    viewFaqId.value = f.id;
-                    viewTopic.value = f.intent || '';
-                    view_description_value = f.description || '';
-                    viewResponse.value = f.response || '';
-                    if ($('#view_description')) $('#view_description').value = f.description || '';
-                    viewTimestamps.innerHTML = `
-        <div class="tiny-text">Created: ${escapeHtml(f.created_at || '')}</div>
-        <div class="text-super-small">Updated: ${escapeHtml(f.updated_at || '')}</div>
-      `;
-                    // set update form action (not required for fetch but kept for semantics)
-                    viewForm.setAttribute('action', UPDATE_TEMPLATE.replace('__ID__', id));
-
-                    // Configure the "more actions" button/menu based on server flags
-                    if (moreBtn) {
-                        // show the menu button if there are any contextual actions (restore/revisions/undo/train/untrain)
-                        if (f.can_restore || f.can_revert || f.can_undo || (typeof f.status !== 'undefined')) {
-                            moreBtn.classList.remove('hidden');
-                            // Show/hide individual menu items
-                            if (moreRestoreBtn) {
-                                if (f.can_restore) {
-                                    moreRestoreBtn.classList.remove('hidden');
-                                    moreRestoreBtn.dataset.url = f.restore_url || '';
-                                } else {
-                                    moreRestoreBtn.classList.add('hidden');
-                                }
-                            }
-                            if (moreRevisionsBtn) {
-                                if (f.can_revert) {
-                                    moreRevisionsBtn.classList.remove('hidden');
-                                    moreRevisionsBtn.dataset.url = f.revisions_url || '';
-                                } else {
-                                    moreRevisionsBtn.classList.add('hidden');
-                                }
-                            }
-                            // Show "Train" when the FAQ is currently untrained
-                            if (moreTrainBtn) {
-                                if (f.status !== 'trained') {
-                                    moreTrainBtn.classList.remove('hidden');
-                                    moreTrainBtn.dataset.url = f.train_url || (TRAIN_TEMPLATE ?
-                                        TRAIN_TEMPLATE.replace('__ID__', id) : '');
-                                } else {
-                                    moreTrainBtn.classList.add('hidden');
-                                }
-                            }
-                            // Show "Untrain" when the FAQ is currently trained
-                            if (moreUntrainBtn) {
-                                if (f.status === 'trained') {
-                                    moreUntrainBtn.classList.remove('hidden');
-                                    moreUntrainBtn.dataset.url = f.untrain_url || (UNTRAIN_TEMPLATE ?
-                                        UNTRAIN_TEMPLATE.replace('__ID__', id) : '');
-                                } else {
-                                    moreUntrainBtn.classList.add('hidden');
-                                }
-                            }
-                        } else {
-                            moreBtn.classList.add('hidden');
-                            if (moreMenu) moreMenu.classList.add('hidden');
-                        }
-                    }
-
-                    // Populate previous revision collapsible
-                    if (f.latest_revision && prevWrapper) {
-                        prevWrapper.classList.remove('hidden');
-                        if (prevMeta) prevMeta.textContent =
-                            `${f.latest_revision.action || 'previous'} • ${f.latest_revision.created_at || ''}`;
-                        if (prevContent) prevContent.textContent = f.latest_revision.response || '';
-                        if (restorePrevBtn) restorePrevBtn.dataset.url = f.undo_url || '';
-                        // collapse by default
-                        if (prevBlock) prevBlock.classList.add('hidden');
-                        if (togglePrevBtn) togglePrevBtn.textContent = 'Show previous response';
-                    } else {
-                        if (prevWrapper) prevWrapper.classList.add('hidden');
-                    }
-
+                    const faq = await res.json();
+                    populateViewModal(faq);
                     openModal(viewModal);
                 } catch (err) {
-                    showToast('error', 'Failed to load FAQ');
+                    showToast('error', 'Error loading FAQ');
                     console.error(err);
                 }
             }
 
-            updateSubmit.addEventListener('click', async () => {
-                const id = viewFaqId.value;
-                if (!id) return;
-                const url = UPDATE_TEMPLATE.replace('__ID__', id);
-                const payload = {
-                    intent: viewTopic.value.trim(),
-                    description: ($('#view_description') ? $('#view_description').value.trim() : ''),
-                    response: viewResponse.value.trim()
-                };
-                // basic validation
-                let hasErr = false;
-                $('#view_intent_error').classList.add('hidden');
-                $('#view_response_error').classList.add('hidden');
-                $('#view_description_error').classList.add('hidden');
-                if (!payload.intent) {
-                    $('#view_intent_error').textContent = 'Intent required';
-                    $('#view_intent_error').classList.remove('hidden');
-                    hasErr = true;
+            function populateViewModal(faq) {
+                if (!viewModal) return;
+                viewFaqId.value = faq.id;
+                viewTopic.value = faq.intent || '';
+                $('#view_description').value = faq.description || '';
+                viewResponse.value = faq.response || '';
+                viewTimestamps.textContent = `Created: ${faq.created_at || ''} | Updated: ${faq.updated_at || ''}`;
+
+                // Show/hide action buttons based on FAQ state
+                const actionPills = $('#actionPills');
+                const trainPill = $('#trainPillBtn');
+                const untrainPill = $('#untrainPillBtn');
+                
+                if (faq.status === 'trained') {
+                    if (trainPill) trainPill.classList.add('hidden');
+                    if (untrainPill) untrainPill.classList.remove('hidden');
+                } else {
+                    if (trainPill) trainPill.classList.remove('hidden');
+                    if (untrainPill) untrainPill.classList.add('hidden');
                 }
-                if (!payload.description) {
-                    $('#view_description_error').textContent = 'Description required';
-                    $('#view_description_error').classList.remove('hidden');
-                    hasErr = true;
-                }
-                if (!payload.response) {
-                    $('#view_response_error').textContent = 'Response required';
-                    $('#view_response_error').classList.remove('hidden');
-                    hasErr = true;
-                }
-                if (hasErr) return;
- 
-                try {
-                    updateSubmit.disabled = true;
-                    const res = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    const json = await res.json();
-                    if (!res.ok) {
-                        const err = (json.errors && Object.values(json.errors).flat().join(' ')) || json
-                            .message || 'Failed to update';
-                        throw new Error(err);
+                if (actionPills) actionPills.classList.remove('hidden');
+
+                // Show more actions button
+                if (moreBtn) moreBtn.classList.remove('hidden');
+
+                // Handle previous revision display
+                if (faq.latest_revision && prevWrapper) {
+                    prevWrapper.classList.remove('hidden');
+                    if (prevMeta) prevMeta.textContent = `${faq.latest_revision.action || 'update'} at ${faq.latest_revision.created_at || ''}`;
+                    if (prevContent) prevContent.textContent = faq.latest_revision.response || '';
+                    if (restorePrevBtn && faq.undo_url) {
+                        restorePrevBtn.dataset.url = faq.undo_url;
                     }
-                    showToast('success', 'FAQ updated');
-                    closeModal(viewModal);
-                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                    fetchList(currentPage);
-                } catch (err) {
-                    showToast('error', err.message || 'Error');
-                    console.error(err);
-                } finally {
-                    updateSubmit.disabled = false;
-                }
-            });
-
-            deleteBtn.addEventListener('click', async () => {
-                const id = viewFaqId.value;
-                if (!id) return;
-                const result = await Swal.fire({
-                    title: 'Delete FAQ?',
-                    text: 'This action cannot be undone.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, delete it',
-                    cancelButtonText: 'Cancel',
-                });
-                if (!result.isConfirmed) return;
-                const url = DESTROY_TEMPLATE.replace('__ID__', id);
-                try {
-                    deleteBtn.disabled = true;
-                    const res = await fetch(url, {
-                        method: 'DELETE',
-                        headers: {
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                    const json = await res.json();
-                    if (!res.ok) {
-                        const err = json.message || 'Failed to delete';
-                        throw new Error(err);
-                    }
-                    showToast('success', 'FAQ deleted');
-                    closeModal(viewModal);
-                    // refresh list (stay on same page if possible)
-                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                    fetchList(currentPage);
-                } catch (err) {
-                    showToast('error', err.message || 'Error');
-                    console.error(err);
-                } finally {
-                    deleteBtn.disabled = false;
-                }
-            });
-
-            // More actions menu toggling & handlers
-            if (moreBtn) {
-                moreBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (moreMenu) moreMenu.classList.toggle('hidden');
-                });
-    
-                // Close menu when clicking outside
-                document.addEventListener('click', (ev) => {
-                    if (!moreMenu) return;
-                    const target = ev.target;
-                    if (moreMenu.classList.contains('hidden')) return;
-                    if (!moreMenu.contains(target) && target !== moreBtn && !moreBtn.contains(target)) {
-                        moreMenu.classList.add('hidden');
-                    }
-                });
-    
-                // View revisions - navigate to revisions page (full page)
-                if (moreRevisionsBtn) {
-                    moreRevisionsBtn.addEventListener('click', () => {
-                        const url = moreRevisionsBtn.dataset.url || '';
-                        if (!url) return;
-                        // navigate to the revisions page in the same tab
-                        window.location.href = url;
-                    });
-                }
-    
-                // Restore action - POST to restore endpoint
-                if (moreRestoreBtn) {
-                    moreRestoreBtn.addEventListener('click', async () => {
-                        const url = moreRestoreBtn.dataset.url || '';
-                        if (!url) return;
-    
-                        // Ask for confirmation before restoring
-                        const confirmResult = await Swal.fire({
-                            title: 'Restore FAQ?',
-                            text: 'Do you want to restore this response?',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, restore',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-    
-                        try {
-                            moreRestoreBtn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to restore';
-                                throw new Error(err);
-                            }
-                            // Use server-provided confirmation message when available
-                            showToast('success', json.message || 'FAQ restored');
-                            closeModal(viewModal);
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            moreRestoreBtn.disabled = false;
-                        }
-                    });
-                }
-    
-                // "This response is not trained" action - mark trained -> untrained
-                if (moreUntrainBtn) {
-                    moreUntrainBtn.addEventListener('click', async () => {
-                        const url = moreUntrainBtn.dataset.url || '';
-                        if (!url) return;
-
-                        const confirmResult = await Swal.fire({
-                            title: 'Mark response as untrained?',
-                            text: 'This will set the FAQ status back to untrained so the response will not be available to the students.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, mark as untrained',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-
-                        try {
-                            moreUntrainBtn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to update status';
-                                throw new Error(err);
-                            }
-                            showToast('success', json.message || 'Marked as not trained');
-                            // update UI: refresh list and update modal state
-                            closeModal(viewModal);
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            moreUntrainBtn.disabled = false;
-                        }
-                    });
-                }
-
-                // "Train" action from the ... menu - mark untrained -> trained
-                if (moreTrainBtn) {
-                    moreTrainBtn.addEventListener('click', async () => {
-                        const url = moreTrainBtn.dataset.url || '';
-                        if (!url) return;
-
-                        const confirmResult = await Swal.fire({
-                            title: 'Mark response as trained?',
-                            text: 'This will mark the FAQ as trained.',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, mark as trained',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-
-                        try {
-                            moreTrainBtn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'PUT',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to mark as trained';
-                                throw new Error(err);
-                            }
-                            showToast('success', json.message || 'Marked as trained');
-                            closeModal(viewModal);
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            moreTrainBtn.disabled = false;
-                        }
-                    });
-                }
-    
-                // Pill buttons (Train / Untrain) handlers
-                const trainPillBtn = $('#trainPillBtn');
-                const untrainPillBtn = $('#untrainPillBtn');
-    
-                if (trainPillBtn) {
-                    trainPillBtn.addEventListener('click', async () => {
-                        const id = activeFaqId || (viewFaqId ? viewFaqId.value : null);
-                        if (!id) return;
-                        const url = TRAIN_TEMPLATE ? TRAIN_TEMPLATE.replace('__ID__', id) : '';
-                        const confirmResult = await Swal.fire({
-                            title: 'Train response?',
-                            text: 'This will mark the FAQ as trained.',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, train',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        try {
-                            trainPillBtn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'PUT',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to mark as trained';
-                                throw new Error(err);
-                            }
-                            showToast('success', 'Marked as trained');
-                            closeModal(viewModal);
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            trainPillBtn.disabled = false;
-                        }
-                    });
-                }
-    
-                if (untrainPillBtn) {
-                    untrainPillBtn.addEventListener('click', async () => {
-                        const id = activeFaqId || (viewFaqId ? viewFaqId.value : null);
-                        if (!id) return;
-                        const url = UNTRAIN_TEMPLATE ? UNTRAIN_TEMPLATE.replace('__ID__', id) : '';
-                        const confirmResult = await Swal.fire({
-                            title: 'Mark response as not trained?',
-                            text: 'This will set the FAQ status back to untrained so it can be retrained.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, mark as not trained',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        try {
-                            untrainPillBtn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to update status';
-                                throw new Error(err);
-                            }
-                            showToast('success', json.message || 'Marked as not trained');
-                            closeModal(viewModal);
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            untrainPillBtn.disabled = false;
-                        }
-                    });
+                    if (prevBlock) prevBlock.classList.add('hidden');
+                    if (togglePrevBtn) togglePrevBtn.textContent = 'Show previous response';
+                } else if (prevWrapper) {
+                    prevWrapper.classList.add('hidden');
                 }
             }
 
-            // Auto-refresh disabled to avoid DB overload.
-            // Refresh will only happen when a CRUD operation sets the localStorage
-            // notification (ts_tickets_changed) or when the tab becomes visible and
-            // a change was recorded by another tab.
-            function startAutoRefresh() {
-                if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
-                // polling intentionally disabled
+            // Search handlers
+            if (searchBtn) {
+                searchBtn.addEventListener('click', () => fetchList(1));
             }
-
-            // Initialize
-            // Template button behavior and visibility helpers
-            const TEMPLATE_TEXT = 'This flow handles question when the user asks about...';
-            const createTemplateBtn = $('#createTemplateBtn');
-            const viewTemplateBtn = $('#viewTemplateBtn');
-            const createDescriptionEl = $('#create_description');
-            const viewDescriptionEl = $('#view_description');
-
-            function updateTemplateButtonsVisibility() {
-                // Create button: only shown when create modal is open AND description is empty
-                if (createTemplateBtn) {
-                    // if create modal element exists and is visible (no 'hidden' class) and description exists
-                    const showCreate = createModal && createDescriptionEl && !createModal.classList.contains('hidden') && createDescriptionEl.value.trim() === '';
-                    createTemplateBtn.classList.toggle('hidden', !showCreate);
-                    // ensure button label
-                    createTemplateBtn.textContent = 'Use template';
-                }
-
-                // View/Edit button: shown only when view modal is open AND description is empty
-                if (viewTemplateBtn) {
-                    const showView = viewModal && viewDescriptionEl && !viewModal.classList.contains('hidden') && viewDescriptionEl.value.trim() === '';
-                    viewTemplateBtn.classList.toggle('hidden', !showView);
-                    viewTemplateBtn.textContent = 'Use template';
-                }
-            }
-
-            // Hook visibility update when modals open/close via MutationObserver (observes class changes)
-            const modalObserver = new MutationObserver(() => updateTemplateButtonsVisibility());
-            if (createModal) modalObserver.observe(createModal, { attributes: true, attributeFilter: ['class'] });
-            if (viewModal) modalObserver.observe(viewModal, { attributes: true, attributeFilter: ['class'] });
-
-            // Also update visibility when user types into description boxes
-            if (createDescriptionEl) createDescriptionEl.addEventListener('input', updateTemplateButtonsVisibility);
-            if (viewDescriptionEl) viewDescriptionEl.addEventListener('input', updateTemplateButtonsVisibility);
-
-            // Template button actions: only insert template when the description is empty
-            if (createTemplateBtn) {
-                createTemplateBtn.addEventListener('click', () => {
-                    if (!createDescriptionEl) return;
-                    if (createDescriptionEl.value.trim() === '') {
-                        createDescriptionEl.value = TEMPLATE_TEXT;
-                        updateTemplateButtonsVisibility();
-                    }
+            if (qInput) {
+                qInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') fetchList(1);
                 });
             }
-
-            if (viewTemplateBtn) {
-                viewTemplateBtn.addEventListener('click', () => {
-                    if (!viewDescriptionEl) return;
-                    if (viewDescriptionEl.value.trim() === '') {
-                        viewDescriptionEl.value = TEMPLATE_TEXT;
-                        updateTemplateButtonsVisibility();
-                    }
-                });
-            }
-
-            // Ensure correct initial state, start app
-            updateTemplateButtonsVisibility();
-            fetchList(1);
-            // Cross-tab refresh: when other tabs set the ts_tickets_changed flag,
-            // refresh this listing. Also refresh when the tab gains focus or becomes
-            // visible and the change flag exists.
-            window.addEventListener('storage', (e) => {
-                if (e && e.key === 'ts_tickets_changed') {
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', () => {
+                    qInput.value = '';
                     fetchList(1);
-                }
-            });
-            window.addEventListener('focus', () => {
-                try { if (localStorage.getItem('ts_tickets_changed')) fetchList(1); } catch (_) {}
-            });
-            document.addEventListener('visibilitychange', () => {
-                try { if (!document.hidden && localStorage.getItem('ts_tickets_changed')) fetchList(1); } catch (_) {}
-            });
+                });
+            }
 
-            // Close modals on Escape
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    closeModal(createModal);
-                    closeModal(viewModal);
+            // Per page change
+            if (perPageSelect) {
+                perPageSelect.addEventListener('change', () => {
+                    currentPerPage = parseInt(perPageSelect.value || '25', 10);
+                    fetchList(1);
+                });
+            }
+
+            // Mobile search
+            const qMobile = $('#q_mobile');
+            const mobileSearchBtn = $('#mobileSearchBtn');
+            const perPageMobile = $('#per_page_mobile');
+            
+            if (mobileSearchBtn && qMobile) {
+                mobileSearchBtn.addEventListener('click', () => {
+                    if (qInput) qInput.value = qMobile.value;
+                    fetchList(1);
+                });
+            }
+            if (qMobile) {
+                qMobile.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        if (qInput) qInput.value = qMobile.value;
+                        fetchList(1);
+                    }
+                });
+            }
+            if (perPageMobile) {
+                perPageMobile.addEventListener('change', () => {
+                    if (perPageSelect) perPageSelect.value = perPageMobile.value;
+                    currentPerPage = parseInt(perPageMobile.value || '25', 10);
+                    fetchList(1);
+                });
+            }
+
+            // Status toggle handlers (Desktop)
+            const allBtn = $('#faqsStatusAllBtn');
+            const trainedBtn = $('#faqsStatusTrainedBtn');
+            const untrainedBtn = $('#faqsStatusUntrainedBtn');
+
+            function updateStatusButtons(status) {
+                [allBtn, trainedBtn, untrainedBtn].forEach(btn => {
+                    if (!btn) return;
+                    btn.classList.remove('bg-white', 'text-yellow-700');
+                    btn.classList.add('bg-yellow-400', 'text-white');
+                });
+                
+                const activeBtn = status === 'all' ? allBtn : (status === 'trained' ? trainedBtn : untrainedBtn);
+                if (activeBtn) {
+                    activeBtn.classList.remove('bg-yellow-400', 'text-white');
+                    activeBtn.classList.add('bg-white', 'text-yellow-700');
                 }
-            });
+            }
+
+            if (allBtn) {
+                allBtn.addEventListener('click', () => {
+                    currentStatus = 'all';
+                    updateStatusButtons('all');
+                    fetchList(1);
+                });
+            }
+            if (trainedBtn) {
+                trainedBtn.addEventListener('click', () => {
+                    currentStatus = 'trained';
+                    updateStatusButtons('trained');
+                    fetchList(1);
+                });
+            }
+            if (untrainedBtn) {
+                untrainedBtn.addEventListener('click', () => {
+                    currentStatus = 'untrained';
+                    updateStatusButtons('untrained');
+                    fetchList(1);
+                });
+            }
+
+            // Mobile status toggles
+            const mobileAll = $('#mobileAllToggle');
+            const mobileTrained = $('#mobileTrainedToggle');
+            const mobileUntrained = $('#mobileUntrainedToggle');
+
+            function updateMobileStatusButtons(status) {
+                [mobileAll, mobileTrained, mobileUntrained].forEach(btn => {
+                    if (!btn) return;
+                    btn.classList.remove('bg-white', 'text-yellow-700');
+                    btn.classList.add('bg-yellow-400', 'text-white');
+                });
+                
+                const activeBtn = status === 'all' ? mobileAll : (status === 'trained' ? mobileTrained : mobileUntrained);
+                if (activeBtn) {
+                    activeBtn.classList.remove('bg-yellow-400', 'text-white');
+                    activeBtn.classList.add('bg-white', 'text-yellow-700');
+                }
+            }
+
+            if (mobileAll) {
+                mobileAll.addEventListener('click', () => {
+                    currentStatus = 'all';
+                    updateMobileStatusButtons('all');
+                    updateStatusButtons('all');
+                    fetchList(1);
+                });
+            }
+            if (mobileTrained) {
+                mobileTrained.addEventListener('click', () => {
+                    currentStatus = 'trained';
+                    updateMobileStatusButtons('trained');
+                    updateStatusButtons('trained');
+                    fetchList(1);
+                });
+            }
+            if (mobileUntrained) {
+                mobileUntrained.addEventListener('click', () => {
+                    currentStatus = 'untrained';
+                    updateMobileStatusButtons('untrained');
+                    updateStatusButtons('untrained');
+                    fetchList(1);
+                });
+            }
+
+            // Mobile drawer handlers
+            const mobileActionsToggle = $('#mobileActionsToggle');
+            const mobileDrawer = $('#mobileDrawer');
+            const mobileDrawerOverlay = $('#mobileDrawerOverlay');
+            const mobileDrawerClose = $('#mobileDrawerClose');
+
+            function openDrawer() {
+                if (mobileDrawer) mobileDrawer.classList.remove('translate-y-full');
+                if (mobileDrawerOverlay) mobileDrawerOverlay.classList.remove('hidden');
+            }
+
+            function closeDrawer() {
+                if (mobileDrawer) mobileDrawer.classList.add('translate-y-full');
+                if (mobileDrawerOverlay) mobileDrawerOverlay.classList.add('hidden');
+            }
+
+            if (mobileActionsToggle) {
+                mobileActionsToggle.addEventListener('click', openDrawer);
+            }
+            if (mobileDrawerClose) {
+                mobileDrawerClose.addEventListener('click', closeDrawer);
+            }
+            if (mobileDrawerOverlay) {
+                mobileDrawerOverlay.addEventListener('click', closeDrawer);
+            }
+
+            // Mobile action buttons
+            const mobileActionAdd = $('#mobileActionAdd');
+            const mobileActionTrash = $('#mobileActionTrash');
+
+            if (mobileActionAdd) {
+                mobileActionAdd.addEventListener('click', () => {
+                    closeDrawer();
+                    openModal(createModal);
+                });
+            }
+            if (mobileActionTrash) {
+                mobileActionTrash.addEventListener('click', () => {
+                    const url = mobileActionTrash.dataset.deletedUrl;
+                    if (url) window.location.href = url;
+                });
+            }
+
+            // Create modal handlers
+            if (createOpenBtn) {
+                createOpenBtn.addEventListener('click', () => openModal(createModal));
+            }
+            createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
+
+            if (createSubmit) {
+                createSubmit.addEventListener('click', async () => {
+                    const intent = $('#create_intent').value.trim();
+                    const description = $('#create_description').value.trim();
+                    const response = $('#create_response').value.trim();
+
+                    if (!intent || !description || !response) {
+                        showToast('error', 'All fields are required');
+                        return;
+                    }
+
+                    try {
+                        createSubmit.disabled = true;
+                        const res = await fetch(STORE_URL, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ intent, description, response })
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to create FAQ');
+                        }
+                        showToast('success', 'FAQ created successfully');
+                        closeModal(createModal);
+                        createForm.reset();
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error creating FAQ');
+                        console.error(err);
+                    } finally {
+                        createSubmit.disabled = false;
+                    }
+                });
+            }
+
+            // View modal handlers
+            viewCloseEls.forEach(el => el.addEventListener('click', () => closeModal(viewModal)));
+
+            if (updateSubmit) {
+                updateSubmit.addEventListener('click', async () => {
+                    const id = viewFaqId.value;
+                    const intent = viewTopic.value.trim();
+                    const description = $('#view_description').value.trim();
+                    const response = viewResponse.value.trim();
+
+                    if (!intent || !description || !response) {
+                        showToast('error', 'All fields are required');
+                        return;
+                    }
+
+                    const url = UPDATE_TEMPLATE.replace('__ID__', id);
+                    try {
+                        updateSubmit.disabled = true;
+                        const res = await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ intent, description, response })
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to update FAQ');
+                        }
+                        showToast('success', 'FAQ updated successfully');
+                        closeModal(viewModal);
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error updating FAQ');
+                        console.error(err);
+                    } finally {
+                        updateSubmit.disabled = false;
+                    }
+                });
+            }
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    const id = viewFaqId.value;
+                    const confirmResult = await Swal.fire({
+                        title: 'Delete FAQ?',
+                        text: 'This will move the FAQ to trash',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete',
+                        cancelButtonText: 'Cancel'
+                    });
+                    if (!confirmResult.isConfirmed) return;
+
+                    const url = DESTROY_TEMPLATE.replace('__ID__', id);
+                    try {
+                        deleteBtn.disabled = true;
+                        const res = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to delete FAQ');
+                        }
+                        showToast('success', 'FAQ deleted successfully');
+                        closeModal(viewModal);
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error deleting FAQ');
+                        console.error(err);
+                    } finally {
+                        deleteBtn.disabled = false;
+                    }
+                });
+            }
+
+            // Train/Untrain pill buttons
+            const trainPill = $('#trainPillBtn');
+            const untrainPill = $('#untrainPillBtn');
+
+            if (trainPill) {
+                trainPill.addEventListener('click', async () => {
+                    const id = viewFaqId.value;
+                    const url = TRAIN_TEMPLATE.replace('__ID__', id);
+                    try {
+                        trainPill.disabled = true;
+                        const res = await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to train FAQ');
+                        }
+                        showToast('success', 'FAQ marked as trained');
+                        closeModal(viewModal);
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error');
+                        console.error(err);
+                    } finally {
+                        trainPill.disabled = false;
+                    }
+                });
+            }
+
+            if (untrainPill) {
+                untrainPill.addEventListener('click', async () => {
+                    const id = viewFaqId.value;
+                    const url = UNTRAIN_TEMPLATE.replace('__ID__', id);
+                    try {
+                        untrainPill.disabled = true;
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to untrain FAQ');
+                        }
+                        showToast('success', 'FAQ marked as untrained');
+                        closeModal(viewModal);
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error');
+                        console.error(err);
+                    } finally {
+                        untrainPill.disabled = false;
+                    }
+                });
+            }
+
+            // Initialize: fetch list on page load
+            fetchList(1);
+
         })();
+
     </script>
+
 @endsection
