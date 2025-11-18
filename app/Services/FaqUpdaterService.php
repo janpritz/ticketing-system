@@ -12,12 +12,12 @@ class FaqUpdaterService
 
     public function __construct()
     {
-        $url = config('services.faqs_updater.url');
+        $url = config('services.faq_updater.url');
         if (empty($url)) {
             throw new \Exception('FAQ updater URL not configured');
         }
         $this->updaterUrl = $url;
-        $this->secret = config('services.faqs_updater.secret');
+        $this->secret = config('services.faq_updater.secret');
     }
 
     /**

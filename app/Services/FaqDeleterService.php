@@ -12,12 +12,12 @@ class FaqDeleterService
 
     public function __construct()
     {
-        $url = config('services.faqs_deleter.url');
+        $url = config('services.faq_deleter.url');
         if (empty($url)) {
             throw new \Exception('FAQ deleter URL not configured');
         }
         $this->deleterUrl = $url;
-        $this->secret = config('services.faqs_deleter.secret');
+        $this->secret = config('services.faq_deleter.secret');
     }
 
     /**
