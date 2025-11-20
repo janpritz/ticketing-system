@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Services\FaqUpdaterService;
 use App\Services\FaqDeleterService;
 use App\Events\FaqEnabled;
 use App\Events\FaqDisabled;
@@ -743,10 +742,6 @@ class AdminController extends Controller
 
     /**
      * Store new FAQ (AJAX)
-     *
-     * REQUIREMENT:
-     * Ensure the external updater API responds SUCCESS before persisting the FAQ locally.
-     * This prevents creating DB rows when the Rasa updater cannot register the new action/flow.
      */
     public function faqsStore(Request $request)
     {
@@ -756,28 +751,14 @@ class AdminController extends Controller
             'description' => 'required|string',
             'response' => 'required|string',
         ]);
- 
-        // Call updater service and require success before saving
-        try {
-            $updaterService = new FaqUpdaterService();
-            $updaterService->updateFaq($validated['intent'], $validated['description'], true);
-        } catch (\Exception $e) {
-            return response()->json(['ok' => false, 'message' => $e->getMessage()], 502);
-        }
- 
-        // Updater succeeded — persist FAQ locally
-        try {
-            $faq = Faq::create([
-                'intent' => $validated['intent'],
-                'description' => $validated['description'],
-                'response' => $validated['response'],
-            ]);
-        } catch (\Throwable $e) {
-            Log::error("Failed to persist FAQ after updater success for intent={$validated['intent']}: " . $e->getMessage());
-            // Optionally inform updater to rollback (not implemented) — at least return error
-            return response()->json(['ok' => false, 'message' => 'Failed to save FAQ locally'], 500);
-        }
- 
+
+        // Create FAQ locally - event will trigger sync
+        $faq = Faq::create([
+            'intent' => $validated['intent'],
+            'description' => $validated['description'],
+            'response' => $validated['response'],
+        ]);
+
         return response()->json(['ok' => true, 'faq' => $faq], 201);
     }
 

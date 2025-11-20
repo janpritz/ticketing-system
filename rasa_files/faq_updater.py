@@ -1,23 +1,35 @@
 # rasa_files/faq_updater.py
-# Flask microservice that accepts POST /update-faq and appends dynamic FAQ actions and flows
+# Flask microservice that accepts POST /batch-update-faqs with FAQ data and generates dynamic actions
 #
 # Usage:
 #   export FAQ_UPDATER_SECRET="your-secret"                # optional (recommended)
 #   export RASA_ACTIONS_RESTART_CMD="supervisorctl restart rasa-actions"  # optional
 #   python rasa_files/faq_updater.py
 #
-# The service expects JSON:
-#   { "intent": "Enrollment Schedule", "description": "Handles queries about enrollment dates.", "restart_actions": false }
+# The /batch-update-faqs endpoint expects JSON:
+#   {
+#     "faqs": [
+#       {
+#         "id": 1,
+#         "intent": "Enrollment Schedule",
+#         "description": "Handles queries about enrollment dates.",
+#         "response": "The enrollment schedule is...",
+#         "response_disabled": false,
+#         "sync_type": "update"
+#       }
+#     ]
+#   }
 #
 # It will:
-#  - normalize intent -> enrollment_schedule
-#  - append an action class to rasa_files/actions.py named ActionUtterEnrollmentSchedule
-#  - append a flow block to rasa_files/data/flows/faqs_flow.yml named enrollment_schedule_flow
-#  - optionally spawn a restart command if RASA_ACTIONS_RESTART_CMD is set (non-blocking)
+#  - Store FAQ data in faq_cache.json
+#  - Regenerate all action classes in rasa_files/actions.py
+#  - Update flow blocks in rasa_files/data/flows/faqs_flow.yml
+#  - Optionally restart Rasa actions if RASA_ACTIONS_RESTART_CMD is set
 #
 # Safety:
 #  - Uses file locks (filelock) while writing files.
 #  - Optional shared secret verification via X-FAQ-UPDATER-TOKEN header (FAQ_UPDATER_SECRET env var).
+#  - Persists FAQ data to disk for reliability.
 
 from flask import Flask, request, jsonify
 import os
@@ -29,6 +41,7 @@ from datetime import datetime
 import hmac
 import subprocess
 from pathlib import Path
+import json
 
 app = Flask(__name__)
 
@@ -36,6 +49,7 @@ app = Flask(__name__)
 BASE_DIR = Path(__file__).parent
 ACTIONS_FILE = BASE_DIR / "actions.py"
 FAQS_FLOW_FILE = BASE_DIR / "data/flows/faqs_flow.yml"
+FAQ_CACHE_FILE = BASE_DIR / "faq_cache.json"
 
 # Lock suffix and timeout
 LOCK_SUFFIX = ".lock"
@@ -43,6 +57,60 @@ LOCK_TIMEOUT = 10
 
 # Optional secret for simple verification
 FAQ_UPDATER_SECRET = os.environ.get("FAQ_UPDATER_SECRET")
+
+# In-memory FAQ cache
+faq_cache = {}
+
+def load_faq_cache():
+    """Load FAQ cache from file"""
+    global faq_cache
+    try:
+        if os.path.exists(FAQ_CACHE_FILE):
+            with open(FAQ_CACHE_FILE, 'r', encoding='utf-8') as f:
+                faq_cache = json.load(f)
+            print(f"[faq_updater] Loaded {len(faq_cache)} FAQs from cache")
+        else:
+            faq_cache = {}
+            print("[faq_updater] No cache file found, starting with empty cache")
+    except Exception as e:
+        print(f"[faq_updater] Error loading FAQ cache: {e}", file=sys.stderr)
+        faq_cache = {}
+
+def save_faq_cache():
+    """Save FAQ cache to file"""
+    try:
+        with open(FAQ_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(faq_cache, f, indent=2, ensure_ascii=False)
+        print(f"[faq_updater] Saved {len(faq_cache)} FAQs to cache")
+    except Exception as e:
+        print(f"[faq_updater] Error saving FAQ cache: {e}", file=sys.stderr)
+
+def update_faq_cache(faqs_data):
+    """Update FAQ cache with new data"""
+    global faq_cache
+    updated_count = 0
+
+    for faq in faqs_data:
+        faq_id = str(faq.get('id'))
+        intent = faq.get('intent', '').strip()
+
+        if intent:
+            # Normalize intent for consistent lookup
+            intent_norm = normalize_intent(intent)
+
+            faq_cache[intent_norm] = {
+                'id': faq_id,
+                'intent': intent,
+                'description': faq.get('description', ''),
+                'response': faq.get('response', ''),
+                'response_disabled': faq.get('response_disabled', False),
+                'updated_at': datetime.now().isoformat()
+            }
+            updated_count += 1
+
+    save_faq_cache()
+    print(f"[faq_updater] Updated cache with {updated_count} FAQs")
+    return updated_count
 
 def normalize_intent(intent: str) -> str:
     """
@@ -73,11 +141,7 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
     """
     Appends an action class to actions.py.
     Returns True if appended, False if already exists.
-    Includes debug prints for easier troubleshooting.
-    Generated class matches the expected pattern in actions.py:
-      - class ActionUtterX(Action)
-      - name() -> "action_utter_x"
-      - run() uses get_db_connection() and joins all matching responses
+    Generated class uses cached FAQ data instead of database queries.
     """
     cls_name = action_class_name(intent_norm)
     func_name = action_function_name(intent_norm)
@@ -92,17 +156,23 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
                 f.write("# actions.py (auto-generated header)\n\n")
                 f.write("from typing import Any, Text, Dict, List, Optional\n")
                 f.write("import os\n")
-                f.write("import mysql.connector\n")
+                f.write("import json\n")
+                f.write("from pathlib import Path\n")
                 f.write("from rasa_sdk import Action, Tracker\n")
                 f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-                f.write("def get_db_connection():\n")
-                f.write("    return mysql.connector.connect(\n")
-                f.write("        host=os.environ.get('FAQ_DB_HOST', '127.0.0.1'),\n")
-                f.write("        user=os.environ.get('FAQ_DB_USERNAME', 'root'),\n")
-                f.write("        password=os.environ.get('FAQ_DB_PASSWORD', ''),\n")
-                f.write("        database=os.environ.get('FAQ_DB_DATABASE', 'your_database'),\n")
-                f.write("        port=int(os.environ.get('FAQ_DB_PORT', '3306'))\n")
-                f.write("    )\n\n")
+                f.write("# Global FAQ cache\n")
+                f.write("faq_cache = {}\n\n")
+                f.write("def load_faq_cache():\n")
+                f.write("    global faq_cache\n")
+                f.write("    cache_file = Path(__file__).parent / 'faq_cache.json'\n")
+                f.write("    try:\n")
+                f.write("        if cache_file.exists():\n")
+                f.write("            with open(cache_file, 'r', encoding='utf-8') as f:\n")
+                f.write("                faq_cache = json.load(f)\n")
+                f.write("    except Exception:\n")
+                f.write("        faq_cache = {}\n\n")
+                f.write("# Load cache on import\n")
+                f.write("load_faq_cache()\n\n")
                 f.write("# Dynamic FAQ actions will be appended below\n\n")
             print(f"[faq_updater] Created new actions file at {ACTIONS_FILE}")
         except Exception as e:
@@ -111,75 +181,54 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
             raise
 
     try:
-        # Escape raw intent for safe SQL literal embedding in generated class
-        intent_literal = intent_raw.replace("\\", "\\\\").replace('"', '\\"').replace("'", "\\'")
         with FileLock(lock_path, timeout=LOCK_TIMEOUT):
             with open(ACTIONS_FILE, "r+", encoding="utf-8") as f:
                 content = f.read()
                 if re.search(pattern, content):
                     print(f"[faq_updater] Action class {cls_name} already exists in {ACTIONS_FILE}")
                     return False
-                # Prepare class code in the requested format
+
+                # Prepare class code that uses cached data
                 class_code = f"""
- # Ensure DB helper exists (idempotent)
- if "get_db_connection" not in globals():
-     def get_db_connection():
-         import os
-         import mysql.connector
-         return mysql.connector.connect(
-             host=os.environ.get('FAQ_DB_HOST', '127.0.0.1'),
-             user=os.environ.get('FAQ_DB_USERNAME', 'root'),
-             password=os.environ.get('FAQ_DB_PASSWORD', ''),
-             database=os.environ.get('FAQ_DB_DATABASE', 'your_database'),
-             port=int(os.environ.get('FAQ_DB_PORT', '3306'))
-         )
- 
- class {cls_name}(Action):
-     def name(self) -> str:
-         return "{func_name}"
- 
-     def run(self, dispatcher: CollectingDispatcher,
-             tracker: Tracker,
-             domain: dict):
- 
-         connection = get_db_connection()
-         try:
-             with connection.cursor(dictionary=True) as cursor:
-                 cursor.execute("SELECT response, status FROM faqs WHERE intent = '{intent_literal}'")
-                 results = cursor.fetchall()   # fetch all matching rows
- 
-                 if not results:
-                     # No record found
-                     dispatcher.utter_message(
-                         text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-                     )
-                     return []
- 
-                 # Check if all entries are untrained or have empty response
-                 trained_responses = [
-                     row["response"].strip()
-                     for row in results
-                     if row.get("status", "").lower() == "trained" and row.get("response")
-                 ]
- 
-                 if trained_responses:
-                     # Combine all trained responses into one message
-                     final_response = "\\n".join(trained_responses)
-                     dispatcher.utter_message(text=final_response)
-                 else:
-                     # None are trained or no response content
-                     dispatcher.utter_message(
-                         text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-                     )
- 
-         except Exception as e:
-             dispatcher.utter_message(text=f"DB Error: {{str(e)}}")
- 
-         finally:
-             connection.close()
- 
-         return []
- """
+class {cls_name}(Action):
+    def name(self) -> str:
+        return "{func_name}"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: dict):
+
+        # Load latest FAQ data from cache
+        load_faq_cache()
+
+        # Look up FAQ by normalized intent
+        faq_data = faq_cache.get("{intent_norm}")
+
+        if not faq_data:
+            dispatcher.utter_message(
+                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+            )
+            return []
+
+        # Check if FAQ is disabled
+        if faq_data.get("response_disabled", False):
+            dispatcher.utter_message(
+                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+            )
+            return []
+
+        # Get response
+        response = faq_data.get("response", "").strip()
+        if not response:
+            dispatcher.utter_message(
+                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
+            )
+            return []
+
+        # Send the response
+        dispatcher.utter_message(text=response)
+        return []
+"""
                 f.seek(0, os.SEEK_END)
                 f.write(class_code)
                 print(f"[faq_updater] Appended action class {cls_name} to {ACTIONS_FILE}")
@@ -278,31 +327,37 @@ def verify_secret(req) -> bool:
 def batch_update_faqs():
     """
     Batch update multiple FAQs in a single request.
-    Expects JSON: { "faqs": [{"id": 1, "intent": "...", "description": "...", "sync_type": "create|update|delete"}, ...] }
+    Expects JSON: { "faqs": [{"id": 1, "intent": "...", "description": "...", "response": "...", "response_disabled": false, "sync_type": "update"}, ...] }
+    Stores FAQs in cache and regenerates action classes.
     Returns: { "ok": true, "results": [{"faq_id": 1, "success": true, "intent": "..."}, ...] }
     """
     try:
         print("[faq_updater] /batch-update-faqs called")
-        
+
         if not verify_secret(request):
             print("[faq_updater] Secret verification failed")
             return jsonify({"ok": False, "error": "unauthorized"}), 401
 
         data = request.get_json(force=True)
         faqs = data.get("faqs", [])
-        
+
         if not isinstance(faqs, list):
             return jsonify({"ok": False, "error": "faqs must be an array"}), 400
 
         print(f"[faq_updater] Processing batch of {len(faqs)} FAQs")
 
+        # Update cache with all FAQ data
+        updated_count = update_faq_cache(faqs)
+
+        # Regenerate all action classes based on current cache
+        regenerate_all_actions()
+
         results = []
         for faq_data in faqs:
             try:
                 intent = faq_data.get("intent")
-                description = faq_data.get("description", "") or ""
-                sync_type = faq_data.get("sync_type", "update")
                 faq_id = faq_data.get("id")
+                sync_type = faq_data.get("sync_type", "update")
 
                 if not intent:
                     results.append({
@@ -313,29 +368,24 @@ def batch_update_faqs():
                     continue
 
                 intent_norm = normalize_intent(intent)
-                
+
                 if sync_type == "delete":
-                    # For delete operations, we would need to implement removal logic
-                    # For now, just mark as success (deletion handled by deleter service)
-                    print(f"[faq_updater] Skipping delete operation for {intent_norm} (handled by deleter service)")
+                    # Remove from cache
+                    if intent_norm in faq_cache:
+                        del faq_cache[intent_norm]
+                        save_faq_cache()
                     results.append({
                         "faq_id": faq_id,
                         "success": True,
                         "intent": intent,
-                        "note": "delete handled by separate service"
+                        "note": "removed from cache"
                     })
                 else:
-                    # Handle create/update/enable/disable (all use same append logic)
-                    action_appended = append_action_class(intent_norm, intent)
-                    flow_appended = append_flow(intent_norm, description)
-                    
                     results.append({
                         "faq_id": faq_id,
                         "success": True,
                         "intent": intent,
-                        "intent_normalized": intent_norm,
-                        "action_appended": action_appended,
-                        "flow_appended": flow_appended
+                        "intent_normalized": intent_norm
                     })
 
             except Exception as e:
@@ -356,7 +406,8 @@ def batch_update_faqs():
             "summary": {
                 "total": len(results),
                 "successful": successful,
-                "failed": len(results) - successful
+                "failed": len(results) - successful,
+                "cached_faqs": len(faq_cache)
             }
         })
 
@@ -364,6 +415,51 @@ def batch_update_faqs():
         print(f"[faq_updater] Unexpected error in /batch-update-faqs: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
+
+def regenerate_all_actions():
+    """Regenerate all action classes based on current FAQ cache"""
+    try:
+        print("[faq_updater] Regenerating all action classes...")
+
+        # Clear existing actions file and recreate header
+        if os.path.exists(ACTIONS_FILE):
+            os.remove(ACTIONS_FILE)
+
+        # Ensure actions.py exists with the required helpers
+        os.makedirs(os.path.dirname(str(ACTIONS_FILE)), exist_ok=True)
+        with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
+            f.write("# actions.py (auto-generated header)\n\n")
+            f.write("from typing import Any, Text, Dict, List, Optional\n")
+            f.write("import os\n")
+            f.write("import json\n")
+            f.write("from pathlib import Path\n")
+            f.write("from rasa_sdk import Action, Tracker\n")
+            f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
+            f.write("# Global FAQ cache\n")
+            f.write("faq_cache = {}\n\n")
+            f.write("def load_faq_cache():\n")
+            f.write("    global faq_cache\n")
+            f.write("    cache_file = Path(__file__).parent / 'faq_cache.json'\n")
+            f.write("    try:\n")
+            f.write("        if cache_file.exists():\n")
+            f.write("            with open(cache_file, 'r', encoding='utf-8') as f:\n")
+            f.write("                faq_cache = json.load(f)\n")
+            f.write("    except Exception:\n")
+            f.write("        faq_cache = {}\n\n")
+            f.write("# Load cache on import\n")
+            f.write("load_faq_cache()\n\n")
+            f.write("# Dynamic FAQ actions will be appended below\n\n")
+
+        # Generate action class for each FAQ in cache
+        for intent_norm, faq_data in faq_cache.items():
+            intent_raw = faq_data.get('intent', intent_norm)
+            append_action_class(intent_norm, intent_raw)
+
+        print(f"[faq_updater] Regenerated {len(faq_cache)} action classes")
+
+    except Exception as e:
+        print(f"[faq_updater] Error regenerating actions: {e}", file=sys.stderr)
+        traceback.print_exc()
 
 @app.route("/update-faq", methods=["POST"])
 def update_faq():
@@ -433,5 +529,9 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
+    # Load FAQ cache on startup
+    load_faq_cache()
+
     port = int(os.environ.get("FAQ_UPDATER_PORT", 5001))
+    print(f"[faq_updater] Starting server on port {port} with {len(faq_cache)} cached FAQs")
     app.run(host="0.0.0.0", port=port)

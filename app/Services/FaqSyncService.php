@@ -9,115 +9,49 @@ use Illuminate\Support\Facades\Log;
 class FaqSyncService
 {
     /**
-     * Sync a single FAQ to Rasa server.
+     * Trigger FAQ cache refresh in Rasa server.
      */
     public function syncFaq(?Faq $faq, string $syncType): void
     {
-        $url = config('services.faq_updater.url');
-        $secret = config('services.faq_updater.secret');
+        $url = config('services.faq_refetch.url');
+        $secret = config('services.faq_refetch.secret');
 
         if (!$url) {
-            throw new \Exception('FAQ_UPDATER_URL not configured');
+            throw new \Exception('FAQ_REFETCH_URL not configured');
         }
 
-        // For delete operations, we might not have the FAQ object
-        if ($syncType === 'delete') {
-            $this->deleteFaqFromRasa($faq);
-            return;
-        }
-
-        if (!$faq) {
-            throw new \Exception('FAQ object required for non-delete operations');
-        }
-
-        // Prepare payload
-        $payload = [
-            'intent' => $faq->intent,
-            'description' => $faq->description ?? '',
-            'restart_actions' => false, // Don't restart on individual syncs
-        ];
-
-        Log::info('Syncing FAQ to Rasa', [
-            'faq_id' => $faq->id,
-            'intent' => $faq->intent,
+        Log::info('Triggering FAQ cache refetch in Rasa', [
             'sync_type' => $syncType,
+            'faq_id' => $faq?->id,
             'url' => $url,
         ]);
 
-        // Make HTTP request to Rasa updater
+        // Make HTTP request to Rasa refetch endpoint
         $response = Http::timeout(30)
             ->withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-FAQ-REFETCH-TOKEN' => $secret,
                 'Content-Type' => 'application/json',
             ])
-            ->post($url, $payload);
+            ->post($url, [
+                'triggered_by' => $syncType,
+                'faq_id' => $faq?->id,
+            ]);
 
         if (!$response->successful()) {
             $error = $response->json('error') ?? $response->body();
-            throw new \Exception("Rasa sync failed: {$error}");
+            throw new \Exception("Rasa refetch failed: {$error}");
         }
 
         $result = $response->json();
-        
+
         if (!($result['ok'] ?? false)) {
             $error = $result['error'] ?? 'Unknown error';
-            throw new \Exception("Rasa sync returned error: {$error}");
+            throw new \Exception("Rasa refetch returned error: {$error}");
         }
 
-        Log::info('FAQ synced to Rasa successfully', [
-            'faq_id' => $faq->id,
-            'result' => $result,
-        ]);
-    }
-
-    /**
-     * Delete FAQ from Rasa server.
-     */
-    protected function deleteFaqFromRasa(?Faq $faq): void
-    {
-        $url = config('services.faq_deleter.url');
-        $secret = config('services.faq_deleter.secret');
-
-        if (!$url) {
-            throw new \Exception('FAQ_DELETER_URL not configured');
-        }
-
-        if (!$faq) {
-            throw new \Exception('FAQ object required for delete operation');
-        }
-
-        $payload = [
-            'intent' => $faq->intent,
-            'restart_actions' => false,
-        ];
-
-        Log::info('Deleting FAQ from Rasa', [
-            'faq_id' => $faq->id,
-            'intent' => $faq->intent,
-            'url' => $url,
-        ]);
-
-        $response = Http::timeout(30)
-            ->withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'Content-Type' => 'application/json',
-            ])
-            ->post($url, $payload);
-
-        if (!$response->successful()) {
-            $error = $response->json('error') ?? $response->body();
-            throw new \Exception("Rasa delete failed: {$error}");
-        }
-
-        $result = $response->json();
-        
-        if (!($result['ok'] ?? false)) {
-            $error = $result['error'] ?? 'Unknown error';
-            throw new \Exception("Rasa delete returned error: {$error}");
-        }
-
-        Log::info('FAQ deleted from Rasa successfully', [
-            'faq_id' => $faq->id,
+        Log::info('FAQ cache refetch triggered successfully', [
+            'sync_type' => $syncType,
+            'faq_id' => $faq?->id,
             'result' => $result,
         ]);
     }
@@ -128,7 +62,7 @@ class FaqSyncService
     public function syncBatch(array $faqs): array
     {
         $results = [];
-        
+
         foreach ($faqs as $faq) {
             try {
                 $this->syncFaq($faq['faq'], $faq['sync_type']);
@@ -146,5 +80,72 @@ class FaqSyncService
         }
 
         return $results;
+    }
+
+    /**
+     * Send all FAQs to Rasa via batch endpoint (alternative to DB access).
+     */
+    public function sendBatchToRasa(): array
+    {
+        // Get all trained, enabled FAQs
+        $faqs = Faq::where('status', 'trained')
+            ->where('response_disabled', false)
+            ->select('id', 'intent', 'description', 'response')
+            ->get();
+
+        if ($faqs->isEmpty()) {
+            return ['ok' => true, 'message' => 'No FAQs to sync', 'count' => 0];
+        }
+
+        $url = config('services.faq_updater.batch_url', config('services.faq_updater.url'));
+        $secret = config('services.faq_updater.secret');
+
+        if (!$url) {
+            throw new \Exception('FAQ_UPDATER_URL not configured');
+        }
+
+        Log::info('Sending batch FAQ data to Rasa', [
+            'faq_count' => $faqs->count(),
+            'url' => $url,
+        ]);
+
+        // Transform FAQs for Rasa
+        $faqsForRasa = $faqs->map(function ($faq, $index) {
+            return [
+                'id' => $faq->id,
+                'intent' => $faq->intent,
+                'description' => $faq->description ?? '',
+                'sync_type' => 'update'
+            ];
+        });
+
+        // Make HTTP request to Rasa batch endpoint
+        $response = Http::timeout(60)
+            ->withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'Content-Type' => 'application/json',
+            ])
+            ->post($url, [
+                'faqs' => $faqsForRasa->toArray()
+            ]);
+
+        if (!$response->successful()) {
+            $error = $response->json('error') ?? $response->body();
+            throw new \Exception("Rasa batch update failed: {$error}");
+        }
+
+        $result = $response->json();
+
+        if (!($result['ok'] ?? false)) {
+            $error = $result['error'] ?? 'Unknown error';
+            throw new \Exception("Rasa batch update returned error: {$error}");
+        }
+
+        Log::info('Batch FAQ data sent to Rasa successfully', [
+            'faq_count' => $faqs->count(),
+            'result' => $result,
+        ]);
+
+        return $result;
     }
 }

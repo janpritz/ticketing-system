@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketResponseMail;
 use App\Models\Ticket;
 use App\Jobs\SendOverdueTicketReminderJob;
-use App\Jobs\BatchSyncFaqsToRasa;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -41,18 +40,3 @@ Schedule::job(new SendOverdueTicketReminderJob())
     ->dailyAt(env('TICKET_REMINDER_TIME', '09:00'))
     ->description('Send push notifications for overdue tickets');
 
-// Schedule FAQ batch sync every 5 minutes
-Schedule::job(new BatchSyncFaqsToRasa(100))
-    ->everyFiveMinutes()
-    ->withoutOverlapping()
-    ->description('Batch sync pending FAQs to Rasa server');
-
-// Schedule FAQ sync reconciliation daily at 2 AM
-Schedule::command('faq:reconcile-sync')
-    ->dailyAt('02:00')
-    ->description('Reconcile FAQ sync status and queue missing syncs');
-
-// Schedule cleanup of old synced records daily at 3 AM
-Schedule::command('faq:cleanup-sync-queue --days=30')
-    ->dailyAt('03:00')
-    ->description('Clean up old synced FAQ sync queue entries');

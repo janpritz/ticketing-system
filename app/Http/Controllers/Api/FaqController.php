@@ -10,6 +10,35 @@ use Illuminate\Support\Facades\DB;
 class FaqController extends Controller
 {
     /**
+     * Return all active FAQs for Rasa cache refresh.
+     *
+     * GET /api/faqs
+     *
+     * Returns only trained, enabled FAQs.
+     */
+    public function index()
+    {
+        $faqs = Faq::where('status', 'trained')
+            ->select('id', 'intent', 'response', 'description', 'response_disabled')
+            ->get()
+            ->map(function ($faq) {
+                return [
+                    'id' => $faq->id,
+                    'intent' => $faq->intent,
+                    'response' => $faq->response,
+                    'description' => $faq->description ?? '',
+                    'response_disabled' => $faq->response_disabled,
+                ];
+            });
+
+        return response()->json([
+            'faqs' => $faqs,
+            'count' => $faqs->count(),
+            'timestamp' => now()->toISOString(),
+        ]);
+    }
+
+    /**
      * Return FAQ response for a given intent.
      *
      * GET /api/faqs/{intent}

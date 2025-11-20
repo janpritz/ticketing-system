@@ -16,8 +16,10 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Public FAQ endpoint used by Rasa action classes:
-// Example: GET https://your-laravel-app.com/api/faqs/enrollment_schedule
+// Public FAQ endpoints used by Rasa
+// Bulk fetch for cache refresh: GET https://your-laravel-app.com/api/faqs
+Route::get('/faqs', [FaqController::class, 'index']);
+// Single FAQ lookup: GET https://your-laravel-app.com/api/faqs/{intent}
 Route::get('/faqs/{intent}', [FaqController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {

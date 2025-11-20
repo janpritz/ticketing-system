@@ -46,4 +46,9 @@ return [
         'secret' => env('FAQ_DELETER_SECRET'),
     ],
 
+    'faq_refetch' => [
+        'url' => env('FAQ_REFETCH_URL'),
+        'secret' => env('FAQ_REFETCH_SECRET'),
+    ],
+
 ];

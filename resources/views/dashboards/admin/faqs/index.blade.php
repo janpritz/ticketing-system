@@ -50,6 +50,17 @@
                             class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Untrained</button>
                     </div>
 
+                    <!-- Sync FAQ Cache Button -->
+                    <button id="syncFaqCacheBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 ml-3"
+                        aria-label="Sync FAQ Cache">
+                        <svg id="syncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span id="syncText">Sync Cache</span>
+                    </button>
+
                     <button id="openCreateModalBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
                         aria-label="Add FAQ">
@@ -160,6 +171,17 @@
                                 d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
                         </svg>
                         <span>Trash</span>
+                    </button>
+
+                    <!-- Mobile Sync Cache Button -->
+                    <button id="mobileSyncFaqCacheBtn" type="button"
+                        class="w-full text-left px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white flex items-center gap-3"
+                        aria-label="Sync FAQ Cache (mobile)">
+                        <svg id="mobileSyncIcon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span id="mobileSyncText">Sync Cache</span>
                     </button>
 
                     <button id="mobileActionAdd" type="button"
@@ -698,6 +720,7 @@
                                 const err = json.message || 'Failed to restore';
                                 throw new Error(err);
                             }
+                            setPendingChanges(true);
                             showToast('success', json.message || 'FAQ restored');
                             try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
@@ -738,6 +761,7 @@
                                 const err = json.message || 'Failed to delete permanently';
                                 throw new Error(err);
                             }
+                            setPendingChanges(true);
                             showToast('success', json.message || 'FAQ permanently deleted');
                             try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                             fetchList(currentPage);
@@ -782,6 +806,7 @@
                             if (!res.ok) {
                                 throw new Error(json.message || 'Failed to enable FAQ');
                             }
+                            setPendingChanges(true);
                             showToast('success', 'FAQ enabled successfully');
                             fetchList(currentPage);
                         } catch (err) {
@@ -825,6 +850,7 @@
                             if (!res.ok) {
                                 throw new Error(json.message || 'Failed to disable FAQ');
                             }
+                            setPendingChanges(true);
                             showToast('success', 'FAQ disabled successfully');
                             fetchList(currentPage);
                         } catch (err) {
@@ -873,6 +899,7 @@
                             if (!res.ok) {
                                 throw new Error(json.message || `Failed to ${isDisabled ? 'enable' : 'disable'} FAQ`);
                             }
+                            setPendingChanges(true);
                             showToast('success', `FAQ ${isDisabled ? 'enabled' : 'disabled'} successfully`);
                             fetchList(currentPage);
                         } catch (err) {
@@ -1162,6 +1189,80 @@
                 mobileDrawerOverlay.addEventListener('click', closeDrawer);
             }
 
+            // Mobile sync cache button
+            const mobileSyncBtn = $('#mobileSyncFaqCacheBtn');
+            const mobileSyncIcon = $('#mobileSyncIcon');
+            const mobileSyncText = $('#mobileSyncText');
+
+            if (mobileSyncBtn) {
+                mobileSyncBtn.addEventListener('click', async () => {
+                    if (mobileSyncBtn.disabled) return;
+
+                    closeDrawer(); // Close the drawer first
+
+                    // Show loading state
+                    mobileSyncBtn.disabled = true;
+                    mobileSyncIcon.classList.add('animate-spin');
+                    mobileSyncText.textContent = 'Syncing...';
+
+                    try {
+                        // First, fetch all FAQs from Laravel API
+                        const faqRes = await fetch('{{ config("app.url") }}/api/faqs', {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!faqRes.ok) {
+                            throw new Error('Failed to fetch FAQs from API');
+                        }
+
+                        const faqData = await faqRes.json();
+                        const faqs = faqData.faqs || [];
+
+                        // Transform FAQs to match Rasa batch endpoint format
+                        const faqsForRasa = faqs.map((faq) => ({
+                            id: faq.id,
+                            intent: faq.intent,
+                            description: faq.description || '',
+                            response_disabled: faq.response_disabled || false,
+                            sync_type: 'update' // All are updates for full sync
+                        }));
+
+                        // Send to Rasa batch endpoint
+                        const rasaRes = await fetch('{{ config("services.faq_updater.batch_url", config("services.faq_updater.url")) }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                faqs: faqsForRasa
+                            })
+                        });
+
+                        const result = await rasaRes.json();
+
+                        if (!rasaRes.ok || !result.ok) {
+                            throw new Error(result.error || 'Rasa sync failed');
+                        }
+
+                        // Clear pending changes on successful sync
+                        setPendingChanges(false);
+                        showToast('success', `FAQ cache synced successfully (${result.summary.successful}/${result.summary.total} FAQs)`);
+
+                    } catch (err) {
+                        console.error('Sync error:', err);
+                        showToast('error', err.message || 'Failed to sync FAQ cache');
+                    } finally {
+                        // Reset button state
+                        mobileSyncIcon.classList.remove('animate-spin');
+                        mobileSyncText.textContent = 'Sync Cache';
+                        updateSyncButtonState();
+                    }
+                });
+            }
+
             // Mobile action buttons
             const mobileActionAdd = $('#mobileActionAdd');
             const mobileActionTrash = $('#mobileActionTrash');
@@ -1268,6 +1369,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to create FAQ');
                         }
+                        setPendingChanges(true);
                         showToast('success', 'FAQ created successfully');
                         closeModal(createModal);
                         createForm.reset();
@@ -1314,6 +1416,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to update FAQ');
                         }
+                        setPendingChanges(true);
                         showToast('success', 'FAQ updated successfully');
                         closeModal(viewModal);
                         fetchList(currentPage);
@@ -1353,6 +1456,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to delete FAQ');
                         }
+                        setPendingChanges(true);
                         showToast('success', 'FAQ deleted successfully');
                         closeModal(viewModal);
                         fetchList(currentPage);
@@ -1386,6 +1490,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to train FAQ');
                         }
+                        setPendingChanges(true);
                         showToast('success', 'FAQ marked as trained');
                         closeModal(viewModal);
                         fetchList(currentPage);
@@ -1415,6 +1520,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to untrain FAQ');
                         }
+                        setPendingChanges(true);
                         showToast('success', 'FAQ marked as untrained');
                         closeModal(viewModal);
                         fetchList(currentPage);
@@ -1426,6 +1532,122 @@
                     }
                 });
             }
+
+            // FAQ Change Tracking
+            const FAQ_CHANGES_KEY = 'faq_changes_pending';
+
+            function hasPendingChanges() {
+                try {
+                    return localStorage.getItem(FAQ_CHANGES_KEY) === 'true';
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function setPendingChanges(hasChanges) {
+                try {
+                    localStorage.setItem(FAQ_CHANGES_KEY, hasChanges ? 'true' : 'false');
+                    updateSyncButtonState();
+                } catch (e) {
+                    // localStorage not available
+                }
+            }
+
+            function updateSyncButtonState() {
+                const hasChanges = hasPendingChanges();
+                if (syncBtn) {
+                    syncBtn.disabled = !hasChanges;
+                    syncBtn.classList.toggle('opacity-50', !hasChanges);
+                }
+                if (mobileSyncBtn) {
+                    mobileSyncBtn.disabled = !hasChanges;
+                    mobileSyncBtn.classList.toggle('opacity-50', !hasChanges);
+                }
+            }
+
+            // Sync FAQ Cache Button
+            const syncBtn = $('#syncFaqCacheBtn');
+            const syncIcon = $('#syncIcon');
+            const syncText = $('#syncText');
+
+            if (syncBtn) {
+                syncBtn.addEventListener('click', async () => {
+                    if (syncBtn.disabled) return;
+
+                    // Show loading state
+                    syncBtn.disabled = true;
+                    syncIcon.classList.add('animate-spin');
+                    syncText.textContent = 'Syncing...';
+
+                    try {
+                        // First, fetch all FAQs from Laravel API
+                        const faqRes = await fetch('{{ config("app.url") }}/api/faqs', {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!faqRes.ok) {
+                            throw new Error('Failed to fetch FAQs from API');
+                        }
+
+                        const faqData = await faqRes.json();
+                        const faqs = faqData.faqs || [];
+
+                        // Transform FAQs to match Rasa batch endpoint format
+                        const faqsForRasa = faqs.map((faq) => ({
+                            id: faq.id,
+                            intent: faq.intent,
+                            description: faq.description || '',
+                            response_disabled: faq.response_disabled || false,
+                            sync_type: 'update' // All are updates for full sync
+                        }));
+
+                        // Send to Rasa batch endpoint
+                        const rasaRes = await fetch('{{ config("services.faq_updater.batch_url", config("services.faq_updater.url")) }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                faqs: faqsForRasa
+                            })
+                        });
+
+                        const result = await rasaRes.json();
+
+                        if (!rasaRes.ok || !result.ok) {
+                            throw new Error(result.error || 'Rasa sync failed');
+                        }
+
+                        // Clear pending changes on successful sync
+                        setPendingChanges(false);
+                        showToast('success', `FAQ cache synced successfully (${result.summary.successful}/${result.summary.total} FAQs)`);
+
+                    } catch (err) {
+                        console.error('Sync error:', err);
+                        showToast('error', err.message || 'Failed to sync FAQ cache');
+                    } finally {
+                        // Reset button state
+                        syncIcon.classList.remove('animate-spin');
+                        syncText.textContent = 'Sync Cache';
+                        updateSyncButtonState();
+                    }
+                });
+            }
+
+            // Function to check if sync is needed (optional - call after CRUD operations)
+            function checkSyncNeeded() {
+                // You could implement logic here to check if there are pending changes
+                // For now, always enable the button
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                }
+            }
+
+            // Initialize sync button state
+            updateSyncButtonState();
 
             // Initialize: fetch list on page load
             fetchList(1);
