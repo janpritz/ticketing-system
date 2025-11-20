@@ -69,6 +69,17 @@
                         </svg>
                         <span class="hidden sm:inline">Add FAQ</span>
                     </button>
+
+                    <!-- Trash Button (copied from mobile) -->
+                    <a href="{{ route('admin.faqs.deleted') }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 ml-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
+                        </svg>
+                        <span class="hidden sm:inline">Trash</span>
+                    </a>
                 </div>
             @endif
 
@@ -139,59 +150,49 @@
                 </div>
 
                 <div class="px-4 pb-4 space-y-2">
-                    <div class="flex items-center gap-2 w-full">
-                        <!-- Mobile: full-width interactive Pending / Trained buttons (match desktop behavior) -->
-                        <div class="flex w-full rounded bg-yellow-400 p-1">
-                            <button id="mobileAllToggle" type="button"
-                                class="flex-1 px-4 py-3 rounded bg-white text-yellow-700 font-medium text-sm text-center"
-                                aria-label="All (mobile)">All</button>
-                            <button id="mobileTrainedToggle" type="button"
-                                class="ml-1 flex-1 px-4 py-3 rounded bg-yellow-400 text-white font-medium text-sm text-center"
-                                aria-label="Trained (mobile)">Trained</button>
-                            <button id="mobileUntrainedToggle" type="button"
-                                class="ml-1 flex-1 px-4 py-3 rounded bg-yellow-400 text-white font-medium text-sm text-center"
-                                aria-label="Untrained (mobile)">Untrained</button>
-                        </div>
+                    <!-- Mobile: Status toggle buttons (match desktop) -->
+                    <div id="faqsStatusToggleGroupMobile" class="inline-flex items-center rounded-full bg-yellow-400 p-1 w-full justify-center">
+                        <button id="mobileAllToggle" type="button"
+                            class="px-4 py-1.5 rounded-full bg-white text-yellow-700 font-medium text-sm">All</button>
+                        <button id="mobileTrainedToggle" type="button"
+                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Trained</button>
+                        <button id="mobileUntrainedToggle" type="button"
+                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Untrained</button>
                     </div>
-                    {{-- <button id="mobileActionUpdateStatus" type="button"
-                        class="w-full flex items-center gap-3 px-3 py-2 rounded-md bg-amber-600 text-white hover:opacity-90"
-                        data-pending-url="{{ route('admin.faqs.index', ['status' => 'untrained']) }}" aria-label="Untrain FAQs (mobile)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24"
-                            fill="currentColor">
-                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
-                        </svg>
-                        <span class="font-medium">Untrain FAQs</span>
-                    </button> --}}
 
-                    <button id="mobileActionTrash" type="button"
-                        class="w-full text-left px-3 py-2 rounded-md bg-white hover:bg-gray-50 text-slate-700 flex items-center gap-3"
-                        data-deleted-url="{{ route('admin.faqs.deleted') }}" aria-label="Trash (mobile)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path
-                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
-                        </svg>
-                        <span>Trash</span>
-                    </button>
-
-                    <!-- Mobile Sync Cache Button -->
+                    <!-- Mobile Sync Cache Button (match desktop styling) -->
                     <button id="mobileSyncFaqCacheBtn" type="button"
-                        class="w-full text-left px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white flex items-center gap-3"
-                        aria-label="Sync FAQ Cache (mobile)">
-                        <svg id="mobileSyncIcon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 w-full justify-center"
+                        aria-label="Sync FAQ Cache">
+                        <svg id="mobileSyncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         <span id="mobileSyncText">Sync Cache</span>
                     </button>
 
+                    <!-- Mobile Add FAQ Button (match desktop styling) -->
                     <button id="mobileActionAdd" type="button"
-                        class="w-full text-left px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-3"
-                        aria-label="Add FAQ (mobile)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
+                        aria-label="Add FAQ">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
                         </svg>
-                        <span>Add FAQ</span>
+                        <span class="hidden sm:inline">Add FAQ</span>
+                        <span class="sm:hidden">Add FAQ</span>
                     </button>
+
+                    <!-- Mobile Trash Button (match desktop styling from filters section) -->
+                    <a href="{{ route('admin.faqs.deleted') }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 w-full justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
+                        </svg>
+                        <span class="hidden sm:inline">Trash</span>
+                        <span class="sm:hidden">Trash</span>
+                    </a>
                 </div>
             </div>
 
@@ -667,21 +668,7 @@
             ) : (
               `<div class="flex items-center gap-2">
                 <button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>
-                <div class="hidden sm:flex items-center gap-2">
-                  ${f.response_disabled ? (
-                    `<button class="enableFaqBtn inline-flex items-center gap-1 rounded-lg border border-green-200 bg-white px-2 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50" data-id="${f.id}" title="Enable FAQ">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                      </svg>
-                      <span class="hidden sm:inline">Enable</span>
-                    </button>`
-                  ) : (
-                    `<button class="disableFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}" title="Disable FAQ">
-                      <span class="hidden sm:inline">Disable</span>
-                    </button>`
-                  )}
-                </div>
-                <button class="mobileToggleBtn sm:hidden rounded-full px-3 py-1 text-xs font-medium ${f.response_disabled ? 'bg-gray-400 text-white' : 'bg-green-400 text-white'}" data-id="${f.id}" data-disabled="${f.response_disabled ? '1' : '0'}">${f.response_disabled ? 'Disabled' : 'Enabled'}</button>
+                <button class="toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium ${f.response_disabled ? 'bg-gray-400 text-white border-2 border-red-300' : 'bg-green-400 text-white border-2 border-green-600'}" data-id="${f.id}" data-disabled="${f.response_disabled ? '1' : '0'}" title="${f.response_disabled ? 'Click to Enable' : 'Click to Disable'}">${f.response_disabled ? 'Disabled' : 'Enabled'}</button>
               </div>`
             )}
           </div>
@@ -774,110 +761,23 @@
                     });
                 });
 
-                // Attach enable/disable handlers for desktop buttons
-                $$('.enableFaqBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const url = ENABLE_TEMPLATE.replace('__ID__', id);
-                        
-                        // Store original content
-                        const originalHTML = btn.innerHTML;
-                        
-                        try {
-                            btn.disabled = true;
-                            // Show loading spinner
-                            btn.innerHTML = `
-                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            `;
-                            
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                throw new Error(json.message || 'Failed to enable FAQ');
-                            }
-                            setPendingChanges(true);
-                            showToast('success', 'FAQ enabled successfully');
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                            // Restore original content on error
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                        }
-                    });
-                });
-
-                $$('.disableFaqBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const url = DISABLE_TEMPLATE.replace('__ID__', id);
-                        
-                        // Store original content
-                        const originalHTML = btn.innerHTML;
-                        
-                        try {
-                            btn.disabled = true;
-                            // Show loading spinner
-                            btn.innerHTML = `
-                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            `;
-                            
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                throw new Error(json.message || 'Failed to disable FAQ');
-                            }
-                            setPendingChanges(true);
-                            showToast('success', 'FAQ disabled successfully');
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                            // Restore original content on error
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                        }
-                    });
-                });
-
-                // Attach mobile toggle handlers
-                $$('.mobileToggleBtn').forEach(btn => {
+                // Attach toggle handler for both desktop and mobile buttons
+                $$('.toggleFaqBtn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
                         const id = btn.getAttribute('data-id');
                         const isDisabled = btn.getAttribute('data-disabled') === '1';
                         if (!id) return;
-                        
+
                         const url = isDisabled
                             ? ENABLE_TEMPLATE.replace('__ID__', id)
                             : DISABLE_TEMPLATE.replace('__ID__', id);
-                        
-                        // Store original content
+
+                        // Store original content and state
                         const originalHTML = btn.innerHTML;
-                        
+                        const originalDisabled = btn.getAttribute('data-disabled');
+                        const originalClasses = btn.className;
+
                         try {
                             btn.disabled = true;
                             // Show loading spinner
@@ -887,7 +787,7 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             `;
-                            
+
                             const res = await fetch(url, {
                                 method: 'POST',
                                 headers: {
@@ -899,15 +799,33 @@
                             if (!res.ok) {
                                 throw new Error(json.message || `Failed to ${isDisabled ? 'enable' : 'disable'} FAQ`);
                             }
+
+                            // Update button state immediately
+                            const newDisabled = isDisabled ? '0' : '1';
+                            btn.setAttribute('data-disabled', newDisabled);
+                            btn.textContent = isDisabled ? 'Enabled' : 'Disabled';
+
+                            // Update button styling with border colors
+                            if (isDisabled) {
+                                // Was disabled, now enabled: green background with green border
+                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-green-400 text-white border-2 border-green-600';
+                                btn.setAttribute('title', 'Click to Disable');
+                            } else {
+                                // Was enabled, now disabled: gray background with red border
+                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-gray-400 text-white border-2 border-red-300';
+                                btn.setAttribute('title', 'Click to Enable');
+                            }
+
                             setPendingChanges(true);
                             showToast('success', `FAQ ${isDisabled ? 'enabled' : 'disabled'} successfully`);
-                            fetchList(currentPage);
                         } catch (err) {
                             showToast('error', err.message || 'Error');
                             console.error(err);
-                            // Restore original content on error
+                            // Restore original content and state on error
                             btn.innerHTML = originalHTML;
                             btn.disabled = false;
+                            if (originalDisabled) btn.setAttribute('data-disabled', originalDisabled);
+                            if (originalClasses) btn.className = originalClasses;
                         }
                     });
                 });
