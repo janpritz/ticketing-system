@@ -1137,4 +1137,29 @@ class AdminController extends Controller
 
         return response()->json(['success' => true, 'faq' => $faq]);
     }
+
+    /**
+     * Get all FAQs as JSON for sync purposes.
+     */
+    public function faqsAllJson(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $faqs = Faq::where('response_disabled', false)
+            ->select('id', 'intent', 'description', 'response')
+            ->get()
+            ->map(function ($faq) {
+                return [
+                    'id' => $faq->id,
+                    'intent' => $faq->intent,
+                    'description' => $faq->description ?? '',
+                    'response' => $faq->response ?? '',
+                    'sync_type' => 'update'
+                ];
+            });
+
+        return response()->json([
+            'faqs' => $faqs->toArray()
+        ]);
+    }
 }

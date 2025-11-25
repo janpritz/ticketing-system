@@ -53,7 +53,7 @@ return [
 
     'faq_sync' => [
         'url' => env('FAQ_SYNC_URL'),
-        'secret' => env('FAQ_UPDATER_SECRET'),
+        'secret' => env('FAQ_SYNC_SECRET'),
     ],
 
 ];

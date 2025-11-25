@@ -139,6 +139,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/{faq}', [AdminController::class, 'faqsUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
         Route::delete('/{faq}', [AdminController::class, 'faqsDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
 
+        // Get all FAQs as JSON (for sync)
+        Route::get('/all-json', [AdminController::class, 'faqsAllJson'])->name('all-json');
+
         // Deleted FAQs view + AJAX list (trash)
         Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
         Route::get('/deleted/list', [AdminController::class, 'faqsDeletedList'])->name('deleted.list');

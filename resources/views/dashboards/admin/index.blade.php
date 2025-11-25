@@ -90,6 +90,25 @@
             <p class="text-sm text-slate-500">Overview of your ticketing system</p>
         </div>
 
+        <!-- FAQ Sync Alert -->
+        <div id="faqSyncAlert" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                    <h3 class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
+                    <p class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.faqs.index') }}" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync Now
+            </a>
+        </div>
+
         <!-- Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Total Open Tickets -->
@@ -956,6 +975,28 @@
                 console.debug('Admin auto-refresh failed', e);
             }
         }
+
+        // FAQ Sync Alert Management
+        function updateFaqSyncAlert() {
+            const alertEl = document.getElementById('faqSyncAlert');
+            if (!alertEl) return;
+            try {
+                const hasPending = localStorage.getItem('faq_changes_pending') === 'true';
+                alertEl.classList.toggle('hidden', !hasPending);
+            } catch (e) {
+                // localStorage not available
+            }
+        }
+
+        // Update alert on page load
+        updateFaqSyncAlert();
+
+        // Listen for localStorage changes (cross-tab)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'faq_changes_pending') {
+                updateFaqSyncAlert();
+            }
+        });
 
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change

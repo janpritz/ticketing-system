@@ -40,15 +40,6 @@
                 </div>
             @else
                 <div class="hidden sm:flex items-center gap-2">
-                    <!-- Interactive Pending / Trained toggle (yellow-themed) -->
-                    <div id="faqsStatusToggleGroup" class="inline-flex items-center rounded-full bg-yellow-400 p-1">
-                        <button id="faqsStatusAllBtn" type="button"
-                            class="px-4 py-1.5 rounded-full bg-white text-yellow-700 font-medium text-sm">All</button>
-                        <button id="faqsStatusTrainedBtn" type="button"
-                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Trained</button>
-                        <button id="faqsStatusUntrainedBtn" type="button"
-                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Untrained</button>
-                    </div>
 
                     <!-- Sync FAQ Cache Button -->
                     <button id="syncFaqCacheBtn" type="button"
@@ -58,7 +49,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span id="syncText">Sync Cache</span>
+                        <span id="syncText">Sync to Rasa</span>
                     </button>
 
                     <button id="openCreateModalBtn" type="button"
@@ -70,16 +61,15 @@
                         <span class="hidden sm:inline">Add FAQ</span>
                     </button>
 
-                    <!-- Trash Button (copied from mobile) -->
-                    <a href="{{ route('admin.faqs.deleted') }}"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 ml-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
-                            fill="currentColor">
-                            <path
-                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
+                    <!-- Upload File Button -->
+                    <button id="uploadFileBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 ml-3"
+                        aria-label="Upload FAQ File">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        <span class="hidden sm:inline">Trash</span>
-                    </a>
+                        <span class="hidden sm:inline">Upload File</span>
+                    </button>
                 </div>
             @endif
 
@@ -150,15 +140,6 @@
                 </div>
 
                 <div class="px-4 pb-4 space-y-2">
-                    <!-- Mobile: Status toggle buttons (match desktop) -->
-                    <div id="faqsStatusToggleGroupMobile" class="inline-flex items-center rounded-full bg-yellow-400 p-1 w-full justify-center">
-                        <button id="mobileAllToggle" type="button"
-                            class="px-4 py-1.5 rounded-full bg-white text-yellow-700 font-medium text-sm">All</button>
-                        <button id="mobileTrainedToggle" type="button"
-                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Trained</button>
-                        <button id="mobileUntrainedToggle" type="button"
-                            class="ml-1 px-4 py-1.5 rounded-full bg-yellow-400 text-white font-medium text-sm">Untrained</button>
-                    </div>
 
                     <!-- Mobile Sync Cache Button (match desktop styling) -->
                     <button id="mobileSyncFaqCacheBtn" type="button"
@@ -166,9 +147,19 @@
                         aria-label="Sync FAQ Cache">
                         <svg id="mobileSyncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span id="mobileSyncText">Sync Cache</span>
+                        <span id="mobileSyncText">Sync to Rasa</span>
+                    </button>
+
+                    <!-- Mobile Upload File Button (match desktop styling) -->
+                    <button id="mobileUploadFileBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
+                        aria-label="Upload FAQ File">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>Upload File</span>
                     </button>
 
                     <!-- Mobile Add FAQ Button (match desktop styling) -->
@@ -229,13 +220,12 @@
                             <th class="px-3 py-3 text-left font-medium">Response</th>
                             <th class="px-3 py-3 text-left font-medium">Created At</th>
                             <th class="px-3 py-3 text-left font-medium">Updated At</th>
-                            <th class="px-3 py-3 text-left font-medium">Status</th>
                             <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="faqsTbody" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="7" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                            <td colspan="6" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -294,6 +284,41 @@
                         <button id="createFaqSubmit" type="button"
                             class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create
                             FAQ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload File Modal -->
+    <div id="uploadFileModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/40" data-close="upload"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div
+                class="w-full max-w-full sm:max-w-lg bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
+                <div class="h-12 flex items-center justify-between px-4 border-b">
+                    <div class="text-sm font-semibold text-slate-800">Upload FAQ File</div>
+                    <button type="button" class="text-slate-500 hover:text-slate-700" data-close="upload"
+                        aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="uploadFileForm" class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Select Text File</label>
+                        <input type="file" id="faqFile" accept=".txt,.md,.json" required
+                            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                        <p class="mt-1 text-xs text-slate-500">Only text files (.txt, .md, .json) are allowed</p>
+                        <p id="upload_file_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+                    <div class="pt-2 flex items-center justify-end gap-3">
+                        <button type="button"
+                            class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
+                            data-close="upload">Cancel</button>
+                        <button id="uploadFileSubmit" type="button"
+                            class="rounded-md bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">Upload & Sync</button>
                     </div>
                 </form>
             </div>
@@ -489,6 +514,13 @@
             const createForm = $('#createFaqForm');
             const createSubmit = $('#createFaqSubmit');
 
+            const uploadModal = $('#uploadFileModal');
+            const uploadOpenBtn = $('#uploadFileBtn');
+            const uploadCloseEls = $$('[data-close="upload"]', uploadModal || document);
+            const uploadForm = $('#uploadFileForm');
+            const uploadSubmit = $('#uploadFileSubmit');
+            const faqFileInput = $('#faqFile');
+
             const viewModal = $('#viewFaqModal');
             const viewCloseEls = $$('[data-close="view"]', viewModal || document);
             const viewForm = $('#viewFaqForm');
@@ -622,24 +654,13 @@
             }
 
             function renderTable(items) {
-                // If the status filter is 'all', ensure trained FAQs are listed first
-                if (currentStatus === 'all' && Array.isArray(items) && items.length > 0) {
-                    items = items.slice().sort((a, b) => {
-                        if (a.status === b.status) return 0;
-                        if (a.status === 'trained') return -1;
-                        if (b.status === 'trained') return 1;
-                        // Keep original order for other statuses
-                        return 0;
-                    });
-                }
-
                 if (!items || items.length === 0) {
                     faqsTbody.innerHTML =
-                        `<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+                        `<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => `
-      <tr class="${f.status === 'trained' ? 'bg-emerald-50' : 'hover:bg-gray-50'} ${f.deleted_at ? 'opacity-70' : ''}">
+      <tr class="hover:bg-gray-50 ${f.deleted_at ? 'opacity-70' : ''}">
         <td class="py-3 pl-5 pr-3 align-top">
           <div class="text-slate-900 font-medium">${escapeHtml(f.intent)}</div>
         </td>
@@ -654,9 +675,6 @@
         </td>
         <td class="px-3 py-3 align-top">
           <div class="text-slate-500 text-xs">${escapeHtml(f.updated_at || '')}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-700">${escapeHtml(f.status || 'untrained')}</div>
         </td>
         <td class="py-3 pl-3 pr-5 align-top">
           <div class="flex items-center gap-2">
@@ -996,90 +1014,7 @@
                 });
             }
 
-            // Status toggle handlers (Desktop)
-            const allBtn = $('#faqsStatusAllBtn');
-            const trainedBtn = $('#faqsStatusTrainedBtn');
-            const untrainedBtn = $('#faqsStatusUntrainedBtn');
 
-            function updateStatusButtons(status) {
-                [allBtn, trainedBtn, untrainedBtn].forEach(btn => {
-                    if (!btn) return;
-                    btn.classList.remove('bg-white', 'text-yellow-700');
-                    btn.classList.add('bg-yellow-400', 'text-white');
-                });
-                
-                const activeBtn = status === 'all' ? allBtn : (status === 'trained' ? trainedBtn : untrainedBtn);
-                if (activeBtn) {
-                    activeBtn.classList.remove('bg-yellow-400', 'text-white');
-                    activeBtn.classList.add('bg-white', 'text-yellow-700');
-                }
-            }
-
-            if (allBtn) {
-                allBtn.addEventListener('click', () => {
-                    currentStatus = 'all';
-                    updateStatusButtons('all');
-                    fetchList(1);
-                });
-            }
-            if (trainedBtn) {
-                trainedBtn.addEventListener('click', () => {
-                    currentStatus = 'trained';
-                    updateStatusButtons('trained');
-                    fetchList(1);
-                });
-            }
-            if (untrainedBtn) {
-                untrainedBtn.addEventListener('click', () => {
-                    currentStatus = 'untrained';
-                    updateStatusButtons('untrained');
-                    fetchList(1);
-                });
-            }
-
-            // Mobile status toggles
-            const mobileAll = $('#mobileAllToggle');
-            const mobileTrained = $('#mobileTrainedToggle');
-            const mobileUntrained = $('#mobileUntrainedToggle');
-
-            function updateMobileStatusButtons(status) {
-                [mobileAll, mobileTrained, mobileUntrained].forEach(btn => {
-                    if (!btn) return;
-                    btn.classList.remove('bg-white', 'text-yellow-700');
-                    btn.classList.add('bg-yellow-400', 'text-white');
-                });
-                
-                const activeBtn = status === 'all' ? mobileAll : (status === 'trained' ? mobileTrained : mobileUntrained);
-                if (activeBtn) {
-                    activeBtn.classList.remove('bg-yellow-400', 'text-white');
-                    activeBtn.classList.add('bg-white', 'text-yellow-700');
-                }
-            }
-
-            if (mobileAll) {
-                mobileAll.addEventListener('click', () => {
-                    currentStatus = 'all';
-                    updateMobileStatusButtons('all');
-                    updateStatusButtons('all');
-                    fetchList(1);
-                });
-            }
-            if (mobileTrained) {
-                mobileTrained.addEventListener('click', () => {
-                    currentStatus = 'trained';
-                    updateMobileStatusButtons('trained');
-                    updateStatusButtons('trained');
-                    fetchList(1);
-                });
-            }
-            if (mobileUntrained) {
-                mobileUntrained.addEventListener('click', () => {
-                    currentStatus = 'untrained';
-                    updateMobileStatusButtons('untrained');
-                    updateStatusButtons('untrained');
-                    fetchList(1);
-                });
-            }
 
             // Mobile drawer handlers
             const mobileActionsToggle = $('#mobileActionsToggle');
@@ -1124,44 +1059,31 @@
                     mobileSyncText.textContent = 'Syncing...';
 
                     try {
-                        // First, fetch all FAQs from the same endpoint used by the table (admin controller faqList)
-                        const faqRes = await fetch(`${LIST_URL}?status=all&per_page=10000`, {
+                        // First, fetch all FAQs from the new all-json endpoint
+                        const faqRes = await fetch('{{ route("admin.faqs.all-json") }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
 
                         if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from admin list');
+                            throw new Error('Failed to fetch FAQs from server');
                         }
 
                         const faqData = await faqRes.json();
-                        const faqs = faqData.items || [];
+                        const faqs = faqData.faqs || [];
 
-                        console.log('[FAQ Sync] Fetched FAQs from admin list:', faqs.length);
+                        console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
 
-                        // Transform ALL FAQs (including disabled) to match Rasa endpoint format
-                        const faqsForRasa = faqs.map((faq) => ({
-                            id: faq.id,
-                            intent: faq.intent,
-                            description: faq.description || '',
-                            response: faq.response || '',
-                            response_disabled: faq.response_disabled || false,
-                            status: faq.status || 'untrained'
-                        }));
-
-                        console.log('[FAQ Sync] Prepared FAQs for Rasa:', faqsForRasa.length);
-                        console.log('[FAQ Sync] Sending to:', '{{ config("services.faq_sync.url") }}');
-
-                        // Send to Rasa sync endpoint
+                        // Send all FAQs to Rasa sync endpoint
                         const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',
                             headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
+                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                faqs: faqsForRasa
+                                faqs: faqs
                             })
                         });
 
@@ -1192,6 +1114,16 @@
                 });
             }
 
+            // Mobile upload file button
+            const mobileUploadBtn = $('#mobileUploadFileBtn');
+
+            if (mobileUploadBtn) {
+                mobileUploadBtn.addEventListener('click', () => {
+                    closeDrawer(); // Close the drawer first
+                    openModal(uploadModal);
+                });
+            }
+
             // Mobile action buttons
             const mobileActionAdd = $('#mobileActionAdd');
             const mobileActionTrash = $('#mobileActionTrash');
@@ -1214,6 +1146,12 @@
                 createOpenBtn.addEventListener('click', () => openModal(createModal));
             }
             createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
+
+            // Upload modal handlers
+            if (uploadOpenBtn) {
+                uploadOpenBtn.addEventListener('click', () => openModal(uploadModal));
+            }
+            uploadCloseEls.forEach(el => el.addEventListener('click', () => closeModal(uploadModal)));
 
             // Template button handlers
             const createTemplateBtn = $('#createTemplateBtn');
@@ -1310,6 +1248,83 @@
                         // Restore original content
                         createSubmit.innerHTML = originalHTML;
                         createSubmit.disabled = false;
+                    }
+                });
+            }
+
+            // Upload file submit handler
+            if (uploadSubmit) {
+                uploadSubmit.addEventListener('click', async () => {
+                    const file = faqFileInput.files[0];
+                    if (!file) {
+                        $('#upload_file_error').textContent = 'Please select a file';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    // Validate file type
+                    const allowedTypes = ['text/plain', 'text/markdown', 'application/json'];
+                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|md|json)$/i)) {
+                        $('#upload_file_error').textContent = 'Only text files (.txt, .md, .json) are allowed';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    $('#upload_file_error').classList.add('hidden');
+
+                    // Store original content and show loading spinner
+                    const originalHTML = uploadSubmit.innerHTML;
+                    uploadSubmit.disabled = true;
+                    uploadSubmit.innerHTML = `
+                        <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="ml-2">Uploading...</span>
+                    `;
+
+                    try {
+                        const fileContent = await file.text();
+                        console.log('[File Upload] File content length:', fileContent.length);
+
+                        // Send file content to Rasa upload endpoint
+                        const baseUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '');
+                        const rasaRes = await fetch(`${baseUrl}/upload-file`, {
+                            method: 'POST',
+                            headers: {
+                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                file_content: fileContent,
+                                file_name: file.name,
+                                file_type: file.type
+                            })
+                        });
+
+                        const result = await rasaRes.json();
+
+                        console.log('[File Upload] Rasa response:', result);
+
+                        if (!rasaRes.ok || !result.ok) {
+                            console.error('[File Upload] Upload failed:', result.error || 'Unknown error');
+                            throw new Error(result.error || 'File upload failed');
+                        }
+
+                        console.log('[File Upload] Success! File uploaded:', result);
+
+                        showToast('success', `File uploaded and synced successfully`);
+
+                        closeModal(uploadModal);
+                        uploadForm.reset();
+
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        showToast('error', err.message || 'Failed to upload file');
+                    } finally {
+                        // Restore original content
+                        uploadSubmit.innerHTML = originalHTML;
+                        uploadSubmit.disabled = false;
                     }
                 });
             }
@@ -1509,44 +1524,31 @@
                     syncText.textContent = 'Syncing...';
 
                     try {
-                        // First, fetch all FAQs from the same endpoint used by the table (admin controller faqList)
-                        const faqRes = await fetch(`${LIST_URL}?status=all&per_page=10000`, {
+                        // First, fetch all FAQs from the new all-json endpoint
+                        const faqRes = await fetch('{{ route("admin.faqs.all-json") }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
 
                         if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from admin list');
+                            throw new Error('Failed to fetch FAQs from server');
                         }
 
                         const faqData = await faqRes.json();
-                        const faqs = faqData.items || [];
+                        const faqs = faqData.faqs || [];
 
-                        console.log('[FAQ Sync] Fetched FAQs from admin list:', faqs.length);
+                        console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
 
-                        // Transform ALL FAQs (including disabled) to match Rasa endpoint format
-                        const faqsForRasa = faqs.map((faq) => ({
-                            id: faq.id,
-                            intent: faq.intent,
-                            description: faq.description || '',
-                            response: faq.response || '',
-                            response_disabled: faq.response_disabled || false,
-                            status: faq.status || 'untrained'
-                        }));
-
-                        console.log('[FAQ Sync] Prepared FAQs for Rasa:', faqsForRasa.length);
-                        console.log('[FAQ Sync] Sending to:', '{{ config("services.faq_sync.url") }}');
-
-                        // Send to Rasa sync endpoint
+                        // Send all FAQs to Rasa sync endpoint
                         const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',
                             headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
+                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                faqs: faqsForRasa
+                                faqs: faqs
                             })
                         });
 

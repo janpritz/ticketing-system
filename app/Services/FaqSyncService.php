@@ -97,8 +97,8 @@ class FaqSyncService
             return ['ok' => true, 'message' => 'No FAQs to sync', 'count' => 0];
         }
 
-        $url = config('services.faq_updater.batch_url', config('services.faq_updater.url'));
-        $secret = config('services.faq_updater.secret');
+        $url = config('services.faq_sync.url');
+        $secret = config('services.faq_sync.secret');
 
         if (!$url) {
             throw new \Exception('FAQ_UPDATER_URL not configured');

@@ -43,15 +43,19 @@ import hmac
 import subprocess
 from pathlib import Path
 import json
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Paths (relative to this file)
 BASE_DIR = Path(__file__).parent
+PROJECT_ROOT = BASE_DIR.parent
 ACTIONS_FILE = BASE_DIR / "actions.py"
 FAQS_FLOW_FILE = BASE_DIR / "data/flows/faqs_flow.yml"
-FAQ_CACHE_FILE = BASE_DIR / "faq_cache.json"
+FAQS_TXT_FILE = PROJECT_ROOT / "docs" / "faqs.txt"
+# Load environment variables from .env file
+load_dotenv(BASE_DIR.parent / '.env')
 
 # Lock suffix and timeout
 LOCK_SUFFIX = ".lock"
@@ -60,59 +64,51 @@ LOCK_TIMEOUT = 10
 # Optional secret for simple verification
 FAQ_UPDATER_SECRET = os.environ.get("FAQ_UPDATER_SECRET")
 
-# In-memory FAQ cache
-faq_cache = {}
 
-def load_faq_cache():
-    """Load FAQ cache from file"""
-    global faq_cache
+def save_faqs_as_txt(faqs: list):
+    """Convert FAQs to text format and save to docs/faqs.txt"""
     try:
-        if os.path.exists(FAQ_CACHE_FILE):
-            with open(FAQ_CACHE_FILE, 'r', encoding='utf-8') as f:
-                faq_cache = json.load(f)
-            print(f"[faq_updater] Loaded {len(faq_cache)} FAQs from cache")
-        else:
-            faq_cache = {}
-            print("[faq_updater] No cache file found, starting with empty cache")
+        # Ensure docs directory exists
+        FAQS_TXT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        
+        lines = []
+        lines.append("=" * 80)
+        lines.append("FAQ DATABASE - TEXT FORMAT")
+        lines.append(f"Generated: {datetime.now().isoformat()}")
+        lines.append(f"Total FAQs: {len(faqs)}")
+        lines.append("=" * 80)
+        lines.append("")
+        
+        for faq in faqs:
+            intent = faq.get('intent', 'Unknown')
+            response = faq.get('response', '')
+            description = faq.get('description', '')
+            faq_id = faq.get('id', 'N/A')
+            
+            lines.append("-" * 80)
+            lines.append(f"ID: {faq_id}")
+            lines.append(f"INTENT: {intent}")
+            if description:
+                lines.append(f"DESCRIPTION: {description}")
+            lines.append("")
+            lines.append("RESPONSE:")
+            lines.append(response)
+            lines.append("")
+        
+        lines.append("-" * 80)
+        lines.append("END OF FAQ DATABASE")
+        lines.append("=" * 80)
+        
+        with open(FAQS_TXT_FILE, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+        
+        print(f"[faq_updater] Saved {len(faqs)} FAQs to {FAQS_TXT_FILE}")
+        return True
     except Exception as e:
-        print(f"[faq_updater] Error loading FAQ cache: {e}", file=sys.stderr)
-        faq_cache = {}
+        print(f"[faq_updater] Error saving FAQs to txt: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return False
 
-def save_faq_cache():
-    """Save FAQ cache to file"""
-    try:
-        with open(FAQ_CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(faq_cache, f, indent=2, ensure_ascii=False)
-        print(f"[faq_updater] Saved {len(faq_cache)} FAQs to cache")
-    except Exception as e:
-        print(f"[faq_updater] Error saving FAQ cache: {e}", file=sys.stderr)
-
-def update_faq_cache(faqs_data):
-    """Update FAQ cache with new data"""
-    global faq_cache
-    updated_count = 0
-
-    for faq in faqs_data:
-        faq_id = str(faq.get('id'))
-        intent = faq.get('intent', '').strip()
-
-        if intent:
-            # Normalize intent for consistent lookup
-            intent_norm = normalize_intent(intent)
-
-            faq_cache[intent_norm] = {
-                'id': faq_id,
-                'intent': intent,
-                'description': faq.get('description', ''),
-                'response': faq.get('response', ''),
-                'response_disabled': faq.get('response_disabled', False),
-                'updated_at': datetime.now().isoformat()
-            }
-            updated_count += 1
-
-    save_faq_cache()
-    print(f"[faq_updater] Updated cache with {updated_count} FAQs")
-    return updated_count
 
 def normalize_intent(intent: str) -> str:
     """
@@ -143,7 +139,6 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
     """
     Appends an action class to actions.py.
     Returns True if appended, False if already exists.
-    Generated class uses cached FAQ data instead of database queries.
     """
     cls_name = action_class_name(intent_norm)
     func_name = action_function_name(intent_norm)
@@ -157,24 +152,8 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
             with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
                 f.write("# actions.py (auto-generated header)\n\n")
                 f.write("from typing import Any, Text, Dict, List, Optional\n")
-                f.write("import os\n")
-                f.write("import json\n")
-                f.write("from pathlib import Path\n")
                 f.write("from rasa_sdk import Action, Tracker\n")
                 f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-                f.write("# Global FAQ cache\n")
-                f.write("faq_cache = {}\n\n")
-                f.write("def load_faq_cache():\n")
-                f.write("    global faq_cache\n")
-                f.write("    cache_file = Path(__file__).parent / 'faq_cache.json'\n")
-                f.write("    try:\n")
-                f.write("        if cache_file.exists():\n")
-                f.write("            with open(cache_file, 'r', encoding='utf-8') as f:\n")
-                f.write("                faq_cache = json.load(f)\n")
-                f.write("    except Exception:\n")
-                f.write("        faq_cache = {}\n\n")
-                f.write("# Load cache on import\n")
-                f.write("load_faq_cache()\n\n")
                 f.write("# Dynamic FAQ actions will be appended below\n\n")
             print(f"[faq_updater] Created new actions file at {ACTIONS_FILE}")
         except Exception as e:
@@ -190,7 +169,7 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
                     print(f"[faq_updater] Action class {cls_name} already exists in {ACTIONS_FILE}")
                     return False
 
-                # Prepare class code that uses cached data
+                # Prepare class code
                 class_code = f"""
 class {cls_name}(Action):
     def name(self) -> str:
@@ -200,35 +179,10 @@ class {cls_name}(Action):
             tracker: Tracker,
             domain: dict):
 
-        # Load latest FAQ data from cache
-        load_faq_cache()
-
-        # Look up FAQ by normalized intent
-        faq_data = faq_cache.get("{intent_norm}")
-
-        if not faq_data:
-            dispatcher.utter_message(
-                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-            )
-            return []
-
-        # Check if FAQ is disabled
-        if faq_data.get("response_disabled", False):
-            dispatcher.utter_message(
-                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-            )
-            return []
-
-        # Get response
-        response = faq_data.get("response", "").strip()
-        if not response:
-            dispatcher.utter_message(
-                text="Sorry, I am not yet trained to answer this question. You can submit a ticket for further assistance."
-            )
-            return []
-
-        # Send the response
-        dispatcher.utter_message(text=response)
+        # Placeholder response - FAQ data will be loaded from database
+        dispatcher.utter_message(
+            text="FAQ response for {intent_raw}"
+        )
         return []
 """
                 f.seek(0, os.SEEK_END)
@@ -354,6 +308,14 @@ def sync_faqs():
         database_dir.mkdir(parents=True, exist_ok=True)
         faqs_json_path = database_dir / "faqs.json"
 
+        # Clear existing content first to ensure fresh data
+        try:
+            if faqs_json_path.exists():
+                faqs_json_path.unlink()
+                print(f"[faq_sync] Cleared existing {faqs_json_path}")
+        except Exception as e:
+            print(f"[faq_sync] WARNING: Could not clear existing faqs.json: {e}", file=sys.stderr)
+
         # Prepare data structure for storage
         faqs_data = {
             "faqs": faqs,
@@ -361,7 +323,7 @@ def sync_faqs():
             "total_count": len(faqs)
         }
 
-        # Write to database/faqs.json
+        # Write fresh data to database/faqs.json
         try:
             with open(faqs_json_path, 'w', encoding='utf-8') as f:
                 json.dump(faqs_data, f, indent=2, ensure_ascii=False)
@@ -371,13 +333,9 @@ def sync_faqs():
             traceback.print_exc()
             return jsonify({"ok": False, "error": f"Failed to save FAQs: {str(e)}"}), 500
 
-        # Now trigger cache.py to load from faqs.json
-        # Import and call the cache loading function
-        try:
-            # This will be handled by cache.py's load mechanism
-            print(f"[faq_sync] FAQs saved to database/faqs.json - cache.py will load on next request")
-        except Exception as e:
-            print(f"[faq_sync] WARNING: Cache notification failed: {e}", file=sys.stderr)
+        # Also save to docs/faqs.txt
+        save_faqs_as_txt(faqs)
+
 
         print(f"[faq_sync] Sync complete: {len(faqs)} FAQs saved")
 
@@ -398,7 +356,7 @@ def sync_faqs():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 def regenerate_all_actions():
-    """Regenerate all action classes based on current FAQ cache"""
+    """Regenerate all action classes based on FAQs"""
     try:
         print("[faq_updater] Regenerating all action classes...")
 
@@ -411,36 +369,65 @@ def regenerate_all_actions():
         with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
             f.write("# actions.py (auto-generated header)\n\n")
             f.write("from typing import Any, Text, Dict, List, Optional\n")
-            f.write("import os\n")
-            f.write("import json\n")
-            f.write("from pathlib import Path\n")
             f.write("from rasa_sdk import Action, Tracker\n")
             f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-            f.write("# Global FAQ cache\n")
-            f.write("faq_cache = {}\n\n")
-            f.write("def load_faq_cache():\n")
-            f.write("    global faq_cache\n")
-            f.write("    cache_file = Path(__file__).parent / 'faq_cache.json'\n")
-            f.write("    try:\n")
-            f.write("        if cache_file.exists():\n")
-            f.write("            with open(cache_file, 'r', encoding='utf-8') as f:\n")
-            f.write("                faq_cache = json.load(f)\n")
-            f.write("    except Exception:\n")
-            f.write("        faq_cache = {}\n\n")
-            f.write("# Load cache on import\n")
-            f.write("load_faq_cache()\n\n")
             f.write("# Dynamic FAQ actions will be appended below\n\n")
 
-        # Generate action class for each FAQ in cache
-        for intent_norm, faq_data in faq_cache.items():
-            intent_raw = faq_data.get('intent', intent_norm)
-            append_action_class(intent_norm, intent_raw)
-
-        print(f"[faq_updater] Regenerated {len(faq_cache)} action classes")
+        print("[faq_updater] Regenerated action classes")
 
     except Exception as e:
         print(f"[faq_updater] Error regenerating actions: {e}", file=sys.stderr)
         traceback.print_exc()
+
+@app.route("/upload-file", methods=["POST"])
+def upload_file():
+    """
+    Upload a text file and save it to docs/ directory.
+    Expects JSON: { "file_content": "...", "file_name": "...", "file_type": "..." }
+    Returns: { "ok": true, "message": "..." }
+    """
+    try:
+        print("[file_upload] /upload-file endpoint called")
+
+        if not verify_secret(request):
+            print("[file_upload] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        file_content = data.get("file_content", "")
+        file_name = data.get("file_name", "")
+        file_type = data.get("file_type", "")
+
+        if not file_content:
+            print("[file_upload] ERROR: file_content is required")
+            return jsonify({"ok": False, "error": "file_content is required"}), 400
+
+        print(f"[file_upload] Received file: {file_name} ({file_type}) with {len(file_content)} characters")
+
+        # Save file to docs/ directory
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = docs_dir / file_name
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+            print(f"[file_upload] Successfully saved file to {file_path}")
+        except Exception as e:
+            print(f"[file_upload] ERROR saving file: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Failed to save file: {str(e)}"}), 500
+
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully uploaded file {file_name}",
+            "file_path": str(file_path)
+        })
+
+    except Exception as e:
+        print(f"[file_upload] Unexpected error in /upload-file: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/update-faq", methods=["POST"])
 def update_faq():
@@ -510,9 +497,6 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    # Load FAQ cache on startup
-    load_faq_cache()
-
     port = int(os.environ.get("FAQ_UPDATER_PORT", 5001))
-    print(f"[faq_updater] Starting server on port {port} with {len(faq_cache)} cached FAQs")
+    print(f"[faq_updater] Starting server on port {port}")
     app.run(host="0.0.0.0", port=port)
