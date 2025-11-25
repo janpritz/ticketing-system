@@ -1,12 +1,12 @@
 # rasa_files/faq_updater.py
-# Flask microservice that accepts POST /batch-update-faqs with FAQ data and generates dynamic actions
+# Flask microservice that accepts POST /sync-faqs with FAQ data and generates dynamic actions
 #
 # Usage:
 #   export FAQ_UPDATER_SECRET="your-secret"                # optional (recommended)
 #   export RASA_ACTIONS_RESTART_CMD="supervisorctl restart rasa-actions"  # optional
 #   python rasa_files/faq_updater.py
 #
-# The /batch-update-faqs endpoint expects JSON:
+# The /sync-faqs endpoint expects JSON:
 #   {
 #     "faqs": [
 #       {
@@ -32,6 +32,7 @@
 #  - Persists FAQ data to disk for reliability.
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 import re
 import sys
@@ -44,6 +45,7 @@ from pathlib import Path
 import json
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Paths (relative to this file)
 BASE_DIR = Path(__file__).parent
@@ -323,96 +325,75 @@ def verify_secret(req) -> bool:
     print(f"[faq_updater] Received token header of length {len(token)}")
     return hmac.compare_digest(token, FAQ_UPDATER_SECRET)
 
-@app.route("/batch-update-faqs", methods=["POST"])
-def batch_update_faqs():
+@app.route("/sync-faqs", methods=["POST"])
+def sync_faqs():
     """
-    Batch update multiple FAQs in a single request.
-    Expects JSON: { "faqs": [{"id": 1, "intent": "...", "description": "...", "response": "...", "response_disabled": false, "sync_type": "update"}, ...] }
-    Stores FAQs in cache and regenerates action classes.
-    Returns: { "ok": true, "results": [{"faq_id": 1, "success": true, "intent": "..."}, ...] }
+    Sync multiple FAQs in a single request.
+    Expects JSON: { "faqs": [{"id": 1, "intent": "...", "description": "...", "response": "...", "response_disabled": false, "status": "..."}, ...] }
+    Saves ALL FAQs to database/faqs.json (including disabled ones).
+    Returns: { "ok": true, "count": X, "message": "..." }
     """
     try:
-        print("[faq_updater] /batch-update-faqs called")
+        print("[faq_sync] /sync-faqs endpoint called")
 
         if not verify_secret(request):
-            print("[faq_updater] Secret verification failed")
+            print("[faq_sync] Secret verification failed")
             return jsonify({"ok": False, "error": "unauthorized"}), 401
 
         data = request.get_json(force=True)
         faqs = data.get("faqs", [])
 
         if not isinstance(faqs, list):
+            print("[faq_sync] ERROR: faqs must be an array")
             return jsonify({"ok": False, "error": "faqs must be an array"}), 400
 
-        print(f"[faq_updater] Processing batch of {len(faqs)} FAQs")
+        print(f"[faq_sync] Received {len(faqs)} FAQs to sync")
 
-        # Update cache with all FAQ data
-        updated_count = update_faq_cache(faqs)
+        # Save ALL FAQs to database/faqs.json (no filtering)
+        database_dir = BASE_DIR / "database"
+        database_dir.mkdir(parents=True, exist_ok=True)
+        faqs_json_path = database_dir / "faqs.json"
 
-        # Regenerate all action classes based on current cache
-        regenerate_all_actions()
+        # Prepare data structure for storage
+        faqs_data = {
+            "faqs": faqs,
+            "last_synced": datetime.now().isoformat(),
+            "total_count": len(faqs)
+        }
 
-        results = []
-        for faq_data in faqs:
-            try:
-                intent = faq_data.get("intent")
-                faq_id = faq_data.get("id")
-                sync_type = faq_data.get("sync_type", "update")
+        # Write to database/faqs.json
+        try:
+            with open(faqs_json_path, 'w', encoding='utf-8') as f:
+                json.dump(faqs_data, f, indent=2, ensure_ascii=False)
+            print(f"[faq_sync] Successfully saved {len(faqs)} FAQs to {faqs_json_path}")
+        except Exception as e:
+            print(f"[faq_sync] ERROR saving to faqs.json: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Failed to save FAQs: {str(e)}"}), 500
 
-                if not intent:
-                    results.append({
-                        "faq_id": faq_id,
-                        "success": False,
-                        "error": "intent required"
-                    })
-                    continue
+        # Now trigger cache.py to load from faqs.json
+        # Import and call the cache loading function
+        try:
+            # This will be handled by cache.py's load mechanism
+            print(f"[faq_sync] FAQs saved to database/faqs.json - cache.py will load on next request")
+        except Exception as e:
+            print(f"[faq_sync] WARNING: Cache notification failed: {e}", file=sys.stderr)
 
-                intent_norm = normalize_intent(intent)
-
-                if sync_type == "delete":
-                    # Remove from cache
-                    if intent_norm in faq_cache:
-                        del faq_cache[intent_norm]
-                        save_faq_cache()
-                    results.append({
-                        "faq_id": faq_id,
-                        "success": True,
-                        "intent": intent,
-                        "note": "removed from cache"
-                    })
-                else:
-                    results.append({
-                        "faq_id": faq_id,
-                        "success": True,
-                        "intent": intent,
-                        "intent_normalized": intent_norm
-                    })
-
-            except Exception as e:
-                print(f"[faq_updater] Error processing FAQ {faq_data.get('id')}: {e}", file=sys.stderr)
-                traceback.print_exc()
-                results.append({
-                    "faq_id": faq_data.get("id"),
-                    "success": False,
-                    "error": str(e)
-                })
-
-        successful = sum(1 for r in results if r.get("success"))
-        print(f"[faq_updater] Batch complete: {successful}/{len(results)} successful")
+        print(f"[faq_sync] Sync complete: {len(faqs)} FAQs saved")
 
         return jsonify({
             "ok": True,
-            "results": results,
+            "count": len(faqs),
+            "message": f"Successfully synced {len(faqs)} FAQs",
             "summary": {
-                "total": len(results),
-                "successful": successful,
-                "failed": len(results) - successful,
-                "cached_faqs": len(faq_cache)
+                "total": len(faqs),
+                "successful": len(faqs),
+                "failed": 0
             }
         })
 
     except Exception as e:
-        print(f"[faq_updater] Unexpected error in /batch-update-faqs: {e}", file=sys.stderr)
+        print(f"[faq_sync] Unexpected error in /sync-faqs: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 

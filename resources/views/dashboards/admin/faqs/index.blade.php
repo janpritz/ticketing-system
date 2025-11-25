@@ -1124,31 +1124,37 @@
                     mobileSyncText.textContent = 'Syncing...';
 
                     try {
-                        // First, fetch all FAQs from Laravel API
-                        const faqRes = await fetch('{{ config("app.url") }}/api/faqs', {
+                        // First, fetch all FAQs from the same endpoint used by the table (admin controller faqList)
+                        const faqRes = await fetch(`${LIST_URL}?status=all&per_page=10000`, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
 
                         if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from API');
+                            throw new Error('Failed to fetch FAQs from admin list');
                         }
 
                         const faqData = await faqRes.json();
-                        const faqs = faqData.faqs || [];
+                        const faqs = faqData.items || [];
 
-                        // Transform FAQs to match Rasa batch endpoint format
+                        console.log('[FAQ Sync] Fetched FAQs from admin list:', faqs.length);
+
+                        // Transform ALL FAQs (including disabled) to match Rasa endpoint format
                         const faqsForRasa = faqs.map((faq) => ({
                             id: faq.id,
                             intent: faq.intent,
                             description: faq.description || '',
+                            response: faq.response || '',
                             response_disabled: faq.response_disabled || false,
-                            sync_type: 'update' // All are updates for full sync
+                            status: faq.status || 'untrained'
                         }));
 
-                        // Send to Rasa batch endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_updater.batch_url", config("services.faq_updater.url")) }}', {
+                        console.log('[FAQ Sync] Prepared FAQs for Rasa:', faqsForRasa.length);
+                        console.log('[FAQ Sync] Sending to:', '{{ config("services.faq_sync.url") }}');
+
+                        // Send to Rasa sync endpoint
+                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',
                             headers: {
                                 'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
@@ -1161,13 +1167,18 @@
 
                         const result = await rasaRes.json();
 
+                        console.log('[FAQ Sync] Rasa response:', result);
+
                         if (!rasaRes.ok || !result.ok) {
+                            console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
                             throw new Error(result.error || 'Rasa sync failed');
                         }
 
+                        console.log('[FAQ Sync] Success! Synced FAQs:', result.summary || result);
+
                         // Clear pending changes on successful sync
                         setPendingChanges(false);
-                        showToast('success', `FAQ cache synced successfully (${result.summary.successful}/${result.summary.total} FAQs)`);
+                        showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
 
                     } catch (err) {
                         console.error('Sync error:', err);
@@ -1498,31 +1509,37 @@
                     syncText.textContent = 'Syncing...';
 
                     try {
-                        // First, fetch all FAQs from Laravel API
-                        const faqRes = await fetch('{{ config("app.url") }}/api/faqs', {
+                        // First, fetch all FAQs from the same endpoint used by the table (admin controller faqList)
+                        const faqRes = await fetch(`${LIST_URL}?status=all&per_page=10000`, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         });
 
                         if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from API');
+                            throw new Error('Failed to fetch FAQs from admin list');
                         }
 
                         const faqData = await faqRes.json();
-                        const faqs = faqData.faqs || [];
+                        const faqs = faqData.items || [];
 
-                        // Transform FAQs to match Rasa batch endpoint format
+                        console.log('[FAQ Sync] Fetched FAQs from admin list:', faqs.length);
+
+                        // Transform ALL FAQs (including disabled) to match Rasa endpoint format
                         const faqsForRasa = faqs.map((faq) => ({
                             id: faq.id,
                             intent: faq.intent,
                             description: faq.description || '',
+                            response: faq.response || '',
                             response_disabled: faq.response_disabled || false,
-                            sync_type: 'update' // All are updates for full sync
+                            status: faq.status || 'untrained'
                         }));
 
-                        // Send to Rasa batch endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_updater.batch_url", config("services.faq_updater.url")) }}', {
+                        console.log('[FAQ Sync] Prepared FAQs for Rasa:', faqsForRasa.length);
+                        console.log('[FAQ Sync] Sending to:', '{{ config("services.faq_sync.url") }}');
+
+                        // Send to Rasa sync endpoint
+                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',
                             headers: {
                                 'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_updater.secret") }}',
@@ -1535,13 +1552,18 @@
 
                         const result = await rasaRes.json();
 
+                        console.log('[FAQ Sync] Rasa response:', result);
+
                         if (!rasaRes.ok || !result.ok) {
+                            console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
                             throw new Error(result.error || 'Rasa sync failed');
                         }
 
+                        console.log('[FAQ Sync] Success! Synced FAQs:', result.summary || result);
+
                         // Clear pending changes on successful sync
                         setPendingChanges(false);
-                        showToast('success', `FAQ cache synced successfully (${result.summary.successful}/${result.summary.total} FAQs)`);
+                        showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
 
                     } catch (err) {
                         console.error('Sync error:', err);

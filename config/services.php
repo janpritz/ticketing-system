@@ -51,4 +51,9 @@ return [
         'secret' => env('FAQ_REFETCH_SECRET'),
     ],
 
+    'faq_sync' => [
+        'url' => env('FAQ_SYNC_URL'),
+        'secret' => env('FAQ_UPDATER_SECRET'),
+    ],
+
 ];
