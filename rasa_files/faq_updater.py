@@ -1,10 +1,10 @@
-# rasa_files/faq_updater.py
+# programs/faq_updater.py
 # Flask microservice that accepts POST /sync-faqs with FAQ data and generates dynamic actions
 #
 # Usage:
 #   export FAQ_UPDATER_SECRET="your-secret"                # optional (recommended)
 #   export RASA_ACTIONS_RESTART_CMD="supervisorctl restart rasa-actions"  # optional
-#   python rasa_files/faq_updater.py
+#   python programs/faq_updater.py
 #
 # The /sync-faqs endpoint expects JSON:
 #   {
@@ -21,9 +21,8 @@
 #   }
 #
 # It will:
-#  - Store FAQ data in faq_cache.json
-#  - Regenerate all action classes in rasa_files/actions.py
-#  - Update flow blocks in rasa_files/data/flows/faqs_flow.yml
+#  - Store FAQ data in database/faqs.json
+#  - Generate dynamic action classes in programs/actions.py
 #  - Optionally restart Rasa actions if RASA_ACTIONS_RESTART_CMD is set
 #
 # Safety:
@@ -46,13 +45,18 @@ import json
 from dotenv import load_dotenv
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# Enable CORS for all routes with explicit configuration
+CORS(app, 
+     origins=["*"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "X-FAQ-UPDATER-TOKEN"],
+     expose_headers=["Content-Type"],
+     supports_credentials=False)
 
 # Paths (relative to this file)
 BASE_DIR = Path(__file__).parent
 PROJECT_ROOT = BASE_DIR.parent
 ACTIONS_FILE = BASE_DIR / "actions.py"
-FAQS_FLOW_FILE = BASE_DIR / "data/flows/faqs_flow.yml"
 FAQS_TXT_FILE = PROJECT_ROOT / "docs" / "faqs.txt"
 # Load environment variables from .env file
 load_dotenv(BASE_DIR.parent / '.env')
@@ -61,206 +65,7 @@ load_dotenv(BASE_DIR.parent / '.env')
 LOCK_SUFFIX = ".lock"
 LOCK_TIMEOUT = 10
 
-# Optional secret for simple verification
 FAQ_UPDATER_SECRET = os.environ.get("FAQ_UPDATER_SECRET")
-
-
-def save_faqs_as_txt(faqs: list):
-    """Convert FAQs to text format and save to docs/faqs.txt"""
-    try:
-        # Ensure docs directory exists
-        FAQS_TXT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        
-        lines = []
-        lines.append("=" * 80)
-        lines.append("FAQ DATABASE - TEXT FORMAT")
-        lines.append(f"Generated: {datetime.now().isoformat()}")
-        lines.append(f"Total FAQs: {len(faqs)}")
-        lines.append("=" * 80)
-        lines.append("")
-        
-        for faq in faqs:
-            intent = faq.get('intent', 'Unknown')
-            response = faq.get('response', '')
-            description = faq.get('description', '')
-            faq_id = faq.get('id', 'N/A')
-            
-            lines.append("-" * 80)
-            lines.append(f"ID: {faq_id}")
-            lines.append(f"INTENT: {intent}")
-            if description:
-                lines.append(f"DESCRIPTION: {description}")
-            lines.append("")
-            lines.append("RESPONSE:")
-            lines.append(response)
-            lines.append("")
-        
-        lines.append("-" * 80)
-        lines.append("END OF FAQ DATABASE")
-        lines.append("=" * 80)
-        
-        with open(FAQS_TXT_FILE, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines))
-        
-        print(f"[faq_updater] Saved {len(faqs)} FAQs to {FAQS_TXT_FILE}")
-        return True
-    except Exception as e:
-        print(f"[faq_updater] Error saving FAQs to txt: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return False
-
-
-def normalize_intent(intent: str) -> str:
-    """
-    Normalizes intent according to rules:
-     - lowercase
-     - spaces => underscores
-     - strip non-alphanumeric/underscore characters
-    """
-    s = intent.strip().lower()
-    s = re.sub(r"\s+", "_", s)
-    s = re.sub(r"[^a-z0-9_]", "", s)
-    return s
-
-def camel_case(s: str) -> str:
-    parts = s.split("_")
-    return "".join(p.capitalize() for p in parts if p)
-
-def action_class_name(intent_norm: str) -> str:
-    return f"ActionUtter{camel_case(intent_norm)}"
-
-def action_function_name(intent_norm: str) -> str:
-    return f"action_utter_{intent_norm}"
-
-def flow_key(intent_norm: str) -> str:
-    return f"{intent_norm}_flow"
-
-def append_action_class(intent_norm: str, intent_raw: str) -> bool:
-    """
-    Appends an action class to actions.py.
-    Returns True if appended, False if already exists.
-    """
-    cls_name = action_class_name(intent_norm)
-    func_name = action_function_name(intent_norm)
-    pattern = rf"class\s+{re.escape(cls_name)}\s*\("
-    lock_path = str(ACTIONS_FILE) + LOCK_SUFFIX
-    os.makedirs(os.path.dirname(str(ACTIONS_FILE)), exist_ok=True)
-
-    # Ensure actions.py exists with the required helpers
-    if not os.path.exists(ACTIONS_FILE):
-        try:
-            with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
-                f.write("# actions.py (auto-generated header)\n\n")
-                f.write("from typing import Any, Text, Dict, List, Optional\n")
-                f.write("from rasa_sdk import Action, Tracker\n")
-                f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-                f.write("# Dynamic FAQ actions will be appended below\n\n")
-            print(f"[faq_updater] Created new actions file at {ACTIONS_FILE}")
-        except Exception as e:
-            print(f"[faq_updater] ERROR creating actions.py at {ACTIONS_FILE}: {e}", file=sys.stderr)
-            traceback.print_exc()
-            raise
-
-    try:
-        with FileLock(lock_path, timeout=LOCK_TIMEOUT):
-            with open(ACTIONS_FILE, "r+", encoding="utf-8") as f:
-                content = f.read()
-                if re.search(pattern, content):
-                    print(f"[faq_updater] Action class {cls_name} already exists in {ACTIONS_FILE}")
-                    return False
-
-                # Prepare class code
-                class_code = f"""
-class {cls_name}(Action):
-    def name(self) -> str:
-        return "{func_name}"
-
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: dict):
-
-        # Placeholder response - FAQ data will be loaded from database
-        dispatcher.utter_message(
-            text="FAQ response for {intent_raw}"
-        )
-        return []
-"""
-                f.seek(0, os.SEEK_END)
-                f.write(class_code)
-                print(f"[faq_updater] Appended action class {cls_name} to {ACTIONS_FILE}")
-        return True
-    except Exception as e:
-        print(f"[faq_updater] ERROR appending action class {cls_name}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return False
-
-def append_flow(intent_norm: str, description: str) -> bool:
-    """
-    Appends a flow block to faqs_flow.yml.
-    Returns True if appended, False if already exists.
-    Tries to preserve existing file indentation:
-      - If file contains an indented flow key (under a 'flows:' section), append with same indent.
-      - If file contains a top-level 'flows:' key, append under it with 2-space indent.
-      - Otherwise append as a top-level flow block.
-    """
-    # Ensure parent directory exists
-    os.makedirs(os.path.dirname(str(FAQS_FLOW_FILE)), exist_ok=True)
-    lock_path = str(FAQS_FLOW_FILE) + LOCK_SUFFIX
-    try:
-        if not os.path.exists(str(FAQS_FLOW_FILE)):
-            # create empty file
-            with open(str(FAQS_FLOW_FILE), "w", encoding="utf-8") as f:
-                f.write("# FAQ flows (auto-appended)\n\n")
-            print(f"[faq_updater] Created new flows file at {FAQS_FLOW_FILE}")
-    except Exception as e:
-        print(f"[faq_updater] ERROR creating flows file {FAQS_FLOW_FILE}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return False
-
-    key = flow_key(intent_norm)
-    try:
-        with FileLock(lock_path, timeout=LOCK_TIMEOUT):
-            with open(str(FAQS_FLOW_FILE), "r+", encoding="utf-8") as f:
-                content = f.read()
-
-                # If the exact key exists anywhere (top-level or indented), skip
-                if re.search(rf"^\s*{re.escape(key)}\s*:", content, flags=re.MULTILINE):
-                    print(f"[faq_updater] Flow {key} already exists in {FAQS_FLOW_FILE}")
-                    return False
-
-                # Detect indentation style:
-                # 1) look for an indented flow key (e.g., "  appendix_f_flow:")
-                m = re.search(r"^(\s+)[a-z0-9_]+_flow\s*:", content, flags=re.MULTILINE)
-                if m:
-                    indent = m.group(1)
-                    print(f"[faq_updater] Detected indented flow style (indent={len(indent)} spaces)")
-                else:
-                    # 2) detect a top-level 'flows:' section
-                    has_flows_section = bool(re.search(r'^\s*flows\s*:\s*$', content, flags=re.MULTILINE))
-                    if has_flows_section:
-                        indent = "  "  # default 2-space indent under flows:
-                        print("[faq_updater] Detected 'flows:' section; will append under it with 2-space indent")
-                    else:
-                        indent = None
-                        print("[faq_updater] No flows section detected; will append top-level flow")
-
-                desc_single = description.replace("\n", " ").replace(":", "\\:")
-
-                if indent is not None:
-                    # Append under flows: (indented block)
-                    flow_block = f"\n{indent}{key}:\n{indent}  description: {desc_single}\n{indent}  steps:\n{indent}    - action: {action_function_name(intent_norm)}\n"
-                else:
-                    # Append as top-level flow
-                    flow_block = f"\n{key}:\n  description: {desc_single}\n  steps:\n    - action: {action_function_name(intent_norm)}\n"
-
-                f.seek(0, os.SEEK_END)
-                f.write(flow_block)
-                print(f"[faq_updater] Appended flow {key} to {FAQS_FLOW_FILE} (indent={'top' if indent is None else len(indent)})")
-        return True
-    except Exception as e:
-        print(f"[faq_updater] ERROR appending flow {key}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return False
 
 def verify_secret(req) -> bool:
     """
@@ -278,6 +83,102 @@ def verify_secret(req) -> bool:
     # Debug: do not print token value directly; just show presence and length
     print(f"[faq_updater] Received token header of length {len(token)}")
     return hmac.compare_digest(token, FAQ_UPDATER_SECRET)
+
+def normalize_intent(intent: str) -> str:
+    """Normalize intent name for consistent usage"""
+    return re.sub(r'[^a-zA-Z0-9]+', '_', intent.strip().lower()).strip('_')
+
+def save_faqs_as_txt(faqs: list) -> None:
+    """Save FAQs to a text file for documentation purposes"""
+    try:
+        with open(FAQS_TXT_FILE, 'w', encoding='utf-8') as f:
+            f.write("# FAQs Documentation\n\n")
+            for faq in faqs:
+                f.write(f"## {faq.get('intent', 'Unknown Intent')}\n")
+                f.write(f"Description: {faq.get('description', 'No description')}\n")
+                f.write(f"Response: {faq.get('response', 'No response')}\n\n")
+        print(f"[faq_sync] Saved FAQs documentation to {FAQS_TXT_FILE}")
+    except Exception as e:
+        print(f"[faq_sync] WARNING: Failed to save FAQs as txt: {e}", file=sys.stderr)
+
+def append_action_class(intent_norm: str, intent_raw: str) -> bool:
+    """Append a dynamic action class to actions.py"""
+    try:
+        action_class_name = f"ActionFaq{intent_norm.title().replace('_', '')}"
+        
+        # Create action class content
+        action_content = f'''
+class {action_class_name}(Action):
+    def name(self) -> Text:
+        return "action_faq_{intent_norm}"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        try:
+            # Load FAQ data from database/faqs.json
+            faqs_file = Path(__file__).parent / "database" / "faqs.json"
+            response = "Sorry, I don't have information about that."
+            
+            if faqs_file.exists():
+                try:
+                    with open(faqs_file, 'r', encoding='utf-8') as f:
+                        faqs_data = json.load(f)
+                        faqs = faqs_data.get("faqs", [])
+                        
+                    # Find FAQ for this intent
+                    for faq in faqs:
+                        if normalize_intent(faq.get("intent", "")) == "{intent_norm}":
+                            response = faq.get("response", "Sorry, I don't have information about that.")
+                            break
+                except Exception:
+                    pass
+            
+            dispatcher.utter_message(text=response)
+            return []
+        except Exception as e:
+            dispatcher.utter_message(text="Sorry, I encountered an error while processing your request.")
+            return []
+
+'''
+        
+        # Append to actions file
+        with open(ACTIONS_FILE, 'a', encoding='utf-8') as f:
+            f.write(action_content)
+        
+        print(f"[faq_updater] Added action class {action_class_name} for intent '{intent_raw}'")
+        return True
+    except Exception as e:
+        print(f"[faq_updater] Failed to append action class: {e}", file=sys.stderr)
+        return False
+
+def append_flow(intent_norm: str, description: str) -> bool:
+    """Append a flow block to the FAQ flows file"""
+    try:
+        flow_content = f'''
+  - intent: {intent_norm}
+    description: {description}
+    action: action_faq_{intent_norm}
+'''
+        
+        # Create flows directory if it doesn't exist
+        flows_dir = BASE_DIR / "data" / "flows"
+        flows_dir.mkdir(parents=True, exist_ok=True)
+        
+        flows_file = flows_dir / "faqs_flow.yml"
+        
+        # Append flow to file
+        with open(flows_file, 'a', encoding='utf-8') as f:
+            f.write(flow_content)
+        
+        print(f"[faq_updater] Added flow for intent '{intent_norm}'")
+        return True
+    except Exception as e:
+        print(f"[faq_updater] Failed to append flow: {e}", file=sys.stderr)
+        return False
 
 @app.route("/sync-faqs", methods=["POST"])
 def sync_faqs():
@@ -336,7 +237,6 @@ def sync_faqs():
         # Also save to docs/faqs.txt
         save_faqs_as_txt(faqs)
 
-
         print(f"[faq_sync] Sync complete: {len(faqs)} FAQs saved")
 
         return jsonify({
@@ -354,30 +254,6 @@ def sync_faqs():
         print(f"[faq_sync] Unexpected error in /sync-faqs: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
-
-def regenerate_all_actions():
-    """Regenerate all action classes based on FAQs"""
-    try:
-        print("[faq_updater] Regenerating all action classes...")
-
-        # Clear existing actions file and recreate header
-        if os.path.exists(ACTIONS_FILE):
-            os.remove(ACTIONS_FILE)
-
-        # Ensure actions.py exists with the required helpers
-        os.makedirs(os.path.dirname(str(ACTIONS_FILE)), exist_ok=True)
-        with open(ACTIONS_FILE, "w", encoding="utf-8") as f:
-            f.write("# actions.py (auto-generated header)\n\n")
-            f.write("from typing import Any, Text, Dict, List, Optional\n")
-            f.write("from rasa_sdk import Action, Tracker\n")
-            f.write("from rasa_sdk.executor import CollectingDispatcher\n\n")
-            f.write("# Dynamic FAQ actions will be appended below\n\n")
-
-        print("[faq_updater] Regenerated action classes")
-
-    except Exception as e:
-        print(f"[faq_updater] Error regenerating actions: {e}", file=sys.stderr)
-        traceback.print_exc()
 
 @app.route("/upload-file", methods=["POST"])
 def upload_file():
@@ -495,6 +371,21 @@ def update_faq():
         print(f"[faq_updater] Unexpected error in /update-faq: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/upload-file", methods=["POST", "OPTIONS"])
+@app.route("/sync-faqs", methods=["POST", "OPTIONS"])  
+@app.route("/update-faq", methods=["POST", "OPTIONS"])
+def handle_preflight():
+    """Handle preflight CORS requests"""
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "OK"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN")
+        response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        return response
+    else:
+        # This should not be reached as Flask will route to the appropriate function
+        return jsonify({"error": "Method not allowed"}), 405
 
 if __name__ == "__main__":
     port = int(os.environ.get("FAQ_UPDATER_PORT", 5001))
