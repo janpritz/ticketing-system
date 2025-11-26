@@ -18,7 +18,7 @@ class FaqController extends Controller
      */
     public function index()
     {
-        $faqs = Faq::where('status', 'trained')
+        $faqs = Faq::where('response_disabled', false)
             ->select('id', 'intent', 'response', 'description', 'response_disabled')
             ->get()
             ->map(function ($faq) {

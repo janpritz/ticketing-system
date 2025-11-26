@@ -87,9 +87,8 @@ class FaqSyncService
      */
     public function sendBatchToRasa(): array
     {
-        // Get all trained, enabled FAQs
-        $faqs = Faq::where('status', 'trained')
-            ->where('response_disabled', false)
+        // Get all enabled FAQs
+        $faqs = Faq::where('response_disabled', false)
             ->select('id', 'intent', 'description', 'response')
             ->get();
 

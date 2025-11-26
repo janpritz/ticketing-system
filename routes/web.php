@@ -156,11 +156,6 @@ Route::middleware('auth')->group(function () {
         // Undo most recent change for a FAQ
         Route::post('/{faq}/undo', [AdminController::class, 'faqsUndo'])->whereNumber('faq')->name('undo');
 
-        // Mark FAQ as trained
-        Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
-
-        // Mark FAQ as not trained (revert trained -> untrained)
-        Route::post('/{faq}/untrain', [AdminController::class, 'faqsUntrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('untrain');
 
         // Disable / Enable FAQ response (used to temporarily unpublish an answer without deleting)
         Route::post('/{faq}/disable', [AdminController::class, 'faqsDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');

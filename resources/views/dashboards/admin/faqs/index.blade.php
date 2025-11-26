@@ -349,13 +349,6 @@
                     </svg>
                 </button>
 
-                <!-- Action pills (Train / Untrain) shown to the left of the "more actions" menu -->
-                <div id="actionPills" class="absolute top-3 right-28 hidden space-x-2">
-                    <button id="trainPillBtn" type="button"
-                        class="rounded-full px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium hidden">Train</button>
-                    <button id="untrainPillBtn" type="button"
-                        class="rounded-full px-3 py-1.5 bg-yellow-400 text-sm font-medium text-slate-900 hidden">Untrain</button>
-                </div>
                 <button id="moreActionsBtn" type="button"
                     class="absolute top-3 right-12 text-slate-500 hover:text-slate-700 hidden" aria-label="More actions">
                     <span class="text-xl font-bold">⋯</span>
@@ -371,10 +364,6 @@
                         <button id="more_restore_btn" type="button"
                             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Restore
                             FAQ</button>
-                        <button id="more_train_btn" type="button"
-                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Train</button>
-                        <button id="more_untrain_btn" type="button"
-                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Untrain</button>
                     </div>
                 </div>
 
@@ -455,8 +444,6 @@
         data-destroy-url-template="{{ route('admin.faqs.destroy', ['faq' => '__ID__']) }}"
         data-revisions-url-template="{{ route('admin.faqs.revisions', ['faq' => '__ID__']) }}"
         data-restore-url-template="{{ route('admin.faqs.restore', ['faq' => '__ID__']) }}"
-        data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"
-        data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"
         data-enable-url-template="{{ route('admin.faqs.enable', ['faq' => '__ID__']) }}"
         data-disable-url-template="{{ route('admin.faqs.disable', ['faq' => '__ID__']) }}"></div>
 
@@ -487,8 +474,6 @@
             const UPDATE_TEMPLATE = stateEl.getAttribute('data-update-url-template');
             const DESTROY_TEMPLATE = stateEl.getAttribute('data-destroy-url-template');
             const RESTORE_TEMPLATE = stateEl.getAttribute('data-restore-url-template');
-            const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
-            const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
             const ENABLE_TEMPLATE = stateEl.getAttribute('data-enable-url-template');
             const DISABLE_TEMPLATE = stateEl.getAttribute('data-disable-url-template');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -536,8 +521,6 @@
             const moreMenu = $('#moreActionsMenu');
             const moreRestoreBtn = $('#more_restore_btn');
             const moreRevisionsBtn = $('#more_revisions_btn');
-            const moreTrainBtn = $('#more_train_btn');
-            const moreUntrainBtn = $('#more_untrain_btn');
 
             // Previous revision elements (collapsible)
             const prevWrapper = $('#previousRevisionWrapper');
@@ -611,8 +594,6 @@
             let currentPerPage = parseInt(perPageSelect.value || '25', 10);
             let autoRefreshInterval = null;
             let showDeleted = false;
-            // status filter: 'all' (default) shows all statuses; 'trained' shows only trained FAQs
-            let currentStatus = 'all';
 
             function openModal(modal) {
                 if (modal) modal.classList.remove('hidden');
@@ -628,7 +609,7 @@
                 const q = encodeURIComponent((qInput.value || '').trim());
                 const per = perPageSelect.value || '25';
                 const url =
-                    `${LIST_URL}?q=${q}&per_page=${per}&page=${page}&include_deleted=${showDeleted ? '1' : '0'}&status=${encodeURIComponent(currentStatus)}`;
+                    `${LIST_URL}?q=${q}&per_page=${per}&page=${page}&include_deleted=${showDeleted ? '1' : '0'}`;
                 try {
                     const res = await fetch(url, {
                         headers: {
@@ -930,20 +911,6 @@
                 $('#view_description').value = faq.description || '';
                 viewResponse.value = faq.response || '';
                 viewTimestamps.textContent = `Created: ${faq.created_at || ''} | Updated: ${faq.updated_at || ''}`;
-
-                // Show/hide action buttons based on FAQ state
-                const actionPills = $('#actionPills');
-                const trainPill = $('#trainPillBtn');
-                const untrainPill = $('#untrainPillBtn');
-                
-                if (faq.status === 'trained') {
-                    if (trainPill) trainPill.classList.add('hidden');
-                    if (untrainPill) untrainPill.classList.remove('hidden');
-                } else {
-                    if (trainPill) trainPill.classList.remove('hidden');
-                    if (untrainPill) untrainPill.classList.add('hidden');
-                }
-                if (actionPills) actionPills.classList.remove('hidden');
 
                 // Show more actions button
                 if (moreBtn) moreBtn.classList.remove('hidden');
@@ -1413,69 +1380,6 @@
                 });
             }
 
-            // Train/Untrain pill buttons
-            const trainPill = $('#trainPillBtn');
-            const untrainPill = $('#untrainPillBtn');
-
-            if (trainPill) {
-                trainPill.addEventListener('click', async () => {
-                    const id = viewFaqId.value;
-                    const url = TRAIN_TEMPLATE.replace('__ID__', id);
-                    try {
-                        trainPill.disabled = true;
-                        const res = await fetch(url, {
-                            method: 'PUT',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-                        const json = await res.json();
-                        if (!res.ok) {
-                            throw new Error(json.message || 'Failed to train FAQ');
-                        }
-                        setPendingChanges(true);
-                        showToast('success', 'FAQ marked as trained');
-                        closeModal(viewModal);
-                        fetchList(currentPage);
-                    } catch (err) {
-                        showToast('error', err.message || 'Error');
-                        console.error(err);
-                    } finally {
-                        trainPill.disabled = false;
-                    }
-                });
-            }
-
-            if (untrainPill) {
-                untrainPill.addEventListener('click', async () => {
-                    const id = viewFaqId.value;
-                    const url = UNTRAIN_TEMPLATE.replace('__ID__', id);
-                    try {
-                        untrainPill.disabled = true;
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-                        const json = await res.json();
-                        if (!res.ok) {
-                            throw new Error(json.message || 'Failed to untrain FAQ');
-                        }
-                        setPendingChanges(true);
-                        showToast('success', 'FAQ marked as untrained');
-                        closeModal(viewModal);
-                        fetchList(currentPage);
-                    } catch (err) {
-                        showToast('error', err.message || 'Error');
-                        console.error(err);
-                    } finally {
-                        untrainPill.disabled = false;
-                    }
-                });
-            }
 
             // FAQ Change Tracking
             const FAQ_CHANGES_KEY = 'faq_changes_pending';

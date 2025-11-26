@@ -16,7 +16,6 @@ class Faq extends Model
         'intent',
         'description',
         'response',
-        'status',
         'response_disabled',
     ];
 

@@ -29,8 +29,8 @@ class AdminController extends Controller
         $openTickets = Ticket::where('status', 'Open')->count();
         $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
         $faqCount = Faq::count();
-        // number of untrained FAQs (displayed under Total FAQs on dashboard)
-        $faqPendingCount = Faq::where('status', 'untrained')->count();
+        // number of new FAQs (created today, displayed under Total FAQs on dashboard)
+        $faqPendingCount = Faq::whereDate('created_at', today())->count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes (based on sessions table)
@@ -186,8 +186,8 @@ class AdminController extends Controller
         $openTickets = Ticket::where('status', 'Open')->count();
         $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
         $faqCount = Faq::count();
-        // include untrained FAQ count for live admin data
-        $faqPendingCount = Faq::where('status', 'untrained')->count();
+        // include new FAQ count for live admin data
+        $faqPendingCount = Faq::whereDate('created_at', today())->count();
         $userCount = User::count();
 
         // Active staff in the last 10 minutes
@@ -569,41 +569,19 @@ class AdminController extends Controller
         $perPage = (int) $request->query('per_page', 25);
         if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
 
-        // Accept 'untrained', 'trained' or 'all' for preview statuses.
-        // When 'all' is requested, do not apply a status filter.
-        $status = trim((string) $request->query('status', 'untrained'));
-        $allowedStatuses = ['untrained', 'trained', 'all'];
-        if (!in_array($status, $allowedStatuses, true)) {
-            $status = 'untrained';
-        }
- 
-        // Build base query (search + optional status filter)
+        // Build base query (search)
         $faqsQuery = Faq::when($q !== '', function ($query) use ($q) {
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('intent', 'like', $like)
                        ->orWhere('response', 'like', $like);
                 });
-            })
-            // apply status filter only when a specific status is requested (not 'all')
-            ->when($status !== 'all', function ($query) use ($status) {
-                $query->where('status', $status);
             });
 
-        // When showing "all" prioritize trained FAQs first, then sort by intent.
-        // For specific-status views keep the normal alphabetical intent sort.
-        if ($status === 'all') {
-            $faqs = $faqsQuery
-                ->orderByRaw("CASE WHEN status = 'trained' THEN 0 ELSE 1 END")
-                ->orderBy('intent')
-                ->paginate($perPage)
-                ->appends(['q' => $q, 'per_page' => $perPage, 'status' => $status]);
-        } else {
-            $faqs = $faqsQuery
-                ->orderBy('intent')
-                ->paginate($perPage)
-                ->appends(['q' => $q, 'per_page' => $perPage, 'status' => $status]);
-        }
+        $faqs = $faqsQuery
+            ->orderBy('intent')
+            ->paginate($perPage)
+            ->appends(['q' => $q, 'per_page' => $perPage]);
 
         // Format items so created_at / updated_at use "yyyy-mm-dd hh:mm am/pm"
         $items = array_map(function ($f) {
@@ -612,7 +590,6 @@ class AdminController extends Controller
                 'intent' => $f->intent,
                 'description' => $f->description ?? '',
                 'response' => $f->response,
-                'status' => $f->status,
                 'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
@@ -671,7 +648,6 @@ class AdminController extends Controller
                 'intent' => $f->intent,
                 'description' => $f->description ?? '',
                 'response' => $f->response,
-                'status' => $f->status,
                 'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
@@ -726,16 +702,13 @@ class AdminController extends Controller
             'response' => $faq->response,
             'created_at' => optional($faq->created_at)->format('Y-m-d h:i a'),
             'updated_at' => optional($faq->updated_at)->format('Y-m-d h:i a'),
-            'status' => $faq->status,
             'response_disabled' => (bool) ($faq->response_disabled ?? false),
             'can_restore' => $canRestore,
             'can_revert' => $canRevert,
             'can_undo' => $canUndo,
-            'can_untrain' => ($faq->status === 'trained'),
             'revisions_url' => route('admin.faqs.revisions', ['faq' => $faq->id]),
             'restore_url' => route('admin.faqs.restore', ['faq' => $faq->id]),
             'undo_url' => route('admin.faqs.undo', ['faq' => $faq->id]),
-            'untrain_url' => route('admin.faqs.untrain', ['faq' => $faq->id]),
             'latest_revision' => $latestRevision,
         ]);
     }
@@ -822,10 +795,6 @@ class AdminController extends Controller
         }
 
         // Not trashed yet — perform soft-delete and record deletion revision
-        // Mark status as 'deleted' for audit/filters, then soft-delete
-        $faq->status = 'deleted';
-        $faq->save();
-
         $faq->delete();
 
         // Create a revision snapshot for the deletion event (auditable)
@@ -856,10 +825,6 @@ class AdminController extends Controller
 
         // Restore the soft-deleted model
         $faq->restore();
-
-        // After restore, set status back to 'untrained' (per new convention)
-        $faq->status = 'untrained';
-        $faq->save();
 
         // Record a revision for the restore action so it is auditable / undoable
         FaqRevision::create([
@@ -1001,7 +966,6 @@ class AdminController extends Controller
                        ->orWhere('response', 'like', $like);
                 });
             })
-            ->where('status', 'untrained')
             ->orderBy('intent')
             ->paginate($perPage)
             ->appends(['q' => $q, 'per_page' => $perPage]);
@@ -1013,7 +977,6 @@ class AdminController extends Controller
                 'intent' => $f->intent,
                 'description' => $f->description ?? '',
                 'response' => $f->response,
-                'status' => $f->status,
                 'response_disabled' => (bool) ($f->response_disabled ?? false),
                 'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
                 'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
@@ -1031,51 +994,6 @@ class AdminController extends Controller
         ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
-    /**
-     * Mark FAQ as trained (AJAX)
-     */
-    public function faqsTrain(Request $request, Faq $faq)
-    {
-        $this->ensureAdmin();
-
-        if ($faq->status !== 'untrained') {
-            return response()->json(['message' => 'FAQ is not untrained'], 422);
-        }
-
-        $faq->status = 'trained';
-        $faq->save();
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
-
-    /**
-     * Mark FAQ as not trained (AJAX) — used when the chatbot reports an incorrect trained response.
-     *
-     * This sets the FAQ status back to 'pending' and records a revision for audit.
-     */
-    public function faqsUntrain(Request $request, Faq $faq)
-    {
-        $this->ensureAdmin();
-
-        if ($faq->status !== 'trained') {
-            return response()->json(['message' => 'FAQ is not marked as trained'], 422);
-        }
-
-        // Save a revision snapshot so this change is auditable
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'untrain',
-            'meta'     => null,
-        ]);
-
-        $faq->status = 'untrained';
-        $faq->save();
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
 
     /**
      * Disable a FAQ response so external systems (Rasa) will treat it as unavailable.
