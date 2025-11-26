@@ -522,6 +522,30 @@
             const moreRestoreBtn = $('#more_restore_btn');
             const moreRevisionsBtn = $('#more_revisions_btn');
 
+            // More actions button toggle
+            if (moreBtn) {
+                moreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    moreMenu.classList.toggle('hidden');
+                });
+            }
+
+            // Hide menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (moreMenu && !moreMenu.contains(e.target) && e.target !== moreBtn) {
+                    moreMenu.classList.add('hidden');
+                }
+            });
+
+            // More revisions button handler
+            if (moreRevisionsBtn) {
+                moreRevisionsBtn.addEventListener('click', () => {
+                    const id = viewFaqId.value;
+                    const url = stateEl.getAttribute('data-revisions-url-template').replace('__ID__', id);
+                    window.location.href = url;
+                });
+            }
+
             // Previous revision elements (collapsible)
             const prevWrapper = $('#previousRevisionWrapper');
             const togglePrevBtn = $('#togglePrevRevisionBtn');
@@ -915,6 +939,19 @@
                 // Show more actions button
                 if (moreBtn) moreBtn.classList.remove('hidden');
 
+                // Show/hide more actions menu items
+                if (moreRevisionsBtn) {
+                    if (faq.latest_revision) {
+                        moreRevisionsBtn.classList.remove('hidden');
+                    } else {
+                        moreRevisionsBtn.classList.add('hidden');
+                    }
+                }
+                if (moreRestoreBtn) {
+                    // Hide restore button for active FAQs (only show in deleted view if needed)
+                    moreRestoreBtn.classList.add('hidden');
+                }
+
                 // Handle previous revision display
                 if (faq.latest_revision && prevWrapper) {
                     prevWrapper.classList.remove('hidden');
@@ -1067,6 +1104,12 @@
 
                         // Clear pending changes on successful sync
                         setPendingChanges(false);
+                        // Set synced pending training flag
+                        try {
+                            localStorage.setItem('faq_synced_pending_training', 'true');
+                        } catch (e) {
+                            // localStorage not available
+                        }
                         showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
 
                     } catch (err) {
@@ -1469,6 +1512,12 @@
 
                         // Clear pending changes on successful sync
                         setPendingChanges(false);
+                        // Set synced pending training flag
+                        try {
+                            localStorage.setItem('faq_synced_pending_training', 'true');
+                        } catch (e) {
+                            // localStorage not available
+                        }
                         showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
 
                     } catch (err) {

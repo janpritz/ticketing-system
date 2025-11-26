@@ -128,6 +128,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{user}/edit', [AdminController::class, 'usersEdit'])->whereNumber('user')->name('edit');
         Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
         Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
+
+        // Deleted users view + restore
+        Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');
+        Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');
     });
 
     // Admin FAQ management (CRUD via AJAX)

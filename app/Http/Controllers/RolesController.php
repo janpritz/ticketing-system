@@ -151,11 +151,20 @@ class RolesController extends Controller
         $this->ensureAdmin();
 
         if (strtolower((string)$role->name) === 'primary administrator') {
-            return back()->withErrors(['delete' => 'Cannot delete Primary Administrator role.']);
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete Primary Administrator role.'
+            ], 422);
         }
 
-        // Unassign users that reference this role (set role_id to null)
-        User::where('role_id', $role->id)->update(['role_id' => null]);
+        // Check if any users (including soft deleted) are assigned to this role
+        $userCount = User::withTrashed()->where('role_id', $role->id)->count();
+        if ($userCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete role '{$role->name}' because {$userCount} user(s) are assigned to it. Please reassign or remove the users first."
+            ], 422);
+        }
 
         $role->delete();
 
@@ -166,7 +175,10 @@ class RolesController extends Controller
             Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
         }
 
-        return redirect()->route('admin.roles.index')->with('status', 'Role deleted.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Role deleted successfully.'
+        ]);
     }
 
     /**

@@ -24,12 +24,37 @@
         </a>
       </li>
       <li>
-        <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
-            <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+        <button type="button" id="userManagementDropdown" class="w-full flex items-center justify-between p-2 text-gray-900 rounded-lg hover:bg-gray-100 group" aria-expanded="false">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">User Management</span>
+          </div>
+          <svg id="userManagementChevron" class="w-4 h-4 text-gray-500 transition-transform duration-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
-          <span class="ms-3">User Management</span>
-        </a>
+        </button>
+        <div id="userManagementMenu" class="hidden pl-4 mt-1 space-y-1">
+          <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">Users</span>
+          </a>
+          <a href="{{ route('admin.roles.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="ms-3">Role Management</span>
+          </a>
+          <a href="{{ route('admin.categories.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
+            <span class="ms-3">Category Management</span>
+          </a>
+        </div>
       </li>
       <li>
         <a href="{{ route('admin.tickets.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
@@ -97,16 +122,16 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <div>
-                    <h3 class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
-                    <p class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
+                    <h3 id="faqSyncTitle" class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
+                    <p id="faqSyncDesc" class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
                 </div>
             </div>
-            <a href="{{ route('admin.faqs.index') }}" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+            <button id="faqSyncActionBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Sync Now
-            </a>
+            </button>
         </div>
 
         <!-- Metrics -->
@@ -629,6 +654,7 @@
      data-staff-contacts='@json($staffContacts ?? [])'
      data-admin-url="{{ route('admin.dashboard.data') }}"></div>
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -979,10 +1005,50 @@
         // FAQ Sync Alert Management
         function updateFaqSyncAlert() {
             const alertEl = document.getElementById('faqSyncAlert');
-            if (!alertEl) return;
+            const titleEl = document.getElementById('faqSyncTitle');
+            const descEl = document.getElementById('faqSyncDesc');
+            const actionBtn = document.getElementById('faqSyncActionBtn');
+            if (!alertEl || !titleEl || !descEl || !actionBtn) return;
             try {
                 const hasPending = localStorage.getItem('faq_changes_pending') === 'true';
-                alertEl.classList.toggle('hidden', !hasPending);
+                const syncedPendingTraining = localStorage.getItem('faq_synced_pending_training') === 'true';
+                if (hasPending) {
+                    titleEl.textContent = 'FAQ Sync Required';
+                    descEl.textContent = 'There are pending FAQ changes that need to be synced to Rasa.';
+                    actionBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Sync Now';
+                    actionBtn.onclick = () => window.location.href = '{{ route("admin.faqs.index") }}';
+                    alertEl.classList.remove('hidden');
+                } else if (syncedPendingTraining) {
+                    titleEl.textContent = 'FAQ Sync Completed';
+                    descEl.textContent = 'Faqs are now sync with rasa make sure to run training to update the responses.';
+                    actionBtn.innerHTML = 'Faqs Trained';
+                    actionBtn.onclick = () => {
+                        Swal.fire({
+                            title: 'Did you run rasa training?',
+                            showDenyButton: true,
+                            confirmButtonText: 'Yes',
+                            denyButtonText: 'No',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                localStorage.setItem('faq_synced_pending_training', 'false');
+                                updateFaqSyncAlert();
+                                // Show success toast
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Faqs are now trained. Responses are now live.',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        });
+                    };
+                    alertEl.classList.remove('hidden');
+                } else {
+                    alertEl.classList.add('hidden');
+                }
             } catch (e) {
                 // localStorage not available
             }
@@ -993,7 +1059,7 @@
 
         // Listen for localStorage changes (cross-tab)
         window.addEventListener('storage', (e) => {
-            if (e.key === 'faq_changes_pending') {
+            if (e.key === 'faq_changes_pending' || e.key === 'faq_synced_pending_training') {
                 updateFaqSyncAlert();
             }
         });
@@ -1601,4 +1667,40 @@
   }
 })();
 </script>
+
+<!-- User Management Dropdown Script -->
+<script>
+(function () {
+  const dropdownBtn = document.getElementById('userManagementDropdown');
+  const dropdownMenu = document.getElementById('userManagementMenu');
+  const chevron = document.getElementById('userManagementChevron');
+
+  if (!dropdownBtn || !dropdownMenu || !chevron) return;
+
+  dropdownBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    
+    const isOpen = !dropdownMenu.classList.contains('hidden');
+    
+    // Toggle menu visibility
+    dropdownMenu.classList.toggle('hidden', isOpen);
+    
+    // Update aria-expanded
+    dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+    
+    // Rotate chevron
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      dropdownMenu.classList.add('hidden');
+      dropdownBtn.setAttribute('aria-expanded', 'false');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  });
+})();
+</script>
+
 @endsection

@@ -53,15 +53,11 @@
                       <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                     </svg>
                   </button>
-                  <form method="POST" action="{{ route('admin.roles.destroy', $role) }}">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" class="swalDeleteRoleBtn inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50" aria-label="Delete role">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z"/>
-                      </svg>
-                    </button>
-                  </form>
+                  <button type="button" class="deleteRoleBtn inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50" aria-label="Delete role" data-id="{{ $role->id }}" data-name="{{ $role->name }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z"/>
+                    </svg>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -204,14 +200,13 @@
   });
 
   // Intercept delete buttons and use SweetAlert confirmation
-  document.querySelectorAll('button[aria-label="Delete role"]').forEach(btn => {
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      const form = this.closest('form');
+  document.querySelectorAll('.deleteRoleBtn').forEach(btn => {
+    btn.addEventListener('click', async function (e) {
+      const id = this.getAttribute('data-id');
+      const name = this.getAttribute('data-name') || 'this role';
       const roleRow = this.closest('tr');
-      const roleNameEl = roleRow ? roleRow.querySelector('div.font-medium') : null;
-      const roleName = roleNameEl ? roleNameEl.textContent.trim() : 'this role';
-      Swal.fire({
+
+      const result = await Swal.fire({
         title: 'Delete role?',
         text: 'This will unassign the role from any users. This action cannot be undone.',
         icon: 'warning',
@@ -219,12 +214,56 @@
         confirmButtonText: 'Delete',
         cancelButtonText: 'Cancel',
         confirmButtonColor: '#d33'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Submit the form to perform delete
-          if (form) form.submit();
-        }
       });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const response = await fetch(`/admin/roles/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: data.message || 'Role deleted successfully',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+          // Remove the row
+          if (roleRow) roleRow.remove();
+        } else {
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: data.message || 'Failed to delete role',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: 'An error occurred',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      }
     });
   });
 
@@ -293,18 +332,7 @@
     });
   }
 
-  // Show success toast when session status exists
-  @if(session('status'))
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: {!! json_encode(session('status')) !!},
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true
-    });
-  @endif
+  // Success toasts are now handled by AJAX responses
 
 })();
 </script>

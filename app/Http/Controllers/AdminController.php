@@ -403,14 +403,17 @@ class AdminController extends Controller
 
     /**
      * List staff users (excluding Primary Administrator) with simple search + pagination.
+     *
+     * If called with ?include_deleted=1, shows deleted users.
      */
     public function usersIndex(Request $request)
     {
         $this->ensureAdmin();
 
         $q = trim((string) $request->query('q', ''));
+        $isDeleted = (bool) $request->query('include_deleted', false);
 
-        $users = User::whereHas('role', function ($qRole) {
+        $usersQuery = User::whereHas('role', function ($qRole) {
                 $qRole->where('name', '!=', 'Primary Administrator');
             })
             ->when($q !== '', function ($query) use ($q) {
@@ -423,14 +426,18 @@ class AdminController extends Controller
                        })
                        ->orWhere('category', 'like', $like);
                 });
-            })
-            ->orderBy('name')
-            ->paginate(10)
-            ->appends(['q' => $q]);
+            });
+
+        if ($isDeleted) {
+            $users = $usersQuery->onlyTrashed()->orderBy('name')->paginate(10)->appends(['q' => $q, 'include_deleted' => '1']);
+        } else {
+            $users = $usersQuery->orderBy('name')->paginate(10)->appends(['q' => $q]);
+        }
 
         return view('dashboards.admin.users.index', [
             'users' => $users,
             'q' => $q,
+            'isDeletedView' => $isDeleted,
         ]);
     }
 
@@ -539,6 +546,36 @@ class AdminController extends Controller
         $user->delete();
     
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');
+    }
+
+    /**
+     * Deleted users page (redirect)
+     *
+     * Redirects to the main users index with a flag so the index will load
+     * the deleted-list view.
+     */
+    public function usersDeletedIndex(Request $request)
+    {
+        $this->ensureAdmin();
+        return redirect()->route('admin.users.index', ['include_deleted' => '1']);
+    }
+
+    /**
+     * Restore a soft-deleted user.
+     */
+    public function usersRestore($userId)
+    {
+        $this->ensureAdmin();
+
+        $user = User::withTrashed()->findOrFail($userId);
+
+        if (!$user->trashed()) {
+            return back()->withErrors(['restore' => 'User is not deleted']);
+        }
+
+        $user->restore();
+
+        return redirect()->route('admin.users.index')->with('status', 'User restored.');
     }
 
     /**

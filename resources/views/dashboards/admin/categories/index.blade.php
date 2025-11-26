@@ -47,13 +47,9 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                   </a>
 
-                  <form method="POST" action="{{ route('admin.categories.destroy', $category) }}">
-                    @csrf
-                    @method('DELETE')
-                    <button type="button" class="swalDeleteCategoryBtn inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50" aria-label="Delete category">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z"/></svg>
-                    </button>
-                  </form>
+                  <button type="button" class="deleteCategoryBtn inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50" aria-label="Delete category" data-id="{{ $category->id }}" data-name="{{ $category->name }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z"/></svg>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -165,8 +161,8 @@
     if (e.key === 'Escape') hideModal();
   });
 
-  // If there were validation errors or old input from a form submit, open the modal so user sees errors
-  @if ($errors->any() || old('name') || old('role_id') || old('description'))
+  // If there were validation errors or old input from a create form submit, open the modal so user sees errors
+  @if (old('name') || old('role_id') || old('description'))
     document.addEventListener('DOMContentLoaded', function () { showModal(); });
   @endif
 
@@ -180,14 +176,13 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 (function(){
-  document.querySelectorAll('button[aria-label="Delete category"]').forEach(btn => {
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      const form = this.closest('form');
+  document.querySelectorAll('.deleteCategoryBtn').forEach(btn => {
+    btn.addEventListener('click', async function (e) {
+      const id = this.getAttribute('data-id');
+      const name = this.getAttribute('data-name') || 'this category';
       const row = this.closest('tr');
-      const nameEl = row ? row.querySelector('div.font-medium') : null;
-      const name = nameEl ? nameEl.textContent.trim() : 'this category';
-      Swal.fire({
+
+      const result = await Swal.fire({
         title: 'Delete category?',
         text: 'This will remove the category. This action cannot be undone.',
         icon: 'warning',
@@ -195,25 +190,60 @@
         confirmButtonText: 'Delete',
         cancelButtonText: 'Cancel',
         confirmButtonColor: '#d33'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          if (form) form.submit();
-        }
       });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const response = await fetch(`/admin/categories/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          }
+        });
+
+        // Always expect JSON response
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Success case
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: data.message || 'Category deleted successfully',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+          // Remove the row
+          if (row) row.remove();
+        } else {
+          // Error case - show the error message from server
+          Swal.fire({
+            title: 'Cannot Delete Category',
+            text: data.message || 'Failed to delete category',
+            icon: 'error',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#d33'
+          });
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        Swal.fire({
+          title: 'Error',
+          text: 'An error occurred while deleting the category',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#d33'
+        });
+      }
     });
   });
 
-  @if(session('status'))
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: {!! json_encode(session('status')) !!},
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true
-    });
-  @endif
+  // Success toasts are now handled by AJAX responses
 
 })();
 </script>

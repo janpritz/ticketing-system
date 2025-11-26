@@ -6,58 +6,84 @@
     <div class="sm:px-2">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">User Management</h1>
-                <p class="text-sm text-slate-500">Manage staff accounts (excluding Primary Administrator)</p>
+                <h1 class="text-2xl font-semibold text-slate-900">{{ $isDeletedView ? 'Deleted Users' : 'User Management' }}</h1>
+                <p class="text-sm text-slate-500">{{ $isDeletedView ? 'View and restore deleted staff accounts' : 'Manage staff accounts (excluding Primary Administrator)' }}</p>
             </div>
 
             <!-- Desktop actions -->
             <div class="hidden sm:flex items-center gap-2">
-                <a href="{{ route('admin.roles.index') }}"
-                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2 text-slate-700"
-                    aria-label="Manage Roles">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                        class="bi bi-person-fill-gear" viewBox="0 0 16 16">
-                        <path
-                            d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5.256A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1 1.544-3.393Q8.844 9.002 8 9c-5 0-6 3-6 4m9.886-3.54c.18-.613 1.048-.613 1.229 0l.043.148a.64.64 0 0 0 .921.382l.136-.074c.561-.306 1.175.308.87.869l-.075.136a.64.64 0 0 0 .382.92l.149.045c.612.18.612 1.048 0 1.229l-.15.043a.64.64 0 0 0-.38.921l.074.136c.305.561-.309 1.175-.87.87l-.136-.075a.64.64 0 0 0-.92.382l-.045.149c-.18.612-1.048.612-1.229 0l-.043-.15a.64.64 0 0 0-.921-.38l-.136.074c-.561.305-1.175-.309-.87-.87l.075-.136a.64.64 0 0 0-.382-.92l-.148-.045c-.613-.18-.613-1.048 0-1.229l.148-.043a.64.64 0 0 0 .382-.921l-.074-.136c-.306-.561.308-1.175.869-.87l.136.075a.64.64 0 0 0 .92-.382zM14 12.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0" />
-                    </svg>
-                    <span class="hidden sm:inline">Manage Roles</span>
-                </a>
-                <button id="openCreateModalBtn" type="button"
-                    class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
-                    aria-label="Add Staff">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
-                    </svg>
-                    <span class="hidden sm:inline">Add Staff</span>
-                </button>
+                @if ($isDeletedView)
+                    <a href="{{ route('admin.users.index') }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2">
+                        ← Back to User Management
+                    </a>
+                @else
+                    <a href="{{ route('admin.roles.index') }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2 text-slate-700"
+                        aria-label="Manage Roles">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-person-fill-gear" viewBox="0 0 16 16">
+                            <path
+                                d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5.256A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1 1.544-3.393Q8.844 9.002 8 9c-5 0-6 3-6 4m9.886-3.54c.18-.613 1.048-.613 1.229 0l.043.148a.64.64 0 0 0 .921.382l.136-.074c.561-.306 1.175.308.87.869l-.075.136a.64.64 0 0 0 .382.92l.149.045c.612.18.612 1.048 0 1.229l-.15.043a.64.64 0 0 0-.38.921l.074.136c.305.561-.309 1.175-.87.87l-.136-.075a.64.64 0 0 0-.92.382l-.045.149c-.18.612-1.048.612-1.229 0l-.043-.15a.64.64 0 0 0-.921-.38l-.136.074c-.561.305-1.175-.309-.87-.87l.075-.136a.64.64 0 0 0-.382-.92l-.148-.045c-.613-.18-.613-1.048 0-1.229l.148-.043a.64.64 0 0 0 .382-.921l-.074-.136c-.306-.561.308-1.175.869-.87l.136.075a.64.64 0 0 0 .92-.382zM14 12.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0" />
+                        </svg>
+                        <span class="hidden sm:inline">Manage Roles</span>
+                    </a>
+                    <a href="{{ route('admin.users.deleted') }}"
+                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 ml-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
+                        </svg>
+                        <span class="hidden sm:inline">Trash</span>
+                    </a>
+                    <button id="openCreateModalBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="Add Staff">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
+                        </svg>
+                        <span class="hidden sm:inline">Add Staff</span>
+                    </button>
+                @endif
             </div>
 
             <!-- Mobile toolbar: icons only -->
             <div class="flex sm:hidden items-center gap-2">
-                <button id="mobileSearchToggle" type="button"
-                    class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700" aria-label="Search">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                    </svg>
-                </button>
+                @if (!$isDeletedView)
+                    <button id="mobileSearchToggle" type="button"
+                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700" aria-label="Search">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
+                        </svg>
+                    </button>
 
-                <a href="{{ route('admin.roles.index') }}" id="manageRolesBtnMobile"
-                    class="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-50"
-                    aria-label="Manage Roles (mobile)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                        class="bi bi-person-fill-gear" viewBox="0 0 16 16">
-                        <path
-                            d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5.256A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1 1.544-3.393Q8.844 9.002 8 9c-5 0-6 3-6 4m9.886-3.54c.18-.613 1.048-.613 1.229 0l.043.148a.64.64 0 0 0 .921.382l.136-.074c.561-.306 1.175.308.87.869l-.075.136a.64.64 0 0 0 .382.92l.149.045c.612.18.612 1.048 0 1.229l-.15.043a.64.64 0 0 0-.38.921l.074.136c.305.561-.309 1.175-.87.87l-.136-.075a.64.64 0 0 0-.92.382l-.045.149c-.18.612-1.048.612-1.229 0l-.043-.15a.64.64 0 0 0-.921-.38l-.136.074c-.561.305-1.175-.309-.87-.87l.075-.136a.64.64 0 0 0-.382-.92l-.148-.045c-.613-.18-.613-1.048 0-1.229l.148-.043a.64.64 0 0 0 .382-.921l-.074-.136c-.306-.561.308-1.175.869-.87l.136.075a.64.64 0 0 0 .92-.382zM14 12.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0" />
-                    </svg>
-                </a>
+                    <a href="{{ route('admin.roles.index') }}" id="manageRolesBtnMobile"
+                        class="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-50"
+                        aria-label="Manage Roles (mobile)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-person-fill-gear" viewBox="0 0 16 16">
+                            <path
+                                d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5.256A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1 1.544-3.393Q8.844 9.002 8 9c-5 0-6 3-6 4m9.886-3.54c.18-.613 1.048-.613 1.229 0l.043.148a.64.64 0 0 0 .921.382l.136-.074c.561-.306 1.175.308.87.869l-.075.136a.64.64 0 0 0 .382.92l.149.045c.612.18.612 1.048 0 1.229l-.15.043a.64.64 0 0 0-.38.921l.074.136c.305.561-.309 1.175-.87.87l-.136-.075a.64.64 0 0 0-.92.382l-.045.149c-.18.612-1.048.612-1.229 0l-.043-.15a.64.64 0 0 0-.921-.38l-.136.074c-.561.305-1.175-.309-.87-.87l.075-.136a.64.64 0 0 0-.382-.92l-.148-.045c-.613-.18-.613-1.048 0-1.229l.148-.043a.64.64 0 0 0 .382-.921l-.074-.136c-.306-.561.308-1.175.869-.87l.136.075a.64.64 0 0 0 .92-.382zM14 12.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0" />
+                        </svg>
+                    </a>
 
-                <button id="openCreateModalBtnMobile" type="button"
-                    class="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white" aria-label="Add Staff (mobile)">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
-                    </svg>
-                </button>
+                    <a href="{{ route('admin.users.deleted') }}" id="trashBtnMobile"
+                        class="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-50"
+                        aria-label="Trash (mobile)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z" />
+                        </svg>
+                    </a>
+
+                    <button id="openCreateModalBtnMobile" type="button"
+                        class="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white" aria-label="Add Staff (mobile)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
+                        </svg>
+                    </button>
+                @endif
             </div>
         </div>
         <div class="mt-5">
@@ -111,55 +137,67 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @forelse($users as $u)
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 {{ $u->trashed() ? 'opacity-70' : '' }}">
                                 <td class="py-3 pl-5 pr-3 align-top">
-                                    <div class="text-slate-900 font-medium">{{ $u->name }}</div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <div class="text-slate-900">{{ $u->email }}</div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <span
-                                        class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $u->role === 'Primary Administrator' ? 'text-purple-700 bg-purple-50 ring-purple-600/20' : 'text-slate-700 bg-slate-50 ring-slate-600/20' }}">
-                                        {{ $u->role }}
-                                    </span>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <div class="text-slate-900">{{ $u->category ?? '—' }}</div>
-                                </td>
-                                <td class="py-3 pl-3 pr-5 align-top">
-                                    <div class="flex items-center gap-2">
-                                        <button type="button"
-                                            class="openEditModalBtn inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
-                                            data-id="{{ $u->id }}" data-name="{{ $u->name }}"
-                                            data-email="{{ $u->email }}" data-role="{{ $u->role }}"
-                                            data-category="{{ $u->category }}" aria-label="Edit user">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
-                                                fill="currentColor">
-                                                <path
-                                                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                                            </svg>
-                                        </button>
-                                        <form method="POST" action="{{ route('admin.users.destroy', $u) }}" class="deleteUserForm" data-user-name="{{ $u->name }}">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50"
-                                                aria-label="Delete user">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                    viewBox="0 0 24 24" fill="currentColor">
-                                                    <path
-                                                        d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z" />
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                                     <div class="flex items-center gap-3">
+                                         <img src="{{ $u->profile_photo ? '/storage/' . $u->profile_photo : 'https://via.placeholder.com/32x32?text=No' }}" alt="Profile" class="w-8 h-8 rounded-full object-cover border border-gray-200">
+                                         <div class="text-slate-900 font-medium">{{ $u->name }}</div>
+                                     </div>
+                                 </td>
+                                 <td class="px-3 py-3 align-top">
+                                     <div class="text-slate-900">{{ $u->email }}</div>
+                                 </td>
+                                 <td class="px-3 py-3 align-top">
+                                     <span
+                                         class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $u->role === 'Primary Administrator' ? 'text-purple-700 bg-purple-50 ring-purple-600/20' : 'text-slate-700 bg-slate-50 ring-slate-600/20' }}">
+                                         {{ $u->role }}
+                                     </span>
+                                 </td>
+                                 <td class="px-3 py-3 align-top">
+                                     <div class="text-slate-900">{{ $u->category ?? '—' }}</div>
+                                 </td>
+                                 <td class="py-3 pl-3 pr-5 align-top">
+                                     <div class="flex items-center gap-2">
+                                         @if ($u->trashed())
+                                             <form method="POST" action="{{ route('admin.users.restore', $u) }}" class="restoreUserForm" data-user-name="{{ $u->name }}">
+                                                 @csrf
+                                                 <button type="submit"
+                                                     class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                     Restore
+                                                 </button>
+                                             </form>
+                                         @else
+                                             <button type="button"
+                                                 class="openEditModalBtn inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
+                                                 data-id="{{ $u->id }}" data-name="{{ $u->name }}"
+                                                 data-email="{{ $u->email }}" data-role="{{ $u->role }}"
+                                                 data-category="{{ $u->category }}" data-profile-photo="{{ $u->profile_photo }}" aria-label="Edit user">
+                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
+                                                     fill="currentColor">
+                                                     <path
+                                                         d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                                 </svg>
+                                             </button>
+                                             <form method="POST" action="{{ route('admin.users.destroy', $u) }}" class="deleteUserForm" data-user-name="{{ $u->name }}">
+                                                 @csrf
+                                                 @method('DELETE')
+                                                 <button type="submit"
+                                                     class="inline-flex items-center justify-center rounded-md border border-red-200 bg-white w-8 h-8 text-sm text-red-700 hover:bg-red-50"
+                                                     aria-label="Delete user">
+                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                         viewBox="0 0 24 24" fill="currentColor">
+                                                         <path
+                                                             d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zm5 3v7h2v-7h-2zm4 0v7h2v-7h-2zM9 4V3h6v1h5v2H4V4h5z" />
+                                                     </svg>
+                                                 </button>
+                                             </form>
+                                         @endif
+                                     </div>
+                                 </td>
+                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No staff users
-                                    found.</td>
+                                <td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">{{ $isDeletedView ? 'No deleted users found.' : 'No staff users found.' }}</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -318,6 +356,9 @@
                     @method('PUT')
                     <input type="hidden" name="editing_user_id" id="edit_user_id"
                         value="{{ old('editing_user_id') }}">
+                    <div class="flex justify-center mb-4">
+                        <img id="edit_profile_photo" src="" alt="Profile Photo" class="w-20 h-20 rounded-md object-cover border border-gray-200">
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Full Name</label>
                         <input type="text" name="name" id="edit_name" value="" required
@@ -414,7 +455,7 @@
 <div id="admin-users-state" class="hidden" data-has-errors="{{ $errors->any() ? '1' : '0' }}"
     data-old-edit-id="{{ old('editing_user_id') }}" data-old-form-context="{{ old('form_context') }}"
     data-old-name="{{ old('name') }}" data-old-email="{{ old('email') }}" data-old-role="{{ old('role') }}"
-    data-old-category="{{ old('category') }}"></div>
+    data-old-category="{{ old('category') }}" data-old-profile-photo="{{ old('profile_photo') }}"></div>
 @section('admin-scripts')
     <script>
         (function() {
@@ -458,12 +499,38 @@
                 const name = form.getAttribute('data-user-name') || 'this user';
                 Swal.fire({
                   title: 'Delete ' + name + '?',
-                  text: 'This action cannot be undone.',
+                  text: 'This will move the user to trash. You can restore them later.',
                   icon: 'warning',
                   showCancelButton: true,
                   confirmButtonColor: '#d33',
                   cancelButtonColor: '#6b7280',
                   confirmButtonText: 'Yes, delete',
+                  cancelButtonText: 'Cancel'
+                }).then((result) => {
+                  if (result.isConfirmed) form.submit();
+                });
+              });
+            });
+
+            // Restore confirmation via SweetAlert2
+            $$('form.restoreUserForm').forEach((form) => {
+              form.addEventListener('submit', function (e) {
+                if (typeof Swal === 'undefined') {
+                  if (!confirm('Restore this user?')) {
+                    e.preventDefault();
+                  }
+                  return;
+                }
+                e.preventDefault();
+                const name = form.getAttribute('data-user-name') || 'this user';
+                Swal.fire({
+                  title: 'Restore ' + name + '?',
+                  text: 'This will restore the user account.',
+                  icon: 'question',
+                  showCancelButton: true,
+                  confirmButtonColor: '#3085d6',
+                  cancelButtonColor: '#6b7280',
+                  confirmButtonText: 'Yes, restore',
                   cancelButtonText: 'Cancel'
                 }).then((result) => {
                   if (result.isConfirmed) form.submit();
@@ -523,12 +590,23 @@
                     const email = btn.getAttribute('data-email') || '';
                     const role = btn.getAttribute('data-role') || '';
                     const category = btn.getAttribute('data-category') || '';
+                    const profilePhoto = btn.getAttribute('data-profile-photo') || '';
 
                     if (editId) editId.value = id || '';
                     if (editName) editName.value = name;
                     if (editEmail) editEmail.value = email;
                     if (editRole) editRole.value = role;
                     if (editCategory) editCategory.value = category;
+
+                    // Set profile photo
+                    const photoEl = $('#edit_profile_photo');
+                    if (photoEl) {
+                        if (profilePhoto) {
+                            photoEl.src = '/storage/' + profilePhoto;
+                        } else {
+                            photoEl.src = 'https://via.placeholder.com/80x80?text=No+Photo'; // Fallback placeholder
+                        }
+                    }
 
                     if (editForm && updateTemplate && id) {
                         editForm.setAttribute('action', updateTemplate.replace('__ID__', id));
@@ -557,6 +635,7 @@
             const OLD_EMAIL = stateEl ? stateEl.getAttribute('data-old-email') : '';
             const OLD_ROLE = stateEl ? stateEl.getAttribute('data-old-role') : '';
             const OLD_CATEGORY = stateEl ? stateEl.getAttribute('data-old-category') : '';
+            const OLD_PROFILE_PHOTO = stateEl ? stateEl.getAttribute('data-old-profile-photo') : '';
 
             if (HAS_ERRORS) {
                 if (OLD_EDIT_ID) {
@@ -565,6 +644,15 @@
                     if (editEmail) editEmail.value = OLD_EMAIL || '';
                     if (editRole) editRole.value = OLD_ROLE || '';
                     if (editCategory) editCategory.value = OLD_CATEGORY || '';
+                    // Set profile photo
+                    const photoEl = $('#edit_profile_photo');
+                    if (photoEl) {
+                        if (OLD_PROFILE_PHOTO) {
+                            photoEl.src = '/storage/' + OLD_PROFILE_PHOTO;
+                        } else {
+                            photoEl.src = 'https://via.placeholder.com/80x80?text=No+Photo';
+                        }
+                    }
                     if (editForm && updateTemplate && OLD_EDIT_ID) {
                         editForm.setAttribute('action', updateTemplate.replace('__ID__', OLD_EDIT_ID));
                     }
