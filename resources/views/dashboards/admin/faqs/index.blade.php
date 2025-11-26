@@ -1079,23 +1079,63 @@
 
                         console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
 
-                        // Send all FAQs to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                faqs: faqs
-                            })
-                        });
+                        let result;
+                        
+                        // Handle empty FAQ table - clear Rasa FAQ file
+                        if (faqs.length === 0) {
+                            console.log('[FAQ Sync] No FAQs found - clearing Rasa FAQ file');
+                            
+                            const clearUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '/clear-faqs');
+                            const clearRes = await fetch(clearUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    action: 'clear_faqs'
+                                })
+                            });
 
-                        const result = await rasaRes.json();
+                            // Check if response is JSON before parsing
+                            const contentType = clearRes.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                result = await clearRes.json();
+                            } else {
+                                // Handle HTML error response
+                                const errorText = await clearRes.text();
+                                console.error('[FAQ Sync] Clear failed - received HTML instead of JSON:', errorText);
+                                throw new Error('Failed to clear FAQ file on Rasa server');
+                            }
+                        } else {
+                            // Send all FAQs to Rasa sync endpoint
+                            const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    faqs: faqs
+                                })
+                            });
+
+                            // Check if response is JSON before parsing
+                            const contentType = rasaRes.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                result = await rasaRes.json();
+                            } else {
+                                // Handle HTML error response
+                                const errorText = await rasaRes.text();
+                                console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
+                                throw new Error('Rasa server returned an error instead of JSON response');
+                            }
+                        }
 
                         console.log('[FAQ Sync] Rasa response:', result);
 
-                        if (!rasaRes.ok || !result.ok) {
+                        // Check if the operation was successful
+                        if (!result.ok) {
                             console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
                             throw new Error(result.error || 'Rasa sync failed');
                         }
@@ -1110,7 +1150,13 @@
                         } catch (e) {
                             // localStorage not available
                         }
-                        showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                        
+                        // Show appropriate success message
+                        if (faqs.length === 0) {
+                            showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
+                        } else {
+                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                        }
 
                     } catch (err) {
                         console.error('Sync error:', err);
@@ -1487,23 +1533,63 @@
 
                         console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
 
-                        // Send all FAQs to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                faqs: faqs
-                            })
-                        });
+                        let result;
+                        
+                        // Handle empty FAQ table - clear Rasa FAQ file
+                        if (faqs.length === 0) {
+                            console.log('[FAQ Sync] No FAQs found - clearing Rasa FAQ file');
+                            
+                            const clearUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '/clear-faqs');
+                            const clearRes = await fetch(clearUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    action: 'clear_faqs'
+                                })
+                            });
 
-                        const result = await rasaRes.json();
+                            // Check if response is JSON before parsing
+                            const contentType = clearRes.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                result = await clearRes.json();
+                            } else {
+                                // Handle HTML error response
+                                const errorText = await clearRes.text();
+                                console.error('[FAQ Sync] Clear failed - received HTML instead of JSON:', errorText);
+                                throw new Error('Failed to clear FAQ file on Rasa server');
+                            }
+                        } else {
+                            // Send all FAQs to Rasa sync endpoint
+                            const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    faqs: faqs
+                                })
+                            });
+
+                            // Check if response is JSON before parsing
+                            const contentType = rasaRes.headers.get('content-type');
+                            if (contentType && contentType.includes('application/json')) {
+                                result = await rasaRes.json();
+                            } else {
+                                // Handle HTML error response
+                                const errorText = await rasaRes.text();
+                                console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
+                                throw new Error('Rasa server returned an error instead of JSON response');
+                            }
+                        }
 
                         console.log('[FAQ Sync] Rasa response:', result);
 
-                        if (!rasaRes.ok || !result.ok) {
+                        // Check if the operation was successful
+                        if (!result.ok) {
                             console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
                             throw new Error(result.error || 'Rasa sync failed');
                         }
@@ -1518,7 +1604,13 @@
                         } catch (e) {
                             // localStorage not available
                         }
-                        showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                        
+                        // Show appropriate success message
+                        if (faqs.length === 0) {
+                            showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
+                        } else {
+                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                        }
 
                     } catch (err) {
                         console.error('Sync error:', err);

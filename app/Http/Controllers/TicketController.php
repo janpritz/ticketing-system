@@ -419,6 +419,19 @@ class TicketController extends Controller
         // Determine if identifier is email or recepient_id
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
+        // If it's an email, verify that the email has been verified
+        if ($isEmail) {
+            $emailVerified = Otp::where('email', $identifier)
+                               ->whereNotNull('verified_at')
+                               ->exists();
+
+            if (!$emailVerified) {
+                // Email not verified - redirect to verification page
+                return redirect()->route('tickets.verify', ['email' => $identifier])
+                               ->with('error', 'Email verification required to view tickets.');
+            }
+        }
+
         // Cache key for user tickets
         $cacheKey = 'user_tickets_' . ($isEmail ? 'email_' : 'recepient_') . $identifier;
 
@@ -534,5 +547,114 @@ class TicketController extends Controller
         }
 
         return redirect()->back()->with('success', 'Ticket deleted successfully!');
+    }
+
+    /**
+     * Show the ticket status verification form
+     */
+    public function showStatusForm()
+    {
+        return view('tickets.status');
+    }
+
+    /**
+     * Send OTP for ticket status verification
+     */
+    public function sendOtpStatus(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $email = $request->email;
+
+        // Check if email has any tickets
+        $ticketCount = Ticket::where('email', $email)->count();
+        if ($ticketCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tickets found for this email address.'
+            ], 400);
+        }
+
+        // Generate 6-digit OTP
+        $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Delete any existing unverified OTPs for this email
+        Otp::where('email', $email)
+           ->whereNull('verified_at')
+           ->delete();
+
+        // Set expiry time: 15 minutes
+        $expiresAt = now()->addMinutes(15);
+
+        // Create new OTP record
+        Otp::create([
+            'email' => $email,
+            'otp_code' => $otpCode,
+            'expires_at' => $expiresAt,
+        ]);
+
+        // Send OTP via email
+        Mail::to($email)->send(new OtpMail($otpCode));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Verification code sent successfully!',
+            'expires_at' => $expiresAt->timestamp
+        ]);
+    }
+
+    /**
+     * Verify OTP for ticket status and redirect to tickets index
+     */
+    public function verifyOtpStatus(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp_code' => 'required|string|size:6',
+        ]);
+
+        $email = $request->email;
+        $otpCode = $request->otp_code;
+
+        // Find the OTP record
+        $otp = Otp::where('email', $email)
+                  ->where('otp_code', $otpCode)
+                  ->first();
+
+        if (!$otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid verification code.'
+            ], 400);
+        }
+
+        if (!$otp->isValid()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification code has expired. Please request a new one.'
+            ], 400);
+        }
+
+        // Mark as verified
+        $otp->verified_at = now();
+        $otp->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email verified successfully!',
+            'verified' => true,
+            'redirect_url' => url('/tickets/' . urlencode($email))
+        ]);
+    }
+
+    /**
+     * Show email verification page
+     */
+    public function showVerifyEmail(Request $request)
+    {
+        $email = $request->query('email');
+        return view('tickets.verify-email', compact('email'));
     }
 }

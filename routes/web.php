@@ -41,6 +41,7 @@ Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middlew
 Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
+Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->name('tickets.verify');
 
 Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->whereNumber('ticket')
@@ -48,6 +49,11 @@ Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->name('tickets.show');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
 Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');
+
+// Ticket status viewing routes
+Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');
+Route::post('/tickets/send-otp-status', [TicketController::class, 'sendOtpStatus'])->name('tickets.send-otp-status');
+Route::post('/tickets/verify-otp-status', [TicketController::class, 'verifyOtpStatus'])->name('tickets.verify-otp-status');
 
 // OTP verification routes
 Route::post('/tickets/send-otp', [TicketController::class, 'sendOtp'])->name('tickets.send-otp');
