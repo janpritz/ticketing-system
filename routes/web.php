@@ -48,6 +48,15 @@ Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->name('tickets.show');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
 Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');
+
+// OTP verification routes
+Route::post('/tickets/send-otp', [TicketController::class, 'sendOtp'])->name('tickets.send-otp');
+Route::post('/tickets/verify-otp', [TicketController::class, 'verifyOtp'])->name('tickets.verify-otp');
+Route::post('/tickets/check-verification', [TicketController::class, 'checkEmailVerification'])->name('tickets.check-verification');
+
+// Ticket submission routes (after OTP verification)
+Route::get('/tickets/submit/{recepient_id}/{email}', [TicketController::class, 'showTicketSubmitForm'])->name('tickets.submit.form');
+Route::post('/tickets/submit', [TicketController::class, 'submitTicket'])->middleware('throttle:10,1')->name('tickets.submit');
 Route::put('/tickets/{ticket}', [TicketController::class, 'update'])
     ->whereNumber('ticket')
     ->middleware('throttle:10,1')
