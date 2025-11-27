@@ -13,9 +13,6 @@
 # ----------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Allow direct access to PWA files
-    RewriteRule ^(manifest\.webmanifest|sw\.js|favicon\.ico|logo\.png|logo-white\.png|homescreen-icon\.png)$ - [L]
-    # Redirect everything else to the /public folder
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 # ----------------------------------------------------------------------
