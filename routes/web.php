@@ -242,4 +242,8 @@ Route::middleware('auth')->group(function () {
     // End Push Notification==========================================================
 });
 
+Route::get('/test-widget', function () {
+    return view('test-widget');
+});
+
 Route::post('/send-message', [RasaController::class, 'sendMessage']);
