@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PushNotification;
 use App\Models\PushNotificationMsgs;
+use App\Jobs\SendPushNotificationJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
@@ -114,10 +115,17 @@ class PushNotificationController extends Controller
 
     public function saveSubscription(Request $request)
     {
+        Log::info('PushNotificationController: saveSubscription called', [
+            'user_id' => optional($request->user())->id,
+            'has_subscription' => $request->has('subscription'),
+            'has_sub' => $request->has('sub')
+        ]);
+
         // Accept either 'subscription' (used by the frontend) or legacy 'sub'
         $sub = $request->input('subscription', $request->input('sub'));
 
         if (!$sub) {
+            Log::warning('PushNotificationController: No subscription provided');
             return response()->json(['error' => 'No subscription provided'], 422);
         }
 
@@ -128,27 +136,72 @@ class PushNotificationController extends Controller
         }
 
         if ($payload === null) {
+            Log::warning('PushNotificationController: Invalid subscription JSON', ['raw' => $sub]);
             return response()->json(['error' => 'Invalid subscription JSON'], 422);
         }
+
+        Log::info('PushNotificationController: Valid subscription payload received', [
+            'endpoint' => $payload['endpoint'] ?? 'missing',
+            'keys' => isset($payload['keys']) ? array_keys($payload['keys']) : 'missing'
+        ]);
 
         $push = new PushNotification();
         $push->subscriptions = $payload;
 
         // Persist to DB for audit/history
         $push->save();
+        Log::info('PushNotificationController: Subscription saved to database', ['id' => $push->id]);
 
         // Also write a user-specific subscription file so PushService::sendToUser can find it.
         // This is important because PushService currently looks for files at:
         // storage/app/push_subscriptions/user-{userId}.json
         if ($user = $request->user()) {
             try {
-                Storage::put('push_subscriptions/user-' . $user->id . '.json', json_encode($payload));
+                $filePath = 'push_subscriptions/user-' . $user->id . '.json';
+                Storage::put($filePath, json_encode($payload));
+                Log::info('PushNotificationController: Subscription file written', [
+                    'user_id' => $user->id,
+                    'file_path' => $filePath
+                ]);
             } catch (\Throwable $e) {
                 // Log but do not fail the request — subscription still saved to DB.
                 Log::warning('Failed to write push subscription file for user ' . $user->id . ': ' . $e->getMessage());
             }
+        } else {
+            Log::warning('PushNotificationController: No authenticated user, subscription file not written');
         }
 
         return response()->json(['message' => 'added successfully', 'id' => $push->id], 201);
+    }
+
+    public function sendTest(Request $request)
+    {
+        Log::info('PushNotificationController: sendTest called', [
+            'user_id' => optional($request->user())->id,
+            'title' => $request->input('title', 'Test Notification'),
+            'body' => $request->input('body', 'This is a test push notification')
+        ]);
+
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
+
+        // Dispatch a test push notification job
+        SendPushNotificationJob::dispatch($user->id, [
+            'title' => $request->input('title', 'Test Notification'),
+            'body' => $request->input('body', 'This is a test push notification'),
+            'url' => url('/staff/dashboard'),
+            'data' => [
+                'url' => url('/staff/dashboard'),
+                'type' => 'test_notification'
+            ],
+            'icon' => '/favicon.ico',
+            'badge' => '/favicon.ico'
+        ]);
+
+        Log::info('PushNotificationController: Test push notification job dispatched', ['user_id' => $user->id]);
+
+        return response()->json(['message' => 'Test push notification sent to queue']);
     }
 }
