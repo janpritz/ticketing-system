@@ -906,6 +906,7 @@
 
                     // Server already applies the filter. Keep a safety client-side filter when viewAll=false.
                     const list = Array.isArray(data.recentTickets) ? data.recentTickets : [];
+                    console.log('Recent tickets from API:', list);
                     // Keep a fast lookup for "View" modal
                     ticketsMap = new Map(list.map(t => [String(t.id), t]));
                     // Show both Open and Forwarded when not viewing all
@@ -1153,19 +1154,24 @@
                 // Handle attachments
                 const attachmentsBlock = document.getElementById('tmAttachmentsBlock');
                 const attachmentsList = document.getElementById('tmAttachmentsList');
+                console.log('Ticket attachments:', ticket.attachments);
                 if (attachmentsBlock && attachmentsList) {
                     attachmentsList.innerHTML = '';
                     if (ticket.attachments) {
                         let attachments = [];
                         try {
                             attachments = JSON.parse(ticket.attachments);
+                            console.log('Parsed attachments:', attachments);
                         } catch (e) {
+                            console.error('Error parsing attachments:', e);
                             attachments = [];
                         }
                         if (attachments.length > 0) {
+                            console.log('Showing attachments block');
                             attachments.forEach((path, index) => {
                                 const img = document.createElement('img');
                                 img.src = '/storage/' + path;
+                                console.log('Image src:', img.src);
                                 img.alt = 'Attachment ' + (index + 1);
                                 img.className = 'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
                                 img.onclick = () => openLightbox(attachments, index);
@@ -1173,9 +1179,11 @@
                             });
                             attachmentsBlock.classList.remove('hidden');
                         } else {
+                            console.log('No attachments to show');
                             attachmentsBlock.classList.add('hidden');
                         }
                     } else {
+                        console.log('No attachments field');
                         attachmentsBlock.classList.add('hidden');
                     }
                 }
@@ -1403,10 +1411,27 @@
                 tmForwardApply.addEventListener('click', async () => {
                     if (!currentTicketId) return;
                     if (!tmForwardSelect || !tmForwardSelect.value) {
-                        alert('Please choose a role to forward to.');
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Selection Required',
+                                text: 'Please choose a role to forward to.',
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            showToast('error', 'Please choose a role to forward to.');
+                        }
                         return;
                     }
                     const role = tmForwardSelect.value;
+
+                    // Disable button and show loading
+                    tmForwardApply.disabled = true;
+                    tmForwardApply.classList.add('opacity-50', 'pointer-events-none');
+                    const originalText = tmForwardApply.textContent;
+                    tmForwardApply.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Forwarding...';
+
                     try {
                         const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
                             method: 'POST',
@@ -1427,13 +1452,55 @@
                             } catch (e) {}
                             fetchData();
                             closeModal();
+                            setTimeout(() => {
+                                if (window.Swal) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Ticket Forwarded',
+                                        text: 'The ticket has been successfully forwarded.',
+                                        timer: 3000,
+                                        showConfirmButton: false
+                                    });
+                                } else {
+                                    showToast('success', 'Ticket forwarded successfully.');
+                                }
+                            }, 500);
                         } else {
                             console.error('Forward failed', await res.text());
-                            alert('Forward failed. Please ensure backend route is available.');
+                            setTimeout(() => {
+                                if (window.Swal) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Forward Failed',
+                                        text: 'Failed to forward the ticket. Please try again.',
+                                        timer: 3000,
+                                        showConfirmButton: false
+                                    });
+                                } else {
+                                    showToast('error', 'Failed to forward the ticket.');
+                                }
+                            }, 500);
                         }
                     } catch (err) {
                         console.error('Forward error', err);
-                        alert('Network error during forward.');
+                        setTimeout(() => {
+                            if (window.Swal) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Network Error',
+                                    text: 'Network error during forward. Please check your connection.',
+                                    timer: 3000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                showToast('error', 'Network error during forward.');
+                            }
+                        }, 500);
+                    } finally {
+                        // Re-enable button
+                        tmForwardApply.disabled = false;
+                        tmForwardApply.classList.remove('opacity-50', 'pointer-events-none');
+                        tmForwardApply.textContent = originalText;
                     }
                 });
             }

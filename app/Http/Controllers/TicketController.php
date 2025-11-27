@@ -25,7 +25,14 @@ class TicketController extends Controller
         // We need email from the request since it's not in the URL
         $email = $request->query('email');
         if ($email) {
-            $ticketCount = Ticket::where('email', $email)->count();
+            $ticketCount = Ticket::where('email', $email)->whereIn('status', ['Open', 'Forwarded'])->count();
+            $statusCounts = Ticket::where('email', $email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
+            Log::info('Ticket limit check for create form', [
+                'email' => $email,
+                'active_count' => $ticketCount,
+                'status_breakdown' => $statusCounts,
+                'limit' => 4
+            ]);
             if ($ticketCount >= 4) {
                 return redirect()->to(url('/tickets/' . urlencode($email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
             }
@@ -56,7 +63,14 @@ class TicketController extends Controller
     public function showTicketSubmitForm(Request $request, $recepient_id = null, $email)
     {
         // Check if the user has reached the maximum number of tickets (4 tickets max)
-        $ticketCount = Ticket::where('email', $email)->count();
+        $ticketCount = Ticket::where('email', $email)->whereIn('status', ['Open', 'Forwarded'])->count();
+        $statusCounts = Ticket::where('email', $email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
+        Log::info('Ticket limit check for submit form', [
+            'email' => $email,
+            'active_count' => $ticketCount,
+            'status_breakdown' => $statusCounts,
+            'limit' => 4
+        ]);
         if ($ticketCount >= 4) {
             return redirect()->to(url('/tickets/' . urlencode($email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
         }
@@ -101,7 +115,14 @@ class TicketController extends Controller
         }
 
         // Check if the user has reached the maximum number of tickets (4 tickets max per email)
-        $ticketCount = Ticket::where('email', $request->email)->count();
+        $ticketCount = Ticket::where('email', $request->email)->whereIn('status', ['Open', 'Forwarded'])->count();
+        $statusCounts = Ticket::where('email', $request->email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
+        Log::info('Ticket limit check for submission', [
+            'email' => $request->email,
+            'active_count' => $ticketCount,
+            'status_breakdown' => $statusCounts,
+            'limit' => 4
+        ]);
 
         if ($ticketCount >= 4) {
             // If there are already 4 or more tickets, redirect to tickets page with email
@@ -273,7 +294,14 @@ class TicketController extends Controller
         ]);
 
         // Check if the user has reached the maximum number of tickets (4 tickets max per email)
-        $ticketCount = Ticket::where('email', $request->email)->count();
+        $ticketCount = Ticket::where('email', $request->email)->whereIn('status', ['Open', 'Forwarded'])->count();
+        $statusCounts = Ticket::where('email', $request->email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
+        Log::info('Ticket limit check for store', [
+            'email' => $request->email,
+            'active_count' => $ticketCount,
+            'status_breakdown' => $statusCounts,
+            'limit' => 4
+        ]);
 
         if ($ticketCount >= 4) {
             // If there are already 4 or more tickets, redirect to tickets page with email
