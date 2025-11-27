@@ -9,11 +9,13 @@
 # Block access to .git, node_modules, storage, and other private folders
 
 # ----------------------------------------------------------------------
-# Redirect all traffic to the public folder
+# Redirect all traffic to the public folder (except PWA files)
 # ----------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Redirect everything to the /public folder
+    # Allow direct access to PWA files
+    RewriteRule ^(manifest\.webmanifest|sw\.js|favicon\.ico|logo\.png|logo-white\.png|homescreen-icon\.png)$ - [L]
+    # Redirect everything else to the /public folder
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 # ----------------------------------------------------------------------
