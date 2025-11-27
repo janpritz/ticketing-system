@@ -245,14 +245,27 @@ class AdminTicketsController extends Controller
      */
     public function forward(Request $request, $id)
     {
+        Log::info('Ticket forward request received', [
+            'ticket_id' => $id,
+            'user_id' => $request->user_id,
+            'current_user' => optional(request()->user())->id,
+            'current_user_name' => optional(request()->user())->name,
+            'route' => $request->route()->getName(),
+            'url' => $request->url(),
+            'method' => $request->method()
+        ]);
+
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
         ]);
 
         $ticket = Ticket::findOrFail($id);
+        Log::info('Ticket found for forwarding', ['ticket_id' => $ticket->id, 'ticket_status' => $ticket->status]);
 
         // Dispatch job to handle ticket forwarding asynchronously
         $user = User::findOrFail($request->user_id);
+        Log::info('User found for forwarding', ['forward_to_user_id' => $user->id, 'forward_to_user_name' => $user->name]);
+
         SendTicketForwardJob::dispatch(
             $ticket->id,
             $request->user_id,
@@ -269,6 +282,8 @@ class AdminTicketsController extends Controller
         } catch (\Throwable $cacheEx) {
             Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
         }
+
+        Log::info('Ticket forward completed successfully', ['ticket_id' => $ticket->id, 'forwarded_to' => $user->name]);
 
         return response()->json(['message' => 'Ticket forwarding initiated', 'staff' => $user]);
     }

@@ -1563,12 +1563,17 @@
     tmForwardApply.addEventListener('click', async () => {
       if (!currentTicketId) return;
       if (!tmForwardSelect.value) {
-        alert('Please choose a user to forward to.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Selection Required',
+          text: 'Please choose a user to forward to.',
+          confirmButtonText: 'OK'
+        });
         return;
       }
       const userId = tmForwardSelect.value;
       try {
-        const res = await fetch(`${forwardBase}/${currentTicketId}/reroute`, {
+        const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
@@ -1578,14 +1583,33 @@
           credentials: 'same-origin',
           body: JSON.stringify({ user_id: userId })
         });
+        console.log('Forward request sent to:', `${forwardBase}/${currentTicketId}/forward`);
+        console.log('Response status:', res.status, res.statusText);
         if (res.ok) {
-          alert('Ticket forwarded successfully.');
+          const data = await res.json();
+          console.log('Forward successful:', data);
+          Swal.fire({
+            icon: 'success',
+            title: 'Ticket Forwarded',
+            text: 'Ticket has been forwarded successfully!',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true
+          });
           closeModal();
           // Refresh dashboard data
           if (typeof refreshAdminData === 'function') refreshAdminData();
         } else {
-          console.error('Forward failed', await res.text());
-          alert('Forward failed. Please try again.');
+          const errorText = await res.text();
+          console.error('Forward failed', res.status, errorText);
+          Swal.fire({
+            icon: 'error',
+            title: 'Forward Failed',
+            text: 'Failed to forward ticket. Please try again. Error: ' + res.status + ' ' + res.statusText,
+            confirmButtonText: 'OK'
+          });
         }
       } catch (err) {
         console.error('Forward error', err);
@@ -1625,11 +1649,21 @@
     tmSendResponse.addEventListener('click', async () => {
       const msg = tmResponse.value.trim();
       if (!msg) {
-        alert('Please enter a response message.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Message Required',
+          text: 'Please enter a response message.',
+          confirmButtonText: 'OK'
+        });
         return;
       }
       if (!currentTicketId) {
-        alert('No ticket selected.');
+        Swal.fire({
+          icon: 'error',
+          title: 'No Ticket Selected',
+          text: 'No ticket selected.',
+          confirmButtonText: 'OK'
+        });
         return;
       }
       try {
@@ -1646,7 +1680,16 @@
           body: JSON.stringify({ message: msg })
         });
         if (res.ok) {
-          alert('Response email sent successfully.');
+          Swal.fire({
+            icon: 'success',
+            title: 'Response Sent',
+            text: 'Response email sent successfully!',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true
+          });
           tmResponse.value = '';
           closeModal();
           // Refresh dashboard data
@@ -1654,7 +1697,12 @@
         } else {
           const txt = await res.text();
           console.error('Send response failed', txt);
-          alert('Failed to send response. Please check mail configuration.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to Send Response',
+            text: 'Failed to send response. Please check mail configuration.',
+            confirmButtonText: 'OK'
+          });
         }
       } catch (err) {
         console.error('Send response error', err);
