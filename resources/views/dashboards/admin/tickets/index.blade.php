@@ -45,12 +45,11 @@
             <th class="px-3 py-3 text-left font-medium">Status</th>
             <th class="px-3 py-3 text-left font-medium">Assignee</th>
             <th class="px-3 py-3 text-left font-medium">Created</th>
-            <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
           </tr>
         </thead>
         <tbody id="ticketsTbody" class="divide-y divide-gray-100">
           <tr>
-            <td colspan="7" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+            <td colspan="6" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
           </tr>
         </tbody>
       </table>
@@ -410,44 +409,35 @@
         try { localStorage.setItem('ts_tickets_last_changed', String(json.last_changed)); } catch(e){}
       }
     } catch (err) {
-      ticketsTbody.innerHTML = '<tr><td colspan="7" class="px-5 py-6 text-center text-sm text-red-600">Error loading tickets</td></tr>';
+      ticketsTbody.innerHTML = '<tr><td colspan="6" class="px-5 py-6 text-center text-sm text-red-600">Error loading tickets</td></tr>';
     }
   }
 
   function renderTable(items){
     ticketsMap = new Map(items.map(t => [String(t.id), t]));
     if (!items.length) {
-      ticketsTbody.innerHTML = '<tr><td colspan="7" class="px-5 py-10 text-center text-sm text-gray-500">No tickets found.</td></tr>';
+      ticketsTbody.innerHTML = '<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500">No tickets found.</td></tr>';
       return;
     }
     ticketsTbody.innerHTML = items.map(t => {
       const ticketNo = String(t.id);
       return `
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50 cursor-pointer" data-id="${t.id}">
           <td class="py-4 pl-5 pr-3">${ticketNo}</td>
           <td class="px-3 py-4">${escapeHtml(t.category||'')}</td>
           <td class="px-3 py-4">${escapeHtml((t.question||'').slice(0,80))}</td>
           <td class="px-3 py-4">${escapeHtml(t.status||'')}</td>
           <td class="px-3 py-4">${escapeHtml((t.staff && t.staff.name) || '-')}</td>
           <td class="px-3 py-4">${escapeHtml(fmtDate(t.date_created||t.created_at))}</td>
-          <td class="py-4 pl-3 pr-5">
-            <div class="flex items-center gap-2">
-              <button class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs" data-id="${t.id}">View</button>
-            </div>
-          </td>
         </tr>
       `;
     }).join('');
-    // Use event delegation for actions (more reliable with dynamic table updates)
-    // Only the "View" action is rendered in the list now.
+    // Use event delegation for row clicks (more reliable with dynamic table updates)
     ticketsTbody.addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-view');
-      if (!btn) return;
-      const id = btn.getAttribute('data-id');
-      if (!id) {
-        console.error('Action button missing data-id');
-        return;
-      }
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const id = tr.getAttribute('data-id');
+      if (!id) return;
       openModalFor(id);
     });
   }
