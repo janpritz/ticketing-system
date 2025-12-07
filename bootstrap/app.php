@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            \App\Http\Middleware\ForceHttps::class,
             \App\Http\Middleware\UpgradeToHttpsUnderNgrok::class,
             \App\Http\Middleware\UpgradeToHttpUnderNetworkHost::class,
         ]);

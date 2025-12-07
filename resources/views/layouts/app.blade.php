@@ -14,12 +14,12 @@
 
     <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
     
-    <!-- Favicons & PWA manifest: use homescreen icon for add-to-home and modern platforms -->
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('homescreen-icon.png') }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('homescreen-icon.png') }}">
+    <!-- Favicons & PWA manifest: use proper icon sizes for add-to-home and modern platforms -->
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('icon-512.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('homescreen-icon.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icon-512.png') }}">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="theme-color" content="#184c1c">
     <!-- Fonts -->
