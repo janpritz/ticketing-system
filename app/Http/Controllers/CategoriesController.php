@@ -93,6 +93,16 @@ class CategoriesController extends Controller
     public function destroy(Category $category)
     {
         $this->ensureAdmin();
+
+        // Check if any users (including soft deleted) are assigned to this category
+        $userCount = User::withTrashed()->where('category', $category->name)->count();
+        if ($userCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete category '{$category->name}' because {$userCount} user(s) are assigned to it. Please reassign or remove the users first."
+            ], 422);
+        }
+
         $category->delete();
 
         try {
@@ -101,7 +111,10 @@ class CategoriesController extends Controller
             Log::warning('Failed to update categories_last_changed cache: '.$e->getMessage());
         }
 
-        return redirect()->route('admin.categories.index')->with('status','Category deleted.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Category deleted successfully.'
+        ]);
     }
 
     private function ensureAdmin(): void

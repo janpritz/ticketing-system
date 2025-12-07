@@ -17,16 +17,16 @@ return new class extends Migration
             $table->text('question');  // for the user's question or issue
             $table->string('recepient_id');
             $table->string('email'); // to store the email of the user who created the ticket
-            $table->enum('status', ['Open', 'Re-routed', 'Closed'])->default('Open'); // status of the ticket
+            $table->enum('status', ['Open', 'Forwarded', 'Closed'])->default('Open'); // status of the ticket
             $table->foreignId('staff_id')->nullable()->constrained('users'); // assuming staff is also a user
             $table->timestamp('date_created')->useCurrent(); // automatically set the creation date
             $table->timestamp('date_closed')->nullable(); // to track when the ticket is closed, if applicable
             $table->timestamps(); // created_at and updated_at
         });
     }
-
-
-
+    
+    
+    
     /**
      * Reverse the migrations.
      */

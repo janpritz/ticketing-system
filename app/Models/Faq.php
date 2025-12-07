@@ -16,7 +16,6 @@ class Faq extends Model
         'intent',
         'description',
         'response',
-        'status',
         'response_disabled',
     ];
 
@@ -27,6 +26,7 @@ class Faq extends Model
         'response_disabled' => 'boolean',
     ];
 
+
     /**
      * Revisions (audit history) for this FAQ — newest first.
      */
@@ -34,4 +34,5 @@ class Faq extends Model
     {
         return $this->hasMany(\App\Models\FaqRevision::class, 'faq_id')->orderByDesc('created_at');
     }
+
 }

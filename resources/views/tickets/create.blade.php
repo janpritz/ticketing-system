@@ -7,14 +7,38 @@
         <div class="md:flex md:items-center md:justify-between">
             <div class="flex-1 text-center min-w-0 pt-5">
                 <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                    Submit a Ticket
+                    Create a Ticket
                 </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Please fill out the form below to create your support ticket.
+                </p>
             </div>
         </div>
 
         <div class="mt-8">
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
+
+                    <!-- Success Message -->
+                    @if (session('success'))
+                        <div class="rounded-md bg-green-50 p-4 mb-6">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                        fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-green-800">
+                                        {{ session('success') }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Error Message -->
                     @if ($errors->any())
@@ -44,25 +68,19 @@
                         </div>
                     @endif
 
-                    <!-- Ticket Creation Form (AJAX submission) -->
-                    <form id="ticketForm" action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate>
+                    <!-- Ticket Creation Form -->
+                    <form action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate enctype="multipart/form-data">
                         @csrf
 
-                        <div>
-                            <label for="recepient_id" class="block text-sm font-medium text-gray-700">Recepient ID</label>
-                            <div class="mt-1">
-                                <input type="text" name="recepient_id" id="recepient_id"
-                                    class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required value="{{ old('recepient_id', $recepient_id) }}" readonly>
-                            </div>
-                        </div>
+                        <!-- Hidden fields -->
+                        <input type="hidden" name="recepient_id" value="{{ $recepient_id }}">
 
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
                             <div class="mt-1">
                                 <input type="email" name="email" id="email"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required value="{{ old('email') }}">
+                                    required value="{{ old('email', $email) }}">
                             </div>
                         </div>
 
@@ -71,7 +89,7 @@
                             <div class="mt-1">
                                 <input list="category-list" name="category" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required onchange="showDynamicFields()" value="{{ old('category') }}">
+                                    required value="{{ old('category') }}">
                                 <datalist id="category-list">
                                     @if(isset($categories) && count($categories))
                                         @foreach($categories as $c)
@@ -145,86 +163,127 @@
                             <div class="mt-1">
                                 <textarea name="question" id="question" rows="4"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required>{{ old('question') }}</textarea>
+                                    required placeholder="Please describe your question or issue in detail...">{{ old('question') }}</textarea>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per image)</label>
+                            <div class="mt-1">
+                                <button type="button" id="add-photo-btn-submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Photo
+                                </button>
+                                <input type="file" name="attachments[]" id="attachments" multiple accept="image/*" class="hidden">
+                                <div id="selected-thumbnails-submit" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                                <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files are allowed.)</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Verification</label>
+                            <div class="mt-1">
+                                {!! app('captcha')->display() !!}
+                                @error('g-recaptcha-response')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
                         <div class="flex items-center justify-end">
                             <button id="submitTicketBtn" type="submit"
-                                class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Create Ticket
                             </button>
                         </div>
                     </form>
 
-                    <div id="ajaxResponse" class="mt-4"></div>
-
+                    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
                     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                     <script>
                         document.addEventListener('DOMContentLoaded', function () {
-                            const form = document.getElementById('ticketForm');
-                            const submitBtn = document.getElementById('submitTicketBtn');
+                            // Add photo button
+                            document.getElementById('add-photo-btn-submit').addEventListener('click', function() {
+                                document.getElementById('attachments').click();
+                            });
 
-                            form.addEventListener('submit', async function (e) {
-                                e.preventDefault();
-                                submitBtn.disabled = true;
+                            // Validate attachments count and display thumbnails
+                            document.getElementById('attachments').addEventListener('change', function (e) {
+                                const files = e.target.files;
+                                const container = document.getElementById('selected-thumbnails-submit');
+                                container.innerHTML = ''; // Clear previous
 
-                                const payload = {
-                                    recepient_id: document.getElementById('recepient_id').value,
-                                    email: document.getElementById('email').value,
-                                    category: document.getElementById('category').value,
-                                    question: document.getElementById('question').value
-                                };
-
-                                try {
-                                    const res = await fetch(form.action, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                                        },
-                                        body: JSON.stringify(payload)
-                                    });
-
-                                    const json = await res.json();
-
-                                    if (res.ok) {
-                                        // On success redirect to My Tickets (include recepient_id as query param)
-                                        const redirectUrl = "{{ url('/tickets') }}/" + encodeURIComponent(payload.recepient_id);
-                                        window.location.href = redirectUrl;
-                                    } else {
-                                        // Build a readable HTML message for SweetAlert
-                                        let messageHtml = '';
-                                        if (json && json.errors) {
-                                            messageHtml += '<ul style="text-align:left;">';
-                                            Object.keys(json.errors).forEach(function (k) {
-                                                json.errors[k].forEach(function (m) {
-                                                    messageHtml += '<li>' + m + '</li>';
-                                                });
-                                            });
-                                            messageHtml += '</ul>';
-                                        } else if (json && json.error) {
-                                            messageHtml = '<p>' + (json.error || 'An error occurred') + '</p>';
-                                        } else {
-                                            messageHtml = '<p>An error occurred while creating the ticket.</p>';
-                                        }
-
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Failed to create ticket',
-                                            html: messageHtml,
-                                        });
-                                    }
-                                } catch (err) {
+                                if (files.length > 5) {
                                     Swal.fire({
                                         icon: 'error',
-                                        title: 'Network error',
-                                        text: err && err.message ? err.message : 'Unknown network error'
+                                        title: 'Too many files',
+                                        text: 'You can upload a maximum of 5 images.'
                                     });
-                                } finally {
-                                    submitBtn.disabled = false;
+                                    e.target.value = ''; // Clear selection
+                                    return;
                                 }
+
+                                Array.from(files).forEach((file, index) => {
+                                    if (file.type.startsWith('image/')) {
+                                        const reader = new FileReader();
+                                        reader.onload = function(e) {
+                                            const div = document.createElement('div');
+                                            div.className = 'relative';
+                                            div.innerHTML = `
+                                                <img src="${e.target.result}" alt="Selected ${index + 1}" class="w-full h-20 object-cover rounded border">
+                                                <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs remove-selected-submit" data-index="${index}">&times;</button>
+                                            `;
+                                            container.appendChild(div);
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                });
+                            });
+
+                            // Remove selected thumbnail
+                            document.addEventListener('click', function(e) {
+                                if (e.target.classList.contains('remove-selected-submit')) {
+                                    const index = e.target.getAttribute('data-index');
+                                    const input = document.getElementById('attachments');
+                                    const dt = new DataTransfer();
+                                    const files = Array.from(input.files);
+                                    files.splice(index, 1);
+                                    files.forEach(file => dt.items.add(file));
+                                    input.files = dt.files;
+                                    // Re-trigger change to update thumbnails
+                                    input.dispatchEvent(new Event('change'));
+                                }
+                            });
+
+                            // Form submission loading state
+                            document.getElementById('submitTicketBtn').addEventListener('click', function(e) {
+                                const submitBtn = this;
+                                const form = this.closest('form');
+
+                                // Basic validation
+                                const email = document.getElementById('email').value.trim();
+                                const category = document.getElementById('category').value.trim();
+                                const question = document.getElementById('question').value.trim();
+
+                                if (!email || !category || !question) {
+                                    e.preventDefault();
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Validation Error',
+                                        text: 'Please fill in email, category and question fields.'
+                                    });
+                                    return;
+                                }
+
+                                // Show loading state
+                                const originalText = submitBtn.innerHTML;
+                                submitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Creating...';
+                                submitBtn.disabled = true;
+
+                                // Allow form submission to continue
+                                form.submit();
                             });
                         });
                     </script>
@@ -232,5 +291,4 @@
             </div>
         </div>
     </div>
-   
 @endsection

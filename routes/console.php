@@ -2,9 +2,11 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketResponseMail;
 use App\Models\Ticket;
+use App\Jobs\SendOverdueTicketReminderJob;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -32,3 +34,9 @@ Artisan::command('mail:test {email?}', function ($email = null) {
         $this->error('Failed to send: ' . $e->getMessage());
     }
 })->purpose('Send a test email using configured mailer');
+
+// Schedule overdue ticket reminders to run daily at configured time
+Schedule::job(new SendOverdueTicketReminderJob())
+    ->dailyAt(env('TICKET_REMINDER_TIME', '09:00'))
+    ->description('Send push notifications for overdue tickets');
+

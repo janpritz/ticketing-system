@@ -23,13 +23,37 @@
         </a>
       </li>
       <li>
-        <a href="{{ route('admin.users.index') }}"
-           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.users.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
-          <svg class="w-5 h-5 {{ request()->routeIs('admin.users.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
-            <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+        <button type="button" id="userManagementDropdown" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.categories.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}" aria-expanded="false">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 {{ request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.categories.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">User Management</span>
+          </div>
+          <svg id="userManagementChevron" class="w-4 h-4 transition-transform duration-200 {{ request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.categories.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
-          <span class="ms-3">User Management</span>
-        </a>
+        </button>
+        <div id="userManagementMenu" class="hidden pl-4 mt-1 space-y-1">
+          <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.users.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.users.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">Users</span>
+          </a>
+          <a href="{{ route('admin.roles.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.roles.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.roles.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="ms-3">Role Management</span>
+          </a>
+          <a href="{{ route('admin.categories.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.categories.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.categories.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
+            <span class="ms-3">Category Management</span>
+          </a>
+        </div>
       </li>
       <li>
         <a href="{{ route('admin.tickets.index') }}"
@@ -48,6 +72,15 @@
             <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
           </svg>
           <span class="ms-3">FAQ Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ route('admin.reports.index') }}"
+           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.reports.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
+          <svg class="w-5 h-5 {{ request()->routeIs('admin.reports.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+          </svg>
+          <span class="ms-3">Reports</span>
         </a>
       </li>
       <li>
@@ -223,6 +256,41 @@
       mq.addEventListener('change', () => {
         const wasOpen = readState();
         applyState(wasOpen);
+      });
+    })();
+  </script>
+
+  <!-- User Management Dropdown Script -->
+  <script>
+    (function () {
+      const dropdownBtn = document.getElementById('userManagementDropdown');
+      const dropdownMenu = document.getElementById('userManagementMenu');
+      const chevron = document.getElementById('userManagementChevron');
+
+      if (!dropdownBtn || !dropdownMenu || !chevron) return;
+
+      dropdownBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        const isOpen = !dropdownMenu.classList.contains('hidden');
+        
+        // Toggle menu visibility
+        dropdownMenu.classList.toggle('hidden', isOpen);
+        
+        // Update aria-expanded
+        dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+        
+        // Rotate chevron
+        chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function (e) {
+        if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+          dropdownMenu.classList.add('hidden');
+          dropdownBtn.setAttribute('aria-expanded', 'false');
+          chevron.style.transform = 'rotate(0deg)';
+        }
       });
     })();
   </script>

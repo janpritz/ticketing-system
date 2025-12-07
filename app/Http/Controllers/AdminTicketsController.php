@@ -10,7 +10,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\TicketResponseMail;
+use App\Jobs\SendTicketResponseJob;
+use App\Jobs\SendTicketForwardJob;
+use App\Jobs\SendPushNotificationJob;
 
 class AdminTicketsController extends Controller
 {
@@ -22,104 +26,112 @@ class AdminTicketsController extends Controller
         $perPage = (int) $request->query('per_page', 25);
         $page = (int) $request->query('page', 1);
 
-        // Base query with eager staff relation (only load needed staff columns to avoid unnecessary data transfer).
-        // Also ensure the query selects tickets.* so joins (used later for sorting) don't pollute the column set.
-        $query = Ticket::with([
-            // Load staff minimal columns and the related role model for DB-backed roles
-            'staff' => function($q) {
-                $q->select('id', 'name', 'role_id');
-            },
-            'staff.role'
-        ])->select('tickets.*');
+        // Create a cache key based on request parameters
+        $cacheKey = 'tickets_list_' . md5(serialize($request->query()));
 
-        // Keyword search across common fields
-        if ($q = $request->query('q')) {
-            $query->where(function ($qBuilder) use ($q) {
-                $qBuilder->where('question', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%")
-                    ->orWhere('category', 'like', "%{$q}%");
-            });
-        }
+        // Cache the entire response for 20 seconds
+        $response = Cache::remember($cacheKey, 20, function () use ($request, $perPage, $page) {
+            // Base query with eager staff relation (only load needed staff columns to avoid unnecessary data transfer).
+            // Also ensure the query selects tickets.* so joins (used later for sorting) don't pollute the column set.
+            $query = Ticket::with([
+                // Load staff minimal columns and the related role model for DB-backed roles
+                'staff' => function($q) {
+                    $q->select('id', 'name', 'role_id');
+                },
+                'staff.role'
+            ])->select('tickets.*');
 
-        // Filter by status
-        if ($status = $request->query('status')) {
-            $query->where('status', $status);
-        }
+            // Keyword search across common fields
+            if ($q = $request->query('q')) {
+                $query->where(function ($qBuilder) use ($q) {
+                    $qBuilder->where('question', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%")
+                        ->orWhere('category', 'like', "%{$q}%");
+                });
+            }
 
-        // Filter by assignee name (partial match)
-        if ($assignee = $request->query('assignee')) {
-            $query->whereHas('staff', function ($qb) use ($assignee) {
-                $qb->where('name', 'like', "%{$assignee}%");
-            });
-        }
+            // Filter by status
+            if ($status = $request->query('status')) {
+                $query->where('status', $status);
+            }
 
-        // Filter by staff role (supports Role as a related model; users no longer have a 'role' string column)
-        if ($role = $request->query('role')) {
-            // filter by the related roles.name via the staff->role relation
-            $query->whereHas('staff.role', function ($q) use ($role) {
-                $q->where('name', $role);
-            });
-        }
+            // Filter by assignee name (partial match)
+            if ($assignee = $request->query('assignee')) {
+                $query->whereHas('staff', function ($qb) use ($assignee) {
+                    $qb->where('name', 'like', "%{$assignee}%");
+                });
+            }
 
-        // Filter by assignee id (exact)
-        if ($assigneeId = $request->query('assignee_id')) {
-            $query->where('staff_id', $assigneeId);
-        }
- 
-        // Sorting
-        $sort = $request->query('sort', 'created_desc');
-        switch ($sort) {
-            case 'created_asc':
-                $query->orderBy('date_created', 'asc');
-                break;
-            case 'created_desc':
-                $query->orderBy('date_created', 'desc');
-                break;
-            case 'status_asc':
-                $query->orderBy('status', 'asc')->orderBy('date_created', 'desc');
-                break;
-            case 'status_desc':
-                $query->orderBy('status', 'desc')->orderBy('date_created', 'desc');
-                break;
-            case 'assignee_asc':
-                // order by related staff name
-                $query->leftJoin('users as staff_users', 'tickets.staff_id', '=', 'staff_users.id')
-                      ->orderBy('staff_users.name', 'asc')
-                      ->select('tickets.*');
-                break;
-            case 'assignee_desc':
-                $query->leftJoin('users as staff_users', 'tickets.staff_id', '=', 'staff_users.id')
-                      ->orderBy('staff_users.name', 'desc')
-                      ->select('tickets.*');
-                break;
-            default:
-                $query->orderBy('date_created', 'desc');
-                break;
-        }
+            // Filter by staff role (supports Role as a related model; users no longer have a 'role' string column)
+            if ($role = $request->query('role')) {
+                // filter by the related roles.name via the staff->role relation
+                $query->whereHas('staff.role', function ($q) use ($role) {
+                    $q->where('name', $role);
+                });
+            }
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', max(1, $page));
- 
-        // Provide a last_changed timestamp (epoch seconds) so clients can poll efficiently.
-        // Prefer a cache key when available to avoid expensive queries.
-        $lastChanged = Cache::get('tickets_last_changed');
-        if (!$lastChanged) {
-            $maxUpdated = Ticket::max('updated_at');
-            $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
-            // seed the cache to avoid repeated DB hits
-            Cache::put('tickets_last_changed', $lastChanged, 3600);
-        }
- 
-        // Standardized response structure expected by the frontend
-        return response()->json([
-            'items' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-            ],
-            'last_changed' => $lastChanged,
-        ]);
+            // Filter by assignee id (exact)
+            if ($assigneeId = $request->query('assignee_id')) {
+                $query->where('staff_id', $assigneeId);
+            }
+
+            // Sorting
+            $sort = $request->query('sort', 'created_desc');
+            switch ($sort) {
+                case 'created_asc':
+                    $query->orderBy('date_created', 'asc');
+                    break;
+                case 'created_desc':
+                    $query->orderBy('date_created', 'desc');
+                    break;
+                case 'status_asc':
+                    $query->orderBy('status', 'asc')->orderBy('date_created', 'desc');
+                    break;
+                case 'status_desc':
+                    $query->orderBy('status', 'desc')->orderBy('date_created', 'desc');
+                    break;
+                case 'assignee_asc':
+                    // order by related staff name
+                    $query->leftJoin('users as staff_users', 'tickets.staff_id', '=', 'staff_users.id')
+                          ->orderBy('staff_users.name', 'asc')
+                          ->select('tickets.*');
+                    break;
+                case 'assignee_desc':
+                    $query->leftJoin('users as staff_users', 'tickets.staff_id', '=', 'staff_users.id')
+                          ->orderBy('staff_users.name', 'desc')
+                          ->select('tickets.*');
+                    break;
+                default:
+                    $query->orderBy('date_created', 'desc');
+                    break;
+            }
+
+            $paginator = $query->paginate($perPage, ['*'], 'page', max(1, $page));
+
+            // Provide a last_changed timestamp (epoch seconds) so clients can poll efficiently.
+            // Prefer a cache key when available to avoid expensive queries.
+            $lastChanged = Cache::get('tickets_last_changed');
+            if (!$lastChanged) {
+                $maxUpdated = Ticket::max('updated_at');
+                $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
+                // seed the cache to avoid repeated DB hits
+                Cache::put('tickets_last_changed', $lastChanged, 3600);
+            }
+
+            // Standardized response structure expected by the frontend
+            return [
+                'items' => $paginator->items(),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                ],
+                'last_changed' => $lastChanged,
+            ];
+        });
+
+        return response()->json($response);
     }
 
     /**
@@ -127,22 +139,32 @@ class AdminTicketsController extends Controller
      */
     public function show(Request $request, $id)
     {
-        // Eager-load minimal related data to avoid N+1 and reduce payload size.
-        // Load staff (id, name, role_id) and the staff->role relation, plus recent routing histories.
-        $ticket = Ticket::with([
-            'staff' => function ($q) {
-                // select role_id (foreign key) so the relation can resolve the Role model
-                $q->select('id', 'name', 'role_id');
-            },
-            'staff.role',
-            'routingHistories' => function ($q) {
-                $q->select('id', 'ticket_id', 'staff_id', 'status', 'routed_at', 'notes')
-                  ->orderBy('routed_at', 'desc');
-            }
-        ])->select('tickets.*')->findOrFail($id);
- 
-        // Normalize a bit for the UI
-        return response()->json($ticket);
+        $cacheKey = 'ticket_detail_' . $id;
+
+        // Cache the ticket detail for 20 seconds
+        $data = Cache::remember($cacheKey, 20, function () use ($id) {
+            // Eager-load minimal related data to avoid N+1 and reduce payload size.
+            // Load staff (id, name, role_id) and the staff->role relation, plus recent routing histories.
+            $ticket = Ticket::with([
+                'staff' => function ($q) {
+                    // select role_id (foreign key) so the relation can resolve the Role model
+                    $q->select('id', 'name', 'role_id');
+                },
+                'staff.role',
+                'routingHistories' => function ($q) {
+                    $q->select('id', 'ticket_id', 'staff_id', 'status', 'routed_at', 'notes')
+                      ->orderBy('routed_at', 'desc');
+                }
+            ])->select('tickets.*')->findOrFail($id);
+
+            // Get list of users with roles (staff) for rerouting
+            $users = User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
+
+            // Normalize a bit for the UI
+            return array_merge($ticket->toArray(), ['users' => $users]);
+        });
+
+        return response()->json($data);
     }
 
     /**
@@ -178,36 +200,34 @@ class AdminTicketsController extends Controller
             ]);
 
             DB::commit();
- 
+
+
+            // Clear tickets cache on update
+            Cache::flush();
+
             // update last-changed cache so other clients can poll efficiently
             try {
                 Cache::put('tickets_last_changed', time(), 3600);
             } catch (\Throwable $cacheEx) {
                 Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
             }
- 
-            // Attempt to send response email to the ticket owner.
-            // We send after committing the DB so the saved response is durable.
+
+            // Dispatch job to send response email to the ticket owner.
+            // We dispatch after committing the DB so the saved response is durable.
             $mailSent = true;
             $mailError = null;
-            try {
-                if (!empty($ticket->email)) {
-                    Mail::to($ticket->email)->send(
-                        new TicketResponseMail($ticket, $request->input('message'), optional($request->user())->name)
-                    );
-                } else {
-                    // No recipient email configured on ticket
-                    $mailSent = false;
-                    $mailError = 'Ticket has no email address';
-                }
-            } catch (\Throwable $mailEx) {
-                // Record the mail error but do not roll back the ticket update.
+            if (!empty($ticket->email)) {
+                SendTicketResponseJob::dispatch(
+                    $ticket->id,
+                    $request->input('message'),
+                    optional($request->user())->name
+                );
+            } else {
+                // No recipient email configured on ticket
                 $mailSent = false;
-                $mailError = $mailEx->getMessage();
-                // Optionally log the mail exception for diagnostics
-                Log::error('Ticket response email failed: ' . $mailError);
+                $mailError = 'Ticket has no email address';
             }
- 
+
             return response()->json([
                 'message' => 'Response saved',
                 'mail_sent' => $mailSent,
@@ -220,56 +240,54 @@ class AdminTicketsController extends Controller
     }
 
     /**
-     * Reroute a ticket to a staff role.
-     * Expects JSON: { role: 'Enrollment' }
+     * Forward a ticket to a specific user.
+     * Expects JSON: { user_id: 123 }
      */
-    public function reroute(Request $request, $id)
+    public function forward(Request $request, $id)
     {
+        Log::info('Ticket forward request received', [
+            'ticket_id' => $id,
+            'user_id' => $request->user_id,
+            'current_user' => optional(request()->user())->id,
+            'current_user_name' => optional(request()->user())->name,
+            'route' => $request->route()->getName(),
+            'url' => $request->url(),
+            'method' => $request->method()
+        ]);
+
         $request->validate([
-            'role' => 'required|string',
+            'user_id' => 'required|integer|exists:users,id',
         ]);
 
         $ticket = Ticket::findOrFail($id);
+        Log::info('Ticket found for forwarding', ['ticket_id' => $ticket->id, 'ticket_status' => $ticket->status]);
 
-        DB::beginTransaction();
+        // Dispatch job to handle ticket forwarding asynchronously
+        $user = User::findOrFail($request->user_id);
+        Log::info('User found for forwarding', ['forward_to_user_id' => $user->id, 'forward_to_user_name' => $user->name]);
+
+        SendTicketForwardJob::dispatch(
+            $ticket->id,
+            $request->user_id,
+            optional(request()->user())->id,
+            'Forwarded by admin to user: ' . $user->name
+        );
+
+        // Clear tickets cache on update
+        Cache::flush();
+
+        // update last-changed cache
         try {
-            // Find a staff with that role (using roles table)
-            $staff = User::whereHas('role', function ($q) use ($request) {
-                $q->where('name', $request->role);
-            })->inRandomOrder()->first();
-
-            $ticket->staff_id = $staff ? $staff->id : null;
-            // optional: set status to Re-routed
-            $ticket->status = 'Re-routed';
-            $ticket->save();
-
-            TicketRoutingHistory::create([
-                'ticket_id' => $ticket->id,
-                'staff_id' => $ticket->staff_id,
-                'status' => $ticket->status,
-                'routed_at' => now(),
-                'notes' => 'Rerouted by admin to role: ' . $request->role,
-            ]);
-
-            DB::commit();
- 
-            // update last-changed cache
-            try {
-                Cache::put('tickets_last_changed', time(), 3600);
-            } catch (\Throwable $cacheEx) {
-                Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-            }
- 
-            return response()->json(['message' => 'Ticket rerouted', 'staff' => $staff]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Failed to reroute', 'error' => $e->getMessage()], 500);
+            Cache::put('tickets_last_changed', time(), 3600);
+        } catch (\Throwable $cacheEx) {
+            Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
         }
+
+        Log::info('Ticket forward completed successfully', ['ticket_id' => $ticket->id, 'forwarded_to' => $user->name]);
+
+        return response()->json(['message' => 'Ticket forwarding initiated', 'staff' => $user]);
     }
 
-    /**
-     * Update ticket fields (currently allows editing question).
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -295,14 +313,17 @@ class AdminTicketsController extends Controller
             'routed_at' => now(),
             'notes' => 'Admin updated ticket',
         ]);
- 
+
+        // Clear tickets cache on update
+        Cache::flush();
+
         // update last-changed cache
         try {
             Cache::put('tickets_last_changed', time(), 3600);
         } catch (\Throwable $cacheEx) {
             Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
         }
- 
+
         return response()->json($ticket);
     }
 
@@ -322,14 +343,17 @@ class AdminTicketsController extends Controller
             'routed_at' => now(),
             'notes' => 'Deleted by admin',
         ]);
- 
+
+        // Clear tickets cache on delete
+        Cache::flush();
+
         // update last-changed cache
         try {
             Cache::put('tickets_last_changed', time(), 3600);
         } catch (\Throwable $cacheEx) {
             Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
         }
- 
+
         return response()->json(['deleted' => true]);
     }
 }

@@ -1,5 +1,34 @@
+# ----------------------------------------------------------------------
+# SECURITY: Prevent access to sensitive files
+# ----------------------------------------------------------------------
+<FilesMatch "^(\.env|\.env\.example|composer\.(json|lock)|package\.json|artisan|server\.php|webpack\.mix\.js|vite\.config\.js)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to .git, node_modules, storage, and other private folders
+
+# ----------------------------------------------------------------------
+# Redirect all traffic to the public folder (except PWA files)
+# ----------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Redirect everything to the /public folder
     RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+# ----------------------------------------------------------------------
+# SECURITY HEADERS (optional but recommended)
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "no-referrer-when-downgrade"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
+
+# ----------------------------------------------------------------------
+# COMPRESS AND CACHING
+# ----------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
 </IfModule>

@@ -24,12 +24,37 @@
         </a>
       </li>
       <li>
-        <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
-            <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+        <button type="button" id="userManagementDropdown" class="w-full flex items-center justify-between p-2 text-gray-900 rounded-lg hover:bg-gray-100 group" aria-expanded="false">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">User Management</span>
+          </div>
+          <svg id="userManagementChevron" class="w-4 h-4 text-gray-500 transition-transform duration-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
-          <span class="ms-3">User Management</span>
-        </a>
+        </button>
+        <div id="userManagementMenu" class="hidden pl-4 mt-1 space-y-1">
+          <a href="{{ route('admin.users.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 18">
+              <path d="M6.143 0H1.857A1.857 1.857 0 0 0 0 1.857v4.286C0 7.169.831 8 1.857 8h4.286A1.857 1.857 0 0 0 8 6.143V1.857A1.857 1.857 0 0 0 6.143 0Zm10 0h-4.286A1.857 1.857 0 0 0 10 1.857v4.286C10 7.169 10.831 8 11.857 8h4.286A1.857 1.857 0 0 0 18 6.143V1.857A1.857 1.857 0 0 0 16.143 0Zm-10 10H1.857A1.857 1.857 0 0 0 0 11.857v4.286C0 17.169.831 18 1.857 18h4.286A1.857 1.857 0 0 0 8 16.143v-4.286A1.857 1.857 0 0 0 6.143 10Zm10 0h-4.286A1.857 1.857 0 0 0 10 11.857v4.286c0 1.026.831 1.857 1.857 1.857h4.286A1.857 1.857 0 0 0 18 16.143v-4.286A1.857 1.857 0 0 0 16.143 10Z"/>
+            </svg>
+            <span class="ms-3">Users</span>
+          </a>
+          <a href="{{ route('admin.roles.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="ms-3">Role Management</span>
+          </a>
+          <a href="{{ route('admin.categories.index') }}" class="flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 group">
+            <svg class="w-4 h-4 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
+            <span class="ms-3">Category Management</span>
+          </a>
+        </div>
       </li>
       <li>
         <a href="{{ route('admin.tickets.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
@@ -45,6 +70,15 @@
             <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
           </svg>
           <span class="ms-3">FAQ Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ route('admin.reports.index') }}"
+           class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+          </svg>
+          <span class="ms-3">Reports</span>
         </a>
       </li>
       <li>
@@ -72,7 +106,16 @@
                   <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                   </svg>
-                </button>        
+                </button>
+                <label class="relative block">
+                    <span class="sr-only">Search</span>
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
+                        </svg>
+                    </span>
+                    <input type="text" placeholder="Search tickets, users, FAQs..." class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </label>
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-right">
@@ -88,6 +131,25 @@
         <div class="ps-2">
             <h1 class="text-2xl font-semibold text-slate-900">Dashboard</h1>
             <p class="text-sm text-slate-500">Overview of your ticketing system</p>
+        </div>
+
+        <!-- FAQ Sync Alert -->
+        <div id="faqSyncAlert" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                    <h3 id="faqSyncTitle" class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
+                    <p id="faqSyncDesc" class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
+                </div>
+            </div>
+            <button id="faqSyncActionBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync Now
+            </button>
         </div>
 
         <!-- Metrics -->
@@ -243,7 +305,7 @@
             @php
             $badge = fn($status) => match($status) {
             'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
-            'Re-routed' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
+            'Forwarded' => 'text-amber-700 bg-amber-50 ring-amber-600/20',
             'Closed' => 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
             default => 'text-slate-700 bg-slate-50 ring-slate-600/20',
             };
@@ -321,8 +383,8 @@
                                 <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="inProgressListBody" class="divide-y divide-gray-100">
-                            @forelse(($inProgressList ?? []) as $t)
+                        <tbody id="myTicketsListBody" class="divide-y divide-gray-100">
+                            @forelse(($myTicketsList ?? []) as $t)
                             @php
                             @endphp
                             <tr class="hover:bg-gray-50">
@@ -355,7 +417,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to Primary Administrator.</td>
+                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -366,71 +428,209 @@
     </main>
 </div>
 
-<!-- Ticket Details Modal (shared with admin tickets page) -->
-<div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-auto">
-  <div class="absolute inset-0 bg-black/40" data-modal-backdrop></div>
-  <div class="relative mx-auto my-6 w-[90%] max-w-3xl max-h-[90vh]">
-    <div class="bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden max-h-[90vh] flex flex-col">
-      <div class="flex items-center justify-between px-5 py-4 border-b">
-        <div class="text-sm font-semibold text-slate-800">Ticket Details</div>
-        <div>
-          <button type="button" data-modal-close aria-label="Close ticket details" class="inline-flex items-center justify-center h-8 w-8 rounded-md text-slate-600 hover:text-slate-800 hover:bg-gray-50">
-            <span class="sr-only">Close</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="px-5 py-4 space-y-4 overflow-auto flex-1">
-        <div id="tmInfo" class="text-xs text-gray-500"></div>
-        <div>
-          <label class="block text-xs text-gray-500">Question</label>
-          <div id="tmQuestion" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500">Response (send email)</label>
-          <textarea id="tmResponse" class="w-full rounded-md border-gray-300 px-3 py-2 text-sm" rows="4"></textarea>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500">Reroute to</label>
-          <div class="flex items-center gap-2">
-            <select id="tmRerouteSelect" class="rounded-md border-gray-300 text-sm px-3 py-2">
-              <option value="" selected disabled>Select role</option>
-              <option>Primary Administrator</option>
-              <option>Enrollment</option>
-              <option>Finance and Payments</option>
-              <option>Scholarships</option>
-              <option>Academic Concerns</option>
-              <option>Exams</option>
-              <option>Student Services</option>
-              <option>Library Services</option>
-              <option>IT Support</option>
-              <option>Graduation</option>
-              <option>Athletics and Sports</option>
-            </select>
-            <button id="tmRerouteInlineBtn" type="button" class="hidden rounded-md bg-white border border-gray-200 px-3 py-1.5 text-sm">Reroute</button>
-          </div>
+<!-- Ticket Details Modal - Redesigned with Minimal Aesthetic -->
+<div id="ticketModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+    <!-- Centered panel with modern minimal design -->
+    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+        <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
 
-          <div id="tmRerouteHistoryContainer" class="mt-3 hidden">
-            <button type="button" id="tmHistoryToggle" class="w-full text-left text-sm text-slate-600 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center justify-between">
-              <span>Reroute History</span>
-              <svg id="tmHistoryIcon" class="h-4 w-4 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-            <div id="tmHistoryPanel" class="mt-2 px-2 py-2 border rounded-md bg-gray-50 hidden max-h-64 overflow-auto"></div>
-          </div>
+            <!-- Header - Minimal & Clean -->
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 id="tmTicketNo" class="text-lg font-semibold text-gray-900">Ticket #</h3>
+                        <span id="tmStatus" class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1"></span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 ml-4">
+                    <!-- Options Menu in Header -->
+                    <div class="relative">
+                        <button type="button" id="tmOptionsBtn"
+                            class="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                            aria-haspopup="true" aria-expanded="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                            </svg>
+                            <span class="hidden sm:inline">Options</span>
+                        </button>
+                        <div id="tmOptionsMenu"
+                            class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
+                            <button type="button"
+                                class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                data-option="toggle-history">Show History</button>
+                            <button type="button" id="tmOptionForward"
+                                class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                                data-option="show-forward">Forward Ticket</button>
+                        </div>
+                    </div>
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content - Scrollable -->
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                
+                <!-- Question/Issue - Primary Focus -->
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Issue</span>
+                    </div>
+                    <div id="tmQuestion" class="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed"></div>
+                </div>
+
+                <!-- Attachments - Visible when present -->
+                <div id="tmAttachmentsBlock" class="hidden">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span class="text-xs font-medium text-gray-700">Attachments</span>
+                    </div>
+                    <div id="tmAttachmentsList" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Sent Response - For closed tickets -->
+                <div id="tmStoredResponseBlock" class="hidden bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Sent Response</span>
+                    </div>
+                    <div id="tmStoredResponse" class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed"></div>
+                </div>
+
+                <!-- Collapsible Details Section -->
+                <div id="tmDetailsSection" class="border-t border-gray-100 pt-4">
+                    <button type="button" id="tmToggleDetails" class="flex items-center justify-between w-full text-left group">
+                        <span class="text-sm font-medium text-gray-700 group-hover:text-gray-900">Show Details</span>
+                        <svg id="tmDetailsChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    <div id="tmDetailsContent" class="hidden mt-4 space-y-4 pb-2">
+                        <!-- Category & Dates -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Category</label>
+                                <div id="tmCategory" class="mt-1 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"></div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Timeline</label>
+                                <div id="tmDates" class="mt-1 text-xs text-gray-700"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                                <div id="tmEmail" class="mt-1 text-sm text-gray-800"></div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Recipient ID</label>
+                                <div id="tmRecepient" class="mt-1 text-sm text-gray-800"></div>
+                            </div>
+                        </div>
+
+                        <!-- Routing History -->
+                        <div id="tmHistorySection" class="hidden">
+                            <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Routing History</label>
+                            <ul id="tmHistoryList" class="mt-2 space-y-2"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Response Input -->
+                <div class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100">
+                    <label for="tmResponse" class="flex items-center gap-2 text-sm font-medium text-indigo-900 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Your Response
+                    </label>
+                    <textarea id="tmResponse"
+                        class="w-full rounded-lg border-indigo-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm resize-none"
+                        rows="4" placeholder="Type your response message here..."></textarea>
+                </div>
+
+                <!-- Forward Controls -->
+                <div id="tmForwardControls" class="hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <label for="tmForwardSelect" class="text-xs font-medium text-gray-700">Forward to:</label>
+                        <select id="tmForwardSelect" class="flex-1 sm:flex-none rounded-lg border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="" selected disabled>Select user</option>
+                        </select>
+                        <button type="button" id="tmForwardApply"
+                            class="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors">
+                            Forward Ticket
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer - Actions -->
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+                <!-- Main Actions -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <!-- Options Menu -->
+                        <div class="relative">
+                            <button type="button" id="tmOptionsBtn"
+                                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                                aria-haspopup="true" aria-expanded="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
+                                </svg>
+                                Options
+                            </button>
+                            <div id="tmOptionsMenu"
+                                class="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
+                                <button type="button"
+                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                    data-option="toggle-history">Show History</button>
+                                <button type="button" id="tmOptionForward"
+                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+                                    data-option="show-forward">Forward Ticket</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 transition-colors"
+                            data-modal-close>Cancel</button>
+                        <button type="button" title="Send response" aria-label="Send response"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                            id="tmSendResponse">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 12l18-9-9 18-2-7-7-2z" />
+                            </svg>
+                            Send Response
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="px-5 py-3 border-t flex items-center justify-between gap-3">
-        <div></div>
-        <div class="flex items-center gap-2">
-          <button id="tmSendResponse" type="button" disabled class="rounded-md bg-gray-300 text-white px-4 py-1.5 text-sm">Send</button>
-        </div>
-      </div>
     </div>
+</div>
+
+<!-- Image Lightbox -->
+<div id="imageLightbox" class="fixed inset-0 z-60 hidden bg-black bg-opacity-75 flex items-center justify-center">
+  <div class="relative w-full h-full">
+    <img id="lightboxImage" src="" alt="" class="w-full h-full object-contain">
+    <button id="lightboxPrev" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&larr;</button>
+    <button id="lightboxNext" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&rarr;</button>
+    <button id="lightboxClose" class="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&times;</button>
   </div>
 </div>
 
@@ -472,6 +672,7 @@
      data-staff-contacts='@json($staffContacts ?? [])'
      data-admin-url="{{ route('admin.dashboard.data') }}"></div>
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -545,6 +746,11 @@
 
         // Auto-refresh admin dashboard data
         const fmt = new Intl.NumberFormat('en-US');
+
+        // Background fetch data every 10 seconds
+        setInterval(() => {
+            refreshAdminData();
+        }, 20000);
 
         function updateCounts(payload) {
             const elOpen = document.getElementById('openTicketsCount');
@@ -684,7 +890,7 @@
         function adminBadgeClass(status) {
             switch (status) {
                 case 'Open': return 'text-blue-700 bg-blue-50 ring-blue-600/20';
-                case 'Re-routed': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
+                case 'Forwarded': return 'text-amber-700 bg-amber-50 ring-amber-600/20';
                 case 'Closed': return 'text-emerald-700 bg-emerald-50 ring-emerald-600/20';
                 default: return 'text-slate-700 bg-slate-50 ring-slate-600/20';
             }
@@ -724,8 +930,8 @@
             }) : [];
             tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No open tickets.</td></tr>`;
         }
-        function updateInProgressList(list) {
-            const tbody = document.getElementById('inProgressListBody');
+        function updateMyTicketsList(list) {
+            const tbody = document.getElementById('myTicketsListBody');
             if (!tbody) return;
             const rows = Array.isArray(list) ? list.map(t => {
                 const ticketNo = String(t.id);
@@ -794,7 +1000,7 @@
                 // Update top senders table and lists
                 updateTopSenders(data);
                 updateOpenList(data.openList || []);
-                updateInProgressList(data.inProgressList || []);
+                updateMyTicketsList(data.myTicketsList || []);
 
                 // Keep active staff list fresh for drawer
                 if (Array.isArray(data.activeStaff)) {
@@ -813,6 +1019,68 @@
                 console.debug('Admin auto-refresh failed', e);
             }
         }
+
+        // FAQ Sync Alert Management
+        function updateFaqSyncAlert() {
+            const alertEl = document.getElementById('faqSyncAlert');
+            const titleEl = document.getElementById('faqSyncTitle');
+            const descEl = document.getElementById('faqSyncDesc');
+            const actionBtn = document.getElementById('faqSyncActionBtn');
+            if (!alertEl || !titleEl || !descEl || !actionBtn) return;
+            try {
+                const hasPending = localStorage.getItem('faq_changes_pending') === 'true';
+                const syncedPendingTraining = localStorage.getItem('faq_synced_pending_training') === 'true';
+                if (hasPending) {
+                    titleEl.textContent = 'FAQ Sync Required';
+                    descEl.textContent = 'There are pending FAQ changes that need to be synced to Rasa.';
+                    actionBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Sync Now';
+                    actionBtn.onclick = () => window.location.href = '{{ route("admin.faqs.index") }}';
+                    alertEl.classList.remove('hidden');
+                } else if (syncedPendingTraining) {
+                    titleEl.textContent = 'FAQ Sync Completed';
+                    descEl.textContent = 'Faqs are now sync with rasa make sure to run training to update the responses.';
+                    actionBtn.innerHTML = 'Faqs Trained';
+                    actionBtn.onclick = () => {
+                        Swal.fire({
+                            title: 'Did you run rasa training?',
+                            showDenyButton: true,
+                            confirmButtonText: 'Yes',
+                            denyButtonText: 'No',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                localStorage.setItem('faq_synced_pending_training', 'false');
+                                updateFaqSyncAlert();
+                                // Show success toast
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Faqs are now trained. Responses are now live.',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        });
+                    };
+                    alertEl.classList.remove('hidden');
+                } else {
+                    alertEl.classList.add('hidden');
+                }
+            } catch (e) {
+                // localStorage not available
+            }
+        }
+
+        // Update alert on page load
+        updateFaqSyncAlert();
+
+        // Listen for localStorage changes (cross-tab)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'faq_changes_pending' || e.key === 'faq_synced_pending_training') {
+                updateFaqSyncAlert();
+            }
+        });
 
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change
@@ -975,19 +1243,89 @@
 <script>
 (function(){
   const ticketModal = document.getElementById('ticketModal');
-  const tmInfo = document.getElementById('tmInfo');
+  const modalBackdrop = ticketModal ? ticketModal.querySelector('[data-modal-backdrop]') : null;
+  const modalCloseBtns = ticketModal ? ticketModal.querySelectorAll('[data-modal-close]') : [];
+  const tmTicketNo = document.getElementById('tmTicketNo');
+  const tmStatus = document.getElementById('tmStatus');
   const tmQuestion = document.getElementById('tmQuestion');
   const tmResponse = document.getElementById('tmResponse');
-  const historyContainer = document.getElementById('tmRerouteHistoryContainer');
-  const historyPanel = document.getElementById('tmHistoryPanel');
-  const historyToggle = document.getElementById('tmHistoryToggle');
-  const historyIcon = document.getElementById('tmHistoryIcon');
+  const tmCategory = document.getElementById('tmCategory');
+  const tmDates = document.getElementById('tmDates');
+  const tmEmail = document.getElementById('tmEmail');
+  const tmRecepient = document.getElementById('tmRecepient');
+  const tmStoredResponseBlock = document.getElementById('tmStoredResponseBlock');
+  const tmStoredResponse = document.getElementById('tmStoredResponse');
+  const tmSendResponse = document.getElementById('tmSendResponse');
+  const tmOptionsBtn = document.getElementById('tmOptionsBtn');
+  const tmOptionsMenu = document.getElementById('tmOptionsMenu');
+  const tmOptionForward = document.getElementById('tmOptionForward');
+  const tmForwardControls = document.getElementById('tmForwardControls');
+  const tmForwardSelect = document.getElementById('tmForwardSelect');
+  const tmForwardApply = document.getElementById('tmForwardApply');
+  
+  const csrfToken = '{{ csrf_token() }}';
+  const forwardBase = "{{ url('/admin/tickets') }}";
+  let currentTicketId = null;
+
+  const statusStyles = {
+    'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
+    'Forwarded': 'text-amber-700 bg-amber-50 ring-amber-600/20',
+    'Closed': 'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
+  };
+
+  function statusClassFor(s) {
+    return statusStyles[s] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
+  }
+
+  function fmtDate(d) {
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return '';
+      return dt.toLocaleString();
+    } catch (_) {
+      return '';
+    }
+  }
 
   function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,"&#039;"); }
 
+  function ensureHistorySection() {
+    let section = document.getElementById('tmHistorySection');
+    const list = document.getElementById('tmHistoryList');
+    return { section, list };
+  }
+
+  function renderHistory(histArr) {
+    const { section, list } = ensureHistorySection();
+    if (!section || !list) return;
+    if (!Array.isArray(histArr) || histArr.length === 0) {
+      list.innerHTML = '<li class="text-xs text-gray-500">No routing history.</li>';
+      return;
+    }
+    const items = histArr.map(h => {
+      const when = fmtDate(h.routed_at || h.created_at);
+      const who = (h.staff && h.staff.name) ? h.staff.name : '-';
+      const status = h.status || '';
+      const notes = h.notes || '';
+      return `
+        <li class="text-xs text-gray-700">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="font-medium">${status}</span>
+              <span class="text-gray-500"> • ${who}</span>
+            </div>
+            <div class="text-gray-500">${when}</div>
+          </div>
+          ${notes ? `<div class="text-gray-600 mt-0.5">${notes}</div>` : ''}
+        </li>
+      `;
+    });
+    list.innerHTML = items.join('');
+  }
+
   async function loadAndShowTicket(id){
+    currentTicketId = id;
     if (!id) return;
-    // Use /public prefix for deployments that serve the app under the public folder (e.g. example.com/public/...)
     const url = "{{ url('/admin/tickets') }}/" + encodeURIComponent(id);
     try {
       const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
@@ -998,53 +1336,171 @@
       const t = await res.json();
       if (!t) return;
 
-      if (tmInfo) tmInfo.textContent = `#${t.id} • ${t.email || '-'} • ${t.category || ''}`;
-      if (tmQuestion) tmQuestion.textContent = t.question || '';
+      const ticketNo = String(t.id);
+      const createdAt = fmtDate(t.date_created || t.created_at);
+      const updatedAt = fmtDate(t.updated_at);
+      const category = t.category ?? '';
+      const question = t.question ?? '';
+      const email = t.email ?? '';
+      const recepient = t.recepient_id ?? '';
+
+      // Fill fields
+      if (tmTicketNo) tmTicketNo.textContent = 'Ticket #' + ticketNo;
+      if (tmDates) tmDates.textContent = createdAt ? `Created ${createdAt}${updatedAt ? ' • Updated ' + updatedAt : ''}` : '';
+      if (tmStatus) {
+        tmStatus.className = 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ' + statusClassFor(t.status);
+        tmStatus.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"></circle></svg> ${t.status ?? ''}`;
+      }
+      if (tmCategory) tmCategory.textContent = category;
+      if (tmQuestion) tmQuestion.textContent = question;
+      if (tmEmail) tmEmail.textContent = email;
+      if (tmRecepient) tmRecepient.textContent = recepient;
       if (tmResponse) tmResponse.value = '';
 
-      // Render reroute history
-      try {
-        const list = t.routingHistories || t.routing_histories || [];
-        if (!Array.isArray(list) || list.length === 0) {
-          if (historyContainer) historyContainer.classList.add('hidden');
-        } else {
-          if (historyContainer) historyContainer.classList.remove('hidden');
-          if (historyPanel) {
-            historyPanel.innerHTML = list.map(h => {
-              const routedAt = h.routed_at || h.routedAt || h.created_at || '';
-              const staffName = (h.staff && (h.staff.name || h.staff_name)) || h.staff_name || '-';
-              const status = h.status || '';
-              const notes = h.notes || '';
-              return `<div class="border-b last:border-b-0 py-2 text-sm">
-                        <div class="text-xs text-slate-500">${escapeHtml(routedAt)}</div>
-                        <div class="text-sm text-slate-800 font-medium">${escapeHtml(staffName)} — ${escapeHtml(status)}</div>
-                        <div class="text-sm text-slate-700">${escapeHtml(notes)}</div>
-                      </div>`;
-            }).join('');
-            historyPanel.classList.add('hidden'); // collapsed by default
-            if (historyIcon) historyIcon.classList.remove('rotate-180');
-            if (historyToggle) {
-              historyToggle.onclick = () => {
-                const isHidden = historyPanel.classList.contains('hidden');
-                if (isHidden) {
-                  historyPanel.classList.remove('hidden');
-                  if (historyIcon) historyIcon.classList.add('rotate-180');
-                } else {
-                  historyPanel.classList.add('hidden');
-                  if (historyIcon) historyIcon.classList.remove('rotate-180');
-                }
-              };
-            }
+      // Reset details section to collapsed state
+      const detailsContent = document.getElementById('tmDetailsContent');
+      const detailsChevron = document.getElementById('tmDetailsChevron');
+      const toggleDetailsBtn = document.getElementById('tmToggleDetails');
+      if (detailsContent) detailsContent.classList.add('hidden');
+      if (detailsChevron) detailsChevron.style.transform = 'rotate(0deg)';
+      if (toggleDetailsBtn) toggleDetailsBtn.querySelector('span').textContent = 'Show Details';
+
+      // Handle attachments
+      const attachmentsBlock = document.getElementById('tmAttachmentsBlock');
+      const attachmentsList = document.getElementById('tmAttachmentsList');
+      if (attachmentsBlock && attachmentsList) {
+        attachmentsList.innerHTML = '';
+        if (t.attachments) {
+          let attachments = [];
+          try {
+            attachments = JSON.parse(t.attachments);
+          } catch (e) {
+            attachments = [];
           }
+          if (attachments.length > 0) {
+            attachments.forEach((path, index) => {
+              const img = document.createElement('img');
+              img.src = '/storage/' + path;
+              img.alt = 'Attachment ' + (index + 1);
+              img.className = 'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
+              img.onclick = () => openLightbox(attachments, index);
+              attachmentsList.appendChild(img);
+            });
+            attachmentsBlock.classList.remove('hidden');
+          } else {
+            attachmentsBlock.classList.add('hidden');
+          }
+        } else {
+          attachmentsBlock.classList.add('hidden');
         }
-      } catch (e) {
-        console.warn('Dashboard: failed to render history', e);
-        if (historyContainer) historyContainer.classList.add('hidden');
       }
 
-      if (ticketModal) ticketModal.classList.remove('hidden');
+      // Hide forward controls initially
+      if (tmForwardControls) tmForwardControls.classList.add('hidden');
+
+      // Prepare and render history; keep hidden by default until toggled in Options
+      const hsObj = ensureHistorySection();
+      if (hsObj.section) hsObj.section.classList.add('hidden');
+      const histories = t.routing_histories || t.routingHistories || [];
+      renderHistory(Array.isArray(histories) ? histories : []);
+
+      // Toggle forward option and response display based on status
+      const isClosed = (t.status === 'Closed');
+      if (tmOptionForward) tmOptionForward.classList.toggle('hidden', isClosed);
+      if (tmForwardControls) tmForwardControls.classList.add('hidden');
+      if (tmStoredResponseBlock) {
+        if (isClosed) {
+          tmStoredResponseBlock.classList.remove('hidden');
+          if (tmStoredResponse) tmStoredResponse.textContent = t.response ? String(t.response) : 'No response on record.';
+        } else {
+          tmStoredResponseBlock.classList.add('hidden');
+          if (tmStoredResponse) tmStoredResponse.textContent = '';
+        }
+      }
+      if (tmResponse) {
+        tmResponse.disabled = isClosed;
+        tmResponse.placeholder = isClosed ? 'Ticket is closed. Response cannot be edited.' : 'Type your response message here...';
+      }
+      if (tmSendResponse) {
+        tmSendResponse.disabled = isClosed;
+        tmSendResponse.classList.toggle('opacity-50', isClosed);
+        tmSendResponse.classList.toggle('pointer-events-none', isClosed);
+      }
+
+      // Populate forward select with users
+      if (tmForwardSelect && t.users) {
+        tmForwardSelect.innerHTML = '<option value="" selected disabled>Select user</option>';
+        t.users.forEach(user => {
+          const option = document.createElement('option');
+          option.value = user.id;
+          option.textContent = user.name;
+          tmForwardSelect.appendChild(option);
+        });
+      }
+
+      if (ticketModal) {
+        ticketModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
     } catch (err) {
       console.error('Dashboard: error loading ticket', err);
+    }
+  }
+
+  function closeModal() {
+    if (!ticketModal) return;
+    ticketModal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    currentTicketId = null;
+  }
+
+  // Lightbox functions
+  let currentLightboxImages = [];
+  let currentLightboxIndex = 0;
+
+  function openLightbox(images, index) {
+    currentLightboxImages = images;
+    currentLightboxIndex = index;
+    const lightbox = document.getElementById('imageLightbox');
+    const img = document.getElementById('lightboxImage');
+    if (lightbox && img) {
+      img.src = '/storage/' + images[index];
+      lightbox.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      updateLightboxButtons();
+    }
+  }
+
+  function closeLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    if (lightbox) {
+      lightbox.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
+
+  function updateLightboxButtons() {
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+    if (prevBtn) prevBtn.style.display = currentLightboxIndex > 0 ? 'flex' : 'none';
+    if (nextBtn) nextBtn.style.display = currentLightboxIndex < currentLightboxImages.length - 1 ? 'flex' : 'none';
+  }
+
+  function prevImage() {
+    if (currentLightboxIndex > 0) {
+      currentLightboxIndex--;
+      const img = document.getElementById('lightboxImage');
+      if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+      updateLightboxButtons();
+    }
+  }
+
+  function nextImage() {
+    if (currentLightboxIndex < currentLightboxImages.length - 1) {
+      currentLightboxIndex++;
+      const img = document.getElementById('lightboxImage');
+      if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+      updateLightboxButtons();
     }
   }
 
@@ -1057,25 +1513,260 @@
     loadAndShowTicket(id);
   });
 
-  // Close modal handlers
-  document.addEventListener('click', function (e) {
-    if (!ticketModal) return;
-    if (e.target && e.target.closest && e.target.closest('[data-modal-backdrop]')) {
-      ticketModal.classList.add('hidden');
-    }
-    if (e.target && e.target.getAttribute && e.target.getAttribute('data-modal-close') != null) {
-      ticketModal.classList.add('hidden');
-    }
-    if (e.target && e.target.closest && e.target.closest('[data-modal-close]')) {
-      ticketModal.classList.add('hidden');
+  // Close modal interactions
+  if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+  if (modalCloseBtns && modalCloseBtns.length) {
+    modalCloseBtns.forEach(btn => btn.addEventListener('click', closeModal));
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && ticketModal && !ticketModal.classList.contains('hidden')) {
+      closeModal();
     }
   });
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && ticketModal && !ticketModal.classList.contains('hidden')) {
-      ticketModal.classList.add('hidden');
+  // Toggle Details Section
+  const tmToggleDetails = document.getElementById('tmToggleDetails');
+  const tmDetailsContent = document.getElementById('tmDetailsContent');
+  const tmDetailsChevron = document.getElementById('tmDetailsChevron');
+  
+  if (tmToggleDetails && tmDetailsContent && tmDetailsChevron) {
+    tmToggleDetails.addEventListener('click', () => {
+      const isHidden = tmDetailsContent.classList.contains('hidden');
+      tmDetailsContent.classList.toggle('hidden');
+      tmDetailsChevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      tmToggleDetails.querySelector('span').textContent = isHidden ? 'Hide Details' : 'Show Details';
+    });
+  }
+
+  // Options dropdown
+  if (tmOptionsBtn && tmOptionsMenu) {
+    tmOptionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !tmOptionsMenu.classList.contains('hidden');
+      tmOptionsMenu.classList.toggle('hidden', isOpen);
+      tmOptionsBtn.setAttribute('aria-expanded', String(!isOpen));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!tmOptionsMenu.contains(e.target) && !tmOptionsBtn.contains(e.target)) {
+        tmOptionsMenu.classList.add('hidden');
+        tmOptionsBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    tmOptionsMenu.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-option]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-option');
+
+      // Hide menu after action
+      tmOptionsMenu.classList.add('hidden');
+      tmOptionsBtn.setAttribute('aria-expanded', 'false');
+
+      if (action === 'toggle-history') {
+        const hs = ensureHistorySection().section;
+        if (hs) {
+          const willShow = hs.classList.contains('hidden');
+          hs.classList.toggle('hidden');
+          btn.textContent = willShow ? 'Hide History' : 'Show History';
+        }
+      } else if (action === 'show-forward') {
+        if (tmForwardControls) tmForwardControls.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Forward via select + apply
+  if (tmForwardApply && tmForwardSelect) {
+    tmForwardApply.addEventListener('click', async () => {
+      if (!currentTicketId) return;
+      if (!tmForwardSelect.value) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Selection Required',
+          text: 'Please choose a user to forward to.',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+      const userId = tmForwardSelect.value;
+      try {
+        const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ user_id: userId })
+        });
+        console.log('Forward request sent to:', `${forwardBase}/${currentTicketId}/forward`);
+        console.log('Response status:', res.status, res.statusText);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Forward successful:', data);
+          Swal.fire({
+            icon: 'success',
+            title: 'Ticket Forwarded',
+            text: 'Ticket has been forwarded successfully!',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true
+          });
+          closeModal();
+          // Refresh dashboard data
+          if (typeof refreshAdminData === 'function') refreshAdminData();
+        } else {
+          const errorText = await res.text();
+          console.error('Forward failed', res.status, errorText);
+          Swal.fire({
+            icon: 'error',
+            title: 'Forward Failed',
+            text: 'Failed to forward ticket. Please try again. Error: ' + res.status + ' ' + res.statusText,
+            confirmButtonText: 'OK'
+          });
+        }
+      } catch (err) {
+        console.error('Forward error', err);
+        alert('Network error during forward.');
+      }
+    });
+  }
+
+  // Lightbox event listeners
+  const lightboxCloseBtn = document.getElementById('lightboxClose');
+  const lightboxPrevBtn = document.getElementById('lightboxPrev');
+  const lightboxNextBtn = document.getElementById('lightboxNext');
+  const lightboxEl = document.getElementById('imageLightbox');
+
+  if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+  if (lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', prevImage);
+  if (lightboxNextBtn) lightboxNextBtn.addEventListener('click', nextImage);
+
+  // Close lightbox on background click
+  if (lightboxEl) {
+    lightboxEl.addEventListener('click', (e) => {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+  }
+
+  // Keyboard navigation for lightbox
+  document.addEventListener('keydown', (e) => {
+    if (lightboxEl && !lightboxEl.classList.contains('hidden')) {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') prevImage();
+      else if (e.key === 'ArrowRight') nextImage();
+    }
+  });
+
+  // Send response (email via backend)
+  if (tmSendResponse && tmResponse) {
+    tmSendResponse.addEventListener('click', async () => {
+      const msg = tmResponse.value.trim();
+      if (!msg) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Message Required',
+          text: 'Please enter a response message.',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+      if (!currentTicketId) {
+        Swal.fire({
+          icon: 'error',
+          title: 'No Ticket Selected',
+          text: 'No ticket selected.',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+      try {
+        tmSendResponse.disabled = true;
+        tmSendResponse.classList.add('opacity-50', 'pointer-events-none');
+        const res = await fetch(`${forwardBase}/${currentTicketId}/respond`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ message: msg })
+        });
+        if (res.ok) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Response Sent',
+            text: 'Response email sent successfully!',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true
+          });
+          tmResponse.value = '';
+          closeModal();
+          // Refresh dashboard data
+          if (typeof refreshAdminData === 'function') refreshAdminData();
+        } else {
+          const txt = await res.text();
+          console.error('Send response failed', txt);
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to Send Response',
+            text: 'Failed to send response. Please check mail configuration.',
+            confirmButtonText: 'OK'
+          });
+        }
+      } catch (err) {
+        console.error('Send response error', err);
+        alert('Network error while sending response.');
+      } finally {
+        tmSendResponse.disabled = false;
+        tmSendResponse.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    });
+  }
+})();
+</script>
+
+<!-- User Management Dropdown Script -->
+<script>
+(function () {
+  const dropdownBtn = document.getElementById('userManagementDropdown');
+  const dropdownMenu = document.getElementById('userManagementMenu');
+  const chevron = document.getElementById('userManagementChevron');
+
+  if (!dropdownBtn || !dropdownMenu || !chevron) return;
+
+  dropdownBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    
+    const isOpen = !dropdownMenu.classList.contains('hidden');
+    
+    // Toggle menu visibility
+    dropdownMenu.classList.toggle('hidden', isOpen);
+    
+    // Update aria-expanded
+    dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+    
+    // Rotate chevron
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      dropdownMenu.classList.add('hidden');
+      dropdownBtn.setAttribute('aria-expanded', 'false');
+      chevron.style.transform = 'rotate(0deg)';
     }
   });
 })();
 </script>
+
 @endsection

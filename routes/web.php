@@ -40,14 +40,19 @@ Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('gu
 Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
 Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
+Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
+Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->name('tickets.verify');
+
 Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->whereNumber('ticket')
     ->middleware('auth')
     ->name('tickets.show');
-
-Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
 Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
 Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');
+
+// Ticket status viewing routes
+Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');
+
 Route::put('/tickets/{ticket}', [TicketController::class, 'update'])
     ->whereNumber('ticket')
     ->middleware('throttle:10,1')
@@ -86,11 +91,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:5,1')
         ->name('staff.profile.password.update');
 
-    // Ticket reroute (records history)
-    Route::post('/staff/tickets/{ticket}/reroute', [StaffController::class, 'reroute'])
+    // Ticket forward (records history)
+    Route::post('/staff/tickets/{ticket}/forward', [StaffController::class, 'forward'])
         ->whereNumber('ticket')
         ->middleware('throttle:30,1')
-        ->name('staff.tickets.reroute');
+        ->name('staff.tickets.forward');
 
     // Ticket respond (send email)
     Route::post('/staff/tickets/{ticket}/respond', [StaffController::class, 'respond'])
@@ -128,6 +133,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{user}/edit', [AdminController::class, 'usersEdit'])->whereNumber('user')->name('edit');
         Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
         Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
+
+        // Deleted users view + restore
+        Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');
+        Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');
     });
 
     // Admin FAQ management (CRUD via AJAX)
@@ -138,6 +147,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/{faq}', [AdminController::class, 'faqsShow'])->whereNumber('faq')->name('show');
         Route::put('/{faq}', [AdminController::class, 'faqsUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
         Route::delete('/{faq}', [AdminController::class, 'faqsDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
+
+        // Get all FAQs as JSON (for sync)
+        Route::get('/all-json', [AdminController::class, 'faqsAllJson'])->name('all-json');
 
         // Deleted FAQs view + AJAX list (trash)
         Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
@@ -153,11 +165,6 @@ Route::middleware('auth')->group(function () {
         // Undo most recent change for a FAQ
         Route::post('/{faq}/undo', [AdminController::class, 'faqsUndo'])->whereNumber('faq')->name('undo');
 
-        // Mark FAQ as trained
-        Route::put('/{faq}/train', [AdminController::class, 'faqsTrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('train');
-
-        // Mark FAQ as not trained (revert trained -> untrained)
-        Route::post('/{faq}/untrain', [AdminController::class, 'faqsUntrain'])->whereNumber('faq')->middleware('throttle:20,1')->name('untrain');
 
         // Disable / Enable FAQ response (used to temporarily unpublish an answer without deleting)
         Route::post('/{faq}/disable', [AdminController::class, 'faqsDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
@@ -182,8 +189,8 @@ Route::middleware('auth')->group(function () {
         // respond (send email / close)
         Route::post('/{ticket}/respond', [\App\Http\Controllers\AdminTicketsController::class, 'respond'])->whereNumber('ticket')->name('respond');
 
-        // reroute to role (records history)
-        Route::post('/{ticket}/reroute', [\App\Http\Controllers\AdminTicketsController::class, 'reroute'])->whereNumber('ticket')->name('reroute');
+        // forward to user (records history)
+        Route::post('/{ticket}/forward', [\App\Http\Controllers\AdminTicketsController::class, 'forward'])->whereNumber('ticket')->name('forward');
 
         // update ticket fields (PUT)
         Route::put('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'update'])->whereNumber('ticket')->name('update');
@@ -212,6 +219,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{role}', [\App\Http\Controllers\RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
     });
 
+    // Admin reports
+    Route::prefix('admin/reports')->name('admin.reports.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ReportsController::class, 'index'])->name('index');
+        Route::get('/backlog-trend-data', [\App\Http\Controllers\ReportsController::class, 'getBacklogTrendDataAjax'])->name('backlog-trend-data');
+    });
+
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -223,6 +236,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/send', [PushNotificationController::class, 'sendNotification'])->name('push.send');
     });
     // End Push Notification==========================================================
+});
+
+Route::get('/test-widget', function () {
+    return view('test-widget');
 });
 
 Route::post('/send-message', [RasaController::class, 'sendMessage']);

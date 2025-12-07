@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendPushNotificationJob;
+use App\Jobs\SendTicketForwardJob;
 
 class StaffController extends Controller
 {
@@ -220,7 +222,7 @@ class StaffController extends Controller
 
         // KPI counts (across all statuses)
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
+        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Forwarded')->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
 
@@ -229,8 +231,8 @@ class StaffController extends Controller
             ->with(['staff', 'routingHistories.staff']);
 
         if (!$viewAll) {
-            // Only active tickets (Open and Re-routed)
-            $query->whereIn('status', ['Open', 'Re-routed']);
+            // Only active tickets (Open and Forwarded)
+            $query->whereIn('status', ['Open', 'Forwarded']);
         }
 
         // Pagination support for table view
@@ -260,10 +262,10 @@ class StaffController extends Controller
     }
 
     /**
-     * Reroute a ticket to a staff member matching the provided role
+     * Forward a ticket to a staff member matching the provided role
      * and record the routing history.
      */
-    public function reroute(Request $request, Ticket $ticket)
+    public function forward(Request $request, Ticket $ticket)
     {
         $request->validate([
             'role' => 'required|string'
@@ -297,47 +299,17 @@ class StaffController extends Controller
             return response()->json(['error' => 'No staff found for the selected role'], 422);
         }
 
-        // Update ticket assignment and move to Re-routed
-        $ticket->staff_id = $newStaff->id;
-        $ticket->status = 'Re-routed';
-        $ticket->date_closed = null;
-        $ticket->save();
-
-        // Record routing history
-        TicketRoutingHistory::create([
-            'ticket_id' => $ticket->id,
-            'staff_id' => $newStaff->id,
-            'status' => 'Re-routed',
-            'routed_at' => now(),
-            'notes' => $request->input('notes')
-        ]);
-
-        $ticket->load(['staff', 'routingHistories.staff']);
-
-        // Send push to the newly assigned staff if available (non-blocking)
-        if ($newStaff && $newStaff->id) {
-            try {
-                // Push notification to the newly assigned staff with direct link to ticket details
-                $ticketUrl = url('/tickets/' . $ticket->id);
-                $payload = [
-                    'title'     => 'A ticket is assigned to you',
-                    'body'      => $ticket->question,
-                    'url'       => $ticketUrl,
-                    'ticket_id' => $ticket->id,
-                    'data'      => [
-                        'url'       => $ticketUrl,
-                        'ticket_id' => $ticket->id
-                    ],
-                ];
-                app(\App\Services\PushService::class)->sendToUser($newStaff->id, $payload);
-            } catch (\Throwable $e) {
-                Log::warning('Push send failed on reroute: ' . $e->getMessage());
-            }
-        }
+        // Dispatch job to handle ticket forwarding asynchronously
+        SendTicketForwardJob::dispatch(
+            $ticket->id,
+            $newStaff->id,
+            $auth->id,
+            $request->input('notes')
+        );
 
         return response()->json([
-            'message' => 'Ticket rerouted successfully',
-            'ticket' => $ticket
+            'message' => 'Ticket forwarding initiated',
+            'new_staff' => $newStaff
         ]);
     }
 
@@ -349,7 +321,7 @@ class StaffController extends Controller
      * Show a dedicated ticket detail page for staff (view + response form).
      * Accessible only to the assigned staff member or Primary Administrator.
      */
-    public function showTicket(Ticket $ticket)
+    public function showTicket(Ticket $tickett)
     {
         $auth = Auth::user();
         if (!$auth) {

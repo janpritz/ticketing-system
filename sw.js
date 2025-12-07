@@ -1,3 +1,71 @@
+const CACHE_NAME = 'sangkay-ts-v1';
+const urlsToCache = [
+  '/',
+  '/login',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-512-maskable.png',
+  '/logo.png',
+  '/favicon.ico'
+];
+
+// Install event - cache essential resources
+self.addEventListener('install', (event) => {
+  console.log('[SW] Install event');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('[SW] Caching app shell');
+        return cache.addAll(urlsToCache);
+      })
+      .catch((error) => {
+        console.error('[SW] Cache addAll failed:', error);
+      })
+  );
+  self.skipWaiting();
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activate event');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch event - serve from cache when offline
+self.addEventListener('fetch', (event) => {
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Return cached version or fetch from network
+        return response || fetch(event.request);
+      })
+      .catch(() => {
+        // Return offline fallback for navigation requests
+        if (event.request.mode === 'navigate') {
+          return caches.match('/login');
+        }
+      })
+  );
+});
+
 self.addEventListener('push', (event) => {
   // Parse payload (may contain top-level url/ticket_id or nested data)
   let notification = {};

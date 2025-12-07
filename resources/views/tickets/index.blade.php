@@ -9,32 +9,16 @@
             <h2 class="text-2xl text-center font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
                 My Tickets
             </h2>
+            @if($isEmail && $identifier)
+                <p class="mt-1 text-sm text-gray-500 text-center">
+                    Viewing tickets for: <span class="font-medium">{{ $identifier }}</span>
+                </p>
+            @endif
         </div>
-        <!-- <div class="mt-4 flex md:mt-0 md:ml-4">
-            <a href="{{ route('tickets.create') }}" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Create Ticket
-            </a>
-        </div> -->
     </div>
 
     <div class="mt-8">
-        <!-- Success Message -->
-        @if(session('success'))
-        <div class="rounded-md bg-green-50 p-4 mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium text-green-800">
-                        {{ session('success') }}
-                    </p>
-                </div>
-            </div>
-        </div>
-        @endif
+        <!-- Success Message will be shown via SweetAlert -->
 
         <!-- Error Message -->
         @if(session('error'))
@@ -81,7 +65,8 @@
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 edit-ticket-btn mr-2"
                                 data-id="{{ $ticket->id }}"
                                 data-category="{{ $ticket->category }}"
-                                data-question="{{ $ticket->question }}">
+                                data-question="{{ $ticket->question }}"
+                                data-attachments="{{ $ticket->attachments }}">
                                 Edit
                             </button>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 delete-ticket-btn"
@@ -111,7 +96,7 @@
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
             <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Ticket</h3>
-            <form id="editTicketForm" action="" method="POST">
+            <form id="editTicketForm" action="" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <input type="hidden" id="edit-ticket-id" name="id">
@@ -123,6 +108,23 @@
                     <div class="mb-4">
                         <label for="edit-question" class="block text-sm font-medium text-gray-700">Question</label>
                         <textarea id="edit-question" name="question" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Current Attachments</label>
+                        <div id="edit-attachments-container" class="mt-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Add Attachments (Screenshots - Max 5MB per image)</label>
+                        <button type="button" id="add-photo-btn" class="mt-1 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Photo
+                        </button>
+                        <input type="file" name="attachments[]" id="edit-attachments" multiple accept="image/*" class="hidden">
+                        <div id="selected-thumbnails" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                        <p class="mt-1 text-sm text-gray-500">You can upload up to 5 files. (Only jpeg,jpg,png files are allowed.)</p>
+                        <input type="hidden" name="delete_attachments" id="delete-attachments">
                     </div>
                 </div>
                 <div class="items-center px-4 py-3">
@@ -137,23 +139,129 @@
         </div>
     </div>
 </div>
-<rasa-chatbot-widget error-message="Server is not running. Please come again in a few minutes." widget-title="Sangkay Chatbot" server-url="https://miniature-eureka-v6pxww557qqq36gg6-5005.app.github.dev/" bot-icon="{{ asset('logo-white.png') }}"
+{{-- <rasa-chatbot-widget error-message="Server is not running. Please come again in a few minutes." widget-title="Sangkay Chatbot" server-url="{{ env('RASA_SERVER_URL') }}" bot-icon="{{ asset('logo-white.png') }}"
     initial-payload="As my sangkay, I would love to know your name. What is your name?" stream-messages="true" > 
     <style>:root { --color-primary: #184c1c;}</style>
-</rasa-chatbot-widget>
+</rasa-chatbot-widget> --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Add photo button
+        document.getElementById('add-photo-btn').addEventListener('click', function() {
+            document.getElementById('edit-attachments').click();
+        });
+
+        // Validate attachments count for edit and display thumbnails
+        document.getElementById('edit-attachments').addEventListener('change', function (e) {
+            const files = e.target.files;
+            const container = document.getElementById('selected-thumbnails');
+            container.innerHTML = ''; // Clear previous
+
+            if (files.length > 5) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Too many files',
+                    text: 'You can upload a maximum of 5 images.'
+                });
+                e.target.value = ''; // Clear selection
+                return;
+            }
+
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.className = 'relative';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" alt="Selected ${index + 1}" class="w-full h-20 object-cover rounded border">
+                            <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs remove-selected" data-index="${index}">&times;</button>
+                        `;
+                        container.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // Remove selected thumbnail
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-selected')) {
+                const index = e.target.getAttribute('data-index');
+                const input = document.getElementById('edit-attachments');
+                const dt = new DataTransfer();
+                const files = Array.from(input.files);
+                files.splice(index, 1);
+                files.forEach(file => dt.items.add(file));
+                input.files = dt.files;
+                // Re-trigger change to update thumbnails
+                input.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Handle delete attachments
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-attachment')) {
+                const path = e.target.getAttribute('data-path');
+                let deleteList = document.getElementById('delete-attachments').value;
+                deleteList = deleteList ? JSON.parse(deleteList) : [];
+                deleteList.push(path);
+                document.getElementById('delete-attachments').value = JSON.stringify(deleteList);
+                e.target.parentElement.remove();
+            }
+        });
+
+        // Handle viewing attachments
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('view-attachment')) {
+                const path = e.target.getAttribute('data-path');
+                const attachmentList = e.target.closest('#edit-attachments-container').querySelectorAll('.view-attachment');
+                const images = Array.from(attachmentList).map(img => img.getAttribute('data-path'));
+                const currentIndex = images.indexOf(path);
+                
+                if (window.openLightbox) {
+                    openLightbox(images, currentIndex);
+                } else {
+                    // Fallback for lightbox if not available
+                    window.open(`/storage/${path}`, '_blank');
+                }
+            }
+        });
+
         // Add event listeners to all edit buttons
         document.querySelectorAll('.edit-ticket-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const ticketId = this.getAttribute('data-id');
                 const category = this.getAttribute('data-category');
                 const question = this.getAttribute('data-question');
+                const attachments = this.getAttribute('data-attachments');
 
                 // Set form values
                 document.getElementById('edit-ticket-id').value = ticketId;
                 document.getElementById('edit-category').value = category;
                 document.getElementById('edit-question').value = question;
+                document.getElementById('edit-attachments').value = '';
+                document.getElementById('delete-attachments').value = '';
+
+                // Handle attachments
+                const attachmentsContainer = document.getElementById('edit-attachments-container');
+                attachmentsContainer.innerHTML = '';
+                if (attachments) {
+                    try {
+                        const attachmentList = JSON.parse(attachments);
+                        attachmentList.forEach((path, index) => {
+                            const div = document.createElement('div');
+                            div.className = 'relative';
+                            div.innerHTML = `
+                                <img src="/storage/${path}" alt="Attachment ${index + 1}" class="w-full h-20 object-cover rounded border cursor-pointer hover:opacity-90 view-attachment" data-path="${path}">
+                                <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs sm:w-6 sm:h-6 sm:text-sm hover:bg-red-600 transition-colors delete-attachment" data-path="${path}">×</button>
+                            `;
+                            attachmentsContainer.appendChild(div);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing attachments:', e);
+                    }
+                }
 
                 // Update form action URL
                 const form = document.getElementById('editTicketForm');
@@ -235,5 +343,20 @@
             });
         });
     });
-</script>
-@endsection
+    
+    // Show SweetAlert for success message
+    @if(session('success'))
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: '{{ session('success') }}',
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        toast: true
+    });
+    @endif
+    </script>
+
+    @endsection

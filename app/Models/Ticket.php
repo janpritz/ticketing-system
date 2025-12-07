@@ -16,6 +16,7 @@ class Ticket extends Model
         'staff_id',
         'date_created',
         'date_closed',
+        'attachments',
     ];
 
 

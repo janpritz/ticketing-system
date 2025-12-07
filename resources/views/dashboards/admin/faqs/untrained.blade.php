@@ -89,13 +89,12 @@
                           <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
                           <th class="px-3 py-3 text-left font-medium">Description</th>
                           <th class="px-3 py-3 text-left font-medium">Response</th>
-                          <th class="px-3 py-3 text-left font-medium">Status</th>
                           <th class="py-3 pl-3 pr-5 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="faqsTbody" class="divide-y divide-gray-100">
                         <tr>
-                            <td colspan="5" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                            <td colspan="4" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -110,10 +109,7 @@
 
     <div id="untrained-faqs-state" class="hidden"
          data-list-url="{{ route('admin.faqs.untrained.list') }}"
-         data-default-status="untrained"
-         data-show-url-template="{{ route('admin.faqs.show', ['faq' => '__ID__']) }}"
-         data-train-url-template="{{ route('admin.faqs.train', ['faq' => '__ID__']) }}"
-         data-untrain-url-template="{{ route('admin.faqs.untrain', ['faq' => '__ID__']) }}"></div>
+         data-show-url-template="{{ route('admin.faqs.show', ['faq' => '__ID__']) }}"></div>
 
 @endsection
 
@@ -123,9 +119,7 @@
 (function() {
     const stateEl = document.getElementById('untrained-faqs-state');
     const LIST_URL = stateEl.getAttribute('data-list-url');
-    const TRAIN_TEMPLATE = stateEl.getAttribute('data-train-url-template');
-    const UNTRAIN_TEMPLATE = stateEl.getAttribute('data-untrain-url-template');
-    const DEFAULT_STATUS = stateEl.getAttribute('data-default-status') || 'all';
+    const SHOW_TEMPLATE = stateEl.getAttribute('data-show-url-template');
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -160,8 +154,7 @@
         const q = encodeURIComponent((qInput ? qInput.value : '').trim());
         const per = (perPageSelect ? perPageSelect.value : '25');
         const sep = LIST_URL.includes('?') ? '&' : '?';
-        const statusPart = (DEFAULT_STATUS && DEFAULT_STATUS !== 'all') ? `&status=${encodeURIComponent(DEFAULT_STATUS)}` : '';
-        const url = `${LIST_URL}${sep}q=${q}&per_page=${per}&page=${page}${statusPart}`;
+        const url = `${LIST_URL}${sep}q=${q}&per_page=${per}&page=${page}`;
         try {
             const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
             if (!res.ok) throw new Error('Failed to load FAQs');
@@ -170,7 +163,7 @@
             renderPagination(json.meta || {});
         } catch (err) {
             faqsTbody.innerHTML =
-                `<tr><td colspan="5" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
+                `<tr><td colspan="4" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
             paginationControls.innerHTML = '';
             console.error(err);
         }
@@ -179,25 +172,11 @@
     function renderTable(items) {
         if (!items || items.length === 0) {
             faqsTbody.innerHTML =
-                `<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+                `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
             return;
         }
 
         faqsTbody.innerHTML = items.map(f => {
-            // Determine selected state classes
-            const isTrained = (f.status === 'trained');
-            const isUntrained = !isTrained;
-
-            // Train pill classes
-            const trainCls = isTrained
-                ? 'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium bg-emerald-600 text-white'
-                : 'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border border-gray-200 bg-white text-slate-700';
-
-            // Untrain pill classes
-            const untrainCls = isUntrained
-                ? 'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium bg-gray-300 text-slate-700'
-                : 'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border border-gray-200 bg-white text-slate-700';
-
             return `
   <tr class="hover:bg-gray-50">
     <td class="py-3 pl-5 pr-3 align-top">
@@ -209,100 +188,21 @@
     <td class="px-3 py-3 align-top">
       <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response || '', 200))}</div>
     </td>
-    <td class="px-3 py-3 align-top">
-      <div class="text-slate-700">${escapeHtml(f.status || 'untrained')}</div>
-    </td>
     <td class="py-3 pl-3 pr-5 align-top">
       <div class="inline-flex items-center gap-2" data-faq-id="${f.id}">
-        <button class="pillToggle train ${trainCls}" data-value="trained" data-id="${f.id}">Train</button>
-        <button class="pillToggle untrain ${untrainCls}" data-value="untrained" data-id="${f.id}">Untrain</button>
+        <button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>
       </div>
     </td>
   </tr>`;
         }).join('');
 
-        function attachPillHandlers() {
-            $$('.pillToggle').forEach(btn => btn.addEventListener('click', async (e) => {
-                const id = btn.getAttribute('data-id');
-                const value = btn.getAttribute('data-value'); // 'trained' or 'untrained'
-                if (!id || !value) return;
-
-                let url = '';
-                let method = 'POST';
-                if (value === 'trained') {
-                    url = TRAIN_TEMPLATE ? TRAIN_TEMPLATE.replace('__ID__', id) : '';
-                    method = 'PUT';
-                } else {
-                    url = UNTRAIN_TEMPLATE ? UNTRAIN_TEMPLATE.replace('__ID__', id) : '';
-                    method = 'POST';
-                }
-                if (!url) return;
-
-                // Use SweetAlert2 for confirmation
-                const confirmOpts = {
-                    title: value === 'trained' ? 'Mark this response as trained?' : 'Mark this response as not trained?',
-                    icon: value === 'trained' ? 'question' : 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes',
-                    cancelButtonText: 'Cancel'
-                };
-                const confirmed = await Swal.fire(confirmOpts);
-                if (!confirmed.isConfirmed) return;
-
-                try {
-                    // disable all buttons for this faq while request is ongoing
-                    const container = btn.closest('[data-faq-id]');
-                    if (container) {
-                        $$('.pillToggle', container).forEach(b => b.disabled = true);
-                    } else {
-                        btn.disabled = true;
-                    }
-
-                    const res = await fetch(url, {
-                        method: method,
-                        headers: {
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    const json = await res.json().catch(() => null);
-                    if (!res.ok) {
-                        const err = json && json.message ? json.message : 'Failed to update status';
-                        throw new Error(err);
-                    }
-
-                    // Show success toast and refresh the list to reflect new status (keeps UI consistent)
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: json && json.message ? json.message : (value === 'trained' ? 'Marked as trained' : 'Marked as not trained'),
-                        showConfirmButton: false,
-                        timer: 2000,
-                        timerProgressBar: true
-                    });
-
-                    fetchList(currentPage);
-                } catch (err) {
-                    console.error(err);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: err.message || 'Error updating FAQ status'
-                    });
-                } finally {
-                    const container = btn.closest('[data-faq-id]');
-                    if (container) {
-                        $$('.pillToggle', container).forEach(b => b.disabled = false);
-                    } else {
-                        btn.disabled = false;
-                    }
-                }
-            }));
-        }
-        attachPillHandlers();
+        // Attach view button handlers
+        $$('.viewFaqBtn').forEach(btn => btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            if (!id) return;
+            const url = SHOW_TEMPLATE.replace('__ID__', id);
+            window.location.href = url;
+        }));
     }
 
     function renderPagination(meta) {
