@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
-use App\Models\Otp;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Role;
@@ -14,47 +13,18 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use App\Jobs\ProcessTicketCreation;
-use App\Mail\OtpMail;
 
 class TicketController extends Controller
 {
     // Show the ticket creation form
     public function showCreateForm(Request $request, $recepient_id = null)
     {
-        // Check if the user has reached the maximum number of tickets (4 tickets max)
-        // We need email from the request since it's not in the URL
-        $email = $request->query('email');
-        if ($email) {
-            $ticketCount = Ticket::where('email', $email)->whereIn('status', ['Open', 'Forwarded'])->count();
-            $statusCounts = Ticket::where('email', $email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
-            Log::info('Ticket limit check for create form', [
-                'email' => $email,
-                'active_count' => $ticketCount,
-                'status_breakdown' => $statusCounts,
-                'limit' => 4
-            ]);
-            if ($ticketCount >= 4) {
-                return redirect()->to(url('/tickets/' . urlencode($email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
-            }
-        }
-
         // Fetch categories from DB at page load (we show categories only; role is resolved from category)
         $categories = Category::orderBy('name')->pluck('name')->toArray();
 
-        // Check if email is already verified
-        $emailVerified = false;
-        if ($email) {
-            $emailVerified = Otp::where('email', $email)
-                               ->whereNotNull('verified_at')
-                               ->exists();
-            
-            // If email is already verified, redirect to submission page
-            if ($emailVerified) {
-                return redirect()->route('tickets.submit.form', [$recepient_id, $email]);
-            }
-        }
+        $email = $request->query('email');
 
-        return view('tickets.create', compact('recepient_id', 'categories', 'email', 'emailVerified'));
+        return view('tickets.create', compact('recepient_id', 'categories', 'email'));
     }
 
     /**
@@ -62,28 +32,6 @@ class TicketController extends Controller
      */
     public function showTicketSubmitForm(Request $request, $recepient_id = null, $email)
     {
-        // Check if the user has reached the maximum number of tickets (4 tickets max)
-        $ticketCount = Ticket::where('email', $email)->whereIn('status', ['Open', 'Forwarded'])->count();
-        $statusCounts = Ticket::where('email', $email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
-        Log::info('Ticket limit check for submit form', [
-            'email' => $email,
-            'active_count' => $ticketCount,
-            'status_breakdown' => $statusCounts,
-            'limit' => 4
-        ]);
-        if ($ticketCount >= 4) {
-            return redirect()->to(url('/tickets/' . urlencode($email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
-        }
-
-        // Verify email is actually verified
-        $emailVerified = Otp::where('email', $email)
-                           ->whereNotNull('verified_at')
-                           ->exists();
-
-        if (!$emailVerified) {
-            return redirect()->route('tickets.create', $recepient_id)->with('error', 'Email verification required.');
-        }
-
         // Fetch categories from DB
         $categories = Category::orderBy('name')->pluck('name')->toArray();
 
@@ -104,34 +52,6 @@ class TicketController extends Controller
             'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
             'g-recaptcha-response' => 'required|captcha',
         ]);
-
-        // Verify email is verified
-        $emailVerified = Otp::where('email', $request->email)
-                           ->whereNotNull('verified_at')
-                           ->exists();
-
-        if (!$emailVerified) {
-            return redirect()->route('tickets.create', $request->recepient_id)->with('error', 'Email verification required.');
-        }
-
-        // Check if the user has reached the maximum number of tickets (4 tickets max per email)
-        $ticketCount = Ticket::where('email', $request->email)->whereIn('status', ['Open', 'Forwarded'])->count();
-        $statusCounts = Ticket::where('email', $request->email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
-        Log::info('Ticket limit check for submission', [
-            'email' => $request->email,
-            'active_count' => $ticketCount,
-            'status_breakdown' => $statusCounts,
-            'limit' => 4
-        ]);
-
-        if ($ticketCount >= 4) {
-            // If there are already 4 or more tickets, redirect to tickets page with email
-            if ($request->wantsJson()) {
-                return response()->json(['error' => 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.', 'redirect' => url('/tickets/' . urlencode($request->email))], 400);
-            } else {
-                return redirect()->to(url('/tickets/' . urlencode($request->email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
-            }
-        }
 
         // Handle attachments first
         $attachmentsPaths = [];
@@ -173,110 +93,6 @@ class TicketController extends Controller
             ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }
 
-    /**
-     * Send OTP to email address
-     */
-    public function sendOtp(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'is_resend' => 'boolean'
-        ]);
-
-        $email = $request->email;
-        $isResend = $request->boolean('is_resend', false);
-
-        // Generate 6-digit OTP
-        $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Delete any existing unverified OTPs for this email
-        Otp::where('email', $email)
-           ->whereNull('verified_at')
-           ->delete();
-
-        // Set expiry time: 15 minutes for initial, 1 minute for resend
-        $expiresInMinutes = $isResend ? 1 : 15;
-        $expiresAt = now()->addMinutes($expiresInMinutes);
-
-        // Create new OTP record
-        Otp::create([
-            'email' => $email,
-            'otp_code' => $otpCode,
-            'expires_at' => $expiresAt,
-        ]);
-
-        // Send OTP via email
-        Mail::to($email)->send(new OtpMail($otpCode));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'OTP sent successfully!',
-            'expires_at' => $expiresAt->timestamp
-        ]);
-    }
-
-    /**
-     * Verify OTP
-     */
-    public function verifyOtp(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
-        ]);
-
-        $email = $request->email;
-        $otpCode = $request->otp_code;
-
-        // Find the OTP record
-        $otp = Otp::where('email', $email)
-                  ->where('otp_code', $otpCode)
-                  ->first();
-
-        if (!$otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid OTP code.'
-            ], 400);
-        }
-
-        if (!$otp->isValid()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP has expired. Please request a new one.'
-            ], 400);
-        }
-
-        // Mark as verified
-        $otp->verified_at = now();
-        $otp->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Email verified successfully!',
-            'verified' => true
-        ]);
-    }
-
-    /**
-     * Check if email is verified
-     */
-    public function checkEmailVerification(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $email = $request->email;
-
-        $verified = Otp::where('email', $email)
-                      ->whereNotNull('verified_at')
-                      ->exists();
-
-        return response()->json([
-            'verified' => $verified
-        ]);
-    }
 
     public function store(Request $request)
     {
@@ -292,25 +108,6 @@ class TicketController extends Controller
             'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
             'g-recaptcha-response' => 'required|captcha',
         ]);
-
-        // Check if the user has reached the maximum number of tickets (4 tickets max per email)
-        $ticketCount = Ticket::where('email', $request->email)->whereIn('status', ['Open', 'Forwarded'])->count();
-        $statusCounts = Ticket::where('email', $request->email)->selectRaw('status, COUNT(*) as count')->groupBy('status')->pluck('count', 'status');
-        Log::info('Ticket limit check for store', [
-            'email' => $request->email,
-            'active_count' => $ticketCount,
-            'status_breakdown' => $statusCounts,
-            'limit' => 4
-        ]);
-
-        if ($ticketCount >= 4) {
-            // If there are already 4 or more tickets, redirect to tickets page with email
-            if ($request->wantsJson()) {
-                return response()->json(['error' => 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.', 'redirect' => url('/tickets/' . urlencode($request->email))], 400);
-            } else {
-                return redirect()->to(url('/tickets/' . urlencode($request->email)))->with('error', 'You have reached the maximum number of tickets (4). Please wait for responses to your existing tickets.');
-            }
-        }
 
         // Handle attachments first
         $attachmentsPaths = [];
@@ -447,19 +244,6 @@ class TicketController extends Controller
         // Determine if identifier is email or recepient_id
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
-        // If it's an email, verify that the email has been verified
-        if ($isEmail) {
-            $emailVerified = Otp::where('email', $identifier)
-                               ->whereNotNull('verified_at')
-                               ->exists();
-
-            if (!$emailVerified) {
-                // Email not verified - redirect to verification page
-                return redirect()->route('tickets.verify', ['email' => $identifier])
-                               ->with('error', 'Email verification required to view tickets.');
-            }
-        }
-
         // Cache key for user tickets
         $cacheKey = 'user_tickets_' . ($isEmail ? 'email_' : 'recepient_') . $identifier;
 
@@ -585,97 +369,6 @@ class TicketController extends Controller
         return view('tickets.status');
     }
 
-    /**
-     * Send OTP for ticket status verification
-     */
-    public function sendOtpStatus(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $email = $request->email;
-
-        // Check if email has any tickets
-        $ticketCount = Ticket::where('email', $email)->count();
-        if ($ticketCount === 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tickets found for this email address.'
-            ], 400);
-        }
-
-        // Generate 6-digit OTP
-        $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Delete any existing unverified OTPs for this email
-        Otp::where('email', $email)
-           ->whereNull('verified_at')
-           ->delete();
-
-        // Set expiry time: 15 minutes
-        $expiresAt = now()->addMinutes(15);
-
-        // Create new OTP record
-        Otp::create([
-            'email' => $email,
-            'otp_code' => $otpCode,
-            'expires_at' => $expiresAt,
-        ]);
-
-        // Send OTP via email
-        Mail::to($email)->send(new OtpMail($otpCode));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Verification code sent successfully!',
-            'expires_at' => $expiresAt->timestamp
-        ]);
-    }
-
-    /**
-     * Verify OTP for ticket status and redirect to tickets index
-     */
-    public function verifyOtpStatus(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
-        ]);
-
-        $email = $request->email;
-        $otpCode = $request->otp_code;
-
-        // Find the OTP record
-        $otp = Otp::where('email', $email)
-                  ->where('otp_code', $otpCode)
-                  ->first();
-
-        if (!$otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid verification code.'
-            ], 400);
-        }
-
-        if (!$otp->isValid()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Verification code has expired. Please request a new one.'
-            ], 400);
-        }
-
-        // Mark as verified
-        $otp->verified_at = now();
-        $otp->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Email verified successfully!',
-            'verified' => true,
-            'redirect_url' => url('/tickets/' . urlencode($email))
-        ]);
-    }
 
     /**
      * Show email verification page

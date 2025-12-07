@@ -52,17 +52,7 @@ Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttl
 
 // Ticket status viewing routes
 Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');
-Route::post('/tickets/send-otp-status', [TicketController::class, 'sendOtpStatus'])->name('tickets.send-otp-status');
-Route::post('/tickets/verify-otp-status', [TicketController::class, 'verifyOtpStatus'])->name('tickets.verify-otp-status');
 
-// OTP verification routes
-Route::post('/tickets/send-otp', [TicketController::class, 'sendOtp'])->name('tickets.send-otp');
-Route::post('/tickets/verify-otp', [TicketController::class, 'verifyOtp'])->name('tickets.verify-otp');
-Route::post('/tickets/check-verification', [TicketController::class, 'checkEmailVerification'])->name('tickets.check-verification');
-
-// Ticket submission routes (after OTP verification)
-Route::get('/tickets/submit/{recepient_id}/{email}', [TicketController::class, 'showTicketSubmitForm'])->name('tickets.submit.form');
-Route::post('/tickets/submit', [TicketController::class, 'submitTicket'])->middleware('throttle:10,1')->name('tickets.submit');
 Route::put('/tickets/{ticket}', [TicketController::class, 'update'])
     ->whereNumber('ticket')
     ->middleware('throttle:10,1')
@@ -227,6 +217,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/{role}/edit', [\App\Http\Controllers\RolesController::class, 'edit'])->whereNumber('role')->name('edit');
         Route::put('/{role}', [\App\Http\Controllers\RolesController::class, 'update'])->whereNumber('role')->name('update');
         Route::delete('/{role}', [\App\Http\Controllers\RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
+    });
+
+    // Admin reports
+    Route::prefix('admin/reports')->name('admin.reports.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ReportsController::class, 'index'])->name('index');
+        Route::get('/backlog-trend-data', [\App\Http\Controllers\ReportsController::class, 'getBacklogTrendDataAjax'])->name('backlog-trend-data');
     });
 
     // Logout (authenticated only)
