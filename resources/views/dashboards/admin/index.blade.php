@@ -518,26 +518,7 @@
                 <!-- Main Actions -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
-                        <!-- Options Menu -->
-                        <div class="relative">
-                            <button type="button" id="tmOptionsBtn"
-                                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                                aria-haspopup="true" aria-expanded="false">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
-                                </svg>
-                                Options
-                            </button>
-                            <div id="tmOptionsMenu"
-                                class="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
-                                <button type="button"
-                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                    data-option="toggle-history">Show History</button>
-                                <button type="button" id="tmOptionForward"
-                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
-                                    data-option="show-forward">Forward Ticket</button>
-                            </div>
-                        </div>
+                      
                     </div>
 
                     <div class="flex items-center gap-2">
