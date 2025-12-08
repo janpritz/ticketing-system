@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
 use App\Mail\PasswordOtpMail;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -20,6 +21,14 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        Log::info('Login attempt', [
+            'email' => $request->input('email'),
+            'has_csrf' => $request->has('_token'),
+            'csrf_token' => $request->input('_token'),
+            'session_id' => $request->session()->getId(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required',

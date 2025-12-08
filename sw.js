@@ -1,7 +1,6 @@
-const CACHE_NAME = 'sangkay-ts-v1';
+const CACHE_NAME = 'sangkay-ts-v2';
 const urlsToCache = [
   '/',
-  '/login',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
@@ -54,12 +53,18 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
+        if (response) {
+          console.log('[SW] Serving from cache:', event.request.url);
+        } else {
+          console.log('[SW] Fetching from network:', event.request.url);
+        }
         // Return cached version or fetch from network
         return response || fetch(event.request);
       })
       .catch(() => {
         // Return offline fallback for navigation requests
         if (event.request.mode === 'navigate') {
+          console.log('[SW] Offline fallback to /login');
           return caches.match('/login');
         }
       })
