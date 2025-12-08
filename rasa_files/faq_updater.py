@@ -305,6 +305,87 @@ def upload_file():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/list-docs", methods=["GET"])
+def list_docs():
+    """
+    List text files in the docs/ directory.
+    Returns: { "ok": true, "files": [{"name": "...", "size": 123, "modified": "..."}, ...] }
+    """
+    try:
+        print("[list_docs] /list-docs endpoint called")
+
+        if not verify_secret(request):
+            print("[list_docs] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+
+        files = []
+        for file_path in docs_dir.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in ['.txt', '.md']:
+                try:
+                    stat = file_path.stat()
+                    files.append({
+                        "name": file_path.name,
+                        "size": stat.st_size,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    })
+                except Exception as e:
+                    print(f"[list_docs] Error getting info for {file_path}: {e}", file=sys.stderr)
+
+        print(f"[list_docs] Found {len(files)} text files in docs directory")
+
+        return jsonify({
+            "ok": True,
+            "files": files,
+            "count": len(files)
+        })
+
+    except Exception as e:
+        print(f"[list_docs] Unexpected error in /list-docs: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/download/<filename>", methods=["GET"])
+def download_file(filename):
+    """
+    Download a specific file from the docs/ directory.
+    Returns the file content as text.
+    """
+    try:
+        print(f"[download] /download/{filename} called")
+
+        if not verify_secret(request):
+            print("[download] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        docs_dir = PROJECT_ROOT / "docs"
+        file_path = docs_dir / filename
+
+        # Security check: ensure file is within docs directory and has allowed extension
+        if not file_path.is_file() or file_path.parent != docs_dir:
+            print(f"[download] File not found or not allowed: {filename}")
+            return jsonify({"ok": False, "error": "File not found"}), 404
+
+        if file_path.suffix.lower() not in ['.txt', '.md']:
+            print(f"[download] File type not allowed: {filename}")
+            return jsonify({"ok": False, "error": "File type not allowed"}), 403
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            print(f"[download] Successfully read file: {filename} ({len(content)} characters)")
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except Exception as e:
+            print(f"[download] Error reading file {filename}: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Error reading file"}), 500
+
+    except Exception as e:
+        print(f"[download] Unexpected error in /download/{filename}: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/update-faq", methods=["POST"])
 def update_faq():
     try:
@@ -373,8 +454,10 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/upload-file", methods=["POST", "OPTIONS"])
-@app.route("/sync-faqs", methods=["POST", "OPTIONS"])  
+@app.route("/sync-faqs", methods=["POST", "OPTIONS"])
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
+@app.route("/list-docs", methods=["GET", "OPTIONS"])
+@app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():
     """Handle preflight CORS requests"""
     if request.method == "OPTIONS":

@@ -1,13 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', $isDeletedView ? 'Deleted FAQs' : 'FAQ Management')
+@section('title', 'Document Management')
 
 @section('admin-content')
     <div class="sm:px-2">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">
-                    {{ !empty($isDeletedView) ? 'Deleted FAQs' : 'FAQ Management' }}</h1>
+                <h1 class="text-2xl font-semibold text-slate-900">Document Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
@@ -40,35 +39,14 @@
                 </div>
             @else
                 <div class="hidden sm:flex items-center gap-2">
-
-                    <!-- Sync FAQ Cache Button -->
-                    <button id="syncFaqCacheBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 ml-3"
-                        aria-label="Sync FAQ Cache">
-                        <svg id="syncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span id="syncText">Sync to Rasa</span>
-                    </button>
-
-                    <button id="openCreateModalBtn" type="button"
+                    <!-- Refresh Documents Button -->
+                    <button id="refreshDocsBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
-                        aria-label="Add FAQ">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
+                        aria-label="Refresh Documents">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span class="hidden sm:inline">Add FAQ</span>
-                    </button>
-
-                    <!-- Upload File Button -->
-                    <button id="uploadFileBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 ml-3"
-                        aria-label="Upload FAQ File">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <span class="hidden sm:inline">Upload File</span>
+                        <span>Refresh</span>
                     </button>
                 </div>
             @endif
@@ -76,163 +54,14 @@
         </div>
 
         <div class="mt-4">
-            <!-- Desktop search / filters -->
-            <div class="hidden sm:flex items-start justify-between">
-                <div class="flex items-center gap-2">
-                    <label class="relative block">
-                        <span class="sr-only">Search</span>
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                <path
-                                    d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                            </svg>
-                        </span>
-                        <input id="q" type="text" name="q" placeholder="Search intent or response"
-                            class="w-80 pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                    </label>
-
-                    <button id="searchBtn" type="button"
-                        class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Search</button>
-                    <button id="clearSearch" type="button"
-                        class="text-sm text-slate-600 hover:text-slate-800 hidden">Clear</button>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <label class="text-sm text-slate-600">Per page</label>
-                    <select id="per_page" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-
-                    <!-- Trash / Back button -->
-                    @if (!empty($isDeletedView))
-                    @else
-                        <a href="{{ route('admin.faqs.deleted') }}"
-                            class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 ml-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
-                                fill="currentColor">
-                                <path
-                                    d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
-                            </svg>
-                            <span class="hidden sm:inline">Trash</span>
-                        </a>
-                    @endif
-                </div>
-            </div>
-
-
-            <!-- Mobile actions drawer (bottom sheet) -->
-            <div id="mobileDrawerOverlay" class="hidden sm:hidden fixed inset-0 bg-black/30 z-40"></div>
-            <div id="mobileDrawer"
-                class="sm:hidden fixed left-0 right-0 bottom-0 transform translate-y-full transition-transform duration-200 bg-white border-t border-gray-200 z-50">
-                <div class="px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <button id="mobileDrawerClose" type="button" class="p-2 rounded-md text-slate-700 hover:bg-gray-50"
-                            aria-label="Close drawer">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                        <div class="text-sm font-medium">Actions</div>
-                    </div>
-                </div>
-
-                <div class="px-4 pb-4 space-y-2">
-
-                    <!-- Mobile Sync Cache Button (match desktop styling) -->
-                    <button id="mobileSyncFaqCacheBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Sync FAQ Cache">
-                        <svg id="mobileSyncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span id="mobileSyncText">Sync to Rasa</span>
-                    </button>
-
-                    <!-- Mobile Upload File Button (match desktop styling) -->
-                    <button id="mobileUploadFileBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Upload FAQ File">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <span>Upload File</span>
-                    </button>
-
-                    <!-- Mobile Add FAQ Button (match desktop styling) -->
-                    <button id="mobileActionAdd" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Add FAQ">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
-                        </svg>
-                        <span class="hidden sm:inline">Add FAQ</span>
-                        <span class="sm:hidden">Add FAQ</span>
-                    </button>
-
-                    <!-- Mobile Trash Button (match desktop styling from filters section) -->
-                    <a href="{{ route('admin.faqs.deleted') }}"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 w-full justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
-                            fill="currentColor">
-                            <path
-                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
-                        </svg>
-                        <span class="hidden sm:inline">Trash</span>
-                        <span class="sm:hidden">Trash</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Mobile search area (always visible on mobile) -->
-            <div id="mobileSearchArea" class="sm:hidden mt-3">
-                <div class="flex items-center gap-2">
-                    <input id="q_mobile" type="text" placeholder="Search topic or response"
-                        class="flex-1 pl-3 pr-3 py-2 rounded-md border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                    <button id="mobileSearchBtn" type="button"
-                        class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2"
-                        aria-label="Search">Search</button>
-                </div>
-
-                <div class="mt-2 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm text-slate-600">Per page</label>
-                        <select id="per_page_mobile" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
-                            <option value="25" selected>25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+            <p class="text-sm text-gray-600 mb-4">Documents stored in the Rasa server for FAQ training.</p>
         </div>
 
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table id="faqsTable" class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-gray-600">
-                        <tr>
-                            <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
-                            <th class="px-3 py-3 text-left font-medium">Description</th>
-                            <th class="px-3 py-3 text-left font-medium">Response</th>
-                            <th class="px-3 py-3 text-left font-medium">Created At</th>
-                            <th class="px-3 py-3 text-left font-medium">Updated At</th>
-                            <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="faqsTbody" class="divide-y divide-gray-100">
-                        <tr>
-                            <td colspan="6" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="faqsFooter" class="px-5 py-3 border-t border-gray-200">
-                <div id="paginationControls" class="flex items-center justify-between"></div>
+            <div class="p-6">
+                <div id="docsList" class="space-y-4">
+                    <div class="text-center text-sm text-gray-500">Loading docs...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -627,28 +456,25 @@
                 if (modal) modal.classList.add('hidden');
             }
 
-            // Fetch list via AJAX
-            async function fetchList(page = 1) {
-                currentPage = page;
-                const q = encodeURIComponent((qInput.value || '').trim());
-                const per = perPageSelect.value || '25';
-                const url =
-                    `${LIST_URL}?q=${q}&per_page=${per}&page=${page}&include_deleted=${showDeleted ? '1' : '0'}`;
+            // Fetch docs list via AJAX
+            async function fetchDocs() {
+                const docsListEl = $('#docsList');
                 try {
-                    const res = await fetch(url, {
+                    docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
+
+                    const rasaUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '/list-docs');
+                    const res = await fetch(rasaUrl, {
                         headers: {
+                            'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
-                    if (!res.ok) throw new Error('Failed to load FAQs');
+                    if (!res.ok) throw new Error('Failed to load docs');
                     const json = await res.json();
-                    renderTable(json.items || []);
-                    renderPagination(json.meta || {});
-                    toggleClear(qInput.value.trim() !== '');
+                    if (!json.ok) throw new Error(json.error || 'Failed to load docs');
+                    renderDocsList(json.files || []);
                 } catch (err) {
-                    faqsTbody.innerHTML =
-                        `<tr><td colspan="6" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
-                    paginationControls.innerHTML = '';
+                    docsListEl.innerHTML = '<div class="text-center text-sm text-red-600">Error loading docs</div>';
                     console.error(err);
                 }
             }
@@ -658,200 +484,48 @@
                 return (str.length > n) ? (str.slice(0, n - 1) + '…') : str;
             }
 
-            function renderTable(items) {
-                if (!items || items.length === 0) {
-                    faqsTbody.innerHTML =
-                        `<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+            function renderDocsList(files) {
+                const docsListEl = $('#docsList');
+                if (!files || files.length === 0) {
+                    docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">No docs files found.</div>';
                     return;
                 }
-                faqsTbody.innerHTML = items.map(f => `
-      <tr class="hover:bg-gray-50 ${f.deleted_at ? 'opacity-70' : ''}">
-        <td class="py-3 pl-5 pr-3 align-top">
-          <div class="text-slate-900 font-medium">${escapeHtml(f.intent)}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-700 whitespace-pre-line max-w-xl">${escapeHtml(truncate(f.description || '', 140))}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response, 180))}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-500 text-xs">${escapeHtml(f.created_at || '')}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-500 text-xs">${escapeHtml(f.updated_at || '')}</div>
-        </td>
-        <td class="py-3 pl-3 pr-5 align-top">
-          <div class="flex items-center gap-2">
-            ${f.deleted_at ? (
-              `<div class="flex items-center gap-2">
-                <button class="restoreDeletedBtn inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">Restore</button>
-                <button class="deletePermanentBtn inline-flex items-center gap-1 rounded-md border border-red-200 bg-white text-red-700 px-3 py-1.5 text-sm font-medium hover:bg-red-50" data-id="${f.id}">Delete</button>
-              </div>`
-            ) : (
-              `<div class="flex items-center gap-2">
-                <button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>
-                <button class="toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium ${f.response_disabled ? 'bg-gray-400 text-white border-2 border-red-300' : 'bg-green-400 text-white border-2 border-green-600'}" data-id="${f.id}" data-disabled="${f.response_disabled ? '1' : '0'}" title="${f.response_disabled ? 'Click to Enable' : 'Click to Disable'}">${f.response_disabled ? 'Disabled' : 'Enabled'}</button>
-              </div>`
-            )}
-          </div>
-        </td>
-      </tr>
-    `).join('');
-                // attach handlers
-                $$('.viewFaqBtn').forEach(btn => btn.addEventListener('click', onViewClick));
-                // attach restore handlers for deleted rows
-                $$('.restoreDeletedBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const url = RESTORE_TEMPLATE.replace('__ID__', id);
-                        const confirmResult = await Swal.fire({
-                            title: 'Restore FAQ?',
-                            text: 'Do you want to restore this FAQ?',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, restore',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        try {
-                            btn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to restore';
-                                throw new Error(err);
-                            }
-                            setPendingChanges(true);
-                            showToast('success', json.message || 'FAQ restored');
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            btn.disabled = false;
-                        }
-                    });
-                });
-                // attach permanent delete handlers for deleted rows
-                $$('.deletePermanentBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const confirmResult = await Swal.fire({
-                            title: 'Delete permanently?',
-                            text: 'This will permanently delete the FAQ and cannot be undone.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, delete permanently',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        const url = DESTROY_TEMPLATE.replace('__ID__', id);
-                        try {
-                            btn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to delete permanently';
-                                throw new Error(err);
-                            }
-                            setPendingChanges(true);
-                            showToast('success', json.message || 'FAQ permanently deleted');
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            btn.disabled = false;
-                        }
-                    });
-                });
 
-                // Attach toggle handler for both desktop and mobile buttons
-                $$('.toggleFaqBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const id = btn.getAttribute('data-id');
-                        const isDisabled = btn.getAttribute('data-disabled') === '1';
-                        if (!id) return;
-
-                        const url = isDisabled
-                            ? ENABLE_TEMPLATE.replace('__ID__', id)
-                            : DISABLE_TEMPLATE.replace('__ID__', id);
-
-                        // Store original content and state
-                        const originalHTML = btn.innerHTML;
-                        const originalDisabled = btn.getAttribute('data-disabled');
-                        const originalClasses = btn.className;
-
-                        try {
-                            btn.disabled = true;
-                            // Show loading spinner
-                            btn.innerHTML = `
-                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                const rasaBaseUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '');
+                docsListEl.innerHTML = files.map(file => `
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">${escapeHtml(file.name)}</div>
+                                <div class="text-xs text-gray-500">${formatFileSize(file.size)} • Modified ${formatDate(file.modified)}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="${rasaBaseUrl}/download/${encodeURIComponent(file.name)}"
+                               class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                               target="_blank">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                            `;
+                                Download
+                            </a>
+                            <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                                    data-filename="${file.name}">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
 
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                throw new Error(json.message || `Failed to ${isDisabled ? 'enable' : 'disable'} FAQ`);
-                            }
-
-                            // Update button state immediately
-                            const newDisabled = isDisabled ? '0' : '1';
-                            btn.setAttribute('data-disabled', newDisabled);
-                            btn.textContent = isDisabled ? 'Enabled' : 'Disabled';
-
-                            // Update button styling with border colors
-                            if (isDisabled) {
-                                // Was disabled, now enabled: green background with green border
-                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-green-400 text-white border-2 border-green-600';
-                                btn.setAttribute('title', 'Click to Disable');
-                            } else {
-                                // Was enabled, now disabled: gray background with red border
-                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-gray-400 text-white border-2 border-red-300';
-                                btn.setAttribute('title', 'Click to Enable');
-                            }
-
-                            setPendingChanges(true);
-                            showToast('success', `FAQ ${isDisabled ? 'enabled' : 'disabled'} successfully`);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                            // Restore original content and state on error
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                            if (originalDisabled) btn.setAttribute('data-disabled', originalDisabled);
-                            if (originalClasses) btn.className = originalClasses;
-                        }
-                    });
-                });
+                // Attach view handlers
+                $$('.viewDocBtn').forEach(btn => btn.addEventListener('click', onViewDocClick));
             }
 
             function renderPagination(meta) {
@@ -1598,8 +1272,16 @@
             // Initialize sync button state
             updateSyncButtonState();
 
-            // Initialize: fetch list on page load
-            fetchList(1);
+            // Refresh button handler
+            const refreshDocsBtn = $('#refreshDocsBtn');
+            if (refreshDocsBtn) {
+                refreshDocsBtn.addEventListener('click', () => {
+                    fetchDocs();
+                });
+            }
+
+            // Initialize: fetch docs on page load
+            fetchDocs();
 
         })();
 
