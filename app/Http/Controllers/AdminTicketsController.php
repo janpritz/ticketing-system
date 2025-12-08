@@ -262,30 +262,54 @@ class AdminTicketsController extends Controller
         $ticket = Ticket::findOrFail($id);
         Log::info('Ticket found for forwarding', ['ticket_id' => $ticket->id, 'ticket_status' => $ticket->status]);
 
-        // Dispatch job to handle ticket forwarding asynchronously
         $user = User::findOrFail($request->user_id);
         Log::info('User found for forwarding', ['forward_to_user_id' => $user->id, 'forward_to_user_name' => $user->name]);
 
-        SendTicketForwardJob::dispatch(
-            $ticket->id,
-            $request->user_id,
-            optional(request()->user())->id,
-            'Forwarded by admin to user: ' . $user->name
-        );
-
-        // Clear tickets cache on update
-        Cache::flush();
-
-        // update last-changed cache
+        DB::beginTransaction();
         try {
-            Cache::put('tickets_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
+            // Update ticket assignment and status
+            $ticket->staff_id = $request->user_id;
+            $ticket->status = 'Forwarded';
+            $ticket->date_closed = null; // Reset closed date if it was set
+            $ticket->save();
+
+            // Record routing history
+            TicketRoutingHistory::create([
+                'ticket_id' => $ticket->id,
+                'staff_id' => $request->user_id,
+                'status' => 'Forwarded',
+                'routed_at' => now(),
+                'notes' => 'Forwarded by admin to user: ' . $user->name,
+            ]);
+
+            DB::commit();
+
+            // Clear tickets cache on update
+            Cache::flush();
+
+            // update last-changed cache
+            try {
+                Cache::put('tickets_last_changed', time(), 3600);
+            } catch (\Throwable $cacheEx) {
+                Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
+            }
+
+            Log::info('Ticket forward completed successfully', ['ticket_id' => $ticket->id, 'forwarded_to' => $user->name]);
+
+            // Dispatch job for push notification (non-critical)
+            SendTicketForwardJob::dispatch(
+                $ticket->id,
+                $request->user_id,
+                optional(request()->user())->id,
+                'Forwarded by admin to user: ' . $user->name
+            );
+
+            return response()->json(['message' => 'Ticket forwarded successfully', 'staff' => $user]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Ticket forward failed', ['error' => $e->getMessage(), 'ticket_id' => $id]);
+            return response()->json(['message' => 'Failed to forward ticket', 'error' => $e->getMessage()], 500);
         }
-
-        Log::info('Ticket forward completed successfully', ['ticket_id' => $ticket->id, 'forwarded_to' => $user->name]);
-
-        return response()->json(['message' => 'Ticket forwarding initiated', 'staff' => $user]);
     }
 
     public function update(Request $request, $id)

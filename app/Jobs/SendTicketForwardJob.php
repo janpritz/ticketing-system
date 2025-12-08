@@ -54,24 +54,8 @@ class SendTicketForwardJob implements ShouldQueue
             return;
         }
 
-        // Update ticket assignment and status
-        $ticket->staff_id = $this->newStaffId;
-        $ticket->status = 'Forwarded';
-        $ticket->date_closed = null; // Reset closed date if it was set
-        $ticket->save();
-
-        // Record routing history
-        TicketRoutingHistory::create([
-            'ticket_id' => $ticket->id,
-            'staff_id' => $this->newStaffId,
-            'status' => 'Forwarded',
-            'routed_at' => now(),
-            'notes' => $this->notes ?: 'Forwarded by ' . ($this->forwardedByUserId ? 'user' : 'system'),
-        ]);
-
-        Log::info('SendTicketForwardJob: Ticket forwarded successfully', [
+        Log::info('SendTicketForwardJob: Sending push notification for forwarded ticket', [
             'ticket_id' => $this->ticketId,
-            'from_staff' => $ticket->getOriginal('staff_id'),
             'to_staff' => $this->newStaffId,
             'forwarded_by' => $this->forwardedByUserId
         ]);

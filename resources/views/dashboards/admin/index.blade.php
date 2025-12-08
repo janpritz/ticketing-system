@@ -107,15 +107,6 @@
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                   </svg>
                 </button>
-                <label class="relative block">
-                    <span class="sr-only">Search</span>
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                        </svg>
-                    </span>
-                    <input type="text" placeholder="Search tickets, users, FAQs..." class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </label>
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-right">
@@ -155,7 +146,7 @@
         <!-- Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Total Open Tickets -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.tickets.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Open Tickets</div>
@@ -175,9 +166,9 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
             <!-- Total FAQs -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.faqs.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total FAQs</div>
@@ -201,7 +192,7 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Active Staff (last 10 min) -->
             <div id="activeStaffCard" class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:bg-gray-50" role="button" tabindex="0" aria-label="Open active staff list">
@@ -219,7 +210,7 @@
                 </div>
             </div>
             <!-- Total Users -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.users.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Users</div>
@@ -239,7 +230,7 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Analytics -->
@@ -301,7 +292,7 @@
         </div>
 
         <!-- Tables -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+        <div class="grid grid-cols-1 gap-4 mb-10">
             @php
             $badge = fn($status) => match($status) {
             'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
@@ -311,67 +302,11 @@
             };
             @endphp
 
-            <!-- Open Tickets -->
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">Open Tickets</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 text-gray-600">
-                            <tr>
-                                <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
-                                <th class="px-3 py-3 text-left font-medium">User</th>
-                                <th class="px-3 py-3 text-left font-medium">Status</th>
-                                <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="openListBody" class="divide-y divide-gray-100">
-                            @forelse(($openList ?? []) as $t)
-                            @php
-                            @endphp
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-3 pl-5 pr-3 align-top">
-                                    <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
-                                    <div class="mt-1 text-xs text-gray-500">
-                                        {{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y-m-d h:i a') }}
-                                    </div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <div class="text-gray-900">{{ $t->email ?? '—' }}</div>
-                                    <div class="text-xs text-gray-500">{{ $t->category ?? '' }}</div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 {{ $badge($t->status) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <circle cx="12" cy="12" r="5"></circle>
-                                        </svg>
-                                        {{ $t->status }}
-                                    </span>
-                                </td>
-                                <td class="py-3 pl-3 pr-5 align-top">
-                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                                        View
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No open tickets.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- My Tickets (assigned to Primary Administrator) -->
+            <!-- Unassigned Tickets (assigned to Primary Administrator) -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">My Tickets</h3>
+                    <h3 class="text-sm font-semibold text-slate-800">Unassigned Tickets</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -380,14 +315,13 @@
                                 <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
                                 <th class="px-3 py-3 text-left font-medium">User</th>
                                 <th class="px-3 py-3 text-left font-medium">Status</th>
-                                <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="myTicketsListBody" class="divide-y divide-gray-100">
                             @forelse(($myTicketsList ?? []) as $t)
                             @php
                             @endphp
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 cursor-pointer btn-view" data-id="{{ $t->id }}">
                                 <td class="py-3 pl-5 pr-3 align-top">
                                     <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
@@ -406,18 +340,10 @@
                                         {{ $t->status }}
                                     </span>
                                 </td>
-                                <td class="py-3 pl-3 pr-5 align-top">
-                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                                        View
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
+                                <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -583,26 +509,7 @@
                 <!-- Main Actions -->
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
-                        <!-- Options Menu -->
-                        <div class="relative">
-                            <button type="button" id="tmOptionsBtn"
-                                class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                                aria-haspopup="true" aria-expanded="false">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M5 12a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0zm5 0a2 2 0 114 0 2 2 0 01-4 0z" />
-                                </svg>
-                                Options
-                            </button>
-                            <div id="tmOptionsMenu"
-                                class="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-lg ring-1 ring-black/5 hidden z-10 overflow-hidden">
-                                <button type="button"
-                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                    data-option="toggle-history">Show History</button>
-                                <button type="button" id="tmOptionForward"
-                                    class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
-                                    data-option="show-forward">Forward Ticket</button>
-                            </div>
-                        </div>
+                      
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -940,7 +847,7 @@
                 const staffName = t.staff && t.staff.name ? `Staff: ${t.staff.name}` : '';
                 const badge = adminBadgeClass(t.status);
                 return `
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 cursor-pointer btn-view" data-id="${t.id}">
                     <td class="py-3 pl-5 pr-3 align-top">
                         <div class="text-indigo-700 font-medium">${ticketNo}</div>
                         <div class="mt-1 text-xs text-gray-500">Updated ${updatedAt}</div>
@@ -955,15 +862,9 @@
                             ${t.status ?? ''}
                         </span>
                     </td>
-                    <td class="py-3 pl-3 pr-5 align-top">
-                        <button type="button" data-id="${t.id}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                            View
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7" /></svg>
-                        </button>
-                    </td>
                 </tr>`;
             }) : [];
-            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td></tr>`;
+            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td></tr>`;
         }
         async function refreshAdminData() {
             const url = analyticsEl ? analyticsEl.getAttribute('data-admin-url') : null;
@@ -1266,6 +1167,7 @@
   const csrfToken = '{{ csrf_token() }}';
   const forwardBase = "{{ url('/admin/tickets') }}";
   let currentTicketId = null;
+  let currentIsAssigning = false;
 
   const statusStyles = {
     'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
@@ -1406,8 +1308,18 @@
 
       // Toggle forward option and response display based on status
       const isClosed = (t.status === 'Closed');
-      if (tmOptionForward) tmOptionForward.classList.toggle('hidden', isClosed);
+      const hasStaff = t.staff && t.staff.name;
+      currentIsAssigning = !hasStaff;
+      if (tmOptionForward) {
+        tmOptionForward.classList.toggle('hidden', isClosed);
+        tmOptionForward.textContent = hasStaff ? 'Forward Ticket' : 'Assign to a Staff';
+      }
       if (tmForwardControls) tmForwardControls.classList.add('hidden');
+
+      // Update labels based on assignment status
+      const forwardLabel = document.querySelector('label[for="tmForwardSelect"]');
+      if (forwardLabel) forwardLabel.textContent = hasStaff ? 'Forward to:' : 'Assign to:';
+      if (tmForwardApply) tmForwardApply.textContent = hasStaff ? 'Forward Ticket' : 'Assign';
       if (tmStoredResponseBlock) {
         if (isClosed) {
           tmStoredResponseBlock.classList.remove('hidden');
@@ -1590,7 +1502,10 @@
         return;
       }
       const userId = tmForwardSelect.value;
+      const originalButtonText = tmForwardApply.textContent;
       try {
+        tmForwardApply.disabled = true;
+        tmForwardApply.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...';
         const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
           method: 'POST',
           headers: {
@@ -1608,8 +1523,8 @@
           console.log('Forward successful:', data);
           Swal.fire({
             icon: 'success',
-            title: 'Ticket Forwarded',
-            text: 'Ticket has been forwarded successfully!',
+            title: currentIsAssigning ? 'Ticket Assigned' : 'Ticket Forwarded',
+            text: currentIsAssigning ? 'Ticket has been assigned successfully!' : 'Ticket has been forwarded successfully!',
             timer: 3000,
             timerProgressBar: true,
             showConfirmButton: false,
@@ -1624,14 +1539,17 @@
           console.error('Forward failed', res.status, errorText);
           Swal.fire({
             icon: 'error',
-            title: 'Forward Failed',
-            text: 'Failed to forward ticket. Please try again. Error: ' + res.status + ' ' + res.statusText,
+            title: currentIsAssigning ? 'Assign Failed' : 'Forward Failed',
+            text: (currentIsAssigning ? 'Failed to assign ticket. ' : 'Failed to forward ticket. ') + 'Please try again. Error: ' + res.status + ' ' + res.statusText,
             confirmButtonText: 'OK'
           });
         }
       } catch (err) {
         console.error('Forward error', err);
         alert('Network error during forward.');
+      } finally {
+        tmForwardApply.disabled = false;
+        tmForwardApply.innerHTML = originalButtonText;
       }
     });
   }
