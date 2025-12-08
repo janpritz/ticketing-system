@@ -43,7 +43,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-gray-600">Avg Resolution Time</p>
-          <p class="text-3xl font-bold text-gray-900">-</p>
+          <p class="text-3xl font-bold text-gray-900">{{ $avgResolutionTime }}</p>
         </div>
         <div class="p-3 bg-green-50 rounded-lg">
           <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,12 +70,12 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-gray-600">Satisfaction Rate</p>
+          <p class="text-sm font-medium text-gray-600">Overdue Tickets</p>
           <p class="text-3xl font-bold text-gray-900">-</p>
         </div>
-        <div class="p-3 bg-yellow-50 rounded-lg">
-          <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+        <div class="p-3 bg-red-50 rounded-lg">
+          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
           </svg>
         </div>
       </div>
@@ -83,7 +83,7 @@
   </div>
 
   <!-- Charts Section -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- Backlog Trend Chart -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
@@ -95,19 +95,93 @@
       </div>
     </div>
 
-    <!-- Placeholder for future charts -->
+    <!-- Tickets Solved/Closed (Last 30 Days) -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Category Distribution</h3>
-        <div class="text-sm text-gray-500">Tickets by category</div>
+        <h3 class="text-lg font-semibold text-gray-900">Tickets Solved (30 Days)</h3>
+        <div class="text-sm text-gray-500">Agents by resolution count</div>
       </div>
-      <div class="h-64 flex items-center justify-center text-gray-400">
-        <div class="text-center">
-          <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-          <p>Coming Soon</p>
-        </div>
+      <div class="h-64">
+        <canvas id="ticketsSolvedChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Performance Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Tickets Assigned (Current Workload) -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">Current Workload</h3>
+        <div class="text-sm text-gray-500">Assigned tickets by agent</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600">
+            <tr>
+              <th class="py-2 pl-3 pr-2 text-left font-medium">Agent</th>
+              <th class="px-2 py-2 text-left font-medium">Tickets</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsAssignedBody" class="divide-y divide-gray-100">
+            @forelse(($ticketsAssigned ?? []) as $agent)
+            <tr class="hover:bg-gray-50">
+              <td class="py-2 pl-3 pr-2 align-top text-gray-900">{{ $agent['name'] }}</td>
+              <td class="px-2 py-2 align-top font-medium text-slate-900">{{ number_format($agent['count']) }}</td>
+            </tr>
+            @empty
+            <tr>
+              <td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500">No assigned tickets.</td>
+            </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Workload Distribution -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">Workload Distribution</h3>
+        <div class="text-sm text-gray-500">Percentage share of open tickets</div>
+      </div>
+      <div class="h-64">
+        <canvas id="workloadDistributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trend Identification and Root Cause Analysis Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8 mb-8">
+    <!-- Top Ticket Drivers -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">Top Ticket Drivers</h3>
+        <div class="text-sm text-gray-500">Categories and sub-issues (Last 30 days)</div>
+      </div>
+      <div class="h-64">
+        <canvas id="topTicketDriversChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Tickets by Customer/Org -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">Tickets by Customer/Org</h3>
+        <div class="text-sm text-gray-500">Top 10 organizations (Last 90 days)</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600">
+            <tr>
+              <th class="py-2 pl-3 pr-2 text-left font-medium">Organization</th>
+              <th class="px-2 py-2 text-left font-medium">Tickets</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsByOrgBody" class="divide-y divide-gray-100">
+            <!-- Data will be populated by JS -->
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -118,7 +192,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function(){
-  let backlogTrendChart;
+  let backlogTrendChart, ticketsSolvedChart, workloadDistributionChart, topTicketDriversChart;
+
+  function number_format(num) {
+    return num.toLocaleString();
+  }
 
   function initBacklogTrendChart(data) {
     const ctx = document.getElementById('backlogTrendChart');
@@ -161,6 +239,144 @@
     });
   }
 
+  function initTicketsSolvedChart(data) {
+    const ctx = document.getElementById('ticketsSolvedChart');
+    if (!ctx) return;
+
+    if (ticketsSolvedChart) {
+      ticketsSolvedChart.destroy();
+    }
+
+    const labels = data.map(item => item.name);
+    const values = data.map(item => item.count);
+
+    ticketsSolvedChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Tickets Solved',
+          data: values,
+          backgroundColor: 'rgb(34, 197, 94)',
+          borderRadius: 6,
+          maxBarThickness: 40
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function initWorkloadDistributionChart(data) {
+    const ctx = document.getElementById('workloadDistributionChart');
+    if (!ctx) return;
+
+    if (workloadDistributionChart) {
+      workloadDistributionChart.destroy();
+    }
+
+    const labels = data.map(item => item.name);
+    const values = data.map(item => item.percentage);
+
+    const palette = ['#6366F1','#10B981','#F59E0B','#EF4444','#06B6D4','#84CC16','#F472B6','#FB7185'];
+    const colors = labels.map((_, i) => palette[i % palette.length]);
+
+    workloadDistributionChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        },
+        cutout: '60%'
+      }
+    });
+  }
+
+  function initTopTicketDriversChart(data) {
+    const ctx = document.getElementById('topTicketDriversChart');
+    if (!ctx) return;
+
+    if (topTicketDriversChart) {
+      topTicketDriversChart.destroy();
+    }
+
+    topTicketDriversChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels || [],
+        datasets: [{
+          label: 'Tickets',
+          data: data.data || [],
+          backgroundColor: 'rgb(99, 102, 241)',
+          borderRadius: 6,
+          maxBarThickness: 40
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function initTicketsByOrgTable(data) {
+    const tbody = document.getElementById('ticketsByOrgBody');
+    tbody.innerHTML = '';
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500">No data available.</td></tr>';
+      return;
+    }
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50';
+      tr.innerHTML = `
+        <td class="py-2 pl-3 pr-2 align-top text-gray-900">${item.name || 'Unknown'}</td>
+        <td class="px-2 py-2 align-top font-medium text-slate-900">${number_format(item.count || 0)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
   function loadBacklogTrendData(days) {
     fetch(`{{ route('admin.reports.backlog-trend-data') }}?days=${days}`)
       .then(response => response.json())
@@ -173,8 +389,20 @@
   }
 
   // Initialize with default data
-  const initialData = @json($backlogTrendData);
-  initBacklogTrendChart(initialData);
+  const initialBacklogData = @json($backlogTrendData);
+  initBacklogTrendChart(initialBacklogData);
+
+  const initialTicketsSolvedData = @json($ticketsSolved ?? []);
+  initTicketsSolvedChart(initialTicketsSolvedData);
+
+  const initialWorkloadData = @json($workloadDistribution ?? []);
+  initWorkloadDistributionChart(initialWorkloadData);
+
+  const initialTopTicketDriversData = @json($topTicketDrivers ?? []);
+  initTopTicketDriversChart(initialTopTicketDriversData);
+
+  const initialTicketsByOrgData = @json($ticketsByOrg ?? []);
+  initTicketsByOrgTable(initialTicketsByOrgData);
 
   // Handle time range changes
   document.getElementById('timeRangeSelect').addEventListener('change', function(e) {

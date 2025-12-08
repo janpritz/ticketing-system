@@ -107,15 +107,6 @@
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                   </svg>
                 </button>
-                <label class="relative block">
-                    <span class="sr-only">Search</span>
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                        </svg>
-                    </span>
-                    <input type="text" placeholder="Search tickets, users, FAQs..." class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </label>
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-right">
@@ -1176,6 +1167,7 @@
   const csrfToken = '{{ csrf_token() }}';
   const forwardBase = "{{ url('/admin/tickets') }}";
   let currentTicketId = null;
+  let currentIsAssigning = false;
 
   const statusStyles = {
     'Open': 'text-blue-700 bg-blue-50 ring-blue-600/20',
@@ -1316,8 +1308,18 @@
 
       // Toggle forward option and response display based on status
       const isClosed = (t.status === 'Closed');
-      if (tmOptionForward) tmOptionForward.classList.toggle('hidden', isClosed);
+      const hasStaff = t.staff && t.staff.name;
+      currentIsAssigning = !hasStaff;
+      if (tmOptionForward) {
+        tmOptionForward.classList.toggle('hidden', isClosed);
+        tmOptionForward.textContent = hasStaff ? 'Forward Ticket' : 'Assign to a Staff';
+      }
       if (tmForwardControls) tmForwardControls.classList.add('hidden');
+
+      // Update labels based on assignment status
+      const forwardLabel = document.querySelector('label[for="tmForwardSelect"]');
+      if (forwardLabel) forwardLabel.textContent = hasStaff ? 'Forward to:' : 'Assign to:';
+      if (tmForwardApply) tmForwardApply.textContent = hasStaff ? 'Forward Ticket' : 'Assign';
       if (tmStoredResponseBlock) {
         if (isClosed) {
           tmStoredResponseBlock.classList.remove('hidden');
@@ -1500,7 +1502,10 @@
         return;
       }
       const userId = tmForwardSelect.value;
+      const originalButtonText = tmForwardApply.textContent;
       try {
+        tmForwardApply.disabled = true;
+        tmForwardApply.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...';
         const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
           method: 'POST',
           headers: {
@@ -1518,8 +1523,8 @@
           console.log('Forward successful:', data);
           Swal.fire({
             icon: 'success',
-            title: 'Ticket Forwarded',
-            text: 'Ticket has been forwarded successfully!',
+            title: currentIsAssigning ? 'Ticket Assigned' : 'Ticket Forwarded',
+            text: currentIsAssigning ? 'Ticket has been assigned successfully!' : 'Ticket has been forwarded successfully!',
             timer: 3000,
             timerProgressBar: true,
             showConfirmButton: false,
@@ -1534,14 +1539,17 @@
           console.error('Forward failed', res.status, errorText);
           Swal.fire({
             icon: 'error',
-            title: 'Forward Failed',
-            text: 'Failed to forward ticket. Please try again. Error: ' + res.status + ' ' + res.statusText,
+            title: currentIsAssigning ? 'Assign Failed' : 'Forward Failed',
+            text: (currentIsAssigning ? 'Failed to assign ticket. ' : 'Failed to forward ticket. ') + 'Please try again. Error: ' + res.status + ' ' + res.statusText,
             confirmButtonText: 'OK'
           });
         }
       } catch (err) {
         console.error('Forward error', err);
         alert('Network error during forward.');
+      } finally {
+        tmForwardApply.disabled = false;
+        tmForwardApply.innerHTML = originalButtonText;
       }
     });
   }
