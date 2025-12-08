@@ -155,7 +155,7 @@
         <!-- Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Total Open Tickets -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.tickets.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Open Tickets</div>
@@ -175,9 +175,9 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
             <!-- Total FAQs -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.faqs.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total FAQs</div>
@@ -201,7 +201,7 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Active Staff (last 10 min) -->
             <div id="activeStaffCard" class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:bg-gray-50" role="button" tabindex="0" aria-label="Open active staff list">
@@ -219,7 +219,7 @@
                 </div>
             </div>
             <!-- Total Users -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <a href="{{ route('admin.users.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Users</div>
@@ -239,7 +239,7 @@
                         </svg>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Analytics -->
