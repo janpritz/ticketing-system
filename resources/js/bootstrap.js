@@ -31,9 +31,9 @@ if (csrf && csrf.content) {
   }
 
   try {
-    console.debug('[sw] Attempting to register service worker...');
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    console.debug('[sw] Service worker registered successfully:', registration);
+    console.debug('[sw] Service worker registration disabled to prevent redirect errors.');
+    // const registration = await navigator.serviceWorker.register('/sw.js');
+    // console.debug('[sw] Service worker registered successfully:', registration);
 
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;

@@ -15,8 +15,8 @@ class ForceHttps
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Force HTTPS for all requests when not in local development
-        if (!$request->secure() && !app()->environment('local')) {
+        // Force HTTPS for all requests when not in local development and not localhost
+        if (!$request->secure() && !app()->environment('local') && $request->getHost() !== 'localhost') {
             return redirect()->secure($request->getRequestUri());
         }
 

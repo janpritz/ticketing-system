@@ -46,6 +46,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
+  console.log('[SW] Fetch event for:', event.request.url, 'mode:', event.request.mode, 'redirect:', event.request.redirect);
+
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
@@ -55,9 +57,16 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request)
       .then((response) => {
         // Return cached version or fetch from network
-        return response || fetch(event.request);
+        return response || fetch(event.request).then(networkResponse => {
+          console.log('[SW] Network fetch response status:', networkResponse.status, 'redirected:', networkResponse.redirected);
+          return networkResponse;
+        }).catch(fetchError => {
+          console.error('[SW] Fetch failed:', fetchError);
+          throw fetchError;
+        });
       })
-      .catch(() => {
+      .catch((cacheError) => {
+        console.error('[SW] Cache match failed:', cacheError);
         // Return offline fallback for navigation requests
         if (event.request.mode === 'navigate') {
           return caches.match('/login');
