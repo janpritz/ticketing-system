@@ -143,16 +143,10 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Recent lists
-        $openList = Ticket::with('staff')
-            ->whereIn('status', ['Open', 'Forwarded'])
-            ->orderByDesc('date_created')
-            ->take(6)
-            ->get();
-
-        // Show recent tickets assigned to Primary Administrator (staff_id = 1) (My Tickets)
+        // Show unassigned tickets (no staff assigned)
         $myTicketsList = Ticket::with('staff')
-            ->where('staff_id', 1)
+            ->whereNull('staff_id')
+            ->where('status', 'Open')
             ->orderByDesc('updated_at')
             ->take(6)
             ->get();
@@ -170,7 +164,6 @@ class AdminController extends Controller
             'categoryLabels'    => $categoryLabels,
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
-            'openList'          => $openList,
             'myTicketsList'    => $myTicketsList,
             'activeStaff'       => $activeStaff,
             'staffContacts'     => $staffContacts,
@@ -306,49 +299,9 @@ class AdminController extends Controller
             ->values()
             ->toArray();
 
-        // Recent lists for live admin table refresh (limit 6 like initial view)
-        $openListArr = Ticket::with('staff')
-            ->where('status', 'Open')
-            ->orderByDesc('date_created')
-            ->take(6)
-            ->get()
-            ->map(function ($t) {
-            return [
-                'id'           => (int) $t->id,
-                'status'       => (string) $t->status,
-                'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) ($t->category ?? ''),
-                'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
-                'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
-                'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
-                'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
-            ];
-        })
-        ->values()
-        ->toArray();
-
-        $forwardedListArr = Ticket::with('staff')
-            ->where('status', 'Forwarded')
-            ->orderByDesc('updated_at')
-            ->take(6)
-            ->get()
-            ->map(function ($t) {
-            return [
-                'id'           => (int) $t->id,
-                'status'       => (string) $t->status,
-                'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) ($t->category ?? ''),
-                'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
-                'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
-                'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
-                'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
-            ];
-        })
-        ->values()
-        ->toArray();
-
         $myTicketsListArr = Ticket::with('staff')
-            ->where('staff_id', 1)
+            ->whereNull('staff_id')
+            ->where('status', 'Open')
             ->orderByDesc('updated_at')
             ->take(6)
             ->get()
@@ -379,8 +332,6 @@ class AdminController extends Controller
             'categoryLabels'    => $categoryLabels,
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
-            'openList'          => $openListArr,
-            'forwardedList'    => $forwardedListArr,
             'myTicketsList'    => $myTicketsListArr,
             'activeStaff'       => $activeStaffArr,
             'staffContacts'     => $staffContactsArr,

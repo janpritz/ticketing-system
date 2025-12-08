@@ -301,7 +301,7 @@
         </div>
 
         <!-- Tables -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+        <div class="grid grid-cols-1 gap-4 mb-10">
             @php
             $badge = fn($status) => match($status) {
             'Open' => 'text-blue-700 bg-blue-50 ring-blue-600/20',
@@ -311,67 +311,11 @@
             };
             @endphp
 
-            <!-- Open Tickets -->
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">Open Tickets</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 text-gray-600">
-                            <tr>
-                                <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
-                                <th class="px-3 py-3 text-left font-medium">User</th>
-                                <th class="px-3 py-3 text-left font-medium">Status</th>
-                                <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="openListBody" class="divide-y divide-gray-100">
-                            @forelse(($openList ?? []) as $t)
-                            @php
-                            @endphp
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-3 pl-5 pr-3 align-top">
-                                    <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
-                                    <div class="mt-1 text-xs text-gray-500">
-                                        {{ \Illuminate\Support\Carbon::parse($t->date_created ?? $t->created_at)->format('Y-m-d h:i a') }}
-                                    </div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <div class="text-gray-900">{{ $t->email ?? '—' }}</div>
-                                    <div class="text-xs text-gray-500">{{ $t->category ?? '' }}</div>
-                                </td>
-                                <td class="px-3 py-3 align-top">
-                                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 {{ $badge($t->status) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <circle cx="12" cy="12" r="5"></circle>
-                                        </svg>
-                                        {{ $t->status }}
-                                    </span>
-                                </td>
-                                <td class="py-3 pl-3 pr-5 align-top">
-                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                                        View
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No open tickets.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- My Tickets (assigned to Primary Administrator) -->
+            <!-- Unassigned Tickets (assigned to Primary Administrator) -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-300">
-                    <h3 class="text-sm font-semibold text-slate-800">My Tickets</h3>
+                    <h3 class="text-sm font-semibold text-slate-800">Unassigned Tickets</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -380,14 +324,13 @@
                                 <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
                                 <th class="px-3 py-3 text-left font-medium">User</th>
                                 <th class="px-3 py-3 text-left font-medium">Status</th>
-                                <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="myTicketsListBody" class="divide-y divide-gray-100">
                             @forelse(($myTicketsList ?? []) as $t)
                             @php
                             @endphp
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 cursor-pointer btn-view" data-id="{{ $t->id }}">
                                 <td class="py-3 pl-5 pr-3 align-top">
                                     <div class="text-indigo-700 font-medium">{{ $t->id }}</div>
                                     <div class="mt-1 text-xs text-gray-500">
@@ -406,18 +349,10 @@
                                         {{ $t->status }}
                                     </span>
                                 </td>
-                                <td class="py-3 pl-3 pr-5 align-top">
-                                    <button type="button" data-id="{{ $t->id }}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                                        View
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
-                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
+                                <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -940,7 +875,7 @@
                 const staffName = t.staff && t.staff.name ? `Staff: ${t.staff.name}` : '';
                 const badge = adminBadgeClass(t.status);
                 return `
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 cursor-pointer btn-view" data-id="${t.id}">
                     <td class="py-3 pl-5 pr-3 align-top">
                         <div class="text-indigo-700 font-medium">${ticketNo}</div>
                         <div class="mt-1 text-xs text-gray-500">Updated ${updatedAt}</div>
@@ -955,15 +890,9 @@
                             ${t.status ?? ''}
                         </span>
                     </td>
-                    <td class="py-3 pl-3 pr-5 align-top">
-                        <button type="button" data-id="${t.id}" class="btn-view inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                            View
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7" /></svg>
-                        </button>
-                    </td>
                 </tr>`;
             }) : [];
-            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td></tr>`;
+            tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td></tr>`;
         }
         async function refreshAdminData() {
             const url = analyticsEl ? analyticsEl.getAttribute('data-admin-url') : null;
