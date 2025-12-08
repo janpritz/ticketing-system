@@ -80,7 +80,13 @@ class ReportsController extends Controller
         // Calculate average resolution time
         $avgResolutionTime = $this->getAverageResolutionTime();
 
-        return view('dashboards.admin.reports.index', compact('currentOpenTickets', 'backlogTrendData', 'ticketsAssigned', 'ticketsSolved', 'workloadDistribution', 'avgResolutionTime'));
+        // Total tickets this month
+        $totalTicketsThisMonth = $this->getTotalTicketsThisMonth();
+
+        // Overdue tickets (open tickets older than 1 day)
+        $overdueTickets = $this->getOverdueTicketsCount();
+
+        return view('dashboards.admin.reports.index', compact('currentOpenTickets', 'backlogTrendData', 'ticketsAssigned', 'ticketsSolved', 'workloadDistribution', 'avgResolutionTime', 'totalTicketsThisMonth', 'overdueTickets'));
     }
 
     public function getBacklogTrendDataAjax(Request $request)
@@ -163,5 +169,21 @@ class ReportsController extends Controller
         } else {
             return round($avgHours, 1) . 'h';
         }
+    }
+
+    private function getTotalTicketsThisMonth()
+    {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        return Ticket::whereBetween('created_at', [$startOfMonth, $endOfMonth])->count();
+    }
+
+    private function getOverdueTicketsCount()
+    {
+        $oneDayAgo = now()->subDay();
+        return Ticket::whereIn('status', ['Open', 'Forwarded'])
+            ->where('created_at', '<', $oneDayAgo)
+            ->count();
     }
 }

@@ -56,8 +56,8 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-gray-600">Total Tickets</p>
-          <p class="text-3xl font-bold text-gray-900">-</p>
+          <p class="text-sm font-medium text-gray-600">Total Tickets This Month</p>
+          <p class="text-3xl font-bold text-gray-900">{{ $totalTicketsThisMonth }}</p>
         </div>
         <div class="p-3 bg-purple-50 rounded-lg">
           <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +71,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium text-gray-600">Overdue Tickets</p>
-          <p class="text-3xl font-bold text-gray-900">-</p>
+          <p class="text-3xl font-bold text-gray-900">{{ $overdueTickets }}</p>
         </div>
         <div class="p-3 bg-red-50 rounded-lg">
           <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
