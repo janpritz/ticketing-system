@@ -1070,7 +1070,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Store new announcement (AJAX) - appends to Announcement.txt
+     * Store new announcement (AJAX) - appends to Announcements.txt
      */
     public function announcementsStore(Request $request)
     {
@@ -1080,7 +1080,7 @@ class AdminController extends Controller
             'content' => 'required|string|max:10000',
         ]);
 
-        $announcementsFile = base_path('docs/Announcement.txt');
+        $announcementsFile = base_path('docs/Announcements.txt');
 
         // Ensure docs directory exists
         $docsDir = dirname($announcementsFile);
@@ -1109,7 +1109,7 @@ class AdminController extends Controller
         // Log the document change for tracking
         try {
             \App\Models\DocumentChange::create([
-                'file_name' => 'Announcement.txt',
+                'file_name' => 'Announcements.txt',
                 'action' => 'created',
                 'user_id' => Auth::id(),
                 'user_name' => Auth::user()->name ?? null,
@@ -1141,8 +1141,6 @@ class AdminController extends Controller
         try {
             // Fetch announcements from Rasa server
             $rasaUrl = config('services.faq_list_docs.url');
-            Log::info('Fetching announcements - Rasa URL: ' . $rasaUrl);
-
             if (!$rasaUrl) {
                 throw new \Exception('Rasa server URL not configured');
             }
@@ -1151,19 +1149,13 @@ class AdminController extends Controller
             $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
             $secret = config('services.faq_list_docs.secret');
 
-            Log::info('Announcements URL: ' . $announcementsUrl);
-            Log::info('Using secret length: ' . strlen($secret ?? ''));
-
             $response = Http::withHeaders([
                 'X-FAQ-UPDATER-TOKEN' => $secret,
                 'X-Requested-With' => 'XMLHttpRequest'
             ])->get($announcementsUrl);
 
-            Log::info('Response status: ' . $response->status());
-            Log::info('Response body: ' . $response->body());
-
             if (!$response->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server: ' . $response->status() . ' - ' . $response->body());
+                throw new \Exception('Failed to fetch announcements from Rasa server: ' . $response->status());
             }
 
             $data = $response->json();
@@ -1171,8 +1163,6 @@ class AdminController extends Controller
             if (!$data['ok']) {
                 throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
             }
-
-            Log::info('Successfully fetched ' . count($data['announcements'] ?? []) . ' announcements');
 
             return response()->json([
                 'success' => true,
