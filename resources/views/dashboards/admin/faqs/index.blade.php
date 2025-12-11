@@ -6,7 +6,7 @@
     <div class="sm:px-2">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">Document Management</h1>
+                <h1 class="text-2xl font-semibold text-slate-900">FAQ Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
@@ -39,6 +39,15 @@
                 </div>
             @else
                 <div class="hidden sm:flex items-center gap-2">
+                    <!-- Upload File Button -->
+                    <button id="uploadFileBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="Upload File">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>Upload Files</span>
+                    </button>
                     <!-- Refresh Documents Button -->
                     <button id="refreshDocsBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
@@ -168,9 +177,9 @@
                 <form id="uploadFileForm" class="p-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Select Text File</label>
-                        <input type="file" id="faqFile" accept=".txt,.md,.json" required
+                        <input type="file" id="faqFile" accept=".txt" required
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
-                        <p class="mt-1 text-xs text-slate-500">Only text files (.txt, .md, .json) are allowed</p>
+                        <p class="mt-1 text-xs text-slate-500">Only .txt files are allowed</p>
                         <p id="upload_file_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -1306,9 +1315,17 @@
                     }
 
                     // Validate file type
-                    const allowedTypes = ['text/plain', 'text/markdown', 'application/json'];
-                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|md|json)$/i)) {
-                        $('#upload_file_error').textContent = 'Only text files (.txt, .md, .json) are allowed';
+                    const allowedTypes = ['text/plain'];
+                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.txt$/i)) {
+                        $('#upload_file_error').textContent = 'Only .txt files are allowed';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    // Check for duplicate filename
+                    const existingFiles = Array.from(document.querySelectorAll('.editDocBtn')).map(btn => btn.getAttribute('data-filename'));
+                    if (existingFiles.includes(file.name)) {
+                        $('#upload_file_error').textContent = `A file named "${file.name}" already exists. Please choose a different name or edit the existing file.`;
                         $('#upload_file_error').classList.remove('hidden');
                         return;
                     }

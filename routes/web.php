@@ -236,9 +236,13 @@ Route::middleware('auth')->group(function () {
     });
 
     // Admin announcements
-    Route::get('/admin/announcements', function () {
-        return view('dashboards.admin.announcements.index');
-    })->name('admin.announcements.index');
+    Route::prefix('admin/announcements')->name('admin.announcements.')->group(function () {
+        Route::get('/', function () {
+            return view('dashboards.admin.announcements.index');
+        })->name('index');
+        Route::get('/list', [AdminController::class, 'announcementsList'])->name('list');
+        Route::post('/', [AdminController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
+    });
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

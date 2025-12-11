@@ -1068,4 +1068,125 @@ class AdminController extends Controller
             'faqs' => $faqs->toArray()
         ]);
     }
+
+    /**
+     * Store new announcement (AJAX) - appends to Announcement.txt
+     */
+    public function announcementsStore(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $validated = $request->validate([
+            'content' => 'required|string|max:10000',
+        ]);
+
+        $announcementsFile = base_path('docs/Announcement.txt');
+
+        // Ensure docs directory exists
+        $docsDir = dirname($announcementsFile);
+        if (!is_dir($docsDir)) {
+            mkdir($docsDir, 0755, true);
+        }
+
+        // Get next ID by reading existing announcements
+        $nextId = 1;
+        if (file_exists($announcementsFile)) {
+            $content = file_get_contents($announcementsFile);
+            $lines = explode("\n", trim($content));
+            foreach ($lines as $line) {
+                if (preg_match('/^id:\s*(\d+)/', $line, $matches)) {
+                    $nextId = max($nextId, (int)$matches[1] + 1);
+                }
+            }
+        }
+
+        // Format the announcement
+        $announcementText = "id: {$nextId}\n{$validated['content']}\n---------\n";
+
+        // Append to file
+        file_put_contents($announcementsFile, $announcementText, FILE_APPEND | LOCK_EX);
+
+        // Log the document change for tracking
+        try {
+            \App\Models\DocumentChange::create([
+                'file_name' => 'Announcement.txt',
+                'action' => 'created',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the announcement creation
+            \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Announcement added successfully',
+            'announcement' => [
+                'id' => $nextId,
+                'content' => $validated['content']
+            ]
+        ]);
+    }
+
+    /**
+     * List announcements (AJAX) - fetches from Rasa server
+     */
+    public function announcementsList(Request $request)
+    {
+        $this->ensureAdmin();
+
+        try {
+            // Fetch announcements from Rasa server
+            $rasaUrl = config('services.faq_list_docs.url');
+            Log::info('Fetching announcements - Rasa URL: ' . $rasaUrl);
+
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
+
+            // Replace /list-docs with /download-announcements
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            Log::info('Announcements URL: ' . $announcementsUrl);
+            Log::info('Using secret length: ' . strlen($secret ?? ''));
+
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            Log::info('Response status: ' . $response->status());
+            Log::info('Response body: ' . $response->body());
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server: ' . $response->status() . ' - ' . $response->body());
+            }
+
+            $data = $response->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            Log::info('Successfully fetched ' . count($data['announcements'] ?? []) . ' announcements');
+
+            return response()->json([
+                'success' => true,
+                'announcements' => $data['announcements'] ?? []
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
+
+            // Fallback to empty array if server is unavailable
+            return response()->json([
+                'success' => true,
+                'announcements' => []
+            ]);
+        }
+    }
 }

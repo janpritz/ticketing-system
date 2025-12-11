@@ -285,6 +285,23 @@ def upload_file():
         docs_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = docs_dir / file_name
+
+        # Create backup if file already exists
+        backup_created = False
+        if file_path.exists():
+            backup_dir = PROJECT_ROOT / "backup"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+            backup_path = backup_dir / backup_filename
+            try:
+                import shutil
+                shutil.copy2(file_path, backup_path)
+                print(f"[file_upload] Created backup: {backup_path}")
+                backup_created = True
+            except Exception as e:
+                print(f"[file_upload] WARNING: Could not create backup: {e}")
+
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(file_content)
@@ -297,7 +314,8 @@ def upload_file():
         return jsonify({
             "ok": True,
             "message": f"Successfully uploaded file {file_name}",
-            "file_path": str(file_path)
+            "file_path": str(file_path),
+            "backup_created": backup_created
         })
 
     except Exception as e:
@@ -368,6 +386,70 @@ def list_docs():
 
     except Exception as e:
         print(f"[list_docs] Unexpected error in /list-docs: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/download-announcements", methods=["GET"])
+def download_announcements():
+    """
+    Download Announcement.txt file content and parse it into structured data.
+    Returns: { "ok": true, "announcements": [{"id": 1, "content": "..."}, ...] }
+    """
+    try:
+        print("[download_announcements] /download-announcements called")
+
+        if not verify_secret(request):
+            print("[download_announcements] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        docs_dir = PROJECT_ROOT / "docs"
+        file_path = docs_dir / "Announcements.txt"
+
+        # Check if file exists
+        if not file_path.exists():
+            print("[download_announcements] Announcement.txt not found")
+            return jsonify({"ok": True, "announcements": []})
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            print(f"[download_announcements] Successfully read Announcement.txt ({len(content)} characters)")
+        except Exception as e:
+            print(f"[download_announcements] Error reading file: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Error reading file"}), 500
+
+        # Parse the content into announcements
+        announcements = []
+        blocks = content.strip().split("---------\n")
+
+        for block in blocks:
+            lines = block.strip().split("\n")
+            if len(lines) >= 2:
+                id_line = lines[0]
+                import re
+                match = re.match(r'^id:\s*(\d+)', id_line)
+                if match:
+                    id = int(match.group(1))
+                    content = "\n".join(lines[1:])
+
+                    announcements.append({
+                        "id": id,
+                        "content": content
+                    })
+
+        # Sort by ID descending (newest first)
+        announcements.sort(key=lambda x: x['id'], reverse=True)
+
+        result = {
+            "ok": True,
+            "announcements": announcements,
+            "count": len(announcements)
+        }
+        print(f"[download_announcements] Returning {len(announcements)} announcements")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[download_announcements] Unexpected error: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -491,8 +573,12 @@ def update_document():
             print(f"[update_document] ERROR: File does not exist: {file_name}")
             return jsonify({"ok": False, "error": "File does not exist"}), 404
 
-        # Create backup of original file (optional)
-        backup_path = file_path.with_suffix(file_path.suffix + '.backup')
+        # Create backup of original file in backup directory
+        backup_dir = PROJECT_ROOT / "backup"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+        backup_path = backup_dir / backup_filename
         try:
             import shutil
             shutil.copy2(file_path, backup_path)
@@ -514,7 +600,7 @@ def update_document():
             "ok": True,
             "message": f"Successfully updated document {file_name}",
             "file_path": str(file_path),
-            "backup_path": str(backup_path) if backup_path.exists() else None
+            "backup_path": str(backup_path)
         })
 
     except Exception as e:
@@ -736,6 +822,7 @@ def update_faq():
 @app.route("/train-rasa", methods=["POST", "OPTIONS"])
 @app.route("/start-rasa-api", methods=["POST", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
+@app.route("/download-announcements", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():
     """Handle preflight CORS requests"""
