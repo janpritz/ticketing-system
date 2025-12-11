@@ -235,6 +235,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/dynamic-data', [\App\Http\Controllers\ReportsController::class, 'getDynamicDataAjax'])->name('dynamic-data');
     });
 
+    // Admin announcements
+    Route::get('/admin/announcements', function () {
+        return view('dashboards.admin.announcements.index');
+    })->name('admin.announcements.index');
+
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
