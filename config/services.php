@@ -60,6 +60,11 @@ return [
         'url' => env('FAQ_LIST_DOCS_URL'),
         'secret' => env('FAQ_UPDATER_SECRET'),
     ],
+    
+    'faq_train_rasa' => [
+        'url' => env('FAQ_TRAIN_RASA_URL'),
+        'secret' => env('FAQ_UPDATER_SECRET'),
+    ],
 
     'faq_list_docs' => [
         'url' => env('FAQ_LIST_DOCS_URL'),

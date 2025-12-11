@@ -522,6 +522,70 @@ def update_document():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/train-rasa", methods=["POST"])
+def train_rasa():
+    """
+    Train the Rasa model.
+    Expects JSON: { "domain": "rasa_files/domain.yml", "data": "rasa_files/data", "out": "rasa_files/models" }
+    Returns: { "ok": true, "message": "..." } or { "ok": false, "error": "..." }
+    """
+    try:
+        print("[train_rasa] /train-rasa endpoint called")
+
+        if not verify_secret(request):
+            print("[train_rasa] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        domain = data.get("domain", "domain.yml")
+        data_dir = data.get("data", "data")
+        out_dir = data.get("out", "models")
+
+        print(f"[train_rasa] Training with domain: {domain}, data: {data_dir}, out: {out_dir}")
+
+        # Run rasa train command with virtual environment activation
+        try:
+            # Activate virtual environment and run rasa train
+            venv_activate = "source /workspaces/codespaces-quickstart/.venv/bin/activate"
+            rasa_cmd = f"rasa train"
+            full_cmd = f"{venv_activate} && {rasa_cmd}"
+
+            print(f"[train_rasa] Running command: {full_cmd}")
+
+            result = subprocess.run(["bash", "-c", full_cmd], capture_output=True, text=True, cwd=PROJECT_ROOT)
+
+            if result.returncode == 0:
+                print("[train_rasa] Training completed successfully")
+                return jsonify({
+                    "ok": True,
+                    "message": "Rasa training completed successfully",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr
+                })
+            else:
+                print(f"[train_rasa] Training failed with return code: {result.returncode}")
+                return jsonify({
+                    "ok": False,
+                    "error": f"Rasa training failed: {result.stderr}",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr
+                }), 500
+
+        except FileNotFoundError:
+            error_msg = "'rasa' command not found. Make sure Rasa is installed and in PATH."
+            print(f"[train_rasa] {error_msg}")
+            return jsonify({"ok": False, "error": error_msg}), 500
+        except Exception as e:
+            error_msg = f"Error running rasa train: {str(e)}"
+            print(f"[train_rasa] {error_msg}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": error_msg}), 500
+
+    except Exception as e:
+        print(f"[train_rasa] Unexpected error in /train-rasa: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/update-faq", methods=["POST"])
 def update_faq():
     try:
@@ -593,6 +657,7 @@ def update_faq():
 @app.route("/sync-faqs", methods=["POST", "OPTIONS"])
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
 @app.route("/update-document", methods=["POST", "OPTIONS"])
+@app.route("/train-rasa", methods=["POST", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():

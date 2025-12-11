@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentChange;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class DocumentChangesController extends Controller
@@ -63,19 +63,34 @@ class DocumentChangesController extends Controller
 
         try {
             // Log the training start
-            Log::info('Starting Rasa training', ['user' => Auth::user()->name]);
+            Log::info('Starting Rasa training via server', ['user' => Auth::user()->name]);
 
-            // Execute rasa train command
-            // Note: This assumes Rasa is installed and accessible via command line
-            // You may need to adjust the command based on your setup
-            $process = Process::run([
-                'rasa', 'train',
-                '--domain', 'rasa_files/domain.yml',
-                '--data', 'rasa_files/data',
-                '--out', 'rasa_files/models'
-            ]);
+            // Call Rasa server training endpoint
+            $rasaUrl = config('services.faq_train_rasa.url');
+            $secret = config('services.faq_train_rasa.secret');
 
-            if ($process->successful()) {
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa training URL not configured');
+            }
+
+            $response = Http::timeout(300) // 5 minutes timeout for training
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->post($rasaUrl, [
+                    'domain' => 'domain.yml',
+                    'data' => 'data',
+                    'out' => 'models'
+                ]);
+
+            if (!$response->successful()) {
+                throw new \Exception('Rasa server returned error: ' . $response->status() . ' - ' . $response->body());
+            }
+
+            $result = $response->json();
+
+            if ($result['ok']) {
                 // Mark all pending changes as trained
                 DocumentChange::requiresTraining()
                     ->update([
@@ -83,30 +98,32 @@ class DocumentChangesController extends Controller
                         'training_timestamp' => now(),
                     ]);
 
-                Log::info('Rasa training completed successfully');
+                Log::info('Rasa training completed successfully via server');
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Rasa training completed successfully'
                 ]);
             } else {
-                Log::error('Rasa training failed', [
-                    'output' => $process->output(),
-                    'error' => $process->errorOutput()
+                Log::error('Rasa training failed on server', [
+                    'error' => $result['error'] ?? 'Unknown error',
+                    'result' => $result
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Rasa training failed: ' . $process->errorOutput()
+                    'message' => 'Rasa training failed: ' . ($result['error'] ?? 'Unknown error')
                 ], 500);
             }
 
         } catch (\Exception $e) {
-            Log::error('Rasa training exception', ['error' => $e->getMessage()]);
+            Log::error('Rasa training request failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Training failed: ' . $e->getMessage()
+                'message' => 'Failed to connect to Rasa server: ' . $e->getMessage()
             ], 500);
         }
     }
