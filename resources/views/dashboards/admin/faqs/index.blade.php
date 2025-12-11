@@ -263,7 +263,51 @@
         </div>
     </div>
 
-
+    <!-- Edit Document Modal -->
+    <div id="editDocumentModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/40" data-close="edit-doc"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
+                <div class="h-12 flex items-center justify-between px-4 border-b">
+                    <div class="text-sm font-semibold text-slate-800">Edit Document</div>
+                    <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
+                            aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="editDocumentForm" class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">File Name</label>
+                        <input type="text" id="edit_doc_filename" readonly
+                               class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 text-gray-600" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Content</label>
+                        <textarea id="edit_doc_content" rows="20" required
+                                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                  placeholder="Enter document content here..."></textarea>
+                        <p class="mt-1 text-xs text-slate-500">Supports plain text and markdown formatting</p>
+                        <p id="edit_doc_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+                    <div class="pt-2 flex items-center justify-end gap-3">
+                        <button type="button"
+                                class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
+                                data-close="edit-doc">Cancel</button>
+                        <button id="editDocumentSubmit" type="button"
+                                class="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+                            <svg class="animate-spin h-4 w-4 mr-2 hidden" id="editDocSpinner" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span id="editDocBtnText">Save Changes</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Hidden state with URLs -->
     <div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.faqs.list') }}"
@@ -295,6 +339,7 @@
         }
     </script>
     <script>
+        console.log('[TEST] FAQ JavaScript loaded and executing');
         (function() {
             const stateEl = document.getElementById('admin-faqs-state');
             const LIST_URL = stateEl.getAttribute('data-list-url');
@@ -334,6 +379,11 @@
             const uploadForm = $('#uploadFileForm');
             const uploadSubmit = $('#uploadFileSubmit');
             const faqFileInput = $('#faqFile');
+
+            const editDocumentModal = $('#editDocumentModal');
+            const editDocumentCloseEls = $$('[data-close="edit-doc"]', editDocumentModal || document);
+            const editDocumentForm = $('#editDocumentForm');
+            const editDocumentSubmit = $('#editDocumentSubmit');
 
             const viewModal = $('#viewFaqModal');
             const viewCloseEls = $$('[data-close="view"]', viewModal || document);
@@ -442,11 +492,6 @@
             }
 
 
-            let currentPage = 1;
-            let currentQuery = '';
-            let currentPerPage = parseInt(perPageSelect.value || '25', 10);
-            let autoRefreshInterval = null;
-            let showDeleted = false;
 
             function openModal(modal) {
                 if (modal) modal.classList.remove('hidden');
@@ -458,30 +503,219 @@
 
             // Fetch docs list via AJAX
             async function fetchDocs() {
+                console.log('[DEBUG] fetchDocs() function called');
                 const docsListEl = $('#docsList');
+                console.log('[DEBUG] docsListEl found:', docsListEl);
                 try {
                     docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
+                    console.log('[DEBUG] Set loading message');
 
-                    const rasaUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '/list-docs');
+                    // Debug: Log the URL and configuration being used
+                    const rasaUrl = '{{ config("services.faq_list_docs.url") }}';
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+                    console.log('[DEBUG] fetchDocs - URL:', rasaUrl);
+                    console.log('[DEBUG] fetchDocs - Secret length:', secret.length);
+                    console.log('[DEBUG] fetchDocs - Secret (first 5 chars):', secret.substring(0, 5) + '...');
+
                     const res = await fetch(rasaUrl, {
                         headers: {
-                            'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                            'X-FAQ-UPDATER-TOKEN': secret,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
-                    if (!res.ok) throw new Error('Failed to load docs');
+
+                    console.log('[DEBUG] fetchDocs - Response status:', res.status);
+                    console.log('[DEBUG] fetchDocs - Response headers:', [...res.headers.entries()]);
+
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        console.error('[DEBUG] fetchDocs - Error response:', errorText);
+                        throw new Error(`Failed to load docs: ${res.status} - ${errorText}`);
+                    }
+
                     const json = await res.json();
-                    if (!json.ok) throw new Error(json.error || 'Failed to load docs');
+                    console.log('[DEBUG] fetchDocs - Response JSON:', json);
+
+                    if (!json.ok) {
+                        console.error('[DEBUG] fetchDocs - API error:', json.error);
+                        throw new Error(json.error || 'Failed to load docs');
+                    }
+
                     renderDocsList(json.files || []);
                 } catch (err) {
-                    docsListEl.innerHTML = '<div class="text-center text-sm text-red-600">Error loading docs</div>';
-                    console.error(err);
+                    console.error('[DEBUG] fetchDocs - Exception:', err);
+                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading docs: ${err.message}</div>`;
                 }
             }
 
             function truncate(str, n = 140) {
                 if (!str) return '';
                 return (str.length > n) ? (str.slice(0, n - 1) + '…') : str;
+            }
+
+            function formatFileSize(bytes) {
+                if (!bytes || bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString();
+                } catch (e) {
+                    return dateString;
+                }
+            }
+
+            function onViewDocClick(e) {
+                const filename = e.currentTarget.getAttribute('data-filename');
+                if (!filename) return;
+
+                // Open download link in new tab with authentication token
+                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                const secret = '{{ config("services.faq_list_docs.secret") }}';
+                const downloadUrl = `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`;
+                window.open(downloadUrl, '_blank');
+            }
+
+            function onEditDocClick(e) {
+                const filename = e.currentTarget.getAttribute('data-filename');
+                if (!filename) return;
+
+                console.log('[DEBUG] onEditDocClick called for:', filename);
+
+                // Set filename in modal
+                $('#edit_doc_filename').value = filename;
+
+                // Load document content
+                loadDocumentContent(filename);
+            }
+
+            async function loadDocumentContent(filename) {
+                console.log('[DEBUG] loadDocumentContent called for:', filename);
+
+                const contentTextarea = $('#edit_doc_content');
+                const errorEl = $('#edit_doc_error');
+
+                // Clear previous content and errors
+                contentTextarea.value = '';
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+
+                try {
+                    // Show loading in textarea
+                    contentTextarea.value = 'Loading document content...';
+                    contentTextarea.disabled = true;
+
+                    // Fetch document content
+                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+
+                    console.log('[DEBUG] loadDocumentContent - URL:', `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`);
+
+                    const res = await fetch(`${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`Failed to load document: ${res.status}`);
+                    }
+
+                    const content = await res.text();
+                    console.log('[DEBUG] Document content loaded, length:', content.length);
+
+                    // Populate textarea
+                    contentTextarea.value = content;
+                    contentTextarea.disabled = false;
+
+                    // Open modal
+                    openModal(editDocumentModal);
+
+                } catch (err) {
+                    console.error('[DEBUG] Error loading document content:', err);
+                    errorEl.textContent = `Error loading document: ${err.message}`;
+                    errorEl.classList.remove('hidden');
+                    contentTextarea.disabled = false;
+                    contentTextarea.value = '';
+                }
+            }
+
+            async function saveDocumentContent() {
+                const filename = $('#edit_doc_filename').value;
+                const content = $('#edit_doc_content').value;
+                const errorEl = $('#edit_doc_error');
+                const submitBtn = $('#editDocumentSubmit');
+                const spinner = $('#editDocSpinner');
+                const btnText = $('#editDocBtnText');
+
+                if (!filename || !content) {
+                    showToast('error', 'Filename and content are required');
+                    return;
+                }
+
+                // Clear previous errors
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+
+                // Show loading state
+                submitBtn.disabled = true;
+                spinner.classList.remove('hidden');
+                btnText.textContent = 'Saving...';
+
+                try {
+                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+
+                    console.log('[DEBUG] saveDocumentContent - URL:', `${rasaBaseUrl}/update-document`);
+                    console.log('[DEBUG] saveDocumentContent - Secret length:', secret.length);
+
+                    const res = await fetch(`${rasaBaseUrl}/update-document`, {
+                        method: 'POST',
+                        headers: {
+                            'X-FAQ-UPDATER-TOKEN': secret,
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            file_name: filename,
+                            file_content: content,
+                            file_type: filename.toLowerCase().endsWith('.md') ? 'text/markdown' : 'text/plain'
+                        })
+                    });
+
+                    const json = await res.json();
+
+                    if (!res.ok || !json.ok) {
+                        throw new Error(json.error || 'Failed to save document');
+                    }
+
+                    console.log('[DEBUG] Document saved successfully:', json);
+
+                    // Show success message
+                    showToast('success', `Document "${filename}" updated successfully`);
+
+                    // Close modal
+                    closeModal(editDocumentModal);
+
+                    // Refresh document list to show updated timestamp
+                    fetchDocs();
+
+                } catch (err) {
+                    console.error('[DEBUG] Error saving document:', err);
+                    errorEl.textContent = `Error saving document: ${err.message}`;
+                    errorEl.classList.remove('hidden');
+                } finally {
+                    // Reset loading state
+                    submitBtn.disabled = false;
+                    spinner.classList.add('hidden');
+                    btnText.textContent = 'Save Changes';
+                }
             }
 
             function renderDocsList(files) {
@@ -491,7 +725,8 @@
                     return;
                 }
 
-                const rasaBaseUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '');
+                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                const secret = '{{ config("services.faq_list_docs.secret") }}';
                 docsListEl.innerHTML = files.map(file => `
                     <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                         <div class="flex items-center gap-3">
@@ -504,14 +739,13 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="${rasaBaseUrl}/download/${encodeURIComponent(file.name)}"
-                               class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                               target="_blank">
+                            <button class="editDocBtn inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
+                                    data-filename="${file.name}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Download
-                            </a>
+                                Edit
+                            </button>
                             <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
                                     data-filename="${file.name}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -524,8 +758,9 @@
                     </div>
                 `).join('');
 
-                // Attach view handlers
+                // Attach view and edit handlers
                 $$('.viewDocBtn').forEach(btn => btn.addEventListener('click', onViewDocClick));
+                $$('.editDocBtn').forEach(btn => btn.addEventListener('click', onEditDocClick));
             }
 
             function renderPagination(meta) {
@@ -773,7 +1008,7 @@
                         });
 
                         // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers.get('content-type');
+                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
                         if (contentType && contentType.includes('application/json')) {
                             result = await rasaRes.json();
                         } else {
@@ -864,10 +1099,17 @@
             }
             uploadCloseEls.forEach(el => el.addEventListener('click', () => closeModal(uploadModal)));
 
+            // Edit document modal handlers
+            editDocumentCloseEls.forEach(el => el.addEventListener('click', () => closeModal(editDocumentModal)));
+            if (editDocumentSubmit) {
+                editDocumentSubmit.addEventListener('click', saveDocumentContent);
+            }
+
             // Template button handlers
             const createTemplateBtn = $('#createTemplateBtn');
             const createDescription = $('#create_description');
-            if (createTemplateBtn && createDescription) {
+            const createIntent = $('#create_intent');
+            if (createTemplateBtn && createDescription && createIntent) {
                 // Hide button if description is not empty
                 const toggleCreateTemplateBtn = () => {
                     const isEmpty = createDescription.value.trim() === '';
@@ -878,7 +1120,7 @@
                 toggleCreateTemplateBtn();
 
                 createTemplateBtn.addEventListener('click', () => {
-                    const intent = $('#create_intent').value.trim();
+                    const intent = createIntent.value.trim();
                     if (intent) {
                         createDescription.value = `This handles question about ${intent}.`;
                     } else {
@@ -890,7 +1132,8 @@
 
             const viewTemplateBtn = $('#viewTemplateBtn');
             const viewDescription = $('#view_description');
-            if (viewTemplateBtn && viewDescription) {
+            const viewIntent = $('#view_intent');
+            if (viewTemplateBtn && viewDescription && viewIntent) {
                 // Hide button if description is not empty
                 const toggleViewTemplateBtn = () => {
                     const isEmpty = viewDescription.value.trim() === '';
@@ -901,7 +1144,7 @@
                 toggleViewTemplateBtn();
 
                 viewTemplateBtn.addEventListener('click', () => {
-                    const intent = $('#view_intent').value.trim();
+                    const intent = viewIntent.value.trim();
                     if (intent) {
                         viewDescription.value = `This FAQ provides information about ${intent}.`;
                     } else {
@@ -913,9 +1156,10 @@
 
             if (createSubmit) {
                 createSubmit.addEventListener('click', async () => {
-                    const intent = $('#create_intent').value.trim();
-                    const description = $('#create_description').value.trim();
-                    const response = $('#create_response').value.trim();
+                    const intent = createIntent.value.trim();
+                    const description = createDescription.value.trim();
+                    const responseEl = $('#create_response');
+                    const response = responseEl ? responseEl.value.trim() : '';
 
                     if (!intent || !description || !response) {
                         showToast('error', 'All fields are required');
@@ -1208,7 +1452,7 @@
                         });
 
                         // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers.get('content-type');
+                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
                         if (contentType && contentType.includes('application/json')) {
                             result = await rasaRes.json();
                         } else {
@@ -1274,10 +1518,15 @@
 
             // Refresh button handler
             const refreshDocsBtn = $('#refreshDocsBtn');
+            console.log('[DEBUG] Refresh button element:', refreshDocsBtn);
             if (refreshDocsBtn) {
+                console.log('[DEBUG] Attaching event listener to refresh button');
                 refreshDocsBtn.addEventListener('click', () => {
+                    console.log('[DEBUG] Refresh button clicked - calling fetchDocs()');
                     fetchDocs();
                 });
+            } else {
+                console.log('[DEBUG] Refresh button not found - might be on mobile view or deleted FAQs view');
             }
 
             // Initialize: fetch docs on page load

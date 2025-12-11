@@ -56,4 +56,14 @@ return [
         'secret' => env('FAQ_SYNC_SECRET'),
     ],
 
+    'faq_list_docs' => [
+        'url' => env('FAQ_LIST_DOCS_URL'),
+        'secret' => env('FAQ_UPDATER_SECRET'),
+    ],
+
+    'faq_list_docs' => [
+        'url' => env('FAQ_LIST_DOCS_URL'),
+        'secret' => env('FAQ_SYNC_SECRET'), // Using same secret for consistency
+    ],
+
 ];

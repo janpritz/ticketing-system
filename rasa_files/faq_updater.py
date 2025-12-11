@@ -46,10 +46,10 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 # Enable CORS for all routes with explicit configuration
-CORS(app, 
+CORS(app,
      origins=["*"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-FAQ-UPDATER-TOKEN"],
+     allow_headers=["Content-Type", "Authorization", "X-FAQ-UPDATER-TOKEN", "X-Requested-With"],
      expose_headers=["Content-Type"],
      supports_credentials=False)
 
@@ -313,16 +313,30 @@ def list_docs():
     """
     try:
         print("[list_docs] /list-docs endpoint called")
+        print(f"[list_docs] Request method: {request.method}")
+        print(f"[list_docs] Request headers: {dict(request.headers)}")
+
+        # Debug: Print all environment variables related to FAQ
+        print(f"[list_docs] FAQ_UPDATER_SECRET: {FAQ_UPDATER_SECRET is not None}")
+        print(f"[list_docs] PROJECT_ROOT: {PROJECT_ROOT}")
+        print(f"[list_docs] Docs directory path: {PROJECT_ROOT / 'docs'}")
 
         if not verify_secret(request):
             print("[list_docs] Secret verification failed")
             return jsonify({"ok": False, "error": "unauthorized"}), 401
 
+        print("[list_docs] Secret verification passed")
+
         docs_dir = PROJECT_ROOT / "docs"
+        print(f"[list_docs] Docs directory exists: {docs_dir.exists()}")
+
         docs_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+        print(f"[list_docs] Ensured docs directory exists")
 
         files = []
+        print(f"[list_docs] Scanning directory: {docs_dir}")
         for file_path in docs_dir.iterdir():
+            print(f"[list_docs] Found item: {file_path.name} (is_file: {file_path.is_file()}, suffix: {file_path.suffix.lower()})")
             if file_path.is_file() and file_path.suffix.lower() in ['.txt', '.md']:
                 try:
                     stat = file_path.stat()
@@ -336,11 +350,21 @@ def list_docs():
 
         print(f"[list_docs] Found {len(files)} text files in docs directory")
 
-        return jsonify({
+        # Debug: Print detailed file information
+        if files:
+            print("[list_docs] File details:")
+            for i, file in enumerate(files, 1):
+                print(f"  {i}. {file['name']} - Size: {file['size']} bytes, Modified: {file['modified']}")
+        else:
+            print("[list_docs] No text files found in docs directory")
+
+        result = {
             "ok": True,
             "files": files,
             "count": len(files)
-        })
+        }
+        print(f"[list_docs] Returning result: {result}")
+        return jsonify(result)
 
     except Exception as e:
         print(f"[list_docs] Unexpected error in /list-docs: {e}", file=sys.stderr)
@@ -352,13 +376,23 @@ def download_file(filename):
     """
     Download a specific file from the docs/ directory.
     Returns the file content as text.
+    Accepts token via header (X-FAQ-UPDATER-TOKEN) or query parameter (token).
     """
     try:
         print(f"[download] /download/{filename} called")
 
-        if not verify_secret(request):
+        # Check for token in header first, then query parameter
+        token = request.headers.get("X-FAQ-UPDATER-TOKEN") or request.args.get("token")
+        if not token:
+            print("[download] Missing X-FAQ-UPDATER-TOKEN header or token query parameter")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Verify the token manually since verify_secret expects it in headers
+        if FAQ_UPDATER_SECRET and not hmac.compare_digest(token, FAQ_UPDATER_SECRET):
             print("[download] Secret verification failed")
             return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print(f"[download] Authentication successful")
 
         docs_dir = PROJECT_ROOT / "docs"
         file_path = docs_dir / filename
@@ -383,6 +417,108 @@ def download_file(filename):
 
     except Exception as e:
         print(f"[download] Unexpected error in /download/{filename}: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/update-document", methods=["POST", "OPTIONS"])
+def update_document():
+    """
+    Update the content of a document in the docs/ directory.
+    Expects JSON: { "file_name": "...", "file_content": "...", "file_type": "..." }
+    Returns: { "ok": true, "message": "...", "file_path": "..." }
+    Accepts token via header (X-FAQ-UPDATER-TOKEN) or query parameter (token).
+    """
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "OK"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN, X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
+
+    try:
+        print("[update_document] /update-document endpoint called")
+
+        # Check for token in header first, then query parameter
+        token = request.headers.get("X-FAQ-UPDATER-TOKEN") or request.args.get("token")
+        if not token:
+            print("[update_document] Missing X-FAQ-UPDATER-TOKEN header or token query parameter")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Verify the token manually since verify_secret expects it in headers
+        if FAQ_UPDATER_SECRET and not hmac.compare_digest(token, FAQ_UPDATER_SECRET):
+            print("[update_document] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print("[update_document] Authentication successful")
+
+        data = request.get_json(force=True)
+        file_name = data.get("file_name", "")
+        file_content = data.get("file_content", "")
+        file_type = data.get("file_type", "")
+
+        if not file_name:
+            print("[update_document] ERROR: file_name is required")
+            return jsonify({"ok": False, "error": "file_name is required"}), 400
+
+        if file_content is None:
+            print("[update_document] ERROR: file_content is required")
+            return jsonify({"ok": False, "error": "file_content is required"}), 400
+
+        print(f"[update_document] Received update request for: {file_name} ({file_type}) with {len(file_content)} characters")
+
+        # Validate file extension
+        if not file_name.lower().endswith(('.txt', '.md')):
+            print(f"[update_document] ERROR: File type not allowed: {file_name}")
+            return jsonify({"ok": False, "error": "Only .txt and .md files can be edited"}), 403
+
+        # Check content size limit (1MB)
+        if len(file_content) > 1024 * 1024:
+            print(f"[update_document] ERROR: File content too large: {len(file_content)} bytes")
+            return jsonify({"ok": False, "error": "File content too large (max 1MB)"}), 413
+
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / file_name
+
+        # Security check: ensure file is within docs directory
+        if file_path.parent != docs_dir:
+            print(f"[update_document] ERROR: Invalid file path: {file_name}")
+            return jsonify({"ok": False, "error": "Invalid file path"}), 403
+
+        # Check if file exists
+        if not file_path.exists():
+            print(f"[update_document] ERROR: File does not exist: {file_name}")
+            return jsonify({"ok": False, "error": "File does not exist"}), 404
+
+        # Create backup of original file (optional)
+        backup_path = file_path.with_suffix(file_path.suffix + '.backup')
+        try:
+            import shutil
+            shutil.copy2(file_path, backup_path)
+            print(f"[update_document] Created backup: {backup_path}")
+        except Exception as e:
+            print(f"[update_document] WARNING: Could not create backup: {e}")
+
+        # Write new content to file
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+            print(f"[update_document] Successfully updated file: {file_path}")
+        except Exception as e:
+            print(f"[update_document] ERROR saving file: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Failed to save file: {str(e)}"}), 500
+
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully updated document {file_name}",
+            "file_path": str(file_path),
+            "backup_path": str(backup_path) if backup_path.exists() else None
+        })
+
+    except Exception as e:
+        print(f"[update_document] Unexpected error in /update-document: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -456,6 +592,7 @@ def update_faq():
 @app.route("/upload-file", methods=["POST", "OPTIONS"])
 @app.route("/sync-faqs", methods=["POST", "OPTIONS"])
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
+@app.route("/update-document", methods=["POST", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():
@@ -463,7 +600,7 @@ def handle_preflight():
     if request.method == "OPTIONS":
         response = jsonify({"status": "OK"})
         response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN, X-Requested-With")
         response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         return response
     else:
