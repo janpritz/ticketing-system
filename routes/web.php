@@ -171,6 +171,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/{faq}/enable', [AdminController::class, 'faqsEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
     });
 
+    // Document change tracking and Rasa training
+    Route::prefix('admin/document-changes')->name('admin.document-changes.')->group(function () {
+        Route::post('/log', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'log'])->name('log');
+        Route::get('/training-status', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainingStatus'])->name('training-status');
+        Route::post('/train-rasa', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainRasa'])->name('train-rasa');
+    });
+
     // Admin Ticket management (CRUD + respond + reroute) for admin UI (AJAX)
     Route::prefix('admin/tickets')->name('admin.tickets.')->group(function () {
         // paginated listing (JSON)

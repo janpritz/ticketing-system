@@ -124,23 +124,35 @@
             <p class="text-sm text-slate-500">Overview of your ticketing system</p>
         </div>
 
-        <!-- FAQ Sync Alert -->
-        <div id="faqSyncAlert" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <div>
-                    <h3 id="faqSyncTitle" class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
-                    <p id="faqSyncDesc" class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
+        <!-- Document Training Alert -->
+        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-orange-700">
+                            <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
+                        </p>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <button id="trainRasaBtn"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span id="trainBtnText">Train Rasa</span>
+                        <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <button id="faqSyncActionBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Sync Now
-            </button>
         </div>
 
         <!-- Metrics -->
@@ -921,67 +933,96 @@
             }
         }
 
-        // FAQ Sync Alert Management
-        function updateFaqSyncAlert() {
-            const alertEl = document.getElementById('faqSyncAlert');
-            const titleEl = document.getElementById('faqSyncTitle');
-            const descEl = document.getElementById('faqSyncDesc');
-            const actionBtn = document.getElementById('faqSyncActionBtn');
-            if (!alertEl || !titleEl || !descEl || !actionBtn) return;
+        // Document Training Alert Management
+        async function trainRasa() {
+            const btn = document.getElementById('trainRasaBtn');
+            const spinner = document.getElementById('trainSpinner');
+            const btnText = document.getElementById('trainBtnText');
+
+            // Show loading state
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Training...';
+
             try {
-                const hasPending = localStorage.getItem('faq_changes_pending') === 'true';
-                const syncedPendingTraining = localStorage.getItem('faq_synced_pending_training') === 'true';
-                if (hasPending) {
-                    titleEl.textContent = 'FAQ Sync Required';
-                    descEl.textContent = 'There are pending FAQ changes that need to be synced to Rasa.';
-                    actionBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Sync Now';
-                    actionBtn.onclick = () => window.location.href = '{{ route("admin.faqs.index") }}';
-                    alertEl.classList.remove('hidden');
-                } else if (syncedPendingTraining) {
-                    titleEl.textContent = 'FAQ Sync Completed';
-                    descEl.textContent = 'Faqs are now sync with rasa make sure to run training to update the responses.';
-                    actionBtn.innerHTML = 'Faqs Trained';
-                    actionBtn.onclick = () => {
-                        Swal.fire({
-                            title: 'Did you run rasa training?',
-                            showDenyButton: true,
-                            confirmButtonText: 'Yes',
-                            denyButtonText: 'No',
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                localStorage.setItem('faq_synced_pending_training', 'false');
-                                updateFaqSyncAlert();
-                                // Show success toast
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: 'Faqs are now trained. Responses are now live.',
-                                    showConfirmButton: false,
-                                    timer: 3000,
-                                    timerProgressBar: true
-                                });
-                            }
-                        });
-                    };
-                    alertEl.classList.remove('hidden');
-                } else {
-                    alertEl.classList.add('hidden');
+                const csrf = '{{ csrf_token() }}';
+                const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || 'Training failed');
                 }
-            } catch (e) {
-                // localStorage not available
+
+                // Show success message
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Rasa training completed successfully!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+
+                // Hide the training alert
+                document.getElementById('trainingAlert').classList.add('hidden');
+
+            } catch (err) {
+                console.error('[DEBUG] Training error:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Training Failed',
+                    text: `Training failed: ${err.message}`,
+                    confirmButtonText: 'OK'
+                });
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = 'Train Rasa';
             }
         }
 
-        // Update alert on page load
-        updateFaqSyncAlert();
+        async function checkTrainingStatus() {
+            try {
+                const res = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
 
-        // Listen for localStorage changes (cross-tab)
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'faq_changes_pending' || e.key === 'faq_synced_pending_training') {
-                updateFaqSyncAlert();
+                if (res.ok) {
+                    const data = await res.json();
+                    const alertEl = document.getElementById('trainingAlert');
+
+                    if (data.requires_training) {
+                        // Show training alert
+                        alertEl.classList.remove('hidden');
+                    } else {
+                        // Hide training alert
+                        alertEl.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('[DEBUG] Error checking training status:', err);
             }
-        });
+        }
+
+        // Add event listener for train button
+        const trainBtn = document.getElementById('trainRasaBtn');
+        if (trainBtn) {
+            trainBtn.addEventListener('click', trainRasa);
+        }
+
+        // Check training status on page load
+        checkTrainingStatus();
 
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change
