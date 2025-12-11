@@ -65,6 +65,11 @@ return [
         'url' => env('FAQ_TRAIN_RASA_URL'),
         'secret' => env('FAQ_UPDATER_SECRET'),
     ],
+    
+    'faq_start_rasa_api' => [
+        'url' => env('FAQ_START_RASA_API_URL'),
+        'secret' => env('FAQ_UPDATER_SECRET'),
+    ],
 
     'faq_list_docs' => [
         'url' => env('FAQ_LIST_DOCS_URL'),

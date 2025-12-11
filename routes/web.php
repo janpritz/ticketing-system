@@ -175,7 +175,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin/document-changes')->name('admin.document-changes.')->group(function () {
         Route::post('/log', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'log'])->name('log');
         Route::get('/training-status', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainingStatus'])->name('training-status');
+        Route::get('/check-recent-training', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'checkRecentTraining'])->name('check-recent-training');
         Route::post('/train-rasa', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainRasa'])->name('train-rasa');
+        Route::post('/start-rasa-api', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'startRasaApi'])->name('start-rasa-api');
     });
 
     // Admin Ticket management (CRUD + respond + reroute) for admin UI (AJAX)

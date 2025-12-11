@@ -48,6 +48,18 @@ class DocumentChangesController extends Controller
     }
 
     /**
+     * Check if there was recent training.
+     */
+    public function checkRecentTraining()
+    {
+        $hasRecentTraining = DocumentChange::hasRecentTraining(60); // Within last 60 minutes
+
+        return response()->json([
+            'has_recent_training' => $hasRecentTraining,
+        ]);
+    }
+
+    /**
      * Train Rasa model.
      */
     public function trainRasa(Request $request)
@@ -124,6 +136,76 @@ class DocumentChangesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to connect to Rasa server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Start Rasa API server.
+     */
+    public function startRasaApi(Request $request)
+    {
+        // Check if user is admin (Primary Administrator role)
+        $user = Auth::user();
+        if (!$user || strtolower((string) ($user->role ?? '')) !== 'primary administrator') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        try {
+            // Log the API server start
+            Log::info('Starting Rasa API server via server', ['user' => Auth::user()->name]);
+
+            // Call Rasa server API start endpoint
+            $rasaUrl = config('services.faq_start_rasa_api.url');
+            $secret = config('services.faq_start_rasa_api.secret');
+
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa API start URL not configured');
+            }
+
+            $response = Http::timeout(60) // 1 minute timeout for server start
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->post($rasaUrl);
+
+            if (!$response->successful()) {
+                throw new \Exception('Rasa server returned error: ' . $response->status() . ' - ' . $response->body());
+            }
+
+            $result = $response->json();
+
+            if ($result['ok']) {
+                Log::info('Rasa API server started successfully via server');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Rasa API server started successfully on port ' . ($result['port'] ?? '5005')
+                ]);
+            } else {
+                Log::error('Rasa API server start failed on server', [
+                    'error' => $result['error'] ?? 'Unknown error',
+                    'result' => $result
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rasa API server start failed: ' . ($result['error'] ?? 'Unknown error')
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Rasa API server start request failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start Rasa API server: ' . $e->getMessage()
             ], 500);
         }
     }

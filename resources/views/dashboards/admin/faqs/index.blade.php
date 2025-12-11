@@ -1652,6 +1652,9 @@
                     // Refresh document list
                     fetchDocs();
 
+                    // Check if we should show the API server alert
+                    checkApiServerAlert();
+
                 } catch (err) {
                     console.error('[DEBUG] Training error:', err);
                     showToast('error', `Training failed: ${err.message}`);
@@ -1660,6 +1663,90 @@
                     btn.disabled = false;
                     spinner.classList.add('hidden');
                     btnText.textContent = 'Train Rasa';
+                }
+            }
+
+            async function checkApiServerAlert() {
+                try {
+                    // Check if there's been a recent training (within last 60 minutes)
+                    const res = await fetch('{{ route("admin.document-changes.check-recent-training") }}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.has_recent_training) {
+                            // Show second alert for starting Rasa API server
+                            setTimeout(() => {
+                                Swal.fire({
+                                    title: 'Start Rasa API Server',
+                                    text: 'Training completed! Now start the Rasa API server to enable chatbot functionality?',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Yes, start API server',
+                                    cancelButtonText: 'Not now',
+                                    confirmButtonColor: '#10B981'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        startRasaApiServer();
+                                    }
+                                });
+                            }, 1000); // Small delay to let the first toast disappear
+                        }
+                    }
+                } catch (err) {
+                    console.error('[DEBUG] Error checking recent training:', err);
+                }
+            }
+
+            async function startRasaApiServer() {
+                // Show loading state
+                Swal.fire({
+                    title: 'Starting Rasa API Server',
+                    text: 'Please wait while the Rasa API server starts...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.message || 'Failed to start Rasa API server');
+                    }
+
+                    // Show success message
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Rasa API server started successfully on port 5005',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#10B981'
+                    });
+
+                } catch (err) {
+                    console.error('[DEBUG] API server start error:', err);
+                    Swal.fire({
+                        title: 'Error',
+                        text: `Failed to start Rasa API server: ${err.message}`,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             }
 

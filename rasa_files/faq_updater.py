@@ -522,6 +522,82 @@ def update_document():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/start-rasa-api", methods=["POST"])
+def start_rasa_api():
+    """
+    Start the Rasa API server.
+    First checks if port 5005 is in use and stops any process using it, then starts Rasa API server.
+    Returns: { "ok": true, "message": "..." } or { "ok": false, "error": "..." }
+    """
+    try:
+        print("[start_rasa_api] /start-rasa-api endpoint called")
+
+        if not verify_secret(request):
+            print("[start_rasa_api] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5005 is in use and kill any process using it
+        try:
+            # Use lsof to find process using port 5005
+            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        print(f"[start_rasa_api] Killing process {pid} using port 5005")
+                        subprocess.run(["kill", "-9", pid.strip()], check=True)
+                # Wait a moment for the port to be freed
+                import time
+                time.sleep(2)
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            pass
+        except Exception as e:
+            print(f"[start_rasa_api] Warning: Could not check/kill process on port 5005: {e}")
+
+        # Start Rasa API server with virtual environment
+        try:
+            venv_activate = "source /workspaces/codespaces-quickstart/.venv/bin/activate"
+            rasa_cmd = "rasa run --enable-api --cors \"*\""
+            full_cmd = f"{venv_activate} && {rasa_cmd}"
+
+            print(f"[start_rasa_api] Starting Rasa API server: {full_cmd}")
+
+            # Start the server in background (non-blocking)
+            process = subprocess.Popen(["bash", "-c", full_cmd], cwd=PROJECT_ROOT)
+
+            # Give it a moment to start
+            import time
+            time.sleep(3)
+
+            # Check if the process is still running
+            if process.poll() is None:
+                print("[start_rasa_api] Rasa API server started successfully")
+                return jsonify({
+                    "ok": True,
+                    "message": "Rasa API server started successfully on port 5005",
+                    "port": 5005
+                })
+            else:
+                error_msg = f"Rasa API server failed to start (exit code: {process.returncode})"
+                print(f"[start_rasa_api] {error_msg}")
+                return jsonify({"ok": False, "error": error_msg}), 500
+
+        except FileNotFoundError:
+            error_msg = "'rasa' command not found. Make sure Rasa is installed and in PATH."
+            print(f"[start_rasa_api] {error_msg}")
+            return jsonify({"ok": False, "error": error_msg}), 500
+        except Exception as e:
+            error_msg = f"Error starting Rasa API server: {str(e)}"
+            print(f"[start_rasa_api] {error_msg}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": error_msg}), 500
+
+    except Exception as e:
+        print(f"[start_rasa_api] Unexpected error in /start-rasa-api: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/train-rasa", methods=["POST"])
 def train_rasa():
     """
@@ -658,6 +734,7 @@ def update_faq():
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
 @app.route("/update-document", methods=["POST", "OPTIONS"])
 @app.route("/train-rasa", methods=["POST", "OPTIONS"])
+@app.route("/start-rasa-api", methods=["POST", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():

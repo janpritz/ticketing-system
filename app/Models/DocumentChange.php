@@ -51,4 +51,23 @@ class DocumentChange extends Model
     {
         return $query->where('change_timestamp', '>=', now()->subDays($days));
     }
+
+    /**
+     * Get the timestamp of the last successful training.
+     */
+    public static function getLastTrainingTimestamp()
+    {
+        return static::whereNotNull('training_timestamp')
+                    ->orderBy('training_timestamp', 'desc')
+                    ->value('training_timestamp');
+    }
+
+    /**
+     * Check if there was a recent training within the specified minutes.
+     */
+    public static function hasRecentTraining($minutes = 60)
+    {
+        $lastTraining = static::getLastTrainingTimestamp();
+        return $lastTraining && $lastTraining->diffInMinutes(now()) <= $minutes;
+    }
 }
