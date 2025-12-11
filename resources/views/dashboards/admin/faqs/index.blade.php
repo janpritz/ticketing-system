@@ -4,9 +4,9 @@
 
 @section('admin-content')
     <div class="sm:px-2">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">FAQ Management</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">FAQ Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
@@ -17,15 +17,6 @@
                             <path d="M15 6l-6 6 6 6" />
                         </svg>
                     </a>
-                </div>
-            @else
-                <div class="sm:hidden">
-                    <button id="mobileActionsToggle" type="button"
-                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4" aria-label="Open actions drawer">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-                        </svg>
-                    </button>
                 </div>
             @endif
 
@@ -46,7 +37,8 @@
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        <span>Upload Files</span>
+                        <span class="hidden lg:inline">Upload Files</span>
+                        <span class="lg:hidden">Upload</span>
                     </button>
                     <!-- Refresh Documents Button -->
                     <button id="refreshDocsBtn" type="button"
@@ -62,8 +54,17 @@
 
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4 relative">
             <p class="text-sm text-gray-600 mb-4">Documents stored in the Rasa server for FAQ training.</p>
+            <!-- Mobile hamburger menu aligned with text -->
+            <div class="sm:hidden absolute top-0 right-0">
+                <button id="mobileActionsToggle" type="button"
+                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4" aria-label="Open actions drawer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- Training Required Alert -->
@@ -105,6 +106,41 @@
             </div>
         </div>
     </div>
+
+    <!-- Mobile Bottom Drawer -->
+    <div id="mobileDrawer" class="fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 ease-in-out sm:hidden">
+        <div class="bg-white border-t border-gray-200 shadow-lg">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-medium text-gray-900">Actions</h3>
+                    <button id="mobileDrawerClose" type="button" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <button id="mobileRefreshDocsBtn" type="button"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh Documents
+                    </button>
+                    <button id="mobileUploadFileBtn" type="button"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload Files
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Drawer Overlay -->
+    <div id="mobileDrawerOverlay" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
 
     <!-- Create FAQ Modal -->
     <div id="createFaqModal" class="fixed inset-0 z-50 hidden">
@@ -841,7 +877,7 @@
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Edit
+                                <span class="hidden sm:inline">Edit</span>
                             </button>
                             <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
                                     data-filename="${file.name}">
@@ -849,7 +885,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                                View
+                                <span class="hidden sm:inline">View</span>
                             </button>
                         </div>
                     </div>
@@ -1052,6 +1088,24 @@
                 mobileDrawerOverlay.addEventListener('click', closeDrawer);
             }
 
+            // Mobile drawer action buttons
+            const mobileRefreshDocsBtn = $('#mobileRefreshDocsBtn');
+            const mobileUploadFileBtn = $('#mobileUploadFileBtn');
+
+            if (mobileRefreshDocsBtn) {
+                mobileRefreshDocsBtn.addEventListener('click', () => {
+                    closeDrawer();
+                    fetchDocs();
+                });
+            }
+
+            if (mobileUploadFileBtn) {
+                mobileUploadFileBtn.addEventListener('click', () => {
+                    closeDrawer();
+                    openModal(uploadModal);
+                });
+            }
+
             // Mobile sync cache button
             const mobileSyncBtn = $('#mobileSyncFaqCacheBtn');
             const mobileSyncIcon = $('#mobileSyncIcon');
@@ -1157,7 +1211,7 @@
                 });
             }
 
-            // Mobile upload file button
+            // Mobile upload file button (legacy - can be removed if not used elsewhere)
             const mobileUploadBtn = $('#mobileUploadFileBtn');
 
             if (mobileUploadBtn) {

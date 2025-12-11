@@ -4,18 +4,18 @@
 
 @section('admin-content')
     <div class="sm:px-2">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">Announcements</h1>
-                <p class="text-sm text-gray-600 mt-1">Manage system announcements and notifications.</p>
+                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Announcements</h1>
+                <p class="text-sm text-gray-600 mt-1">Manage dynamic chatbot responses.</p>
             </div>
             <!-- Add Announcement Button -->
             <button id="addAnnouncementBtn" type="button"
-                class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">
+                class="inline-flex items-center justify-center sm:justify-start gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 w-full sm:w-auto mt-2 sm:mt-0">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                Add Announcement
+                <span>Add Announcement</span>
             </button>
         </div>
 <!-- Announcements List -->
@@ -32,7 +32,7 @@
 <div id="addAnnouncementModal" class="fixed inset-0 z-50 hidden">
 <div class="absolute inset-0 bg-black/40" data-close="announcement"></div>
 <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="w-full max-w-full sm:max-w-lg bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
+    <div class="w-full max-w-full sm:max-w-lg bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh] mx-4 sm:mx-0">
         <div class="h-12 flex items-center justify-between px-4 border-b">
             <div class="text-sm font-semibold text-slate-800">Add Announcement</div>
             <button type="button" class="text-slate-500 hover:text-slate-700" data-close="announcement"
@@ -51,11 +51,11 @@
                 <p class="mt-1 text-xs text-slate-500">Announcements are for short-term, constantly changing information like enrollment schedules and document releases.</p>
                 <p id="announcement_error" class="mt-1 text-xs text-red-600 hidden"></p>
             </div>
-            <div class="pt-2 flex items-center justify-end gap-3">
-                <button type="button" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
+            <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-end gap-3">
+                <button type="button" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2 order-2 sm:order-1"
                         data-close="announcement">Cancel</button>
                 <button id="addAnnouncementSubmit" type="button"
-                        class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Add Announcement</button>
+                        class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 order-1 sm:order-2 w-full sm:w-auto">Add Announcement</button>
             </div>
         </form>
     </div>
@@ -208,12 +208,12 @@
             }
 
             announcementsList.innerHTML = announcements.map(announcement => `
-                <div class="flex items-start gap-4 p-4 border border-gray-200 rounded-lg">
-                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-4 border border-gray-200 rounded-lg">
+                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center self-start sm:self-center">
                         <span class="text-sm font-medium text-blue-600">${announcement.id}</span>
                     </div>
-                    <div class="flex-1">
-                        <div class="text-sm text-gray-900 whitespace-pre-line">${escapeHtml(announcement.content)}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm text-gray-900 whitespace-pre-line break-words">${escapeHtml(announcement.content)}</div>
                     </div>
                 </div>
             `).join('');
