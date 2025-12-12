@@ -608,6 +608,50 @@ def update_document():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/check-rasa-status", methods=["GET"])
+def check_rasa_status():
+    """
+    Check if Rasa server is running on port 5005.
+    Returns: { "ok": true, "running": true/false, "message": "..." }
+    """
+    try:
+        print("[check_rasa_status] /check-rasa-status endpoint called")
+
+        if not verify_secret(request):
+            print("[check_rasa_status] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5005 is in use
+        try:
+            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                return jsonify({
+                    "ok": True,
+                    "running": True,
+                    "message": "Rasa server is running on port 5005"
+                })
+            else:
+                return jsonify({
+                    "ok": True,
+                    "running": False,
+                    "message": "Rasa server is not running"
+                })
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            return jsonify({
+                "ok": True,
+                "running": False,
+                "message": "Unable to check port status"
+            })
+        except Exception as e:
+            print(f"[check_rasa_status] Error checking port: {e}")
+            return jsonify({"ok": False, "error": str(e)}), 500
+
+    except Exception as e:
+        print(f"[check_rasa_status] Unexpected error in /check-rasa-status: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/start-rasa-api", methods=["POST"])
 def start_rasa_api():
     """
@@ -821,6 +865,7 @@ def update_faq():
 @app.route("/update-document", methods=["POST", "OPTIONS"])
 @app.route("/train-rasa", methods=["POST", "OPTIONS"])
 @app.route("/start-rasa-api", methods=["POST", "OPTIONS"])
+@app.route("/check-rasa-status", methods=["GET", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download-announcements", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])

@@ -33,6 +33,10 @@ class AdminController extends Controller
         $faqPendingCount = Faq::whereDate('created_at', today())->count();
         $userCount = User::count();
 
+        // Get last Rasa training timestamp
+        $lastTraining = \App\Models\DocumentChange::getLastTrainingTimestamp();
+        $lastTrainingFormatted = $lastTraining ? $lastTraining->format('M j, Y g:i A') : 'Never';
+
         // Active staff in the last 10 minutes (based on sessions table)
         // sessions.last_activity is an epoch seconds integer
         $cutoff = now()->subMinutes(10)->getTimestamp();
@@ -159,6 +163,7 @@ class AdminController extends Controller
             'faqPendingCount'   => $faqPendingCount,
             'userCount'         => $userCount,
             'activeStaffCount'  => $activeStaffCount,
+            'lastTraining'      => $lastTrainingFormatted,
             'weekLabels'        => $weekLabels,
             'weekData'          => $weekData,
             'categoryLabels'    => $categoryLabels,
@@ -167,6 +172,8 @@ class AdminController extends Controller
             'myTicketsList'    => $myTicketsList,
             'activeStaff'       => $activeStaff,
             'staffContacts'     => $staffContacts,
+            'faqUpdaterSecret'  => env('FAQ_UPDATER_SECRET'),
+            'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
         ]);
     }
 
@@ -182,6 +189,10 @@ class AdminController extends Controller
         // include new FAQ count for live admin data
         $faqPendingCount = Faq::whereDate('created_at', today())->count();
         $userCount = User::count();
+
+        // Get last Rasa training timestamp for live updates
+        $lastTrainingLive = \App\Models\DocumentChange::getLastTrainingTimestamp();
+        $lastTrainingLiveFormatted = $lastTrainingLive ? $lastTrainingLive->format('M j, Y g:i A') : 'Never';
 
         // Active staff in the last 10 minutes
         $cutoff = now()->subMinutes(10)->getTimestamp();
@@ -327,6 +338,7 @@ class AdminController extends Controller
             'faqPendingCount'   => (int) $faqPendingCount,
             'userCount'         => (int) $userCount,
             'activeStaffCount'  => (int) $activeStaffCount,
+            'lastTraining'      => $lastTrainingLiveFormatted,
             'weekLabels'        => $weekLabels,
             'weekData'          => $weekData,
             'categoryLabels'    => $categoryLabels,
@@ -1172,10 +1184,9 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
 
-            // Fallback to empty array if server is unavailable
             return response()->json([
-                'success' => true,
-                'announcements' => []
+                'success' => false,
+                'message' => 'Rasa server is offline.'
             ]);
         }
     }

@@ -620,7 +620,7 @@
                     renderDocsList(json.files || []);
                 } catch (err) {
                     console.error('[DEBUG] fetchDocs - Exception:', err);
-                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading docs: ${err.message}</div>`;
+                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: Rasa server is offline.</div>`;
                 }
             }
 
