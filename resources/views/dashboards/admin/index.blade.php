@@ -728,15 +728,21 @@
                 return;
             }
 
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
             fetch(url, {
                 method: 'GET',
                 headers: {
                     'X-FAQ-UPDATER-TOKEN': secret,
                     'Accept': 'application/json'
-                }
+                },
+                signal: controller.signal
             })
             .then(res => res.json())
             .then(data => {
+                clearTimeout(timeoutId);
                 const statusText = document.getElementById('rasaStatusText');
                 const statusIcon = document.getElementById('rasaStatusIcon');
 
@@ -753,6 +759,7 @@
                 }
             })
             .catch(err => {
+                clearTimeout(timeoutId);
                 console.debug('Failed to check Rasa status:', err);
                 const statusText = document.getElementById('rasaStatusText');
                 const statusIcon = document.getElementById('rasaStatusIcon');
