@@ -112,10 +112,27 @@ class DocumentChangesController extends Controller
 
                 Log::info('Rasa training completed successfully via server');
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Rasa training completed successfully'
-                ]);
+                // Restart Rasa server after successful training
+                $serverResult = $this->restartRasaServerAfterTraining();
+
+                if ($serverResult['success']) {
+                    Log::info("Rasa server {$serverResult['action']} successfully after training");
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => "Rasa training completed and server {$serverResult['action']} successfully"
+                    ]);
+                } else {
+                    Log::warning('Rasa training completed but server restart failed', [
+                        'server_error' => $serverResult['error']
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Rasa training completed successfully (server restart failed: ' . $serverResult['error'] . ')',
+                        'server_error' => $serverResult['error']
+                    ]);
+                }
             } else {
                 Log::error('Rasa training failed on server', [
                     'error' => $result['error'] ?? 'Unknown error',
@@ -156,11 +173,37 @@ class DocumentChangesController extends Controller
 
         try {
             // Log the API server start
-            Log::info('Starting Rasa API server via server', ['user' => Auth::user()->name]);
+            Log::info('Starting Rasa API server via FAQ updater service', ['user' => Auth::user()->name]);
 
-            // Call Rasa server API start endpoint
-            $rasaUrl = config('services.faq_start_rasa_api.url');
+            // First check if Rasa server is already running
+            $statusUrl = config('services.faq_updater.url') . '/check-rasa-status';
             $secret = config('services.faq_start_rasa_api.secret');
+
+            if (!$secret) {
+                throw new \Exception('Rasa API secret not configured');
+            }
+
+            // Check current status
+            $statusResponse = Http::timeout(10)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($statusUrl);
+
+            if ($statusResponse->successful()) {
+                $statusResult = $statusResponse->json();
+                if ($statusResult['ok'] && $statusResult['running']) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Rasa API server is already running on port 5005',
+                        'already_running' => true
+                    ]);
+                }
+            }
+
+            // If not running, proceed to start it
+            $rasaUrl = config('services.faq_start_rasa_api.url');
 
             if (!$rasaUrl) {
                 throw new \Exception('Rasa API start URL not configured');
@@ -174,20 +217,21 @@ class DocumentChangesController extends Controller
                 ->post($rasaUrl);
 
             if (!$response->successful()) {
-                throw new \Exception('Rasa server returned error: ' . $response->status() . ' - ' . $response->body());
+                throw new \Exception('Rasa FAQ updater service returned error: ' . $response->status() . ' - ' . $response->body());
             }
 
             $result = $response->json();
 
             if ($result['ok']) {
-                Log::info('Rasa API server started successfully via server');
+                Log::info('Rasa API server started successfully via FAQ updater service');
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Rasa API server started successfully on port ' . ($result['port'] ?? '5005')
+                    'message' => $result['message'] ?? 'Rasa API server started successfully on port 5005',
+                    'already_running' => false
                 ]);
             } else {
-                Log::error('Rasa API server start failed on server', [
+                Log::error('Rasa API server start failed on FAQ updater service', [
                     'error' => $result['error'] ?? 'Unknown error',
                     'result' => $result
                 ]);
@@ -209,4 +253,64 @@ class DocumentChangesController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Restart Rasa server after training completion.
+     * Checks if server is running on port 5005, if yes: restart, if no: start automatically.
+     */
+    private function restartRasaServerAfterTraining()
+    {
+        try {
+            // Check if server is already running on port 5005
+            $statusUrl = config('services.faq_updater.url') . '/check-rasa-status';
+            $secret = config('services.faq_start_rasa_api.secret');
+
+            $statusResponse = Http::timeout(10)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($statusUrl);
+
+            $serverAction = 'started';
+            
+            if ($statusResponse->successful()) {
+                $statusResult = $statusResponse->json();
+                if ($statusResult['ok'] && $statusResult['running']) {
+                    // Server is running, use start-rasa-api which kills existing and starts fresh
+                    $serverAction = 'restarted';
+                } else {
+                    // Server is not running
+                    $serverAction = 'started';
+                }
+            } else {
+                // Could not check status, assume not running
+                $serverAction = 'started';
+            }
+            
+            // Call start-rasa-api (it handles killing existing processes and starting fresh)
+            $startUrl = config('services.faq_start_rasa_api.url');
+            $startResponse = Http::timeout(60)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->post($startUrl);
+            
+            if ($startResponse->successful()) {
+                $startResult = $startResponse->json();
+                if ($startResult['ok']) {
+                    Log::info("Rasa server {$serverAction} successfully after training");
+                    return ['success' => true, 'action' => $serverAction];
+                }
+            }
+            
+            return ['success' => false, 'error' => 'Failed to manage Rasa server'];
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to restart Rasa server after training', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
+

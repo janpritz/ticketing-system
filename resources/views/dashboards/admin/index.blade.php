@@ -234,7 +234,7 @@
                 </div>
             </div>
             <!-- Rasa Server Status -->
-            <div class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+            <div class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors cursor-pointer" id="rasaStatusCard">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Rasa Server Status</div>
@@ -762,6 +762,39 @@
                 }
             });
         }
+
+        // Click handler for Rasa Server Status
+        document.getElementById('rasaStatusCard').addEventListener('click', async () => {
+            const statusText = document.getElementById('rasaStatusText');
+            if (statusText.textContent !== 'Server Offline') return;
+
+            // Show loading state
+            statusText.textContent = 'Starting...';
+
+            try {
+                const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusText.textContent = 'Server Running';
+                    const statusIcon = document.getElementById('rasaStatusIcon');
+                    if (statusIcon) {
+                        statusIcon.className = 'rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100';
+                    }
+                } else {
+                    statusText.textContent = 'Start Failed';
+                }
+            } catch (e) {
+                console.error('Failed to start Rasa server:', e);
+                statusText.textContent = 'Start Failed';
+            }
+        });
 
         function updateTopSenders(payload) {
             const tbody = document.getElementById('topSendersBody');

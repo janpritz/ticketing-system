@@ -19,8 +19,21 @@
             </button>
         </div>
 
+        <!-- Search Bar -->
+        <div class="mt-4">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" id="announcementSearch" placeholder="Search announcements..."
+                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+            </div>
+        </div>
+
         <!-- Document Training Alert -->
-        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4 mt-2">
+        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4 mt-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -159,6 +172,7 @@
         // Global data
         let announcementsData = [];
         let currentAnnouncementId = null;
+        let currentSearchTerm = '';
 
         // Modal elements
         const addAnnouncementModal = $('#addAnnouncementModal');
@@ -176,6 +190,9 @@
         const viewCloseButtons = $$('[data-close="view-announcement"]');
         const announcementMenuBtn = $('#announcementMenuBtn');
         const announcementMenu = $('#announcementMenu');
+
+        // Search elements
+        const announcementSearch = $('#announcementSearch');
 
         // Modal handlers
         if (addAnnouncementBtn) {
@@ -208,6 +225,14 @@
         if (announcementMenuBtn) {
             announcementMenuBtn.addEventListener('click', () => {
                 announcementMenu.classList.toggle('hidden');
+            });
+        }
+
+        // Search handler
+        if (announcementSearch) {
+            announcementSearch.addEventListener('input', (e) => {
+                currentSearchTerm = e.target.value.toLowerCase().trim();
+                renderFilteredAnnouncements();
             });
         }
 
@@ -400,7 +425,11 @@
                 }
 
                 announcementsData = result.announcements || [];
-                renderAnnouncements(announcementsData);
+                currentSearchTerm = '';
+                if (announcementSearch) {
+                    announcementSearch.value = '';
+                }
+                renderFilteredAnnouncements();
 
             } catch (error) {
                 console.error('Error loading announcements:', error);
@@ -440,6 +469,21 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Render filtered announcements
+        function renderFilteredAnnouncements() {
+            let filteredAnnouncements = announcementsData;
+
+            if (currentSearchTerm) {
+                filteredAnnouncements = announcementsData.filter(announcement => {
+                    const title = (announcement.title || '').toLowerCase();
+                    const content = (announcement.content || '').toLowerCase();
+                    return title.includes(currentSearchTerm) || content.includes(currentSearchTerm);
+                });
+            }
+
+            renderAnnouncements(filteredAnnouncements);
         }
 
         // Utility function to escape HTML
