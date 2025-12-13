@@ -65,12 +65,37 @@
         </a>
       </li>
       <li>
-        <a href="{{ route('admin.faqs.index')}}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-            <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
+        <button type="button" id="faqManagementDropdown" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}" aria-expanded="false">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
+            </svg>
+            <span class="ms-3">FAQ Management</span>
+          </div>
+          <svg id="faqManagementChevron" class="w-4 h-4 transition-transform duration-200 {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
-          <span class="ms-3">FAQ Management</span>
-        </a>
+        </button>
+        <div id="faqManagementMenu" class="hidden pl-4 mt-1 space-y-1">
+          <a href="{{ route('admin.faqs.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.faqs.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
+            </svg>
+            <span class="ms-3">FAQS</span>
+          </a>
+          <a href="{{ route('admin.announcements.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.496-.94a1 1 0 011.342.02l.086.075a1 1 0 01.02 1.342l-1.496.94.48 3.058H14a1 1 0 01-1-1V8H9v.5a1 1 0 01-1 1H5.562l.48-3.058-1.496-.94a1 1 0 01.02-1.342l.086-.075a1 1 0 011.342-.02l1.496.94L10 4.323V3a1 1 0 011-1zm0 4.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/>
+            </svg>
+            <span class="ms-3">Announcements</span>
+          </a>
+          <a href="{{ route('admin.logs') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.logs') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.logs') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clip-rule="evenodd" />
+            </svg>
+            <span class="ms-3">Logs</span>
+          </a>
+        </div>
       </li>
       <li>
         <a href="{{ route('admin.reports.index') }}"
@@ -124,23 +149,35 @@
             <p class="text-sm text-slate-500">Overview of your ticketing system</p>
         </div>
 
-        <!-- FAQ Sync Alert -->
-        <div id="faqSyncAlert" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <div>
-                    <h3 id="faqSyncTitle" class="text-sm font-medium text-amber-800">FAQ Sync Required</h3>
-                    <p id="faqSyncDesc" class="text-sm text-amber-700">There are pending FAQ changes that need to be synced to Rasa.</p>
+        <!-- Document Training Alert -->
+        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-orange-700">
+                            <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
+                        </p>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <button id="trainRasaBtn"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span id="trainBtnText">Train Rasa</span>
+                        <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <button id="faqSyncActionBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Sync Now
-            </button>
         </div>
 
         <!-- Metrics -->
@@ -167,33 +204,6 @@
                     </div>
                 </div>
             </a>
-            <!-- Total FAQs -->
-            <a href="{{ route('admin.faqs.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <div class="text-xs font-medium text-slate-500">Total FAQs</div>
-                        <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="faqCountValue">{{ number_format($faqCount ?? 0) }}</span></div>
-
-                        <!-- New FAQs (green text under total, clickable) -->
-                        @if(($faqNewCount ?? 0) > 0)
-                        <div id="faqNewWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
-                            </svg>
-                            <a href="{{ route('admin.faqs.index', ['filter' => 'new']) }}" class="hover:underline">
-                                <span id="faqNewCount">{{ number_format($faqNewCount ?? 0) }}</span> new
-                            </a>
-                        </div>
-                        @endif
-                    </div>
-                    <div class="rounded-md bg-blue-50 p-2 text-blue-600 border border-blue-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 3l9 4.5V12c0 5-4 9-9 9s-9-4-9-9V7.5L12 3zm0 2.2L5 8.1V12c0 3.9 3.1 7 7 7s7-3.1 7-7V8.1l-7-2.9z" />
-                        </svg>
-                    </div>
-                </div>
-            </a>
-
             <!-- Active Staff (last 10 min) -->
             <div id="activeStaffCard" class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:bg-gray-50" role="button" tabindex="0" aria-label="Open active staff list">
                 <div class="flex items-start justify-between">
@@ -209,28 +219,34 @@
                     </div>
                 </div>
             </div>
-            <!-- Total Users -->
-            <a href="{{ route('admin.users.index') }}" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+            <!-- Last Rasa Training -->
+            <div class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
-                        <div class="text-xs font-medium text-slate-500">Total Users</div>
-                        <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="userCountValue">{{ number_format($userCount ?? 0) }}</span></div>
-                        @if(($newUsers ?? 0) > 0)
-                        <div id="userNewWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 4l6 6h-4v10h-4V10H6l6-6z" />
-                            </svg>
-                            <span id="userNewCount">+{{ number_format($newUsers ?? 0) }} new users</span>
-                        </div>
-                        @endif
+                        <div class="text-xs font-medium text-slate-500">Last Rasa Training</div>
+                        <div class="mt-2 text-lg font-semibold text-slate-900" id="lastTrainingValue">{{ $lastTraining ?? 'Never' }}</div>
                     </div>
-                    <div class="rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100">
+                    <div class="rounded-md bg-purple-50 p-2 text-purple-600 border border-purple-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                         </svg>
                     </div>
                 </div>
-            </a>
+            </div>
+            <!-- Rasa Server Status -->
+            <div class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors cursor-pointer" id="rasaStatusCard">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="text-xs font-medium text-slate-500">Rasa Server Status</div>
+                        <div class="mt-2 text-2xl sm:text-3xl font-semibold text-slate-900" id="rasaStatusText">Checking...</div>
+                    </div>
+                    <div class="rounded-md p-2 border" id="rasaStatusIcon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-globe" viewBox="0 0 16 16">
+                            <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7 7 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7 7 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7 7 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Analytics -->
@@ -343,7 +359,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No tickets assigned to you.</td>
+                                <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No unassigned tickets.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -571,13 +587,14 @@
 
 <!-- Serialized analytics data for charts (avoid Blade directives inside JS) -->
 <div id="analytics-data" class="hidden"
-     data-week-labels='@json($weekLabels ?? [])'
-     data-week-data='@json($weekData ?? [])'
-     data-category-labels='@json($categoryLabels ?? [])'
-     data-category-data='@json($categoryData ?? [])'
-     data-active-staff='@json($activeStaff ?? [])'
-     data-staff-contacts='@json($staffContacts ?? [])'
-     data-admin-url="{{ route('admin.dashboard.data') }}"></div>
+      data-week-labels='@json($weekLabels ?? [])'
+      data-week-data='@json($weekData ?? [])'
+      data-category-labels='@json($categoryLabels ?? [])'
+      data-category-data='@json($categoryData ?? [])'
+      data-active-staff='@json($activeStaff ?? [])'
+      data-staff-contacts='@json($staffContacts ?? [])'
+      data-admin-url="{{ route('admin.dashboard.data') }}"></div>
+<div id="faq-updater-data" class="hidden" data-secret="{{ $faqUpdaterSecret ?? '' }}" data-url="{{ $faqUpdaterUrl ?? '' }}"></div>
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
@@ -673,6 +690,7 @@
             const wrapUser = document.getElementById('userNewWrap');
 
             const elActive = document.getElementById('activeStaffCount');
+            const elLastTraining = document.getElementById('lastTrainingValue');
 
             if (elOpen) elOpen.textContent = fmt.format(payload.openTickets ?? 0);
 
@@ -697,7 +715,86 @@
             }
 
             if (elActive) elActive.textContent = fmt.format(payload.activeStaffCount ?? 0);
+
+            if (elLastTraining) elLastTraining.textContent = payload.lastTraining ?? 'Never';
         }
+
+        function updateRasaStatus() {
+            const secretEl = document.getElementById('faq-updater-data');
+            const secret = secretEl ? secretEl.getAttribute('data-secret') : '';
+            const url = secretEl ? secretEl.getAttribute('data-url') : '';
+            if (!secret || !url) {
+                console.debug('No FAQ_UPDATER_SECRET or URL available');
+                return;
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-FAQ-UPDATER-TOKEN': secret,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const statusText = document.getElementById('rasaStatusText');
+                const statusIcon = document.getElementById('rasaStatusIcon');
+
+                if (data.ok && data.running) {
+                    if (statusText) statusText.textContent = 'Server Running';
+                    if (statusIcon) {
+                        statusIcon.className = 'rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100';
+                    }
+                } else {
+                    if (statusText) statusText.textContent = 'Server Offline';
+                    if (statusIcon) {
+                        statusIcon.className = 'rounded-md bg-red-50 p-2 text-red-600 border border-red-100';
+                    }
+                }
+            })
+            .catch(err => {
+                console.debug('Failed to check Rasa status:', err);
+                const statusText = document.getElementById('rasaStatusText');
+                const statusIcon = document.getElementById('rasaStatusIcon');
+                if (statusText) statusText.textContent = 'Check Failed';
+                if (statusIcon) {
+                    statusIcon.className = 'rounded-md bg-gray-50 p-2 text-gray-600 border border-gray-100';
+                }
+            });
+        }
+
+        // Click handler for Rasa Server Status
+        document.getElementById('rasaStatusCard').addEventListener('click', async () => {
+            const statusText = document.getElementById('rasaStatusText');
+            if (statusText.textContent !== 'Server Offline') return;
+
+            // Show loading state
+            statusText.textContent = 'Starting...';
+
+            try {
+                const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusText.textContent = 'Server Running';
+                    const statusIcon = document.getElementById('rasaStatusIcon');
+                    if (statusIcon) {
+                        statusIcon.className = 'rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100';
+                    }
+                } else {
+                    statusText.textContent = 'Start Failed';
+                }
+            } catch (e) {
+                console.error('Failed to start Rasa server:', e);
+                statusText.textContent = 'Start Failed';
+            }
+        });
 
         function updateTopSenders(payload) {
             const tbody = document.getElementById('topSendersBody');
@@ -915,79 +1012,114 @@
                     staffContactsList = data.staffContacts;
                     renderContacts(staffContactsList);
                 }
+
+                // Update Rasa status
+                updateRasaStatus();
             } catch (e) {
                 // swallow errors to avoid UI disruption
                 console.debug('Admin auto-refresh failed', e);
             }
         }
 
-        // FAQ Sync Alert Management
-        function updateFaqSyncAlert() {
-            const alertEl = document.getElementById('faqSyncAlert');
-            const titleEl = document.getElementById('faqSyncTitle');
-            const descEl = document.getElementById('faqSyncDesc');
-            const actionBtn = document.getElementById('faqSyncActionBtn');
-            if (!alertEl || !titleEl || !descEl || !actionBtn) return;
+        // Document Training Alert Management
+        async function trainRasa() {
+            const btn = document.getElementById('trainRasaBtn');
+            const spinner = document.getElementById('trainSpinner');
+            const btnText = document.getElementById('trainBtnText');
+
+            // Show loading state
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Training...';
+
             try {
-                const hasPending = localStorage.getItem('faq_changes_pending') === 'true';
-                const syncedPendingTraining = localStorage.getItem('faq_synced_pending_training') === 'true';
-                if (hasPending) {
-                    titleEl.textContent = 'FAQ Sync Required';
-                    descEl.textContent = 'There are pending FAQ changes that need to be synced to Rasa.';
-                    actionBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Sync Now';
-                    actionBtn.onclick = () => window.location.href = '{{ route("admin.faqs.index") }}';
-                    alertEl.classList.remove('hidden');
-                } else if (syncedPendingTraining) {
-                    titleEl.textContent = 'FAQ Sync Completed';
-                    descEl.textContent = 'Faqs are now sync with rasa make sure to run training to update the responses.';
-                    actionBtn.innerHTML = 'Faqs Trained';
-                    actionBtn.onclick = () => {
-                        Swal.fire({
-                            title: 'Did you run rasa training?',
-                            showDenyButton: true,
-                            confirmButtonText: 'Yes',
-                            denyButtonText: 'No',
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                localStorage.setItem('faq_synced_pending_training', 'false');
-                                updateFaqSyncAlert();
-                                // Show success toast
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: 'Faqs are now trained. Responses are now live.',
-                                    showConfirmButton: false,
-                                    timer: 3000,
-                                    timerProgressBar: true
-                                });
-                            }
-                        });
-                    };
-                    alertEl.classList.remove('hidden');
-                } else {
-                    alertEl.classList.add('hidden');
+                const csrf = '{{ csrf_token() }}';
+                const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || 'Training failed');
                 }
-            } catch (e) {
-                // localStorage not available
+
+                // Show success message
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Rasa training completed successfully!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+
+                // Hide the training alert
+                document.getElementById('trainingAlert').classList.add('hidden');
+
+            } catch (err) {
+                console.error('[DEBUG] Training error:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Training Failed',
+                    text: `Training failed: ${err.message}`,
+                    confirmButtonText: 'OK'
+                });
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = 'Train Rasa';
             }
         }
 
-        // Update alert on page load
-        updateFaqSyncAlert();
+        async function checkTrainingStatus() {
+            try {
+                const res = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
 
-        // Listen for localStorage changes (cross-tab)
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'faq_changes_pending' || e.key === 'faq_synced_pending_training') {
-                updateFaqSyncAlert();
+                if (res.ok) {
+                    const data = await res.json();
+                    const alertEl = document.getElementById('trainingAlert');
+
+                    if (data.requires_training) {
+                        // Show training alert
+                        alertEl.classList.remove('hidden');
+                    } else {
+                        // Hide training alert
+                        alertEl.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('[DEBUG] Error checking training status:', err);
             }
-        });
+        }
+
+        // Add event listener for train button
+        const trainBtn = document.getElementById('trainRasaBtn');
+        if (trainBtn) {
+            trainBtn.addEventListener('click', trainRasa);
+        }
+
+        // Check training status on page load
+        checkTrainingStatus();
 
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change
         // via localStorage (key: 'ts_tickets_changed') or when the user focuses the tab
         // and a change has been recorded.
-        setTimeout(refreshAdminData, 250);
+        setTimeout(() => {
+            refreshAdminData();
+            updateRasaStatus();
+        }, 250);
     
         // Refresh on tab focus only if a change was recorded by another tab/window
         window.addEventListener('focus', () => {
@@ -1663,15 +1795,15 @@
 
   dropdownBtn.addEventListener('click', function (e) {
     e.preventDefault();
-    
+
     const isOpen = !dropdownMenu.classList.contains('hidden');
-    
+
     // Toggle menu visibility
     dropdownMenu.classList.toggle('hidden', isOpen);
-    
+
     // Update aria-expanded
     dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-    
+
     // Rotate chevron
     chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
   });
@@ -1686,5 +1818,41 @@
   });
 })();
 </script>
+
+<!-- FAQ Management Dropdown Script -->
+<script>
+(function () {
+  const dropdownBtn = document.getElementById('faqManagementDropdown');
+  const dropdownMenu = document.getElementById('faqManagementMenu');
+  const chevron = document.getElementById('faqManagementChevron');
+
+  if (!dropdownBtn || !dropdownMenu || !chevron) return;
+
+  dropdownBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+
+    const isOpen = !dropdownMenu.classList.contains('hidden');
+
+    // Toggle menu visibility
+    dropdownMenu.classList.toggle('hidden', isOpen);
+
+    // Update aria-expanded
+    dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+
+    // Rotate chevron
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      dropdownMenu.classList.add('hidden');
+      dropdownBtn.setAttribute('aria-expanded', 'false');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  });
+})();
+</script>
+
 
 @endsection

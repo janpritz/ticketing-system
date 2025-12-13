@@ -171,6 +171,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/{faq}/enable', [AdminController::class, 'faqsEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
     });
 
+    // Document change tracking and Rasa training
+    Route::prefix('admin/document-changes')->name('admin.document-changes.')->group(function () {
+        Route::post('/log', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'log'])->name('log');
+        Route::get('/training-status', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainingStatus'])->name('training-status');
+        Route::get('/check-recent-training', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'checkRecentTraining'])->name('check-recent-training');
+        Route::post('/train-rasa', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainRasa'])->name('train-rasa');
+        Route::post('/start-rasa-api', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'startRasaApi'])->name('start-rasa-api');
+    });
+
     // Admin Ticket management (CRUD + respond + reroute) for admin UI (AJAX)
     Route::prefix('admin/tickets')->name('admin.tickets.')->group(function () {
         // paginated listing (JSON)
@@ -225,6 +234,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/backlog-trend-data', [\App\Http\Controllers\ReportsController::class, 'getBacklogTrendDataAjax'])->name('backlog-trend-data');
         Route::get('/dynamic-data', [\App\Http\Controllers\ReportsController::class, 'getDynamicDataAjax'])->name('dynamic-data');
     });
+
+    // Admin announcements
+    Route::prefix('admin/announcements')->name('admin.announcements.')->group(function () {
+        Route::get('/', function () {
+            return view('dashboards.admin.announcements.index');
+        })->name('index');
+        Route::get('/list', [AdminController::class, 'announcementsList'])->name('list');
+        Route::post('/', [AdminController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
+        Route::put('/{id}', [AdminController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
+        Route::delete('/{id}', [AdminController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
+        Route::post('/pin/{id}', [AdminController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
+    });
+
+    // Admin logs
+    Route::get('/admin/logs', [AdminController::class, 'logsIndex'])->name('admin.logs');
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

@@ -46,10 +46,10 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 # Enable CORS for all routes with explicit configuration
-CORS(app, 
+CORS(app,
      origins=["*"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-FAQ-UPDATER-TOKEN"],
+     allow_headers=["Content-Type", "Authorization", "X-FAQ-UPDATER-TOKEN", "X-Requested-With"],
      expose_headers=["Content-Type"],
      supports_credentials=False)
 
@@ -285,6 +285,23 @@ def upload_file():
         docs_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = docs_dir / file_name
+
+        # Create backup if file already exists
+        backup_created = False
+        if file_path.exists():
+            backup_dir = PROJECT_ROOT / "backup"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+            backup_path = backup_dir / backup_filename
+            try:
+                import shutil
+                shutil.copy2(file_path, backup_path)
+                print(f"[file_upload] Created backup: {backup_path}")
+                backup_created = True
+            except Exception as e:
+                print(f"[file_upload] WARNING: Could not create backup: {e}")
+
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(file_content)
@@ -297,11 +314,504 @@ def upload_file():
         return jsonify({
             "ok": True,
             "message": f"Successfully uploaded file {file_name}",
-            "file_path": str(file_path)
+            "file_path": str(file_path),
+            "backup_created": backup_created
         })
 
     except Exception as e:
         print(f"[file_upload] Unexpected error in /upload-file: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/list-docs", methods=["GET"])
+def list_docs():
+    """
+    List text files in the docs/ directory.
+    Returns: { "ok": true, "files": [{"name": "...", "size": 123, "modified": "..."}, ...] }
+    """
+    try:
+        print("[list_docs] /list-docs endpoint called")
+        print(f"[list_docs] Request method: {request.method}")
+        print(f"[list_docs] Request headers: {dict(request.headers)}")
+
+        # Debug: Print all environment variables related to FAQ
+        print(f"[list_docs] FAQ_UPDATER_SECRET: {FAQ_UPDATER_SECRET is not None}")
+        print(f"[list_docs] PROJECT_ROOT: {PROJECT_ROOT}")
+        print(f"[list_docs] Docs directory path: {PROJECT_ROOT / 'docs'}")
+
+        if not verify_secret(request):
+            print("[list_docs] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print("[list_docs] Secret verification passed")
+
+        docs_dir = PROJECT_ROOT / "docs"
+        print(f"[list_docs] Docs directory exists: {docs_dir.exists()}")
+
+        docs_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+        print(f"[list_docs] Ensured docs directory exists")
+
+        files = []
+        print(f"[list_docs] Scanning directory: {docs_dir}")
+        for file_path in docs_dir.iterdir():
+            print(f"[list_docs] Found item: {file_path.name} (is_file: {file_path.is_file()}, suffix: {file_path.suffix.lower()})")
+            if file_path.is_file() and file_path.suffix.lower() in ['.txt', '.md']:
+                try:
+                    stat = file_path.stat()
+                    files.append({
+                        "name": file_path.name,
+                        "size": stat.st_size,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    })
+                except Exception as e:
+                    print(f"[list_docs] Error getting info for {file_path}: {e}", file=sys.stderr)
+
+        print(f"[list_docs] Found {len(files)} text files in docs directory")
+
+        # Debug: Print detailed file information
+        if files:
+            print("[list_docs] File details:")
+            for i, file in enumerate(files, 1):
+                print(f"  {i}. {file['name']} - Size: {file['size']} bytes, Modified: {file['modified']}")
+        else:
+            print("[list_docs] No text files found in docs directory")
+
+        result = {
+            "ok": True,
+            "files": files,
+            "count": len(files)
+        }
+        print(f"[list_docs] Returning result: {result}")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[list_docs] Unexpected error in /list-docs: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/download-announcements", methods=["GET"])
+def download_announcements():
+    """
+    Download Announcement.txt file content and parse it into structured data.
+    Returns: { "ok": true, "announcements": [{"id": 1, "content": "..."}, ...] }
+    """
+    try:
+        print("[download_announcements] /download-announcements called")
+
+        if not verify_secret(request):
+            print("[download_announcements] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        docs_dir = PROJECT_ROOT / "docs"
+        file_path = docs_dir / "Announcements.txt"
+
+        # Check if file exists
+        if not file_path.exists():
+            print("[download_announcements] Announcement.txt not found")
+            return jsonify({"ok": True, "announcements": []})
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            print(f"[download_announcements] Successfully read Announcement.txt ({len(content)} characters)")
+        except Exception as e:
+            print(f"[download_announcements] Error reading file: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Error reading file"}), 500
+
+        # Parse the content into announcements
+        announcements = []
+        blocks = content.strip().split("---------\n")
+        counter = 1
+
+        for block in blocks:
+            lines = block.strip().split("\n")
+            if len(lines) >= 2:
+                id_line = lines[0]
+                import re
+                id_match = re.match(r'^id:\s*(\d+)', id_line)
+                if id_match and id_match.group(1):
+                    try:
+                        id = int(id_match.group(1))
+                        counter = max(counter, id + 1)
+                    except ValueError:
+                        id = counter
+                        counter += 1
+                else:
+                    id = counter
+                    counter += 1
+
+                try:
+                    if len(lines) >= 3 and lines[1].startswith('title:'):
+                        # New format: id, title, content
+                        title_match = re.match(r'^title:\s*(.+)', lines[1])
+                        title = title_match.group(1).strip() if title_match else f'Announcement {id}'
+                        content = "\n".join(lines[2:])
+                    else:
+                        # Old format: id, content (no title)
+                        title = f'Announcement {id}'
+                        content = "\n".join(lines[1:])
+
+                    announcements.append({
+                        "id": id,
+                        "title": title,
+                        "content": content
+                    })
+                except Exception:
+                    # Skip malformed blocks
+                    continue
+
+        # Sort by ID descending (newest first)
+        announcements.sort(key=lambda x: x['id'], reverse=True)
+
+        result = {
+            "ok": True,
+            "announcements": announcements,
+            "count": len(announcements)
+        }
+        print(f"[download_announcements] Returning {len(announcements)} announcements")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[download_announcements] Unexpected error: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/download/<filename>", methods=["GET"])
+def download_file(filename):
+    """
+    Download a specific file from the docs/ directory.
+    Returns the file content as text.
+    Accepts token via header (X-FAQ-UPDATER-TOKEN) or query parameter (token).
+    """
+    try:
+        print(f"[download] /download/{filename} called")
+
+        # Check for token in header first, then query parameter
+        token = request.headers.get("X-FAQ-UPDATER-TOKEN") or request.args.get("token")
+        if not token:
+            print("[download] Missing X-FAQ-UPDATER-TOKEN header or token query parameter")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Verify the token manually since verify_secret expects it in headers
+        if FAQ_UPDATER_SECRET and not hmac.compare_digest(token, FAQ_UPDATER_SECRET):
+            print("[download] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print(f"[download] Authentication successful")
+
+        docs_dir = PROJECT_ROOT / "docs"
+        file_path = docs_dir / filename
+
+        # Security check: ensure file is within docs directory and has allowed extension
+        if not file_path.is_file() or file_path.parent != docs_dir:
+            print(f"[download] File not found or not allowed: {filename}")
+            return jsonify({"ok": False, "error": "File not found"}), 404
+
+        if file_path.suffix.lower() not in ['.txt', '.md']:
+            print(f"[download] File type not allowed: {filename}")
+            return jsonify({"ok": False, "error": "File type not allowed"}), 403
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            print(f"[download] Successfully read file: {filename} ({len(content)} characters)")
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except Exception as e:
+            print(f"[download] Error reading file {filename}: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Error reading file"}), 500
+
+    except Exception as e:
+        print(f"[download] Unexpected error in /download/{filename}: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/update-document", methods=["POST", "OPTIONS"])
+def update_document():
+    """
+    Update the content of a document in the docs/ directory.
+    Expects JSON: { "file_name": "...", "file_content": "...", "file_type": "..." }
+    Returns: { "ok": true, "message": "...", "file_path": "..." }
+    Accepts token via header (X-FAQ-UPDATER-TOKEN) or query parameter (token).
+    """
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "OK"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN, X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
+
+    try:
+        print("[update_document] /update-document endpoint called")
+
+        # Check for token in header first, then query parameter
+        token = request.headers.get("X-FAQ-UPDATER-TOKEN") or request.args.get("token")
+        if not token:
+            print("[update_document] Missing X-FAQ-UPDATER-TOKEN header or token query parameter")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Verify the token manually since verify_secret expects it in headers
+        if FAQ_UPDATER_SECRET and not hmac.compare_digest(token, FAQ_UPDATER_SECRET):
+            print("[update_document] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print("[update_document] Authentication successful")
+
+        data = request.get_json(force=True)
+        file_name = data.get("file_name", "")
+        file_content = data.get("file_content", "")
+        file_type = data.get("file_type", "")
+
+        if not file_name:
+            print("[update_document] ERROR: file_name is required")
+            return jsonify({"ok": False, "error": "file_name is required"}), 400
+
+        if file_content is None:
+            print("[update_document] ERROR: file_content is required")
+            return jsonify({"ok": False, "error": "file_content is required"}), 400
+
+        print(f"[update_document] Received update request for: {file_name} ({file_type}) with {len(file_content)} characters")
+
+        # Validate file extension
+        if not file_name.lower().endswith(('.txt', '.md')):
+            print(f"[update_document] ERROR: File type not allowed: {file_name}")
+            return jsonify({"ok": False, "error": "Only .txt and .md files can be edited"}), 403
+
+        # Check content size limit (1MB)
+        if len(file_content) > 1024 * 1024:
+            print(f"[update_document] ERROR: File content too large: {len(file_content)} bytes")
+            return jsonify({"ok": False, "error": "File content too large (max 1MB)"}), 413
+
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / file_name
+
+        # Security check: ensure file is within docs directory
+        if file_path.parent != docs_dir:
+            print(f"[update_document] ERROR: Invalid file path: {file_name}")
+            return jsonify({"ok": False, "error": "Invalid file path"}), 403
+
+        # Check if file exists
+        if not file_path.exists():
+            print(f"[update_document] ERROR: File does not exist: {file_name}")
+            return jsonify({"ok": False, "error": "File does not exist"}), 404
+
+        # Create backup of original file in backup directory
+        backup_dir = PROJECT_ROOT / "backup"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+        backup_path = backup_dir / backup_filename
+        try:
+            import shutil
+            shutil.copy2(file_path, backup_path)
+            print(f"[update_document] Created backup: {backup_path}")
+        except Exception as e:
+            print(f"[update_document] WARNING: Could not create backup: {e}")
+
+        # Write new content to file
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+            print(f"[update_document] Successfully updated file: {file_path}")
+        except Exception as e:
+            print(f"[update_document] ERROR saving file: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Failed to save file: {str(e)}"}), 500
+
+        return jsonify({
+            "ok": True,
+            "message": f"Successfully updated document {file_name}",
+            "file_path": str(file_path),
+            "backup_path": str(backup_path)
+        })
+
+    except Exception as e:
+        print(f"[update_document] Unexpected error in /update-document: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/check-rasa-status", methods=["GET"])
+def check_rasa_status():
+    """
+    Check if Rasa server is running on port 5005.
+    Returns: { "ok": true, "running": true/false, "message": "..." }
+    """
+    try:
+        print("[check_rasa_status] /check-rasa-status endpoint called")
+
+        if not verify_secret(request):
+            print("[check_rasa_status] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5005 is in use
+        try:
+            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                return jsonify({
+                    "ok": True,
+                    "running": True,
+                    "message": "Rasa server is running on port 5005"
+                })
+            else:
+                return jsonify({
+                    "ok": True,
+                    "running": False,
+                    "message": "Rasa server is not running"
+                })
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            return jsonify({
+                "ok": True,
+                "running": False,
+                "message": "Unable to check port status"
+            })
+        except Exception as e:
+            print(f"[check_rasa_status] Error checking port: {e}")
+            return jsonify({"ok": False, "error": str(e)}), 500
+
+    except Exception as e:
+        print(f"[check_rasa_status] Unexpected error in /check-rasa-status: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/start-rasa-api", methods=["POST"])
+def start_rasa_api():
+    """
+    Start the Rasa API server.
+    First checks if port 5005 is in use and stops any process using it, then starts Rasa API server.
+    Returns: { "ok": true, "message": "..." } or { "ok": false, "error": "..." }
+    """
+    try:
+        print("[start_rasa_api] /start-rasa-api endpoint called")
+
+        if not verify_secret(request):
+            print("[start_rasa_api] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5005 is in use and kill any process using it
+        try:
+            # Use lsof to find process using port 5005
+            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        print(f"[start_rasa_api] Killing process {pid} using port 5005")
+                        subprocess.run(["kill", "-9", pid.strip()], check=True)
+                # Wait a moment for the port to be freed
+                import time
+                time.sleep(2)
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            pass
+        except Exception as e:
+            print(f"[start_rasa_api] Warning: Could not check/kill process on port 5005: {e}")
+
+        # Start Rasa API server with virtual environment
+        try:
+            venv_activate = "source /workspaces/codespaces-quickstart/.venv/bin/activate"
+            rasa_cmd = "rasa run --enable-api --cors \"*\""
+            full_cmd = f"{venv_activate} && {rasa_cmd}"
+
+            print(f"[start_rasa_api] Starting Rasa API server: {full_cmd}")
+
+            # Start the server in background (non-blocking)
+            process = subprocess.Popen(["bash", "-c", full_cmd], cwd=PROJECT_ROOT)
+
+            # Give it a moment to start
+            import time
+            time.sleep(3)
+
+            # Check if the process is still running
+            if process.poll() is None:
+                print("[start_rasa_api] Rasa API server started successfully")
+                return jsonify({
+                    "ok": True,
+                    "message": "Rasa API server started successfully on port 5005",
+                    "port": 5005
+                })
+            else:
+                error_msg = f"Rasa API server failed to start (exit code: {process.returncode})"
+                print(f"[start_rasa_api] {error_msg}")
+                return jsonify({"ok": False, "error": error_msg}), 500
+
+        except FileNotFoundError:
+            error_msg = "'rasa' command not found. Make sure Rasa is installed and in PATH."
+            print(f"[start_rasa_api] {error_msg}")
+            return jsonify({"ok": False, "error": error_msg}), 500
+        except Exception as e:
+            error_msg = f"Error starting Rasa API server: {str(e)}"
+            print(f"[start_rasa_api] {error_msg}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": error_msg}), 500
+
+    except Exception as e:
+        print(f"[start_rasa_api] Unexpected error in /start-rasa-api: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/train-rasa", methods=["POST"])
+def train_rasa():
+    """
+    Train the Rasa model.
+    Expects JSON: { "domain": "rasa_files/domain.yml", "data": "rasa_files/data", "out": "rasa_files/models" }
+    Returns: { "ok": true, "message": "..." } or { "ok": false, "error": "..." }
+    """
+    try:
+        print("[train_rasa] /train-rasa endpoint called")
+
+        if not verify_secret(request):
+            print("[train_rasa] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        domain = data.get("domain", "domain.yml")
+        data_dir = data.get("data", "data")
+        out_dir = data.get("out", "models")
+
+        print(f"[train_rasa] Training with domain: {domain}, data: {data_dir}, out: {out_dir}")
+
+        # Run rasa train command with virtual environment activation
+        try:
+            # Activate virtual environment and run rasa train
+            venv_activate = "source /workspaces/codespaces-quickstart/.venv/bin/activate"
+            rasa_cmd = f"rasa train"
+            full_cmd = f"{venv_activate} && {rasa_cmd}"
+
+            print(f"[train_rasa] Running command: {full_cmd}")
+
+            result = subprocess.run(["bash", "-c", full_cmd], capture_output=True, text=True, cwd=PROJECT_ROOT)
+
+            if result.returncode == 0:
+                print("[train_rasa] Training completed successfully")
+                return jsonify({
+                    "ok": True,
+                    "message": "Rasa training completed successfully",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr
+                })
+            else:
+                print(f"[train_rasa] Training failed with return code: {result.returncode}")
+                return jsonify({
+                    "ok": False,
+                    "error": f"Rasa training failed: {result.stderr}",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr
+                }), 500
+
+        except FileNotFoundError:
+            error_msg = "'rasa' command not found. Make sure Rasa is installed and in PATH."
+            print(f"[train_rasa] {error_msg}")
+            return jsonify({"ok": False, "error": error_msg}), 500
+        except Exception as e:
+            error_msg = f"Error running rasa train: {str(e)}"
+            print(f"[train_rasa] {error_msg}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": error_msg}), 500
+
+    except Exception as e:
+        print(f"[train_rasa] Unexpected error in /train-rasa: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -373,14 +883,21 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/upload-file", methods=["POST", "OPTIONS"])
-@app.route("/sync-faqs", methods=["POST", "OPTIONS"])  
+@app.route("/sync-faqs", methods=["POST", "OPTIONS"])
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
+@app.route("/update-document", methods=["POST", "OPTIONS"])
+@app.route("/train-rasa", methods=["POST", "OPTIONS"])
+@app.route("/start-rasa-api", methods=["POST", "OPTIONS"])
+@app.route("/check-rasa-status", methods=["GET", "OPTIONS"])
+@app.route("/list-docs", methods=["GET", "OPTIONS"])
+@app.route("/download-announcements", methods=["GET", "OPTIONS"])
+@app.route("/download/<filename>", methods=["GET", "OPTIONS"])
 def handle_preflight():
     """Handle preflight CORS requests"""
     if request.method == "OPTIONS":
         response = jsonify({"status": "OK"})
         response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-FAQ-UPDATER-TOKEN, X-Requested-With")
         response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         return response
     else:

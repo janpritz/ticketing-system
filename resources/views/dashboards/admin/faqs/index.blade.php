@@ -1,13 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', $isDeletedView ? 'Deleted FAQs' : 'FAQ Management')
+@section('title', 'Document Management')
 
 @section('admin-content')
     <div class="sm:px-2">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">
-                    {{ !empty($isDeletedView) ? 'Deleted FAQs' : 'FAQ Management' }}</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">FAQ Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
@@ -18,15 +17,6 @@
                             <path d="M15 6l-6 6 6 6" />
                         </svg>
                     </a>
-                </div>
-            @else
-                <div class="sm:hidden">
-                    <button id="mobileActionsToggle" type="button"
-                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4" aria-label="Open actions drawer">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-                        </svg>
-                    </button>
                 </div>
             @endif
 
@@ -40,202 +30,117 @@
                 </div>
             @else
                 <div class="hidden sm:flex items-center gap-2">
-
-                    <!-- Sync FAQ Cache Button -->
-                    <button id="syncFaqCacheBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 ml-3"
-                        aria-label="Sync FAQ Cache">
-                        <svg id="syncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span id="syncText">Sync to Rasa</span>
-                    </button>
-
-                    <button id="openCreateModalBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
-                        aria-label="Add FAQ">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
-                        </svg>
-                        <span class="hidden sm:inline">Add FAQ</span>
-                    </button>
-
                     <!-- Upload File Button -->
                     <button id="uploadFileBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 ml-3"
-                        aria-label="Upload FAQ File">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="Upload File">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        <span class="hidden sm:inline">Upload File</span>
+                        <span class="hidden lg:inline">Upload Files</span>
+                        <span class="lg:hidden">Upload</span>
+                    </button>
+                    <!-- Refresh Documents Button -->
+                    <button id="refreshDocsBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="Refresh Documents">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Refresh</span>
                     </button>
                 </div>
             @endif
 
         </div>
 
-        <div class="mt-4">
-            <!-- Desktop search / filters -->
-            <div class="hidden sm:flex items-start justify-between">
-                <div class="flex items-center gap-2">
-                    <label class="relative block">
-                        <span class="sr-only">Search</span>
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                                <path
-                                    d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
-                            </svg>
-                        </span>
-                        <input id="q" type="text" name="q" placeholder="Search intent or response"
-                            class="w-80 pl-9 pr-3 py-2 text-sm rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                    </label>
-
-                    <button id="searchBtn" type="button"
-                        class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Search</button>
-                    <button id="clearSearch" type="button"
-                        class="text-sm text-slate-600 hover:text-slate-800 hidden">Clear</button>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <label class="text-sm text-slate-600">Per page</label>
-                    <select id="per_page" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-
-                    <!-- Trash / Back button -->
-                    @if (!empty($isDeletedView))
-                    @else
-                        <a href="{{ route('admin.faqs.deleted') }}"
-                            class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 ml-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
-                                fill="currentColor">
-                                <path
-                                    d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
-                            </svg>
-                            <span class="hidden sm:inline">Trash</span>
-                        </a>
-                    @endif
-                </div>
+        <div class="mt-4 relative">
+            <p class="text-sm text-gray-600 mb-4">Documents stored in the Rasa server for FAQ training.</p>
+            <!-- Mobile hamburger menu aligned with text -->
+            <div class="sm:hidden absolute top-0 right-0">
+                <button id="mobileActionsToggle" type="button"
+                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4" aria-label="Open actions drawer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+                    </svg>
+                </button>
             </div>
+        </div>
 
-
-            <!-- Mobile actions drawer (bottom sheet) -->
-            <div id="mobileDrawerOverlay" class="hidden sm:hidden fixed inset-0 bg-black/30 z-40"></div>
-            <div id="mobileDrawer"
-                class="sm:hidden fixed left-0 right-0 bottom-0 transform translate-y-full transition-transform duration-200 bg-white border-t border-gray-200 z-50">
-                <div class="px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <button id="mobileDrawerClose" type="button" class="p-2 rounded-md text-slate-700 hover:bg-gray-50"
-                            aria-label="Close drawer">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                        <div class="text-sm font-medium">Actions</div>
+        <!-- Training Required Alert -->
+        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-orange-700">
+                            <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
+                        </p>
                     </div>
                 </div>
-
-                <div class="px-4 pb-4 space-y-2">
-
-                    <!-- Mobile Sync Cache Button (match desktop styling) -->
-                    <button id="mobileSyncFaqCacheBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Sync FAQ Cache">
-                        <svg id="mobileSyncIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <div class="ml-4">
+                    <button id="trainRasaBtn"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
+                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        <span id="mobileSyncText">Sync to Rasa</span>
+                        <span id="trainBtnText">Train Rasa</span>
+                        <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
                     </button>
-
-                    <!-- Mobile Upload File Button (match desktop styling) -->
-                    <button id="mobileUploadFileBtn" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Upload FAQ File">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <span>Upload File</span>
-                    </button>
-
-                    <!-- Mobile Add FAQ Button (match desktop styling) -->
-                    <button id="mobileActionAdd" type="button"
-                        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 w-full justify-center"
-                        aria-label="Add FAQ">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
-                        </svg>
-                        <span class="hidden sm:inline">Add FAQ</span>
-                        <span class="sm:hidden">Add FAQ</span>
-                    </button>
-
-                    <!-- Mobile Trash Button (match desktop styling from filters section) -->
-                    <a href="{{ route('admin.faqs.deleted') }}"
-                        class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm px-3 py-2 w-full justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-700" viewBox="0 0 24 24"
-                            fill="currentColor">
-                            <path
-                                d="M3 6h18v2H3V6zm2 3h14l-1.1 12.2c-.08.9-.86 1.6-1.76 1.6H8.86c-.9 0-1.68-.7-1.76-1.6L6 9zM9 4V3h6v1h5v2H4V4h5z" />
-                        </svg>
-                        <span class="hidden sm:inline">Trash</span>
-                        <span class="sm:hidden">Trash</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Mobile search area (always visible on mobile) -->
-            <div id="mobileSearchArea" class="sm:hidden mt-3">
-                <div class="flex items-center gap-2">
-                    <input id="q_mobile" type="text" placeholder="Search topic or response"
-                        class="flex-1 pl-3 pr-3 py-2 rounded-md border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                    <button id="mobileSearchBtn" type="button"
-                        class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2"
-                        aria-label="Search">Search</button>
-                </div>
-
-                <div class="mt-2 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm text-slate-600">Per page</label>
-                        <select id="per_page_mobile" class="rounded-md border border-gray-200 bg-white text-sm px-3 py-2">
-                            <option value="25" selected>25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
                 </div>
             </div>
         </div>
 
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table id="faqsTable" class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-gray-600">
-                        <tr>
-                            <th class="py-3 pl-5 pr-3 text-left font-medium">Intent</th>
-                            <th class="px-3 py-3 text-left font-medium">Description</th>
-                            <th class="px-3 py-3 text-left font-medium">Response</th>
-                            <th class="px-3 py-3 text-left font-medium">Created At</th>
-                            <th class="px-3 py-3 text-left font-medium">Updated At</th>
-                            <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="faqsTbody" class="divide-y divide-gray-100">
-                        <tr>
-                            <td colspan="6" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="faqsFooter" class="px-5 py-3 border-t border-gray-200">
-                <div id="paginationControls" class="flex items-center justify-between"></div>
+            <div class="p-6">
+                <div id="docsList" class="space-y-4">
+                    <div class="text-center text-sm text-gray-500">Loading docs...</div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Mobile Bottom Drawer -->
+    <div id="mobileDrawer" class="fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 ease-in-out sm:hidden">
+        <div class="bg-white border-t border-gray-200 shadow-lg">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-medium text-gray-900">Actions</h3>
+                    <button id="mobileDrawerClose" type="button" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-3">
+                    <button id="mobileRefreshDocsBtn" type="button"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Refresh Documents
+                    </button>
+                    <button id="mobileUploadFileBtn" type="button"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload Files
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Drawer Overlay -->
+    <div id="mobileDrawerOverlay" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
 
     <!-- Create FAQ Modal -->
     <div id="createFaqModal" class="fixed inset-0 z-50 hidden">
@@ -308,9 +213,9 @@
                 <form id="uploadFileForm" class="p-4 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Select Text File</label>
-                        <input type="file" id="faqFile" accept=".txt,.md,.json" required
+                        <input type="file" id="faqFile" accept=".txt" required
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
-                        <p class="mt-1 text-xs text-slate-500">Only text files (.txt, .md, .json) are allowed</p>
+                        <p class="mt-1 text-xs text-slate-500">Only .txt files are allowed</p>
                         <p id="upload_file_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -434,7 +339,51 @@
         </div>
     </div>
 
-
+    <!-- Edit Document Modal -->
+    <div id="editDocumentModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/40" data-close="edit-doc"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
+                <div class="h-12 flex items-center justify-between px-4 border-b">
+                    <div class="text-sm font-semibold text-slate-800">Edit Document</div>
+                    <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
+                            aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="editDocumentForm" class="p-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">File Name</label>
+                        <input type="text" id="edit_doc_filename" readonly
+                               class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 text-gray-600" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Content</label>
+                        <textarea id="edit_doc_content" rows="20" required
+                                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                  placeholder="Enter document content here..."></textarea>
+                        <p class="mt-1 text-xs text-slate-500">Supports plain text and markdown formatting</p>
+                        <p id="edit_doc_error" class="mt-1 text-xs text-red-600 hidden"></p>
+                    </div>
+                    <div class="pt-2 flex items-center justify-end gap-3">
+                        <button type="button"
+                                class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
+                                data-close="edit-doc">Cancel</button>
+                        <button id="editDocumentSubmit" type="button"
+                                class="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+                            <svg class="animate-spin h-4 w-4 mr-2 hidden" id="editDocSpinner" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span id="editDocBtnText">Save Changes</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Hidden state with URLs -->
     <div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.faqs.list') }}"
@@ -466,6 +415,7 @@
         }
     </script>
     <script>
+        console.log('[TEST] FAQ JavaScript loaded and executing');
         (function() {
             const stateEl = document.getElementById('admin-faqs-state');
             const LIST_URL = stateEl.getAttribute('data-list-url');
@@ -505,6 +455,11 @@
             const uploadForm = $('#uploadFileForm');
             const uploadSubmit = $('#uploadFileSubmit');
             const faqFileInput = $('#faqFile');
+
+            const editDocumentModal = $('#editDocumentModal');
+            const editDocumentCloseEls = $$('[data-close="edit-doc"]', editDocumentModal || document);
+            const editDocumentForm = $('#editDocumentForm');
+            const editDocumentSubmit = $('#editDocumentSubmit');
 
             const viewModal = $('#viewFaqModal');
             const viewCloseEls = $$('[data-close="view"]', viewModal || document);
@@ -613,11 +568,6 @@
             }
 
 
-            let currentPage = 1;
-            let currentQuery = '';
-            let currentPerPage = parseInt(perPageSelect.value || '25', 10);
-            let autoRefreshInterval = null;
-            let showDeleted = false;
 
             function openModal(modal) {
                 if (modal) modal.classList.remove('hidden');
@@ -627,29 +577,50 @@
                 if (modal) modal.classList.add('hidden');
             }
 
-            // Fetch list via AJAX
-            async function fetchList(page = 1) {
-                currentPage = page;
-                const q = encodeURIComponent((qInput.value || '').trim());
-                const per = perPageSelect.value || '25';
-                const url =
-                    `${LIST_URL}?q=${q}&per_page=${per}&page=${page}&include_deleted=${showDeleted ? '1' : '0'}`;
+            // Fetch docs list via AJAX
+            async function fetchDocs() {
+                console.log('[DEBUG] fetchDocs() function called');
+                const docsListEl = $('#docsList');
+                console.log('[DEBUG] docsListEl found:', docsListEl);
                 try {
-                    const res = await fetch(url, {
+                    docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
+                    console.log('[DEBUG] Set loading message');
+
+                    // Debug: Log the URL and configuration being used
+                    const rasaUrl = '{{ config("services.faq_list_docs.url") }}';
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+                    console.log('[DEBUG] fetchDocs - URL:', rasaUrl);
+                    console.log('[DEBUG] fetchDocs - Secret length:', secret.length);
+                    console.log('[DEBUG] fetchDocs - Secret (first 5 chars):', secret.substring(0, 5) + '...');
+
+                    const res = await fetch(rasaUrl, {
                         headers: {
+                            'X-FAQ-UPDATER-TOKEN': secret,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
-                    if (!res.ok) throw new Error('Failed to load FAQs');
+
+                    console.log('[DEBUG] fetchDocs - Response status:', res.status);
+                    console.log('[DEBUG] fetchDocs - Response headers:', [...res.headers.entries()]);
+
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        console.error('[DEBUG] fetchDocs - Error response:', errorText);
+                        throw new Error(`Failed to load docs: ${res.status} - ${errorText}`);
+                    }
+
                     const json = await res.json();
-                    renderTable(json.items || []);
-                    renderPagination(json.meta || {});
-                    toggleClear(qInput.value.trim() !== '');
+                    console.log('[DEBUG] fetchDocs - Response JSON:', json);
+
+                    if (!json.ok) {
+                        console.error('[DEBUG] fetchDocs - API error:', json.error);
+                        throw new Error(json.error || 'Failed to load docs');
+                    }
+
+                    renderDocsList(json.files || []);
                 } catch (err) {
-                    faqsTbody.innerHTML =
-                        `<tr><td colspan="6" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>`;
-                    paginationControls.innerHTML = '';
-                    console.error(err);
+                    console.error('[DEBUG] fetchDocs - Exception:', err);
+                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: Rasa server is offline.</div>`;
                 }
             }
 
@@ -658,200 +629,271 @@
                 return (str.length > n) ? (str.slice(0, n - 1) + '…') : str;
             }
 
-            function renderTable(items) {
-                if (!items || items.length === 0) {
-                    faqsTbody.innerHTML =
-                        `<tr><td colspan="6" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>`;
+            function formatFileSize(bytes) {
+                if (!bytes || bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString();
+                } catch (e) {
+                    return dateString;
+                }
+            }
+
+            function onViewDocClick(e) {
+                const filename = e.currentTarget.getAttribute('data-filename');
+                if (!filename) return;
+
+                // Open download link in new tab with authentication token
+                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                const secret = '{{ config("services.faq_list_docs.secret") }}';
+                const downloadUrl = `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`;
+                window.open(downloadUrl, '_blank');
+            }
+
+            function onEditDocClick(e) {
+                const filename = e.currentTarget.getAttribute('data-filename');
+                if (!filename) return;
+
+                console.log('[DEBUG] onEditDocClick called for:', filename);
+
+                // Set filename in modal
+                $('#edit_doc_filename').value = filename;
+
+                // Load document content
+                loadDocumentContent(filename);
+            }
+
+            async function loadDocumentContent(filename) {
+                console.log('[DEBUG] loadDocumentContent called for:', filename);
+
+                const contentTextarea = $('#edit_doc_content');
+                const errorEl = $('#edit_doc_error');
+
+                // Clear previous content and errors
+                contentTextarea.value = '';
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+
+                try {
+                    // Show loading in textarea
+                    contentTextarea.value = 'Loading document content...';
+                    contentTextarea.disabled = true;
+
+                    // Fetch document content
+                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+
+                    console.log('[DEBUG] loadDocumentContent - URL:', `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`);
+
+                    const res = await fetch(`${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`Failed to load document: ${res.status}`);
+                    }
+
+                    const content = await res.text();
+                    console.log('[DEBUG] Document content loaded, length:', content.length);
+
+                    // Populate textarea
+                    contentTextarea.value = content;
+                    contentTextarea.disabled = false;
+
+                    // Open modal
+                    openModal(editDocumentModal);
+
+                } catch (err) {
+                    console.error('[DEBUG] Error loading document content:', err);
+                    errorEl.textContent = `Error loading document: ${err.message}`;
+                    errorEl.classList.remove('hidden');
+                    contentTextarea.disabled = false;
+                    contentTextarea.value = '';
+                }
+            }
+
+            async function logDocumentChange(filename, action) {
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const res = await fetch('{{ route("admin.document-changes.log") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            file_name: filename,
+                            action: action
+                        })
+                    });
+
+                    if (!res.ok) {
+                        console.error('[DEBUG] Failed to log document change:', await res.text());
+                    } else {
+                        console.log('[DEBUG] Document change logged successfully');
+                    }
+                } catch (err) {
+                    console.error('[DEBUG] Error logging document change:', err);
+                }
+            }
+
+            async function checkTrainingStatus() {
+                try {
+                    const res = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        const alertEl = $('#trainingAlert');
+
+                        if (data.requires_training) {
+                            // Show training alert
+                            alertEl.classList.remove('hidden');
+                        } else {
+                            // Hide training alert
+                            alertEl.classList.add('hidden');
+                        }
+                    }
+                } catch (err) {
+                    console.error('[DEBUG] Error checking training status:', err);
+                }
+            }
+
+            async function saveDocumentContent() {
+                const filename = $('#edit_doc_filename').value;
+                const content = $('#edit_doc_content').value;
+                const errorEl = $('#edit_doc_error');
+                const submitBtn = $('#editDocumentSubmit');
+                const spinner = $('#editDocSpinner');
+                const btnText = $('#editDocBtnText');
+
+                if (!filename || !content) {
+                    showToast('error', 'Filename and content are required');
                     return;
                 }
-                faqsTbody.innerHTML = items.map(f => `
-      <tr class="hover:bg-gray-50 ${f.deleted_at ? 'opacity-70' : ''}">
-        <td class="py-3 pl-5 pr-3 align-top">
-          <div class="text-slate-900 font-medium">${escapeHtml(f.intent)}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-700 whitespace-pre-line max-w-xl">${escapeHtml(truncate(f.description || '', 140))}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-700 whitespace-pre-line">${escapeHtml(truncate(f.response, 180))}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-500 text-xs">${escapeHtml(f.created_at || '')}</div>
-        </td>
-        <td class="px-3 py-3 align-top">
-          <div class="text-slate-500 text-xs">${escapeHtml(f.updated_at || '')}</div>
-        </td>
-        <td class="py-3 pl-3 pr-5 align-top">
-          <div class="flex items-center gap-2">
-            ${f.deleted_at ? (
-              `<div class="flex items-center gap-2">
-                <button class="restoreDeletedBtn inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">Restore</button>
-                <button class="deletePermanentBtn inline-flex items-center gap-1 rounded-md border border-red-200 bg-white text-red-700 px-3 py-1.5 text-sm font-medium hover:bg-red-50" data-id="${f.id}">Delete</button>
-              </div>`
-            ) : (
-              `<div class="flex items-center gap-2">
-                <button class="viewFaqBtn inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50" data-id="${f.id}">View</button>
-                <button class="toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium ${f.response_disabled ? 'bg-gray-400 text-white border-2 border-red-300' : 'bg-green-400 text-white border-2 border-green-600'}" data-id="${f.id}" data-disabled="${f.response_disabled ? '1' : '0'}" title="${f.response_disabled ? 'Click to Enable' : 'Click to Disable'}">${f.response_disabled ? 'Disabled' : 'Enabled'}</button>
-              </div>`
-            )}
-          </div>
-        </td>
-      </tr>
-    `).join('');
-                // attach handlers
-                $$('.viewFaqBtn').forEach(btn => btn.addEventListener('click', onViewClick));
-                // attach restore handlers for deleted rows
-                $$('.restoreDeletedBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const url = RESTORE_TEMPLATE.replace('__ID__', id);
-                        const confirmResult = await Swal.fire({
-                            title: 'Restore FAQ?',
-                            text: 'Do you want to restore this FAQ?',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, restore',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        try {
-                            btn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to restore';
-                                throw new Error(err);
-                            }
-                            setPendingChanges(true);
-                            showToast('success', json.message || 'FAQ restored');
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            btn.disabled = false;
-                        }
+
+                // Clear previous errors
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+
+                // Show loading state
+                submitBtn.disabled = true;
+                spinner.classList.remove('hidden');
+                btnText.textContent = 'Saving...';
+
+                try {
+                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+
+                    console.log('[DEBUG] saveDocumentContent - URL:', `${rasaBaseUrl}/update-document`);
+                    console.log('[DEBUG] saveDocumentContent - Secret length:', secret.length);
+
+                    const res = await fetch(`${rasaBaseUrl}/update-document`, {
+                        method: 'POST',
+                        headers: {
+                            'X-FAQ-UPDATER-TOKEN': secret,
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            file_name: filename,
+                            file_content: content,
+                            file_type: filename.toLowerCase().endsWith('.md') ? 'text/markdown' : 'text/plain'
+                        })
                     });
-                });
-                // attach permanent delete handlers for deleted rows
-                $$('.deletePermanentBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = btn.getAttribute('data-id');
-                        if (!id) return;
-                        const confirmResult = await Swal.fire({
-                            title: 'Delete permanently?',
-                            text: 'This will permanently delete the FAQ and cannot be undone.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, delete permanently',
-                            cancelButtonText: 'Cancel'
-                        });
-                        if (!confirmResult.isConfirmed) return;
-                        const url = DESTROY_TEMPLATE.replace('__ID__', id);
-                        try {
-                            btn.disabled = true;
-                            const res = await fetch(url, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                const err = json.message || 'Failed to delete permanently';
-                                throw new Error(err);
-                            }
-                            setPendingChanges(true);
-                            showToast('success', json.message || 'FAQ permanently deleted');
-                            try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
-                            fetchList(currentPage);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                        } finally {
-                            btn.disabled = false;
-                        }
-                    });
-                });
 
-                // Attach toggle handler for both desktop and mobile buttons
-                $$('.toggleFaqBtn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const id = btn.getAttribute('data-id');
-                        const isDisabled = btn.getAttribute('data-disabled') === '1';
-                        if (!id) return;
+                    const json = await res.json();
 
-                        const url = isDisabled
-                            ? ENABLE_TEMPLATE.replace('__ID__', id)
-                            : DISABLE_TEMPLATE.replace('__ID__', id);
+                    if (!res.ok || !json.ok) {
+                        throw new Error(json.error || 'Failed to save document');
+                    }
 
-                        // Store original content and state
-                        const originalHTML = btn.innerHTML;
-                        const originalDisabled = btn.getAttribute('data-disabled');
-                        const originalClasses = btn.className;
+                    console.log('[DEBUG] Document saved successfully:', json);
 
-                        try {
-                            btn.disabled = true;
-                            // Show loading spinner
-                            btn.innerHTML = `
-                                <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    // Log the document change
+                    await logDocumentChange(filename, 'updated');
+
+                    // Show success message
+                    showToast('success', `Document "${filename}" updated successfully`);
+
+                    // Close modal
+                    closeModal(editDocumentModal);
+
+                    // Refresh document list to show updated timestamp
+                    fetchDocs();
+
+                    // Check if training alert should be shown
+                    checkTrainingStatus();
+
+                } catch (err) {
+                    console.error('[DEBUG] Error saving document:', err);
+                    errorEl.textContent = `Error saving document: ${err.message}`;
+                    errorEl.classList.remove('hidden');
+                } finally {
+                    // Reset loading state
+                    submitBtn.disabled = false;
+                    spinner.classList.add('hidden');
+                    btnText.textContent = 'Save Changes';
+                }
+            }
+
+            function renderDocsList(files) {
+                const docsListEl = $('#docsList');
+                if (!files || files.length === 0) {
+                    docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">No docs files found.</div>';
+                    return;
+                }
+
+                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
+                const secret = '{{ config("services.faq_list_docs.secret") }}';
+                docsListEl.innerHTML = files.map(file => `
+                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">${escapeHtml(file.name)}</div>
+                                <div class="text-xs text-gray-500">${formatFileSize(file.size)} • Modified ${formatDate(file.modified)}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="editDocBtn inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
+                                    data-filename="${file.name}">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                            `;
+                                <span class="hidden sm:inline">Edit</span>
+                            </button>
+                            <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                                    data-filename="${file.name}">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span class="hidden sm:inline">View</span>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
 
-                            const res = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            });
-                            const json = await res.json();
-                            if (!res.ok) {
-                                throw new Error(json.message || `Failed to ${isDisabled ? 'enable' : 'disable'} FAQ`);
-                            }
-
-                            // Update button state immediately
-                            const newDisabled = isDisabled ? '0' : '1';
-                            btn.setAttribute('data-disabled', newDisabled);
-                            btn.textContent = isDisabled ? 'Enabled' : 'Disabled';
-
-                            // Update button styling with border colors
-                            if (isDisabled) {
-                                // Was disabled, now enabled: green background with green border
-                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-green-400 text-white border-2 border-green-600';
-                                btn.setAttribute('title', 'Click to Disable');
-                            } else {
-                                // Was enabled, now disabled: gray background with red border
-                                btn.className = 'toggleFaqBtn rounded-full px-3 py-1 text-xs font-medium bg-gray-400 text-white border-2 border-red-300';
-                                btn.setAttribute('title', 'Click to Enable');
-                            }
-
-                            setPendingChanges(true);
-                            showToast('success', `FAQ ${isDisabled ? 'enabled' : 'disabled'} successfully`);
-                        } catch (err) {
-                            showToast('error', err.message || 'Error');
-                            console.error(err);
-                            // Restore original content and state on error
-                            btn.innerHTML = originalHTML;
-                            btn.disabled = false;
-                            if (originalDisabled) btn.setAttribute('data-disabled', originalDisabled);
-                            if (originalClasses) btn.className = originalClasses;
-                        }
-                    });
-                });
+                // Attach view and edit handlers
+                $$('.viewDocBtn').forEach(btn => btn.addEventListener('click', onViewDocClick));
+                $$('.editDocBtn').forEach(btn => btn.addEventListener('click', onEditDocClick));
             }
 
             function renderPagination(meta) {
@@ -1046,6 +1088,24 @@
                 mobileDrawerOverlay.addEventListener('click', closeDrawer);
             }
 
+            // Mobile drawer action buttons
+            const mobileRefreshDocsBtn = $('#mobileRefreshDocsBtn');
+            const mobileUploadFileBtn = $('#mobileUploadFileBtn');
+
+            if (mobileRefreshDocsBtn) {
+                mobileRefreshDocsBtn.addEventListener('click', () => {
+                    closeDrawer();
+                    fetchDocs();
+                });
+            }
+
+            if (mobileUploadFileBtn) {
+                mobileUploadFileBtn.addEventListener('click', () => {
+                    closeDrawer();
+                    openModal(uploadModal);
+                });
+            }
+
             // Mobile sync cache button
             const mobileSyncBtn = $('#mobileSyncFaqCacheBtn');
             const mobileSyncIcon = $('#mobileSyncIcon');
@@ -1086,6 +1146,9 @@
                             console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
                         }
 
+                        // Log the document change for tracking
+                        await logDocumentChange('faqs.json', 'updated');
+
                         // Send all FAQs (or empty array) to Rasa sync endpoint
                         const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',
@@ -1099,7 +1162,7 @@
                         });
 
                         // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers.get('content-type');
+                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
                         if (contentType && contentType.includes('application/json')) {
                             result = await rasaRes.json();
                         } else {
@@ -1151,7 +1214,7 @@
                 });
             }
 
-            // Mobile upload file button
+            // Mobile upload file button (legacy - can be removed if not used elsewhere)
             const mobileUploadBtn = $('#mobileUploadFileBtn');
 
             if (mobileUploadBtn) {
@@ -1190,10 +1253,17 @@
             }
             uploadCloseEls.forEach(el => el.addEventListener('click', () => closeModal(uploadModal)));
 
+            // Edit document modal handlers
+            editDocumentCloseEls.forEach(el => el.addEventListener('click', () => closeModal(editDocumentModal)));
+            if (editDocumentSubmit) {
+                editDocumentSubmit.addEventListener('click', saveDocumentContent);
+            }
+
             // Template button handlers
             const createTemplateBtn = $('#createTemplateBtn');
             const createDescription = $('#create_description');
-            if (createTemplateBtn && createDescription) {
+            const createIntent = $('#create_intent');
+            if (createTemplateBtn && createDescription && createIntent) {
                 // Hide button if description is not empty
                 const toggleCreateTemplateBtn = () => {
                     const isEmpty = createDescription.value.trim() === '';
@@ -1204,7 +1274,7 @@
                 toggleCreateTemplateBtn();
 
                 createTemplateBtn.addEventListener('click', () => {
-                    const intent = $('#create_intent').value.trim();
+                    const intent = createIntent.value.trim();
                     if (intent) {
                         createDescription.value = `This handles question about ${intent}.`;
                     } else {
@@ -1216,7 +1286,8 @@
 
             const viewTemplateBtn = $('#viewTemplateBtn');
             const viewDescription = $('#view_description');
-            if (viewTemplateBtn && viewDescription) {
+            const viewIntent = $('#view_intent');
+            if (viewTemplateBtn && viewDescription && viewIntent) {
                 // Hide button if description is not empty
                 const toggleViewTemplateBtn = () => {
                     const isEmpty = viewDescription.value.trim() === '';
@@ -1227,7 +1298,7 @@
                 toggleViewTemplateBtn();
 
                 viewTemplateBtn.addEventListener('click', () => {
-                    const intent = $('#view_intent').value.trim();
+                    const intent = viewIntent.value.trim();
                     if (intent) {
                         viewDescription.value = `This FAQ provides information about ${intent}.`;
                     } else {
@@ -1239,9 +1310,10 @@
 
             if (createSubmit) {
                 createSubmit.addEventListener('click', async () => {
-                    const intent = $('#create_intent').value.trim();
-                    const description = $('#create_description').value.trim();
-                    const response = $('#create_response').value.trim();
+                    const intent = createIntent.value.trim();
+                    const description = createDescription.value.trim();
+                    const responseEl = $('#create_response');
+                    const response = responseEl ? responseEl.value.trim() : '';
 
                     if (!intent || !description || !response) {
                         showToast('error', 'All fields are required');
@@ -1300,9 +1372,17 @@
                     }
 
                     // Validate file type
-                    const allowedTypes = ['text/plain', 'text/markdown', 'application/json'];
-                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|md|json)$/i)) {
-                        $('#upload_file_error').textContent = 'Only text files (.txt, .md, .json) are allowed';
+                    const allowedTypes = ['text/plain'];
+                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.txt$/i)) {
+                        $('#upload_file_error').textContent = 'Only .txt files are allowed';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    // Check for duplicate filename
+                    const existingFiles = Array.from(document.querySelectorAll('.editDocBtn')).map(btn => btn.getAttribute('data-filename'));
+                    if (existingFiles.includes(file.name)) {
+                        $('#upload_file_error').textContent = `A file named "${file.name}" already exists. Please choose a different name or edit the existing file.`;
                         $('#upload_file_error').classList.remove('hidden');
                         return;
                     }
@@ -1534,7 +1614,7 @@
                         });
 
                         // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers.get('content-type');
+                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
                         if (contentType && contentType.includes('application/json')) {
                             result = await rasaRes.json();
                         } else {
@@ -1598,8 +1678,161 @@
             // Initialize sync button state
             updateSyncButtonState();
 
-            // Initialize: fetch list on page load
-            fetchList(1);
+            // Refresh button handler
+            const refreshDocsBtn = $('#refreshDocsBtn');
+            console.log('[DEBUG] Refresh button element:', refreshDocsBtn);
+            if (refreshDocsBtn) {
+                console.log('[DEBUG] Attaching event listener to refresh button');
+                refreshDocsBtn.addEventListener('click', () => {
+                    console.log('[DEBUG] Refresh button clicked - calling fetchDocs()');
+                    fetchDocs();
+                });
+            } else {
+                console.log('[DEBUG] Refresh button not found - might be on mobile view or deleted FAQs view');
+            }
+
+            async function trainRasa() {
+                const btn = $('#trainRasaBtn');
+                const spinner = $('#trainSpinner');
+                const btnText = $('#trainBtnText');
+
+                // Show loading state
+                btn.disabled = true;
+                spinner.classList.remove('hidden');
+                btnText.textContent = 'Training...';
+
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.message || 'Training failed');
+                    }
+
+                    // Show success message
+                    showToast('success', 'Rasa training completed successfully!');
+
+                    // Hide the training alert
+                    $('#trainingAlert').classList.add('hidden');
+
+                    // Refresh document list
+                    fetchDocs();
+
+                    // Check if we should show the API server alert
+                    checkApiServerAlert();
+
+                } catch (err) {
+                    console.error('[DEBUG] Training error:', err);
+                    showToast('error', `Training failed: ${err.message}`);
+                } finally {
+                    // Reset button state
+                    btn.disabled = false;
+                    spinner.classList.add('hidden');
+                    btnText.textContent = 'Train Rasa';
+                }
+            }
+
+            async function checkApiServerAlert() {
+                try {
+                    // Check if there's been a recent training (within last 60 minutes)
+                    const res = await fetch('{{ route("admin.document-changes.check-recent-training") }}', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.has_recent_training) {
+                            // Show second alert for starting Rasa API server
+                            setTimeout(() => {
+                                Swal.fire({
+                                    title: 'Start Rasa API Server',
+                                    text: 'Training completed! Now start the Rasa API server to enable chatbot functionality?',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Yes, start API server',
+                                    cancelButtonText: 'Not now',
+                                    confirmButtonColor: '#10B981'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        startRasaApiServer();
+                                    }
+                                });
+                            }, 1000); // Small delay to let the first toast disappear
+                        }
+                    }
+                } catch (err) {
+                    console.error('[DEBUG] Error checking recent training:', err);
+                }
+            }
+
+            async function startRasaApiServer() {
+                // Show loading state
+                Swal.fire({
+                    title: 'Starting Rasa API Server',
+                    text: 'Please wait while the Rasa API server starts...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.message || 'Failed to start Rasa API server');
+                    }
+
+                    // Show success message
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Rasa API server started successfully on port 5005',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#10B981'
+                    });
+
+                } catch (err) {
+                    console.error('[DEBUG] API server start error:', err);
+                    Swal.fire({
+                        title: 'Error',
+                        text: `Failed to start Rasa API server: ${err.message}`,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            }
+
+            // Add event listener for train button
+            const trainBtn = $('#trainRasaBtn');
+            if (trainBtn) {
+                trainBtn.addEventListener('click', trainRasa);
+            }
+
+            // Initialize: fetch docs on page load
+            fetchDocs();
+            checkTrainingStatus();
 
         })();
 
