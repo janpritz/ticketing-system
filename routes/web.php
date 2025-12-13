@@ -242,6 +242,9 @@ Route::middleware('auth')->group(function () {
         })->name('index');
         Route::get('/list', [AdminController::class, 'announcementsList'])->name('list');
         Route::post('/', [AdminController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
+        Route::put('/{id}', [AdminController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
+        Route::delete('/{id}', [AdminController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
+        Route::post('/pin/{id}', [AdminController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
     });
 
     // Logout (authenticated only)

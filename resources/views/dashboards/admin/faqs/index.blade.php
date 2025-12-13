@@ -1146,6 +1146,9 @@
                             console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
                         }
 
+                        // Log the document change for tracking
+                        await logDocumentChange('faqs.json', 'updated');
+
                         // Send all FAQs (or empty array) to Rasa sync endpoint
                         const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
                             method: 'POST',

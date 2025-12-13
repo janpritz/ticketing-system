@@ -421,21 +421,44 @@ def download_announcements():
         # Parse the content into announcements
         announcements = []
         blocks = content.strip().split("---------\n")
+        counter = 1
 
         for block in blocks:
             lines = block.strip().split("\n")
             if len(lines) >= 2:
                 id_line = lines[0]
                 import re
-                match = re.match(r'^id:\s*(\d+)', id_line)
-                if match:
-                    id = int(match.group(1))
-                    content = "\n".join(lines[1:])
+                id_match = re.match(r'^id:\s*(\d+)', id_line)
+                if id_match and id_match.group(1):
+                    try:
+                        id = int(id_match.group(1))
+                        counter = max(counter, id + 1)
+                    except ValueError:
+                        id = counter
+                        counter += 1
+                else:
+                    id = counter
+                    counter += 1
+
+                try:
+                    if len(lines) >= 3 and lines[1].startswith('title:'):
+                        # New format: id, title, content
+                        title_match = re.match(r'^title:\s*(.+)', lines[1])
+                        title = title_match.group(1).strip() if title_match else f'Announcement {id}'
+                        content = "\n".join(lines[2:])
+                    else:
+                        # Old format: id, content (no title)
+                        title = f'Announcement {id}'
+                        content = "\n".join(lines[1:])
 
                     announcements.append({
                         "id": id,
+                        "title": title,
                         "content": content
                     })
+                except Exception:
+                    # Skip malformed blocks
+                    continue
 
         # Sort by ID descending (newest first)
         announcements.sort(key=lambda x: x['id'], reverse=True)

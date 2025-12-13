@@ -732,6 +732,20 @@ class AdminController extends Controller
             'response' => $validated['response'],
         ]);
 
+        // Log document change for training alert
+        try {
+            \App\Models\DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to log FAQ create change: ' . $e->getMessage());
+        }
+
         return response()->json(['ok' => true, 'faq' => $faq], 201);
     }
 
@@ -746,13 +760,27 @@ class AdminController extends Controller
             'description' => 'required|string',
             'response' => 'required|string',
         ]);
- 
+
         $faq->update([
             'intent' => $validated['intent'],
             'description' => $validated['description'],
             'response' => $validated['response'],
         ]);
- 
+
+        // Log document change for training alert
+        try {
+            \App\Models\DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to log FAQ update change: ' . $e->getMessage());
+        }
+
         return response()->json(['success' => true, 'faq' => $faq]);
     }
 
@@ -806,6 +834,20 @@ class AdminController extends Controller
             'action'   => 'delete',
             'meta'     => null,
         ]);
+
+        // Log document change for training alert
+        try {
+            \App\Models\DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to log FAQ delete change: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true]);
     }
@@ -1082,65 +1124,115 @@ class AdminController extends Controller
     }
 
     /**
-     * Store new announcement (AJAX) - appends to Announcements.txt
+     * Store new announcement (AJAX) - uploads to Rasa server
      */
     public function announcementsStore(Request $request)
     {
         $this->ensureAdmin();
 
         $validated = $request->validate([
+            'title' => 'required|string|max:255',
             'content' => 'required|string|max:10000',
         ]);
 
-        $announcementsFile = base_path('docs/Announcements.txt');
+        try {
+            // Upload to Rasa server
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
 
-        // Ensure docs directory exists
-        $docsDir = dirname($announcementsFile);
-        if (!is_dir($docsDir)) {
-            mkdir($docsDir, 0755, true);
-        }
+            // Replace /list-docs with /update-document
+            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
 
-        // Get next ID by reading existing announcements
-        $nextId = 1;
-        if (file_exists($announcementsFile)) {
-            $content = file_get_contents($announcementsFile);
-            $lines = explode("\n", trim($content));
-            foreach ($lines as $line) {
-                if (preg_match('/^id:\s*(\d+)/', $line, $matches)) {
-                    $nextId = max($nextId, (int)$matches[1] + 1);
+            // First, fetch current announcements to get next ID
+            $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $listResponse = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($listUrl);
+
+            $nextId = 1;
+            if ($listResponse->successful()) {
+                $listData = $listResponse->json();
+                if ($listData['ok'] && !empty($listData['announcements'])) {
+                    $maxId = max(array_column($listData['announcements'], 'id'));
+                    $nextId = $maxId + 1;
                 }
             }
-        }
 
-        // Format the announcement
-        $announcementText = "id: {$nextId}\n{$validated['content']}\n---------\n";
+            // Format the announcement
+            $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
 
-        // Append to file
-        file_put_contents($announcementsFile, $announcementText, FILE_APPEND | LOCK_EX);
+            // If there are existing announcements, append to the content
+            if ($listResponse->successful() && !empty($listData['announcements'])) {
+                // We need to get the full file content and append
+                // Since update-document replaces the file, we need to get current content first
+                $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
+                $downloadResponse = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->get($downloadUrl);
 
-        // Log the document change for tracking
-        try {
-            \App\Models\DocumentChange::create([
+                if ($downloadResponse->successful()) {
+                    $currentContent = $downloadResponse->body();
+                    $announcementText = $currentContent . $announcementText;
+                }
+            }
+
+            // Upload the updated content
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->post($uploadUrl, [
                 'file_name' => 'Announcements.txt',
-                'action' => 'created',
-                'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name ?? null,
-                'training_required' => true,
-                'training_completed' => false,
+                'file_content' => $announcementText,
+                'file_type' => 'txt'
             ]);
-        } catch (\Exception $e) {
-            // Log error but don't fail the announcement creation
-            \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
-        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Announcement added successfully',
-            'announcement' => [
-                'id' => $nextId,
-                'content' => $validated['content']
-            ]
-        ]);
+            if (!$response->successful()) {
+                throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
+            }
+
+            $uploadData = $response->json();
+            if (!$uploadData['ok']) {
+                throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
+            }
+
+            // Log the document change for tracking
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'created',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                // Log error but don't fail the announcement creation
+                \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement added successfully',
+                'announcement' => [
+                    'id' => $nextId,
+                    'title' => $validated['title'],
+                    'content' => $validated['content']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to store announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add announcement: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -1176,9 +1268,26 @@ class AdminController extends Controller
                 throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
             }
 
+            $announcements = $data['announcements'] ?? [];
+
+            // Get pinned announcement IDs
+            $pinnedIds = DB::table('pinned_announcements')->pluck('announcement_id')->toArray();
+
+            // Add pinned flag
+            foreach ($announcements as &$ann) {
+                $ann['pinned'] = in_array($ann['id'], $pinnedIds);
+            }
+
+            // Sort: pinned first, then by ID descending
+            usort($announcements, function ($a, $b) {
+                if ($a['pinned'] && !$b['pinned']) return -1;
+                if (!$a['pinned'] && $b['pinned']) return 1;
+                return $b['id'] <=> $a['id'];
+            });
+
             return response()->json([
                 'success' => true,
-                'announcements' => $data['announcements'] ?? []
+                'announcements' => $announcements
             ]);
 
         } catch (\Exception $e) {
@@ -1188,6 +1297,249 @@ class AdminController extends Controller
                 'success' => false,
                 'message' => 'Rasa server is offline.'
             ]);
+        }
+    }
+
+    /**
+     * Update announcement (AJAX)
+     */
+    public function announcementsUpdate(Request $request, $id)
+    {
+        $this->ensureAdmin();
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:10000',
+        ]);
+
+        try {
+            // Fetch current announcements
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
+
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            $listResponse = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            if (!$listResponse->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server');
+            }
+
+            $data = $listResponse->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            $announcements = $data['announcements'];
+
+            // Find and update
+            $found = false;
+            foreach ($announcements as &$ann) {
+                if ($ann['id'] == $id) {
+                    $ann['title'] = $validated['title'];
+                    $ann['content'] = $validated['content'];
+                    $found = true;
+                    break;
+                }
+            }
+
+            if (!$found) {
+                throw new \Exception('Announcement not found');
+            }
+
+            // Reconstruct content
+            $content = '';
+            foreach ($announcements as $ann) {
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$ann['content']}\n---------\n";
+            }
+
+            // Upload updated content
+            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->post($uploadUrl, [
+                'file_name' => 'Announcements.txt',
+                'file_content' => $content,
+                'file_type' => 'txt'
+            ]);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to upload updated announcements');
+            }
+
+            $uploadData = $response->json();
+            if (!$uploadData['ok']) {
+                throw new \Exception($uploadData['error'] ?? 'Failed to update announcement');
+            }
+
+            // Log the document change for training alert
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'updated',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to log announcement update change: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update announcement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete announcement (AJAX)
+     */
+    public function announcementsDestroy($id)
+    {
+        $this->ensureAdmin();
+
+        try {
+            // Fetch current announcements
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
+
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            $listResponse = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            if (!$listResponse->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server');
+            }
+
+            $data = $listResponse->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            $announcements = $data['announcements'];
+
+            // Find and remove
+            $announcements = array_filter($announcements, function ($ann) use ($id) {
+                return $ann['id'] != $id;
+            });
+
+            // Reconstruct content
+            $content = '';
+            foreach ($announcements as $ann) {
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$ann['content']}\n---------\n";
+            }
+
+            // Upload updated content
+            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->post($uploadUrl, [
+                'file_name' => 'Announcements.txt',
+                'file_content' => $content,
+                'file_type' => 'txt'
+            ]);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to upload updated announcements');
+            }
+
+            $uploadData = $response->json();
+            if (!$uploadData['ok']) {
+                throw new \Exception($uploadData['error'] ?? 'Failed to delete announcement');
+            }
+
+            // Log the document change for training alert
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'deleted',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to log announcement delete change: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete announcement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Pin/unpin announcement (AJAX)
+     */
+    public function announcementsPin($id)
+    {
+        $this->ensureAdmin();
+
+        try {
+            // Check if already pinned
+            $existing = DB::table('pinned_announcements')->where('announcement_id', $id)->first();
+
+            if ($existing) {
+                // Unpin
+                DB::table('pinned_announcements')->where('announcement_id', $id)->delete();
+                $message = 'Announcement unpinned successfully';
+            } else {
+                // Pin
+                DB::table('pinned_announcements')->insert([
+                    'announcement_id' => $id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                $message = 'Announcement pinned successfully';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to pin/unpin announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to pin/unpin announcement: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
