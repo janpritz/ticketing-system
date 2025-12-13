@@ -247,6 +247,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/pin/{id}', [AdminController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
     });
 
+    // Admin logs
+    Route::get('/admin/logs', [AdminController::class, 'logsIndex'])->name('admin.logs');
+
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

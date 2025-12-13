@@ -1542,4 +1542,39 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Logs page - displays document change history
+     */
+    public function logsIndex(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', 25);
+        if (!in_array($perPage, [25, 50, 100])) {
+            $perPage = 25;
+        }
+
+        $logsQuery = \App\Models\DocumentChange::with('user')
+            ->when($q !== '', function ($query) use ($q) {
+                $like = '%' . $q . '%';
+                $query->where(function ($qq) use ($like) {
+                    $qq->where('file_name', 'like', $like)
+                       ->orWhere('action', 'like', $like)
+                       ->orWhereHas('user', function ($qu) use ($like) {
+                           $qu->where('name', 'like', $like);
+                       });
+                });
+            })
+            ->orderBy('change_timestamp', 'desc');
+
+        $logs = $logsQuery->paginate($perPage)->appends(['q' => $q, 'per_page' => $perPage]);
+
+        return view('dashboards.admin.logs.index', [
+            'logs' => $logs,
+            'q' => $q,
+            'per_page' => $perPage,
+        ]);
+    }
 }
