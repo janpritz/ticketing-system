@@ -110,7 +110,10 @@ class ChatbotController extends Controller
                     $fileCount = $this->countFilesInDirectory($folderPath);
 
                     $backups[] = [
+<<<<<<< HEAD
                         'id' => $folder, // Use folder as ID
+=======
+>>>>>>> e287459 (Add Chatbot Management and Rasa Server Manager functionality)
                         'folder' => $folder,
                         'date' => date('Y-m-d H:i:s', filemtime($folderPath)),
                         'size' => $folderSize,
@@ -130,6 +133,7 @@ class ChatbotController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Get list of backup files.
      */
     public function backupFiles(Request $request)
@@ -183,6 +187,8 @@ class ChatbotController extends Controller
     }
 
     /**
+=======
+>>>>>>> e287459 (Add Chatbot Management and Rasa Server Manager functionality)
      * Get models list from Rasa server.
      */
     public function modelsList(Request $request)
@@ -413,6 +419,7 @@ class ChatbotController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Delete a specific backup.
      */
     public function deleteBackup(Request $request)
@@ -486,6 +493,8 @@ class ChatbotController extends Controller
     }
 
     /**
+=======
+>>>>>>> e287459 (Add Chatbot Management and Rasa Server Manager functionality)
      * Clean up old models to save space.
      */
     public function cleanupModels(Request $request)
