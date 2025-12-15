@@ -98,17 +98,6 @@
         </div>
       </li>
       <li>
-        <a href="{{ route('admin.chatbot.index') }}"
-           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.chatbot.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
-          <svg class="w-5 h-5 {{ request()->routeIs('admin.chatbot.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
-          </svg>
-          <span class="ms-3">Chatbot Management</span>
-        </a>
-      </li>
-      <li>
-<<<<<<< HEAD
-=======
         <a href="{{ route('admin.rasa-server.index') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.rasa-server.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('admin.rasa-server.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
@@ -118,7 +107,6 @@
         </a>
       </li>
       <li>
->>>>>>> e287459 (Add Chatbot Management and Rasa Server Manager functionality)
         <a href="{{ route('admin.reports.index') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.reports.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('admin.reports.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
@@ -147,7 +135,7 @@
   <header class="bg-white border border-gray-200 rounded-md">
     <div class="px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between gap-4">
       <div class="flex-1 max-w-xl flex items-center gap-2">
-        <button id="sidebar-toggle" aria-controls="default-sidebar" type="button" class="inline-flex items-center p-2 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-300 z-50" title="Toggle sidebar">
+        <button id="sidebar-toggle" aria-controls="default-sidebar" type="button" class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200" title="Toggle sidebar">
           <span class="sr-only">Toggle sidebar</span>
           <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
@@ -276,19 +264,16 @@
 
       toggleBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        e.stopPropagation();
         toggleSidebar();
       });
 
       if (backdrop) {
-        backdrop.addEventListener('click', function (e) {
+        backdrop.addEventListener('click', function () {
           // close on backdrop click and persist closed
           if (isMobile()) {
             closeMobile();
             writeState(false);
           }
-          // Stop propagation to prevent interference with modals
-          e.stopPropagation();
         });
       }
 
