@@ -43,6 +43,7 @@ import subprocess
 from pathlib import Path
 import json
 from dotenv import load_dotenv
+from urllib.parse import unquote_plus
 
 app = Flask(__name__)
 # Enable CORS for all routes with explicit configuration
@@ -65,7 +66,7 @@ load_dotenv(BASE_DIR.parent / '.env')
 LOCK_SUFFIX = ".lock"
 LOCK_TIMEOUT = 10
 
-FAQ_UPDATER_SECRET = os.environ.get("FAQ_UPDATER_SECRET")
+FAQ_UPDATER_SECRET = os.environ.get("RASA_SECRET")
 
 def verify_secret(req) -> bool:
     """
@@ -499,6 +500,9 @@ def download_file(filename):
 
         print(f"[download] Authentication successful")
 
+        # URL decode the filename to handle spaces and special characters
+        filename = unquote_plus(filename)
+
         docs_dir = PROJECT_ROOT / "docs"
         file_path = docs_dir / filename
 
@@ -675,6 +679,190 @@ def check_rasa_status():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/check-rasa-actions-status", methods=["GET"])
+def check_rasa_actions_status():
+    """
+    Check if Rasa actions server is running on port 5055.
+    Returns: { "ok": true, "running": true/false, "message": "..." }
+    """
+    try:
+        print("[check_rasa_actions_status] /check-rasa-actions-status endpoint called")
+
+        if not verify_secret(request):
+            print("[check_rasa_actions_status] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5055 is in use
+        try:
+            result = subprocess.run(["lsof", "-ti:5055"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                return jsonify({
+                    "ok": True,
+                    "running": True,
+                    "message": "Rasa actions server is running on port 5055"
+                })
+            else:
+                return jsonify({
+                    "ok": True,
+                    "running": False,
+                    "message": "Rasa actions server is not running"
+                })
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            return jsonify({
+                "ok": True,
+                "running": False,
+                "message": "Unable to check port status"
+            })
+        except Exception as e:
+            print(f"[check_rasa_actions_status] Error checking port: {e}")
+            return jsonify({"ok": False, "error": str(e)}), 500
+
+    except Exception as e:
+        print(f"[check_rasa_actions_status] Unexpected error in /check-rasa-actions-status: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/list-models", methods=["GET"])
+def list_models():
+    """
+    List Rasa models from the models directory.
+    Returns: { "ok": true, "models": [{"name": "...", "size": 123, "modified": "..."}, ...] }
+    """
+    try:
+        print("[list_models] /list-models endpoint called")
+
+        if not verify_secret(request):
+            print("[list_models] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        models_dir = BASE_DIR.parent / "models"
+        print(f"[list_models] Models directory: {models_dir}")
+
+        models_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+        print("[list_models] Ensured models directory exists")
+
+        models = []
+        print(f"[list_models] Scanning directory: {models_dir}")
+        for item_path in models_dir.iterdir():
+            print(f"[list_models] Found item: {item_path.name} (is_file: {item_path.is_file()}, suffix: {item_path.suffix})")
+            if item_path.is_file() and item_path.suffix == '.gz' and item_path.name.endswith('.tar.gz'):
+                try:
+                    # Get file size
+                    size = item_path.stat().st_size
+                    modified = datetime.fromtimestamp(item_path.stat().st_mtime).isoformat()
+
+                    # Extract model name from filename (remove .tar.gz extension)
+                    model_name = item_path.name[:-7]  # Remove '.tar.gz'
+
+                    models.append({
+                        "name": model_name,
+                        "size": size,
+                        "modified": modified,
+                        "filename": item_path.name
+                    })
+                except Exception as e:
+                    print(f"[list_models] Error getting info for {item_path}: {e}", file=sys.stderr)
+
+        print(f"[list_models] Found {len(models)} model directories")
+
+        # Sort by modification time (newest first)
+        models.sort(key=lambda x: x['modified'], reverse=True)
+
+        result = {
+            "ok": True,
+            "models": models,
+            "count": len(models)
+        }
+        print(f"[list_models] Returning result: {result}")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[list_models] Unexpected error in /list-models: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/cleanup-models", methods=["POST"])
+def cleanup_models():
+    """
+    Clean up old Rasa models, keeping only the most recent ones.
+    Expects JSON: { "keep_count": 5 }
+    Returns: { "ok": true, "deleted_count": X, "deleted_models": [...] }
+    """
+    try:
+        print("[cleanup_models] /cleanup-models endpoint called")
+
+        if not verify_secret(request):
+            print("[cleanup_models] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        keep_count = data.get('keep_count', 5)
+
+        models_dir = BASE_DIR.parent / "models"
+        print(f"[cleanup_models] Models directory: {models_dir}")
+
+        if not models_dir.exists():
+            print("[cleanup_models] Models directory does not exist")
+            return jsonify({"ok": False, "error": "Models directory not found"}), 404
+
+        # Get all model files
+        model_files = []
+        for item_path in models_dir.iterdir():
+            if item_path.is_file() and item_path.suffix == '.gz' and item_path.name.endswith('.tar.gz'):
+                try:
+                    modified = item_path.stat().st_mtime
+                    model_files.append({
+                        'name': item_path.name,
+                        'path': item_path,
+                        'mtime': modified
+                    })
+                except Exception as e:
+                    print(f"[cleanup_models] Error getting info for {item_path}: {e}", file=sys.stderr)
+
+        print(f"[cleanup_models] Found {len(model_files)} model files")
+
+        if len(model_files) <= keep_count:
+            print(f"[cleanup_models] Only {len(model_files)} models found, keeping all")
+            return jsonify({
+                "ok": True,
+                "deleted_count": 0,
+                "deleted_models": [],
+                "message": f"Only {len(model_files)} models found, no cleanup needed"
+            })
+
+        # Sort by modification time (newest first)
+        model_files.sort(key=lambda x: x['mtime'], reverse=True)
+
+        deleted_count = 0
+        deleted_models = []
+
+        # Delete old models, keep the most recent ones
+        for i in range(keep_count, len(model_files)):
+            model = model_files[i]
+            try:
+                model['path'].unlink()
+                deleted_models.append(model['name'])
+                deleted_count += 1
+                print(f"[cleanup_models] Deleted model: {model['name']}")
+            except Exception as e:
+                print(f"[cleanup_models] Error deleting {model['name']}: {e}", file=sys.stderr)
+
+        result = {
+            "ok": True,
+            "deleted_count": deleted_count,
+            "deleted_models": deleted_models,
+            "kept_count": min(keep_count, len(model_files)),
+            "message": f"Cleaned up {deleted_count} old model(s)"
+        }
+        print(f"[cleanup_models] Returning result: {result}")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[cleanup_models] Unexpected error in /cleanup-models: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/start-rasa-api", methods=["POST"])
 def start_rasa_api():
     """
@@ -748,6 +936,82 @@ def start_rasa_api():
 
     except Exception as e:
         print(f"[start_rasa_api] Unexpected error in /start-rasa-api: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/start-rasa-actions", methods=["POST"])
+def start_rasa_actions():
+    """
+    Start the Rasa actions server.
+    First checks if port 5055 is in use and stops any process using it, then starts Rasa actions server.
+    Returns: { "ok": true, "message": "..." } or { "ok": false, "error": "..." }
+    """
+    try:
+        print("[start_rasa_actions] /start-rasa-actions endpoint called")
+
+        if not verify_secret(request):
+            print("[start_rasa_actions] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Check if port 5055 is in use and kill any process using it
+        try:
+            # Use lsof to find process using port 5055
+            result = subprocess.run(["lsof", "-ti:5055"], capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        print(f"[start_rasa_actions] Killing process {pid} using port 5055")
+                        subprocess.run(["kill", "-9", pid.strip()], check=True)
+                # Wait a moment for the port to be freed
+                import time
+                time.sleep(2)
+        except subprocess.CalledProcessError:
+            # lsof not available or no process using the port
+            pass
+        except Exception as e:
+            print(f"[start_rasa_actions] Warning: Could not check/kill process on port 5055: {e}")
+
+        # Start Rasa actions server with virtual environment
+        try:
+            venv_activate = "source /workspaces/codespaces-quickstart/.venv/bin/activate"
+            rasa_cmd = "rasa run actions"
+            full_cmd = f"{venv_activate} && {rasa_cmd}"
+
+            print(f"[start_rasa_actions] Starting Rasa actions server: {full_cmd}")
+
+            # Start the server in background (non-blocking)
+            process = subprocess.Popen(["bash", "-c", full_cmd], cwd=PROJECT_ROOT)
+
+            # Give it a moment to start
+            import time
+            time.sleep(3)
+
+            # Check if the process is still running
+            if process.poll() is None:
+                print("[start_rasa_actions] Rasa actions server started successfully")
+                return jsonify({
+                    "ok": True,
+                    "message": "Rasa actions server started successfully on port 5055",
+                    "port": 5055
+                })
+            else:
+                error_msg = f"Rasa actions server failed to start (exit code: {process.returncode})"
+                print(f"[start_rasa_actions] {error_msg}")
+                return jsonify({"ok": False, "error": error_msg}), 500
+
+        except FileNotFoundError:
+            error_msg = "'rasa' command not found. Make sure Rasa is installed and in PATH."
+            print(f"[start_rasa_actions] {error_msg}")
+            return jsonify({"ok": False, "error": error_msg}), 500
+        except Exception as e:
+            error_msg = f"Error starting Rasa actions server: {str(e)}"
+            print(f"[start_rasa_actions] {error_msg}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": error_msg}), 500
+
+    except Exception as e:
+        print(f"[start_rasa_actions] Unexpected error in /start-rasa-actions: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -888,7 +1152,11 @@ def update_faq():
 @app.route("/update-document", methods=["POST", "OPTIONS"])
 @app.route("/train-rasa", methods=["POST", "OPTIONS"])
 @app.route("/start-rasa-api", methods=["POST", "OPTIONS"])
+@app.route("/start-rasa-actions", methods=["POST", "OPTIONS"])
 @app.route("/check-rasa-status", methods=["GET", "OPTIONS"])
+@app.route("/check-rasa-actions-status", methods=["GET", "OPTIONS"])
+@app.route("/list-models", methods=["GET", "OPTIONS"])
+@app.route("/cleanup-models", methods=["POST", "OPTIONS"])
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download-announcements", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])

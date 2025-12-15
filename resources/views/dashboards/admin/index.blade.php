@@ -98,6 +98,15 @@
         </div>
       </li>
       <li>
+        <a href="{{ route('admin.chatbot.index') }}"
+           class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+          </svg>
+          <span class="ms-3">Chatbot Management</span>
+        </a>
+      </li>
+      <li>
         <a href="{{ route('admin.reports.index') }}"
            class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
           <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">

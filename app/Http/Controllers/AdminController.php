@@ -172,7 +172,7 @@ class AdminController extends Controller
             'myTicketsList'    => $myTicketsList,
             'activeStaff'       => $activeStaff,
             'staffContacts'     => $staffContacts,
-            'faqUpdaterSecret'  => env('FAQ_UPDATER_SECRET'),
+            'faqUpdaterSecret'  => env('RASA_SECRET'),
             'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
         ]);
     }

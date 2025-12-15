@@ -18,6 +18,7 @@ class DocumentChange extends Model
         'training_required',
         'training_completed',
         'training_timestamp',
+        'model_name',
     ];
 
     protected $casts = [

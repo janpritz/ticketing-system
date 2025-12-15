@@ -103,34 +103,46 @@ class DocumentChangesController extends Controller
             $result = $response->json();
 
             if ($result['ok']) {
+                // Extract model name from training output if available
+                $modelName = null;
+                if (isset($result['stdout'])) {
+                    // Look for the model path in the output like: models/20251214-175305.tar.gz
+                    if (preg_match('/models\/(\d{8}-\d{6})\.tar\.gz/', $result['stdout'], $matches)) {
+                        $modelName = $matches[1];
+                    }
+                }
+
                 // Mark all pending changes as trained
                 DocumentChange::requiresTraining()
                     ->update([
                         'training_completed' => true,
                         'training_timestamp' => now(),
+                        'model_name' => $modelName,
                     ]);
 
-                Log::info('Rasa training completed successfully via server');
+                Log::info('Rasa training completed successfully via server', ['model_name' => $modelName]);
 
                 // Restart Rasa server after successful training
                 $serverResult = $this->restartRasaServerAfterTraining();
 
                 if ($serverResult['success']) {
                     Log::info("Rasa server {$serverResult['action']} successfully after training");
-                    
+
                     return response()->json([
                         'success' => true,
-                        'message' => "Rasa training completed and server {$serverResult['action']} successfully"
+                        'message' => "Rasa training completed and server {$serverResult['action']} successfully",
+                        'model_name' => $modelName
                     ]);
                 } else {
                     Log::warning('Rasa training completed but server restart failed', [
                         'server_error' => $serverResult['error']
                     ]);
-                    
+
                     return response()->json([
                         'success' => true,
                         'message' => 'Rasa training completed successfully (server restart failed: ' . $serverResult['error'] . ')',
-                        'server_error' => $serverResult['error']
+                        'server_error' => $serverResult['error'],
+                        'model_name' => $modelName
                     ]);
                 }
             } else {
