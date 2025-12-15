@@ -10,6 +10,7 @@
                 <p class="text-sm text-gray-600 mt-1">Monitor and manage chatbot system status, training, and backups.</p>
             </div>
         </div>
+        
 
         <!-- System Status Card -->
         <div class="mt-6 bg-white rounded-xl border border-gray-200 p-6">
@@ -20,12 +21,26 @@
                     </svg>
                     System Status
                 </h3>
-                <button id="refreshStatus" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    Refresh
-                </button>
+                <div class="flex items-center gap-3">
+                    <button id="startServerBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l.707.707A1 1 0 0012.414 11H15m-3-3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Start Server
+                    </button>
+                    <button id="startActionServerBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Start Actions
+                    </button>
+                    <button id="refreshStatus" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
@@ -72,33 +87,13 @@
                     <div id="lastBackup" class="text-sm text-gray-900 mb-1">None</div>
                     <div class="text-xs text-gray-500">&nbsp;</div>
                 </div>
-            </div>
 
-            <!-- Action Buttons -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <!-- Start Server -->
-                <button id="startServerBtn" class="inline-flex flex-col items-center gap-1 p-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l.707.707A1 1 0 0012.414 11H15m-3-3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-center text-xs">Start Server</span>
-                </button>
-
-                <!-- Start Action Server -->
-                <button id="startActionServerBtn" class="inline-flex flex-col items-center gap-1 p-3 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                    <span class="text-center text-xs">Start Actions</span>
-                </button>
-
-                <!-- Cleanup Models -->
-                <button id="cleanupModelsBtn" class="inline-flex flex-col items-center gap-1 p-3 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    <span class="text-center text-xs">Cleanup Models</span>
-                </button>
+                <!-- Current Model Card -->
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="text-sm font-medium text-gray-600 mb-1">Current Model</div>
+                    <div id="currentModel" class="text-sm text-gray-900 mb-1">Loading...</div>
+                    <div class="text-xs text-gray-500" id="currentModelVersion">-</div>
+                </div>
             </div>
         </div>
 
@@ -135,6 +130,25 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Controls -->
+            <div class="px-4 sm:px-6 py-3 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-700">Show:</span>
+                        <select id="trainingHistoryPerPage" class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span class="text-sm text-gray-700">entries</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="trainingHistoryPrev" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                        <span id="trainingHistoryPageInfo" class="text-sm text-gray-700">Page 1 of 1</span>
+                        <button id="trainingHistoryNext" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Backup History -->
@@ -170,6 +184,25 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Controls -->
+            <div class="px-4 sm:px-6 py-3 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-700">Show:</span>
+                        <select id="backupHistoryPerPage" class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span class="text-sm text-gray-700">entries</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="backupHistoryPrev" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                        <span id="backupHistoryPageInfo" class="text-sm text-gray-700">Page 1 of 1</span>
+                        <button id="backupHistoryNext" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Models List -->
@@ -177,7 +210,15 @@
             <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-gray-900">Available Models</h3>
-                    <button id="refreshModelsList" class="text-sm text-blue-600 hover:text-blue-800">Refresh</button>
+                    <div class="flex items-center gap-3">
+                        <button id="cleanupModelsBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Cleanup Models
+                        </button>
+                        <button id="refreshModelsList" class="text-sm text-blue-600 hover:text-blue-800">Refresh</button>
+                    </div>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -197,8 +238,28 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Controls -->
+            <div class="px-4 sm:px-6 py-3 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-700">Show:</span>
+                        <select id="modelsListPerPage" class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span class="text-sm text-gray-700">entries</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="modelsListPrev" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                        <span id="modelsListPageInfo" class="text-sm text-gray-700">Page 1 of 1</span>
+                        <button id="modelsListNext" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
 
     <!-- Status Data (hidden) -->
     <div id="statusData" class="hidden" data-csrf="{{ csrf_token() }}"></div>
@@ -216,6 +277,8 @@
     const actionServerStatus = document.getElementById('actionServerStatus');
     const lastTraining = document.getElementById('lastTraining');
     const lastBackup = document.getElementById('lastBackup');
+    const currentModel = document.getElementById('currentModel');
+    const currentModelVersion = document.getElementById('currentModelVersion');
 
     // Button elements
     const refreshStatusBtn = document.getElementById('refreshStatus');
@@ -232,6 +295,32 @@
     const refreshTrainingHistoryBtn = document.getElementById('refreshTrainingHistory');
     const refreshBackupHistoryBtn = document.getElementById('refreshBackupHistory');
     const refreshModelsListBtn = document.getElementById('refreshModelsList');
+
+
+    // Pagination elements
+    const trainingHistoryPerPage = document.getElementById('trainingHistoryPerPage');
+    const backupHistoryPerPage = document.getElementById('backupHistoryPerPage');
+    const modelsListPerPage = document.getElementById('modelsListPerPage');
+    const trainingHistoryPrev = document.getElementById('trainingHistoryPrev');
+    const backupHistoryPrev = document.getElementById('backupHistoryPrev');
+    const modelsListPrev = document.getElementById('modelsListPrev');
+    const trainingHistoryNext = document.getElementById('trainingHistoryNext');
+    const backupHistoryNext = document.getElementById('backupHistoryNext');
+    const modelsListNext = document.getElementById('modelsListNext');
+    const trainingHistoryPageInfo = document.getElementById('trainingHistoryPageInfo');
+    const backupHistoryPageInfo = document.getElementById('backupHistoryPageInfo');
+    const modelsListPageInfo = document.getElementById('modelsListPageInfo');
+
+    // Pagination state
+    let trainingHistoryData = [];
+    let backupHistoryData = [];
+    let modelsListData = [];
+    let trainingHistoryCurrentPage = 1;
+    let backupHistoryCurrentPage = 1;
+    let modelsListCurrentPage = 1;
+    let trainingHistoryTotalPages = 1;
+    let backupHistoryTotalPages = 1;
+    let modelsListTotalPages = 1;
 
     // Status update functions
     function updateEndpointStatus(isRunning) {
@@ -300,12 +389,35 @@
         const relativeDiv = card.querySelector('.text-xs.text-gray-500');
 
         if (data) {
-            lastBackup.textContent = data.timestamp;
+            // Convert timestamp to human-readable format
+            const date = new Date(data.timestamp);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const formattedTime = date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            
+            lastBackup.textContent = `${formattedDate} at ${formattedTime}`;
             const size = (data.size / 1024).toFixed(1) + ' KB, ' + data.file_count + ' files';
             relativeDiv.textContent = size;
         } else {
             lastBackup.textContent = 'None';
             relativeDiv.textContent = '';
+        }
+    }
+
+    function updateCurrentModel(data) {
+        if (data) {
+            currentModel.textContent = data.name || 'Unknown';
+            currentModelVersion.textContent = data.version ? `v${data.version}` : '-';
+        } else {
+            currentModel.textContent = 'None';
+            currentModelVersion.textContent = '-';
         }
     }
 
@@ -325,6 +437,7 @@
                 updateActionServerStatus(data.action_server_5055);
                 updateLastTraining(data.last_training);
                 updateLastBackup(data.last_backup);
+                updateCurrentModel(data.current_model);
             }
         } catch (error) {
             console.error('Failed to fetch status:', error);
@@ -342,7 +455,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                updateTrainingHistoryTable(data.trainings);
+                updateTrainingHistoryTable(data.trainings || []);
             }
         } catch (error) {
             console.error('Failed to fetch training history:', error);
@@ -360,7 +473,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                updateBackupHistoryTable(data.backups);
+                updateBackupHistoryTable(data.backups || []);
             }
         } catch (error) {
             console.error('Failed to fetch backup history:', error);
@@ -378,115 +491,177 @@
 
             if (response.ok) {
                 const data = await response.json();
-                updateModelsListTable(data.models);
+                updateModelsListTable(data.models || []);
             }
         } catch (error) {
             console.error('Failed to fetch models list:', error);
         }
     }
 
-    // Update training history table
-    function updateTrainingHistoryTable(trainings) {
-        if (!trainings || trainings.length === 0) {
+    // Pagination functions
+    function updateTrainingHistoryTable(data) {
+        trainingHistoryData = data || [];
+        trainingHistoryCurrentPage = 1;
+        renderTrainingHistoryPage();
+    }
+
+    function renderTrainingHistoryPage() {
+        const perPage = parseInt(trainingHistoryPerPage.value);
+        const start = (trainingHistoryCurrentPage - 1) * perPage;
+        const end = start + perPage;
+        const pageData = trainingHistoryData.slice(start, end);
+        
+        trainingHistoryTotalPages = Math.ceil(trainingHistoryData.length / perPage);
+
+        if (pageData.length === 0) {
             trainingHistoryTable.innerHTML = `
                 <tr>
                     <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No training history found.</td>
                 </tr>
             `;
-            return;
+        } else {
+            const rows = pageData.map(training => {
+                const statusClass = {
+                    'success': 'text-green-700 bg-green-50',
+                    'failed': 'text-red-700 bg-red-50',
+                    'pending': 'text-yellow-700 bg-yellow-50',
+                    'superseded': 'text-gray-700 bg-gray-50'
+                }[training.status] || 'text-gray-700 bg-gray-50';
+
+                return `
+                    <tr>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.date}</td>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                ${training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                            </span>
+                        </td>
+                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.user}</td>
+                        <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.file_name}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            trainingHistoryTable.innerHTML = rows;
         }
-
-        const rows = trainings.map(training => {
-            const statusClass = {
-                'success': 'text-green-700 bg-green-50',
-                'failed': 'text-red-700 bg-red-50',
-                'pending': 'text-yellow-700 bg-yellow-50',
-                'superseded': 'text-gray-700 bg-gray-50'
-            }[training.status] || 'text-gray-700 bg-gray-50';
-
-            return `
-                <tr>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.date}</td>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                            ${training.status.charAt(0).toUpperCase() + training.status.slice(1)}
-                        </span>
-                    </td>
-                    <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.user}</td>
-                    <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.file_name}</td>
-                </tr>
-            `;
-        }).join('');
-
-        trainingHistoryTable.innerHTML = rows;
+        
+        updatePaginationControls('trainingHistory');
     }
 
-    // Update backup history table
-    function updateBackupHistoryTable(backups) {
-        if (!backups || backups.length === 0) {
+    function updateBackupHistoryTable(data) {
+        backupHistoryData = data || [];
+        backupHistoryCurrentPage = 1;
+        renderBackupHistoryPage();
+    }
+
+    function renderBackupHistoryPage() {
+        const perPage = parseInt(backupHistoryPerPage.value);
+        const start = (backupHistoryCurrentPage - 1) * perPage;
+        const end = start + perPage;
+        const pageData = backupHistoryData.slice(start, end);
+        
+        backupHistoryTotalPages = Math.ceil(backupHistoryData.length / perPage);
+
+        if (pageData.length === 0) {
             backupHistoryTable.innerHTML = `
                 <tr>
                     <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No backup history found.</td>
                 </tr>
             `;
-            return;
+        } else {
+            const rows = pageData.map(backup => {
+                const size = (backup.size / 1024).toFixed(1) + ' KB';
+                return `
+                    <tr>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.date}</td>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.type}</td>
+                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.folder} (${backup.file_count} files)</td>
+                        <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${size}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            backupHistoryTable.innerHTML = rows;
         }
-
-        const rows = backups.map(backup => {
-            const size = (backup.size / 1024).toFixed(1) + ' KB';
-            return `
-                <tr>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.date}</td>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.type}</td>
-                    <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.folder} (${backup.file_count} files)</td>
-                    <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${size}</td>
-                </tr>
-            `;
-        }).join('');
-
-        backupHistoryTable.innerHTML = rows;
+        
+        updatePaginationControls('backupHistory');
     }
 
-    // Update models list table
-    function updateModelsListTable(models) {
-        if (!models || models.length === 0) {
+    function updateModelsListTable(data) {
+        modelsListData = data || [];
+        modelsListCurrentPage = 1;
+        renderModelsListPage();
+    }
+
+    function renderModelsListPage() {
+        const perPage = parseInt(modelsListPerPage.value);
+        const start = (modelsListCurrentPage - 1) * perPage;
+        const end = start + perPage;
+        const pageData = modelsListData.slice(start, end);
+        
+        modelsListTotalPages = Math.ceil(modelsListData.length / perPage);
+
+        if (pageData.length === 0) {
             modelsListTable.innerHTML = `
                 <tr>
                     <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No models found.</td>
                 </tr>
             `;
-            return;
+        } else {
+            const rows = pageData.map(model => {
+                const statusClass = {
+                    'loaded': 'text-green-700 bg-green-50',
+                    'available': 'text-blue-700 bg-blue-50',
+                    'training': 'text-yellow-700 bg-yellow-50',
+                    'failed': 'text-red-700 bg-red-50'
+                }[model.status] || 'text-gray-700 bg-gray-50';
+
+                // Special styling for current model
+                const rowClass = model.is_current ? 'bg-blue-50 border-l-4 border-blue-500' : '';
+                const nameClass = model.is_current ? 'text-blue-900 font-bold' : 'text-gray-900 font-medium';
+                const currentBadge = model.is_current ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Current</span>' : '';
+
+                return `
+                    <tr class="${rowClass}">
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm ${nameClass}">${model.name}${currentBadge}</td>
+                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.version}</td>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                ${model.status.charAt(0).toUpperCase() + model.status.slice(1)}
+                            </span>
+                        </td>
+                        <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.size_formatted}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            modelsListTable.innerHTML = rows;
         }
-
-        const rows = models.map(model => {
-            const statusClass = {
-                'loaded': 'text-green-700 bg-green-50',
-                'available': 'text-blue-700 bg-blue-50',
-                'training': 'text-yellow-700 bg-yellow-50',
-                'failed': 'text-red-700 bg-red-50'
-            }[model.status] || 'text-gray-700 bg-gray-50';
-
-            // Special styling for current model
-            const rowClass = model.is_current ? 'bg-blue-50 border-l-4 border-blue-500' : '';
-            const nameClass = model.is_current ? 'text-blue-900 font-bold' : 'text-gray-900 font-medium';
-            const currentBadge = model.is_current ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Current</span>' : '';
-
-            return `
-                <tr class="${rowClass}">
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm ${nameClass}">${model.name}${currentBadge}</td>
-                    <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.version}</td>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                            ${model.status.charAt(0).toUpperCase() + model.status.slice(1)}
-                        </span>
-                    </td>
-                    <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.size_formatted}</td>
-                </tr>
-            `;
-        }).join('');
-
-        modelsListTable.innerHTML = rows;
+        
+        updatePaginationControls('modelsList');
     }
+
+    function updatePaginationControls(tableType) {
+        switch(tableType) {
+            case 'trainingHistory':
+                trainingHistoryPageInfo.textContent = `Page ${trainingHistoryCurrentPage} of ${trainingHistoryTotalPages}`;
+                trainingHistoryPrev.disabled = trainingHistoryCurrentPage <= 1;
+                trainingHistoryNext.disabled = trainingHistoryCurrentPage >= trainingHistoryTotalPages;
+                break;
+            case 'backupHistory':
+                backupHistoryPageInfo.textContent = `Page ${backupHistoryCurrentPage} of ${backupHistoryTotalPages}`;
+                backupHistoryPrev.disabled = backupHistoryCurrentPage <= 1;
+                backupHistoryNext.disabled = backupHistoryCurrentPage >= backupHistoryTotalPages;
+                break;
+            case 'modelsList':
+                modelsListPageInfo.textContent = `Page ${modelsListCurrentPage} of ${modelsListTotalPages}`;
+                modelsListPrev.disabled = modelsListCurrentPage <= 1;
+                modelsListNext.disabled = modelsListCurrentPage >= modelsListTotalPages;
+                break;
+        }
+    }
+
+
 
     // Action handlers
     async function startServer() {
@@ -717,6 +892,146 @@
     refreshTrainingHistoryBtn.addEventListener('click', fetchTrainingHistory);
     refreshBackupHistoryBtn.addEventListener('click', fetchBackupHistory);
     refreshModelsListBtn.addEventListener('click', fetchModelsList);
+
+
+    // Pagination event listeners - ensure they don't interfere with sidebar toggle
+    trainingHistoryPerPage.addEventListener('change', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        trainingHistoryCurrentPage = 1;
+        renderTrainingHistoryPage();
+    });
+
+    backupHistoryPerPage.addEventListener('change', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        backupHistoryCurrentPage = 1;
+        renderBackupHistoryPage();
+    });
+
+    modelsListPerPage.addEventListener('change', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        modelsListCurrentPage = 1;
+        renderModelsListPage();
+    });
+
+    trainingHistoryPrev.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (trainingHistoryCurrentPage > 1) {
+            trainingHistoryCurrentPage--;
+            renderTrainingHistoryPage();
+        }
+    });
+
+    backupHistoryPrev.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (backupHistoryCurrentPage > 1) {
+            backupHistoryCurrentPage--;
+            renderBackupHistoryPage();
+        }
+    });
+
+    modelsListPrev.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (modelsListCurrentPage > 1) {
+            modelsListCurrentPage--;
+            renderModelsListPage();
+        }
+    });
+
+    trainingHistoryNext.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (trainingHistoryCurrentPage < trainingHistoryTotalPages) {
+            trainingHistoryCurrentPage++;
+            renderTrainingHistoryPage();
+        }
+    });
+
+    backupHistoryNext.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (backupHistoryCurrentPage < backupHistoryTotalPages) {
+            backupHistoryCurrentPage++;
+            renderBackupHistoryPage();
+        }
+    });
+
+    modelsListNext.addEventListener('click', (e) => {
+        // Don't interfere with sidebar toggle
+        if (e.target && e.target.closest && e.target.closest('#sidebar-toggle')) {
+            return;
+        }
+        if (modelsListCurrentPage < modelsListTotalPages) {
+            modelsListCurrentPage++;
+            renderModelsListPage();
+        }
+    });
+
+    // Ensure sidebar toggle works - add fallback listener
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+    if (sidebarToggleBtn) {
+        // Add a fallback listener that ensures the toggle works
+        sidebarToggleBtn.addEventListener('click', function(e) {
+            // If the layout's listener didn't work, manually toggle the sidebar
+            const sidebar = document.getElementById('default-sidebar');
+            const content = document.getElementById('content-wrapper');
+            const backdrop = document.getElementById('sidebar-backdrop');
+
+            if (sidebar && content) {
+                const isMobile = window.innerWidth < 640;
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+
+                if (isMobile) {
+                    // Mobile behavior
+                    if (isOpen) {
+                        sidebar.classList.add('-translate-x-full');
+                        sidebar.classList.remove('translate-x-0');
+                        if (backdrop) backdrop.classList.add('hidden');
+                        document.body.classList.remove('overflow-hidden');
+                    } else {
+                        sidebar.classList.remove('-translate-x-full');
+                        sidebar.classList.add('translate-x-0');
+                        if (backdrop) backdrop.classList.remove('hidden');
+                        document.body.classList.add('overflow-hidden');
+                    }
+                } else {
+                    // Desktop behavior
+                    if (isOpen) {
+                        sidebar.classList.add('sm:-translate-x-full');
+                        sidebar.classList.remove('sm:translate-x-0');
+                        content.classList.remove('sm:ml-64');
+                        content.classList.add('ml-0');
+                    } else {
+                        sidebar.classList.remove('sm:-translate-x-full');
+                        sidebar.classList.add('sm:translate-x-0');
+                        content.classList.add('sm:ml-64');
+                        content.classList.remove('ml-0');
+                    }
+                }
+            }
+        }, true); // Use capture phase to ensure it runs before other listeners
+    }
 
     // Initial load
     fetchStatus();

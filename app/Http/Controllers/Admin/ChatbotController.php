@@ -110,6 +110,7 @@ class ChatbotController extends Controller
                     $fileCount = $this->countFilesInDirectory($folderPath);
 
                     $backups[] = [
+                        'id' => $folder, // Use folder as ID
                         'folder' => $folder,
                         'date' => date('Y-m-d H:i:s', filemtime($folderPath)),
                         'size' => $folderSize,
@@ -126,6 +127,59 @@ class ChatbotController extends Controller
         });
 
         return response()->json(['backups' => array_slice($backups, 0, 50)]);
+    }
+
+    /**
+     * Get list of backup files.
+     */
+    public function backupFiles(Request $request)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        $files = [];
+        $backupFolder = $request->input('backup_folder'); // Accept backup_folder parameter
+
+        // Check for backup directories
+        $backupBaseDir = storage_path('app/backups');
+        if (is_dir($backupBaseDir)) {
+            $folders = scandir($backupBaseDir);
+            foreach ($folders as $folder) {
+                if ($folder !== '.' && $folder !== '..' && is_dir($backupBaseDir . '/' . $folder)) {
+                    // If backup_folder is specified, only process that specific folder
+                    if ($backupFolder && $folder !== $backupFolder) {
+                        continue;
+                    }
+                    
+                    $folderPath = $backupBaseDir . '/' . $folder;
+                    
+                    // Get all files in this backup directory
+                    $backupFiles = scandir($folderPath);
+                    foreach ($backupFiles as $file) {
+                        if ($file !== '.' && $file !== '..' && is_file($folderPath . '/' . $file)) {
+                            $filePath = $folderPath . '/' . $file;
+                            $files[] = [
+                                'backup_folder' => $folder,
+                                'file_name' => $file,
+                                'file_path' => $folder . '/' . $file,
+                                'size' => filesize($filePath),
+                                'size_formatted' => $this->formatBytes(filesize($filePath)),
+                                'date' => date('Y-m-d H:i:s', filemtime($filePath)),
+                                'type' => $this->getBackupType($file)
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort by date descending
+        usort($files, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+
+        return response()->json(['files' => array_slice($files, 0, 100)]);
     }
 
     /**
@@ -354,6 +408,79 @@ class ChatbotController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Backup creation failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a specific backup.
+     */
+    public function deleteBackup(Request $request)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        try {
+            $request->validate([
+                'backup_folder' => 'required|string'
+            ]);
+
+            $backupFolder = $request->input('backup_folder');
+            $backupPath = storage_path('app/backups/' . $backupFolder);
+
+            if (!is_dir($backupPath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Backup folder not found'
+                ], 404);
+            }
+
+            // Recursively delete all files in the backup directory
+            $deletedFiles = 0;
+            $deletedSize = 0;
+
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($backupPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isFile()) {
+                    $deletedSize += $file->getSize();
+                    unlink($file->getPathname());
+                    $deletedFiles++;
+                } elseif ($file->isDir()) {
+                    rmdir($file->getPathname());
+                }
+            }
+
+            // Remove the backup directory itself
+            rmdir($backupPath);
+
+            Log::info('Backup deleted successfully', [
+                'user' => Auth::user()->name,
+                'backup_folder' => $backupFolder,
+                'deleted_files' => $deletedFiles,
+                'deleted_size' => $deletedSize
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Backup deleted successfully. Removed {$deletedFiles} files (" . $this->formatBytes($deletedSize) . ")",
+                'deleted_files' => $deletedFiles,
+                'deleted_size' => $deletedSize
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Backup deletion failed', [
+                'error' => $e->getMessage(),
+                'backup_folder' => $backupFolder ?? 'unknown'
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup deletion failed: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -9,7 +9,6 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\CategoriesController;
-use App\Http\Controllers\Admin\RasaServerController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -254,15 +253,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/status', [\App\Http\Controllers\Admin\ChatbotController::class, 'status'])->name('status');
         Route::get('/training-history', [\App\Http\Controllers\Admin\ChatbotController::class, 'trainingHistory'])->name('training-history');
         Route::get('/backup-history', [\App\Http\Controllers\Admin\ChatbotController::class, 'backupHistory'])->name('backup-history');
+        Route::get('/backup-files', [\App\Http\Controllers\Admin\ChatbotController::class, 'backupFiles'])->name('backup-files');
         Route::get('/models-list', [\App\Http\Controllers\Admin\ChatbotController::class, 'modelsList'])->name('models-list');
         Route::post('/create-backup', [\App\Http\Controllers\Admin\ChatbotController::class, 'createBackup'])->name('create-backup');
+        Route::post('/delete-backup', [\App\Http\Controllers\Admin\ChatbotController::class, 'deleteBackup'])->name('delete-backup');
         Route::post('/start-action-server', [\App\Http\Controllers\Admin\ChatbotController::class, 'startActionServer'])->name('start-action-server');
         Route::post('/cleanup-models', [\App\Http\Controllers\Admin\ChatbotController::class, 'cleanupModels'])->name('cleanup-models');
-    });
-
-    // Admin Rasa Server Manager
-    Route::prefix('admin/rasa-server')->name('admin.rasa-server.')->group(function () {
-        Route::get('/', [RasaServerController::class, 'index'])->name('index');
     });
 
     // Admin logs
