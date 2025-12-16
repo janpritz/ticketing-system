@@ -47,7 +47,7 @@
                     <div class="text-sm font-medium text-gray-600 mb-1">Rasa Endpoint</div>
                     <div class="text-xs text-gray-500 mb-2">Port 5001</div>
                     <div id="endpointStatus" class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-gray-400 animate-pulse"></div>
+                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
                         <span class="text-sm text-gray-600">Checking...</span>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                     <div class="text-sm font-medium text-gray-600 mb-1">Rasa Server</div>
                     <div class="text-xs text-gray-500 mb-2">Port 5005</div>
                     <div id="serverStatus" class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-gray-400 animate-pulse"></div>
+                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
                         <span class="text-sm text-gray-600">Checking...</span>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
                     <div class="text-sm font-medium text-gray-600 mb-1">Action Server</div>
                     <div class="text-xs text-gray-500 mb-2">Port 5055</div>
                     <div id="actionServerStatus" class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-gray-400 animate-pulse"></div>
+                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
                         <span class="text-sm text-gray-600">Checking...</span>
                     </div>
                 </div>
@@ -207,7 +207,7 @@
         <div class="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Available Models</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">Old Models</h3>
                     <div class="flex items-center gap-3">
                         <button id="cleanupModelsBtnTop" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,6 +264,7 @@
 @section('admin-scripts')
 <script>
 (function() {
+    console.log('Rasa Server Manager script loaded');
     // CSRF token
     const csrfToken = document.getElementById('statusData').getAttribute('data-csrf');
 
@@ -282,11 +283,7 @@
     const startActionServerBtn = document.getElementById('startActionServerBtn');
     const trainModelBtn = document.getElementById('trainModelBtn');
     const createBackupBtn = document.getElementById('createBackupBtn');
-    const cleanupModelsBtn = document.getElementById('cleanupModelsBtn');
     const cleanupModelsBtnTop = document.getElementById('cleanupModelsBtnTop');
-
-    console.log('cleanupModelsBtnTop:', cleanupModelsBtnTop);
-    console.log('cleanupModelsBtn:', cleanupModelsBtn);
 
     // Table elements
     const trainingHistoryTable = document.getElementById('trainingHistoryTable');
@@ -328,13 +325,13 @@
         const text = statusDiv.querySelector('span');
 
         if (isRunning) {
-            dot.className = 'w-3 h-3 rounded-full bg-green-500';
+            dot.className = 'w-4 h-4 rounded-full bg-green-600';
             text.textContent = 'Online';
-            text.className = 'text-sm text-green-700';
+            text.className = 'text-sm font-semibold text-green-800';
         } else {
-            dot.className = 'w-3 h-3 rounded-full bg-red-500';
+            dot.className = 'w-4 h-4 rounded-full bg-red-600';
             text.textContent = 'Offline';
-            text.className = 'text-sm text-red-700';
+            text.className = 'text-sm font-semibold text-red-800';
         }
     }
 
@@ -344,13 +341,13 @@
         const text = statusDiv.querySelector('span');
 
         if (isRunning) {
-            dot.className = 'w-3 h-3 rounded-full bg-green-500';
+            dot.className = 'w-4 h-4 rounded-full bg-green-600';
             text.textContent = 'Online';
-            text.className = 'text-sm text-green-700';
+            text.className = 'text-sm font-semibold text-green-800';
         } else {
-            dot.className = 'w-3 h-3 rounded-full bg-red-500';
+            dot.className = 'w-4 h-4 rounded-full bg-red-600';
             text.textContent = 'Offline';
-            text.className = 'text-sm text-red-700';
+            text.className = 'text-sm font-semibold text-red-800';
         }
     }
 
@@ -360,13 +357,13 @@
         const text = statusDiv.querySelector('span');
 
         if (isRunning) {
-            dot.className = 'w-3 h-3 rounded-full bg-green-500';
+            dot.className = 'w-4 h-4 rounded-full bg-green-600';
             text.textContent = 'Online';
-            text.className = 'text-sm text-green-700';
+            text.className = 'text-sm font-semibold text-green-800';
         } else {
-            dot.className = 'w-3 h-3 rounded-full bg-red-500';
+            dot.className = 'w-4 h-4 rounded-full bg-red-600';
             text.textContent = 'Offline';
-            text.className = 'text-sm text-red-700';
+            text.className = 'text-sm font-semibold text-red-800';
         }
     }
 
@@ -422,6 +419,7 @@
 
     // Fetch status
     async function fetchStatus() {
+        console.log('Starting fetchStatus');
         try {
             const response = await fetch('{{ route("admin.rasa-server.status") }}', {
                 headers: {
@@ -431,20 +429,25 @@
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('fetchStatus received data:', data);
                 updateEndpointStatus(data.endpoint_5001);
                 updateServerStatus(data.server_5005);
                 updateActionServerStatus(data.action_server_5055);
                 updateLastTraining(data.last_training);
                 updateLastBackup(data.last_backup);
                 updateCurrentModel(data.current_model);
+            } else {
+                console.error('fetchStatus response not ok:', response.status);
             }
         } catch (error) {
             console.error('Failed to fetch status:', error);
         }
+        console.log('Completed fetchStatus');
     }
 
     // Fetch training history
     async function fetchTrainingHistory() {
+        console.log('Starting fetchTrainingHistory');
         try {
             const response = await fetch('{{ route("admin.rasa-server.training-history") }}', {
                 headers: {
@@ -454,15 +457,20 @@
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('fetchTrainingHistory received data:', data);
                 updateTrainingHistoryTable(data.trainings || []);
+            } else {
+                console.error('fetchTrainingHistory response not ok:', response.status);
             }
         } catch (error) {
             console.error('Failed to fetch training history:', error);
         }
+        console.log('Completed fetchTrainingHistory');
     }
 
     // Fetch backup history
     async function fetchBackupHistory() {
+        console.log('Starting fetchBackupHistory');
         try {
             const response = await fetch('{{ route("admin.rasa-server.backup-history") }}', {
                 headers: {
@@ -472,15 +480,20 @@
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('fetchBackupHistory received data:', data);
                 updateBackupHistoryTable(data.backups || []);
+            } else {
+                console.error('fetchBackupHistory response not ok:', response.status);
             }
         } catch (error) {
             console.error('Failed to fetch backup history:', error);
         }
+        console.log('Completed fetchBackupHistory');
     }
 
     // Fetch models list
     async function fetchModelsList() {
+        console.log('Starting fetchModelsList');
         try {
             const response = await fetch('{{ route("admin.rasa-server.models-list") }}', {
                 headers: {
@@ -490,11 +503,15 @@
 
             if (response.ok) {
                 const data = await response.json();
+                console.log('fetchModelsList received data:', data);
                 updateModelsListTable(data.models || []);
+            } else {
+                console.error('fetchModelsList response not ok:', response.status);
             }
         } catch (error) {
             console.error('Failed to fetch models list:', error);
         }
+        console.log('Completed fetchModelsList');
     }
 
     // Pagination functions
@@ -840,9 +857,7 @@
 
         if (!result.isConfirmed) return;
 
-        cleanupModelsBtn.disabled = true;
         cleanupModelsBtnTop.disabled = true;
-        cleanupModelsBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Cleaning...';
         cleanupModelsBtnTop.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Cleaning...';
 
         try {
@@ -876,9 +891,7 @@
                 text: error.message
             });
         } finally {
-            cleanupModelsBtn.disabled = false;
             cleanupModelsBtnTop.disabled = false;
-            cleanupModelsBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg><span class="text-center text-xs">Cleanup Models</span>';
             cleanupModelsBtnTop.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Cleanup Models';
         }
     }
@@ -889,13 +902,14 @@
     startActionServerBtn.addEventListener('click', startActionServer);
     trainModelBtn.addEventListener('click', trainModel);
     createBackupBtn.addEventListener('click', createBackup);
-    cleanupModelsBtn.addEventListener('click', cleanupModels);
     cleanupModelsBtnTop.addEventListener('click', cleanupModels);
     cleanupModelsBtnTop.addEventListener('click', cleanupModels);
 
     refreshTrainingHistoryBtn.addEventListener('click', fetchTrainingHistory);
     refreshBackupHistoryBtn.addEventListener('click', fetchBackupHistory);
     refreshModelsListBtn.addEventListener('click', fetchModelsList);
+
+    cleanupModelsBtnTop.addEventListener('click', cleanupModels);
 
     // Pagination event listeners
     trainingHistoryPerPage.addEventListener('change', (e) => {
@@ -956,10 +970,12 @@
     });
 
     // Initial load
+    console.log('Starting initial load fetches');
     fetchStatus();
     fetchTrainingHistory();
     fetchBackupHistory();
     fetchModelsList();
+    console.log('Initial load fetches initiated');
 
     // Auto-refresh status every 30 seconds
     setInterval(fetchStatus, 30000);

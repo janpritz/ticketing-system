@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentChange;
+use App\Models\RasaModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Pool;
 use Carbon\Carbon;
 
 class RasaServerController extends Controller
@@ -29,10 +31,41 @@ class RasaServerController extends Controller
         $user = Auth::user();
         abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
 
+        // Make concurrent requests to speed up status checks
+        $responses = Http::pool(function (Pool $pool) {
+            $url = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+            $headers = [
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ];
+
+            return [
+                $pool->timeout(5)->withHeaders($headers)->get($url . '/check-rasa-status'), // for server 5005
+                $pool->timeout(5)->withHeaders($headers)->get($url . '/check-rasa-actions-status'), // for action server 5055
+            ];
+        });
+
+        $serverStatus = false;
+        $actionServerStatus = false;
+
+        if ($responses[0]->successful()) {
+            $data = $responses[0]->json();
+            $serverStatus = $data['running'] ?? false;
+        }
+
+        if ($responses[1]->successful()) {
+            $data = $responses[1]->json();
+            $actionServerStatus = $data['running'] ?? false;
+        }
+
+        // Check endpoint (FAQ updater responsiveness)
+        $endpointStatus = $this->checkEndpointStatus(5001);
+
         $status = [
-            'endpoint_5001' => $this->checkEndpointStatus(5001),
-            'server_5005' => $this->checkServerStatus(5005),
-            'action_server_5055' => $this->checkActionServerStatus(5055),
+            'endpoint_5001' => $endpointStatus,
+            'server_5005' => $serverStatus,
+            'action_server_5055' => $actionServerStatus,
             'last_training' => $this->getLastTrainingInfo(),
             'last_backup' => $this->getLastBackupInfo(),
             'current_model' => $this->getCurrentModelInfo(),
@@ -135,13 +168,9 @@ class RasaServerController extends Controller
 
         $models = [];
 
-        // Get the current model name from the latest successful training
-        $currentModelRecord = DocumentChange::whereNotNull('model_name')
-            ->where('training_completed', true)
-            ->orderBy('training_timestamp', 'desc')
-            ->first();
-
-        $currentModelName = $currentModelRecord ? $currentModelRecord->model_name : null;
+        // Get the current model name from the RasaModel table
+        $currentModel = RasaModel::where('is_current', true)->first();
+        $currentModelName = $currentModel ? $currentModel->model_name : null;
 
         try {
             // Get models from FAQ updater service
@@ -190,23 +219,63 @@ class RasaServerController extends Controller
     }
 
     /**
-     * Start action server - proxies to chatbot start action server
+     * Start action server - calls FAQ updater service to start Rasa actions server
      */
     public function startActionServer(Request $request)
     {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
         try {
+            // Get FAQ updater service configuration
+            $faqUpdaterUrl = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+
+            if (!$faqUpdaterUrl || !$secret) {
+                throw new \Exception('FAQ updater service not configured');
+            }
+
             $response = Http::timeout(60)
                 ->withHeaders([
-                    'X-CSRF-TOKEN' => csrf_token(),
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
                     'X-Requested-With' => 'XMLHttpRequest',
                     'Accept' => 'application/json'
                 ])
-                ->post(route('admin.chatbot.start-action-server'));
+                ->post($faqUpdaterUrl . '/start-rasa-actions');
 
-            return $response;
+            if (!$response->successful()) {
+                throw new \Exception('FAQ updater service returned error: ' . $response->status() . ' - ' . $response->body());
+            }
+
+            $result = $response->json();
+
+            if ($result['ok']) {
+                Log::info('Rasa actions server started successfully via FAQ updater service', ['user' => Auth::user()->name]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'] ?? 'Rasa actions server started successfully on port 5055'
+                ]);
+            } else {
+                Log::error('Rasa actions server start failed on FAQ updater service', [
+                    'error' => $result['error'] ?? 'Unknown error',
+                    'result' => $result
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Rasa actions server start failed: ' . ($result['error'] ?? 'Unknown error')
+                ], 500);
+            }
+
         } catch (\Exception $e) {
-            Log::error('Failed to start action server for rasa server', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Failed to start action server'], 500);
+            Log::error('Rasa actions server start request failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start Rasa actions server: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -383,6 +452,9 @@ class RasaServerController extends Controller
                     'kept_count' => $result['kept_count'] ?? 0
                 ]);
 
+                // Sync models in database after cleanup
+                $this->syncModels();
+
                 return response()->json([
                     'success' => true,
                     'message' => $result['message'] ?? "Cleaned up {$result['deleted_count']} old model(s)",
@@ -551,14 +623,11 @@ class RasaServerController extends Controller
      */
     private function getCurrentModelInfo()
     {
-        $currentModelRecord = DocumentChange::whereNotNull('model_name')
-            ->where('training_completed', true)
-            ->orderBy('training_timestamp', 'desc')
-            ->first();
+        $currentModel = RasaModel::where('is_current', true)->first();
 
-        if ($currentModelRecord) {
+        if ($currentModel) {
             return [
-                'name' => $currentModelRecord->model_name,
+                'name' => $currentModel->model_name,
                 'version' => 'Rasa'
             ];
         }
@@ -612,6 +681,72 @@ class RasaServerController extends Controller
         }
 
         return $count;
+    }
+
+    /**
+     * Sync models from FAQ updater service.
+     */
+    private function syncModels()
+    {
+        try {
+            $faqUpdaterUrl = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+
+            if (!$faqUpdaterUrl || !$secret) {
+                Log::warning('FAQ updater service not configured for model syncing');
+                return;
+            }
+
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($faqUpdaterUrl . '/list-models');
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if ($data['ok'] && isset($data['models']) && !empty($data['models'])) {
+                    // Sort models by name descending (assuming timestamp-based names)
+                    usort($data['models'], function($a, $b) {
+                        return strcmp($b['name'], $a['name']);
+                    });
+
+                    // Get current model before syncing
+                    $currentModel = RasaModel::where('is_current', true)->first();
+                    $currentModelName = $currentModel ? $currentModel->model_name : null;
+
+                    // Update or create models
+                    foreach ($data['models'] as $model) {
+                        RasaModel::updateOrCreate(
+                            ['model_name' => $model['name']],
+                            ['size' => $model['size'] ?? null, 'is_current' => false]
+                        );
+                    }
+
+                    // Set the latest model as current if no current model exists
+                    if (!$currentModelName) {
+                        $latestModelName = $data['models'][0]['name'];
+                        RasaModel::where('model_name', $latestModelName)->update(['is_current' => true]);
+                    } else {
+                        // Ensure current model is still marked as current if it exists
+                        RasaModel::where('model_name', $currentModelName)->update(['is_current' => true]);
+                    }
+
+                    // Remove models from DB that are no longer on the server
+                    $existingModelNames = array_column($data['models'], 'name');
+                    RasaModel::whereNotIn('model_name', $existingModelNames)->delete();
+                }
+            } else {
+                Log::warning('Failed to sync models from FAQ updater service', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to sync models', ['error' => $e->getMessage()]);
+        }
     }
 
     /**

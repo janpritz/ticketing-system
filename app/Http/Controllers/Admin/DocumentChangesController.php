@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentChange;
+use App\Models\RasaModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -103,14 +104,8 @@ class DocumentChangesController extends Controller
             $result = $response->json();
 
             if ($result['ok']) {
-                // Extract model name from training output if available
-                $modelName = null;
-                if (isset($result['stdout'])) {
-                    // Look for the model path in the output like: models/20251214-175305.tar.gz
-                    if (preg_match('/models\/(\d{8}-\d{6})\.tar\.gz/', $result['stdout'], $matches)) {
-                        $modelName = $matches[1];
-                    }
-                }
+                // Fetch the latest model name after successful training
+                $modelName = $this->getLatestModelName();
 
                 // Mark all pending changes as trained
                 DocumentChange::requiresTraining()
@@ -267,6 +262,65 @@ class DocumentChangesController extends Controller
     }
 
     /**
+     * Sync models from FAQ updater service and get the latest model name.
+     */
+    private function getLatestModelName()
+    {
+        try {
+            $faqUpdaterUrl = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+
+            if (!$faqUpdaterUrl || !$secret) {
+                Log::warning('FAQ updater service not configured for model fetching');
+                return null;
+            }
+
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($faqUpdaterUrl . '/list-models');
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if ($data['ok'] && isset($data['models']) && !empty($data['models'])) {
+                    // Sort models by name descending (assuming timestamp-based names)
+                    usort($data['models'], function($a, $b) {
+                        return strcmp($b['name'], $a['name']);
+                    });
+
+                    // Save all models to database
+                    foreach ($data['models'] as $model) {
+                        RasaModel::updateOrCreate(
+                            ['model_name' => $model['name']],
+                            ['size' => $model['size'] ?? null, 'is_current' => false]
+                        );
+                    }
+
+                    // Set the latest model as current
+                    $latestModelName = $data['models'][0]['name'];
+                    RasaModel::where('model_name', $latestModelName)->update(['is_current' => true]);
+                    RasaModel::where('model_name', '!=', $latestModelName)->update(['is_current' => false]);
+
+                    // Return the latest model name
+                    return $latestModelName;
+                }
+            }
+
+            Log::warning('Failed to fetch models from FAQ updater service', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get latest model name', ['error' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+    /**
      * Restart Rasa server after training completion.
      * Checks if server is running on port 5005, if yes: restart, if no: start automatically.
      */
@@ -285,7 +339,7 @@ class DocumentChangesController extends Controller
                 ->get($statusUrl);
 
             $serverAction = 'started';
-            
+
             if ($statusResponse->successful()) {
                 $statusResult = $statusResponse->json();
                 if ($statusResult['ok'] && $statusResult['running']) {
@@ -299,7 +353,7 @@ class DocumentChangesController extends Controller
                 // Could not check status, assume not running
                 $serverAction = 'started';
             }
-            
+
             // Call start-rasa-api (it handles killing existing processes and starting fresh)
             $startUrl = config('services.faq_start_rasa_api.url');
             $startResponse = Http::timeout(60)
@@ -308,7 +362,7 @@ class DocumentChangesController extends Controller
                     'X-Requested-With' => 'XMLHttpRequest'
                 ])
                 ->post($startUrl);
-            
+
             if ($startResponse->successful()) {
                 $startResult = $startResponse->json();
                 if ($startResult['ok']) {
@@ -316,9 +370,9 @@ class DocumentChangesController extends Controller
                     return ['success' => true, 'action' => $serverAction];
                 }
             }
-            
+
             return ['success' => false, 'error' => 'Failed to manage Rasa server'];
-            
+
         } catch (\Exception $e) {
             Log::error('Failed to restart Rasa server after training', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];
