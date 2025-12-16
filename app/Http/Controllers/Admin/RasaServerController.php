@@ -439,45 +439,57 @@ class RasaServerController extends Controller
 
     /**
      * Check if Rasa server (port 5005) is running.
-     */
-    private function checkServerStatus($port)
-    {
-        try {
-            // Try to access Rasa API health endpoint
-            $response = Http::timeout(5)->get("http://localhost:{$port}/");
+      */
+     private function checkServerStatus($port)
+     {
+         try {
+             $url = config('services.faq_updater.url') . '/check-rasa-status';
+             $secret = config('services.faq_updater.secret');
 
-            return $response->successful();
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
+             $response = Http::timeout(5)
+                 ->withHeaders([
+                     'X-FAQ-UPDATER-TOKEN' => $secret,
+                     'X-Requested-With' => 'XMLHttpRequest'
+                 ])
+                 ->get($url);
+
+             if ($response->successful()) {
+                 $data = $response->json();
+                 return $data['running'] ?? false;
+             }
+
+             return false;
+         } catch (\Exception $e) {
+             return false;
+         }
+     }
 
     /**
      * Check if Rasa action server (port 5055) is running.
-     */
-    private function checkActionServerStatus($port)
-    {
-        try {
-            $url = config('services.faq_updater.url') . '/check-rasa-actions-status';
-            $secret = config('services.faq_updater.secret');
+      */
+     private function checkActionServerStatus($port)
+     {
+         try {
+             $url = config('services.faq_updater.url') . '/check-rasa-actions-status';
+             $secret = config('services.faq_updater.secret');
 
-            $response = Http::timeout(5)
-                ->withHeaders([
-                    'X-FAQ-UPDATER-TOKEN' => $secret,
-                    'X-Requested-With' => 'XMLHttpRequest'
-                ])
-                ->get($url);
+             $response = Http::timeout(5)
+                 ->withHeaders([
+                     'X-FAQ-UPDATER-TOKEN' => $secret,
+                     'X-Requested-With' => 'XMLHttpRequest'
+                 ])
+                 ->get($url);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                return $data['ok'] ?? false;
-            }
+             if ($response->successful()) {
+                 $data = $response->json();
+                 return $data['running'] ?? false;
+             }
 
-            return false;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
+             return false;
+         } catch (\Exception $e) {
+             return false;
+         }
+     }
 
     /**
      * Get last training information.

@@ -650,7 +650,7 @@ def check_rasa_status():
 
         # Check if port 5005 is in use
         try:
-            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True)
+            result = subprocess.run(["lsof", "-ti:5005"], capture_output=True, text=True, timeout=5)
             if result.returncode == 0 and result.stdout.strip():
                 return jsonify({
                     "ok": True,
@@ -663,6 +663,13 @@ def check_rasa_status():
                     "running": False,
                     "message": "Rasa server is not running"
                 })
+        except subprocess.TimeoutExpired:
+            print("[check_rasa_status] lsof command timed out")
+            return jsonify({
+                "ok": True,
+                "running": False,
+                "message": "Port check timed out"
+            })
         except subprocess.CalledProcessError:
             # lsof not available or no process using the port
             return jsonify({

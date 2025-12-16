@@ -329,7 +329,7 @@
 
         if (isRunning) {
             dot.className = 'w-3 h-3 rounded-full bg-green-500';
-            text.textContent = 'Running';
+            text.textContent = 'Online';
             text.className = 'text-sm text-green-700';
         } else {
             dot.className = 'w-3 h-3 rounded-full bg-red-500';
@@ -345,7 +345,7 @@
 
         if (isRunning) {
             dot.className = 'w-3 h-3 rounded-full bg-green-500';
-            text.textContent = 'Running';
+            text.textContent = 'Online';
             text.className = 'text-sm text-green-700';
         } else {
             dot.className = 'w-3 h-3 rounded-full bg-red-500';
@@ -361,7 +361,7 @@
 
         if (isRunning) {
             dot.className = 'w-3 h-3 rounded-full bg-green-500';
-            text.textContent = 'Running';
+            text.textContent = 'Online';
             text.className = 'text-sm text-green-700';
         } else {
             dot.className = 'w-3 h-3 rounded-full bg-red-500';
