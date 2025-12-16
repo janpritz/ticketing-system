@@ -254,9 +254,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/status', [RasaServerController::class, 'status'])->name('status');
         Route::get('/training-history', [RasaServerController::class, 'trainingHistory'])->name('training-history');
         Route::get('/backup-history', [RasaServerController::class, 'backupHistory'])->name('backup-history');
+        Route::get('/backup-files/{backupId}', [RasaServerController::class, 'backupFiles'])->name('backup-files');
+        Route::get('/backup-file-content/{backupId}/{filename}', [RasaServerController::class, 'backupFileContent'])->name('backup-file-content');
         Route::get('/models-list', [RasaServerController::class, 'modelsList'])->name('models-list');
         Route::post('/start-action-server', [RasaServerController::class, 'startActionServer'])->name('start-action-server');
         Route::post('/create-backup', [RasaServerController::class, 'createBackup'])->name('create-backup');
+        Route::delete('/delete-backup/{backupId}', [RasaServerController::class, 'deleteBackup'])->name('delete-backup');
         Route::post('/cleanup-models', [RasaServerController::class, 'cleanupModels'])->name('cleanup-models');
     });
 

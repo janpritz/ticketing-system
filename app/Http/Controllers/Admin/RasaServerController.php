@@ -158,6 +158,66 @@ class RasaServerController extends Controller
     }
 
     /**
+     * Get files in a backup folder.
+     */
+    public function backupFiles(Request $request, $backupId)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        $backupBaseDir = storage_path('app/backups');
+        $folderPath = $backupBaseDir . '/' . $backupId;
+
+        if (!is_dir($folderPath)) {
+            return response()->json(['error' => 'Backup not found'], 404);
+        }
+
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($folderPath, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $relativePath = str_replace($folderPath . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                $files[] = [
+                    'name' => $relativePath,
+                    'size' => $this->formatBytes($file->getSize())
+                ];
+            }
+        }
+
+        return response()->json(['files' => $files]);
+    }
+
+    /**
+     * Get content of a specific backup file.
+     */
+    public function backupFileContent(Request $request, $backupId, $filename)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        $backupBaseDir = storage_path('app/backups');
+        $filePath = $backupBaseDir . '/' . $backupId . '/' . $filename;
+
+        if (!file_exists($filePath) || !is_file($filePath)) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        // Check file size (limit to 1MB to prevent large file loading)
+        if (filesize($filePath) > 1024 * 1024) {
+            return response()->json(['error' => 'File too large to display'], 413);
+        }
+
+        $content = file_get_contents($filePath);
+
+        return response()->json(['content' => $content]);
+    }
+
+    /**
      * Get models list from Rasa server.
      */
     public function modelsList(Request $request)
@@ -405,6 +465,49 @@ class RasaServerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Backup creation failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a backup directory.
+     */
+    public function deleteBackup(Request $request, $backupId)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        try {
+            $backupBaseDir = storage_path('app/backups');
+            $backupDir = $backupBaseDir . '/' . $backupId;
+
+            if (!is_dir($backupDir)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Backup not found'
+                ], 404);
+            }
+
+            // Delete the backup directory recursively
+            $this->deleteDirectory($backupDir);
+
+            Log::info('Backup deleted successfully', [
+                'user' => Auth::user()->name,
+                'backup_id' => $backupId
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Backup deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Backup deletion failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup deletion failed: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -747,6 +850,28 @@ class RasaServerController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to sync models', ['error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Delete a directory recursively.
+     */
+    private function deleteDirectory($dir)
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+
+        return rmdir($dir);
     }
 
     /**

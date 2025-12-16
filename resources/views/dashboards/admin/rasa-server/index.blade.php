@@ -171,8 +171,8 @@
                         <tr>
                             <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                             <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th class="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
-                            <th class="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="backupHistoryTable" class="bg-white divide-y divide-gray-200">
@@ -257,6 +257,95 @@
             </div>
         </div>
 
+    <!-- Backup Files Modal - Modern Design from Admin Dashboard -->
+    <div id="backupFilesModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+        <!-- Centered panel with modern minimal design -->
+        <div class="relative mx-auto w-full sm:w-[95%] max-w-2xl flex justify-center min-h-full py-8">
+            <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+
+                <!-- Header - Minimal & Clean -->
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold text-gray-900">Backup Files</h3>
+                    </div>
+                    <div class="flex items-center gap-2 ml-4">
+                        <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content - Scrollable -->
+                <div class="flex-1 overflow-y-auto px-6 py-5">
+
+                    <!-- Backup Info -->
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                            </svg>
+                            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Backup Details</span>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-sm text-gray-900"><strong>Folder:</strong> <span id="modalBackupFolder"></span></p>
+                            <p class="text-sm text-gray-900"><strong>Total Size:</strong> <span id="modalBackupSize"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- Two-Column Layout -->
+                    <div class="grid grid-cols-12 gap-6 h-full flex-1">
+
+                        <!-- Left Column: Files List -->
+                        <div class="col-span-12 md:col-span-3 bg-gray-50 rounded-lg p-4 overflow-y-auto">
+                            <div class="flex items-center gap-2 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-700">Files</span>
+                            </div>
+                            <div id="backupFilesList" class="space-y-2">
+                                <!-- Files will be populated here as buttons -->
+                            </div>
+                        </div>
+
+                        <!-- Right Column: File Content -->
+                        <div class="col-span-12 md:col-span-9 bg-white rounded-lg border border-gray-200 flex flex-col">
+                            <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <span class="text-sm font-medium text-gray-900" id="contentTitle">Select a file to view</span>
+                                </div>
+                                <div id="contentLoading" class="hidden">
+                                    <svg class="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="flex-1 p-4 overflow-y-auto">
+                                <pre id="fileContent" class="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed"></pre>
+                                <div id="contentError" class="hidden text-sm text-red-600">
+                                    <svg class="inline h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Error loading file content
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- Status Data (hidden) -->
     <div id="statusData" class="hidden" data-csrf="{{ csrf_token() }}"></div>
 @endsection
@@ -306,6 +395,13 @@
     const trainingHistoryPageInfo = document.getElementById('trainingHistoryPageInfo');
     const backupHistoryPageInfo = document.getElementById('backupHistoryPageInfo');
     const modelsListPageInfo = document.getElementById('modelsListPageInfo');
+
+    // Backup modal elements
+    const backupFilesModal = document.getElementById('backupFilesModal');
+    const closeBackupModal = document.getElementById('closeBackupModal');
+    const modalBackupFolder = document.getElementById('modalBackupFolder');
+    const modalBackupSize = document.getElementById('modalBackupSize');
+    const backupFilesTable = document.getElementById('backupFilesTable');
 
     // Pagination state
     let trainingHistoryData = [];
@@ -581,18 +677,21 @@
         if (pageData.length === 0) {
             backupHistoryTable.innerHTML = `
                 <tr>
-                    <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No backup history found.</td>
+                    <td colspan="5" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No backup history found.</td>
                 </tr>
             `;
         } else {
             const rows = pageData.map(backup => {
                 const size = (backup.size / 1024).toFixed(1) + ' KB';
                 return `
-                    <tr>
+                    <tr class="cursor-pointer hover:bg-gray-50" data-backup-id="${backup.id}" data-backup-folder="${backup.folder}">
                         <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.date}</td>
                         <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.type}</td>
-                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${backup.folder} (${backup.file_count} files)</td>
-                        <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${size}</td>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${size}</td>
+                        <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-blue-600 hover:text-blue-900 mr-3 restore-btn" data-backup-id="${backup.id}">Restore</button>
+                            <button class="text-red-600 hover:text-red-900 delete-btn" data-backup-id="${backup.id}">Delete</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -843,6 +942,62 @@
         }
     }
 
+    async function deleteBackup(backupId, button) {
+        const result = await Swal.fire({
+            title: 'Delete Backup',
+            text: 'Are you sure you want to delete this backup? This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) return;
+
+        // Disable button and show spinner
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deleting...';
+
+        try {
+            const response = await fetch(`{{ route("admin.rasa-server.delete-backup", ":backupId") }}`.replace(':backupId', backupId), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Backup Deleted',
+                    text: data.message,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+                fetchBackupHistory(); // Refresh backup history
+            } else {
+                throw new Error(data.message || 'Delete failed');
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Delete Failed',
+                text: error.message
+            });
+        } finally {
+            // Re-enable button and restore original text
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+
     async function cleanupModels() {
         console.log('cleanupModels called');
         const result = await Swal.fire({
@@ -966,6 +1121,165 @@
         if (modelsListCurrentPage < modelsListTotalPages) {
             modelsListCurrentPage++;
             renderModelsListPage();
+        }
+    });
+
+    // Fetch backup files
+    async function fetchBackupFiles(backupId) {
+        try {
+            const response = await fetch(`{{ route("admin.rasa-server.backup-files", ":backupId") }}`.replace(':backupId', backupId), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                return data.files || [];
+            } else {
+                console.error('Failed to fetch backup files');
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching backup files:', error);
+            return [];
+        }
+    }
+
+    // Fetch backup file content
+    async function fetchBackupFileContent(backupId, filename) {
+        const contentLoading = document.getElementById('contentLoading');
+        const contentError = document.getElementById('contentError');
+        const fileContent = document.getElementById('fileContent');
+
+        contentLoading.classList.remove('hidden');
+        contentError.classList.add('hidden');
+        fileContent.textContent = '';
+
+        try {
+            const response = await fetch(`{{ route("admin.rasa-server.backup-file-content", [":backupId", ":filename"]) }}`.replace(':backupId', backupId).replace(':filename', encodeURIComponent(filename)), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                return data.content || '';
+            } else {
+                throw new Error('Failed to fetch file content');
+            }
+        } catch (error) {
+            console.error('Error fetching file content:', error);
+            contentError.classList.remove('hidden');
+            return '';
+        } finally {
+            contentLoading.classList.add('hidden');
+        }
+    }
+
+    // Backup modal event listeners
+    backupHistoryTable.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-btn')) {
+            e.stopPropagation();
+            const backupId = e.target.dataset.backupId;
+            const button = e.target;
+            await deleteBackup(backupId, button);
+            return;
+        }
+        if (e.target.classList.contains('restore-btn')) {
+            e.stopPropagation();
+            // Handle restore button clicks later
+            return;
+        }
+        const row = e.target.closest('tr');
+        if (row && row.dataset.backupId) {
+            const backupId = row.dataset.backupId;
+            const folder = row.dataset.backupFolder;
+            const size = row.querySelector('td:nth-child(3)').textContent; // Size is in 3rd td
+            const files = await fetchBackupFiles(backupId);
+            showBackupFilesModal(folder, size, files);
+        }
+    });
+
+    function showBackupFilesModal(folder, size, files) {
+        modalBackupFolder.textContent = folder;
+        modalBackupSize.textContent = size;
+
+        const backupFilesList = document.getElementById('backupFilesList');
+        const fileContent = document.getElementById('fileContent');
+
+        if (files.length === 0) {
+            backupFilesList.innerHTML = '<p class="text-sm text-gray-500">No files found</p>';
+            document.getElementById('contentTitle').textContent = 'No files available';
+            fileContent.textContent = '';
+        } else {
+            // Populate file list as buttons
+            backupFilesList.innerHTML = files.map((file, index) => `
+                <button class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md transition-colors file-button ${index === 0 ? 'bg-blue-100 text-blue-800' : ''}" data-filename="${file.name}">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-medium truncate text-xs">${file.name}</div>
+                            <div class="text-xs text-gray-500">${file.size}</div>
+                        </div>
+                    </div>
+                </button>
+            `).join('');
+
+            // Add click handlers
+            backupFilesList.querySelectorAll('.file-button').forEach(button => {
+                button.addEventListener('click', async () => {
+                    // Remove active class from all buttons
+                    backupFilesList.querySelectorAll('.file-button').forEach(btn => {
+                        btn.classList.remove('bg-blue-100', 'text-blue-800');
+                        btn.classList.add('text-gray-700');
+                    });
+                    // Add active class to clicked button
+                    button.classList.add('bg-blue-100', 'text-blue-800');
+                    button.classList.remove('text-gray-700');
+
+                    // Update title
+                    const contentTitle = document.getElementById('contentTitle');
+                    contentTitle.textContent = button.dataset.filename;
+
+                    // Fetch and display content
+                    const filename = button.dataset.filename;
+                    const content = await fetchBackupFileContent(folder, filename);
+                    fileContent.textContent = content;
+                });
+            });
+
+            // Auto-select first file
+            const firstButton = backupFilesList.querySelector('.file-button');
+            if (firstButton) {
+                firstButton.click();
+            } else {
+                document.getElementById('contentTitle').textContent = 'Select a file to view';
+                fileContent.textContent = '';
+            }
+        }
+
+        backupFilesModal.classList.remove('hidden');
+    }
+
+    // Close modal handlers
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.closest('[data-modal-backdrop]')) {
+            backupFilesModal.classList.add('hidden');
+        }
+        if (e.target && e.target.getAttribute && e.target.getAttribute('data-modal-close') != null) {
+            backupFilesModal.classList.add('hidden');
+        }
+        if (e.target && e.target.closest && e.target.closest('[data-modal-close]')) {
+            backupFilesModal.classList.add('hidden');
+        }
+    });
+
+    // Escape key to close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && backupFilesModal && !backupFilesModal.classList.contains('hidden')) {
+            backupFilesModal.classList.add('hidden');
         }
     });
 
