@@ -305,8 +305,20 @@ class StaffController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        if (!$auth) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $user = $auth;
         
+        // Debug: Check authenticated user
+        Log::info('Staff ticketsData called by user:', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_role' => $user->role,
+            'staff_id' => $user->id
+        ]);
+
         // Get query parameters
         $status = $request->query('status', 'all');
         $search = $request->query('search', '');
@@ -315,15 +327,37 @@ class StaffController extends Controller
         $sortBy = $request->query('sort_by', 'date_created');
         $sortDirection = strtolower($request->query('sort_direction', 'desc')) === 'asc' ? 'asc' : 'desc';
 
+        // Debug: Check query parameters
+        Log::info('Query parameters:', [
+            'status' => $status,
+            'search' => $search,
+            'page' => $page,
+            'perPage' => $perPage,
+            'sortBy' => $sortBy,
+            'sortDirection' => $sortDirection
+        ]);
+
         // Get counts for each status filter
         $allCount = Ticket::where('staff_id', $user->id)->count();
         $openCount = Ticket::where('staff_id', $user->id)->where('status', 'Open')->count();
         $forwardedCount = Ticket::where('staff_id', $user->id)->where('status', 'Forwarded')->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
 
+        // Debug: Check ticket counts
+        Log::info('Ticket counts for user:', [
+            'user_id' => $user->id,
+            'all_count' => $allCount,
+            'open_count' => $openCount,
+            'forwarded_count' => $forwardedCount,
+            'closed_count' => $closedCount
+        ]);
+
         // Build the base query
         $query = Ticket::where('staff_id', $user->id)
             ->with(['staff', 'routingHistories.staff']);
+
+        // Debug: Check the base query
+        Log::info('Base query SQL:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
 
         // Apply status filtering
         if (in_array($status, ['open', 'forwarded', 'closed'])) {
@@ -343,16 +377,25 @@ class StaffController extends Controller
         }
 
         // Apply sorting
-        $allowedSortFields = ['date_created', 'updated_at', 'status', 'category', 'email'];
+        $allowedSortFields = ['id', 'date_created', 'updated_at', 'status', 'category', 'email', 'question'];
         if (in_array($sortBy, $allowedSortFields)) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
             $query->orderBy('date_created', 'desc');
         }
 
+        // Debug: Check final query before pagination
+        Log::info('Final query SQL:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
+
         // Paginate the results
         $paginated = $query->paginate($perPage, ['*'], 'page', $page);
         $tickets = $paginated->items();
+
+        // Debug: Check returned tickets
+        Log::info('Returned tickets:', [
+            'count' => count($tickets),
+            'tickets' => $tickets
+        ]);
 
         return response()->json([
             'tickets' => $tickets,

@@ -63,6 +63,11 @@ Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
     ->middleware('throttle:10,1')
     ->name('tickets.destroy');
 
+    // Staff tickets data endpoint (outside auth for JSON responses)
+    Route::get('/staff/tickets/data', [StaffController::class, 'ticketsData'])->name('staff.tickets.data');
+    // Live data endpoint for staff dashboard auto-refresh (outside auth for JSON responses)
+    Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
+
 Route::middleware('auth')->group(function () {
     // Staff dashboard
     Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
@@ -70,10 +75,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/staff/tickets/{ticket}', [StaffController::class, 'showTicket'])->whereNumber('ticket')->name('staff.tickets.show');
     // Staff tickets index page
     Route::get('/staff/tickets', [StaffController::class, 'tickets'])->name('staff.tickets');
-    // Staff tickets data endpoint
-    Route::get('/staff/tickets/data', [StaffController::class, 'ticketsData'])->name('staff.tickets.data');
-    // Live data endpoint for staff dashboard auto-refresh
-    Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
 
     // Staff profile
     Route::get('/staff/profile', [StaffController::class, 'profile'])->name('staff.profile');

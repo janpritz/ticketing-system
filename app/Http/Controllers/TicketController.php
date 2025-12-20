@@ -85,13 +85,23 @@ class TicketController extends Controller
         // For API requests, return JSON
         if ($request->wantsJson()) {
             // Include assigned staff explicitly for client-side flows (AJAX form)
-            return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
+            return response()->json([
+                'ticket' => $ticket,
+                'staff_id' => $ticket->staff_id,
+                'message' => $ticket->staff_id
+                    ? 'Ticket created and assigned to staff successfully!'
+                    : 'Ticket created but assignment is pending. Staff will be assigned shortly.'
+            ], 201);
         }
 
-        // For web requests, redirect to tickets page for the recipient id.
-        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recipient_id}
+        // For web requests, redirect to tickets page for the recepient id.
+        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
+        $message = $ticket->staff_id
+            ? 'Ticket created and assigned to staff successfully! Please wait for a response, which will be sent to your email.'
+            : 'Ticket created successfully! Assignment is being processed and you will receive a response via email shortly.';
+            
         return redirect()->to(url('/tickets/' . $request->recepient_id))
-            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
+            ->with('success', $message);
     }
 
 
