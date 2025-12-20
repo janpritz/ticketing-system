@@ -532,11 +532,14 @@
                 updateLastTraining(data.last_training);
                 updateLastBackup(data.last_backup);
                 updateCurrentModel(data.current_model);
+                return { success: true };
             } else {
                 console.error('fetchStatus response not ok:', response.status);
+                return { success: false, error: `HTTP ${response.status}` };
             }
         } catch (error) {
             console.error('Failed to fetch status:', error);
+            return { success: false, error: error.message };
         }
         console.log('Completed fetchStatus');
     }
