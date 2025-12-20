@@ -376,12 +376,16 @@ class StaffController extends Controller
             });
         }
 
-        // Apply sorting
+        // Apply sorting - prioritize Open and Forwarded tickets first
         $allowedSortFields = ['id', 'date_created', 'updated_at', 'status', 'category', 'email', 'question'];
         if (in_array($sortBy, $allowedSortFields)) {
-            $query->orderBy($sortBy, $sortDirection);
+            // First order by status priority (Open=1, Forwarded=2, Closed=3), then by the selected field
+            $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END")
+                  ->orderBy($sortBy, $sortDirection);
         } else {
-            $query->orderBy('date_created', 'desc');
+            // Default: prioritize status, then by date_created desc
+            $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END")
+                  ->orderBy('date_created', 'desc');
         }
 
         // Debug: Check final query before pagination
