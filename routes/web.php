@@ -68,6 +68,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
     // Individual ticket page for staff (view + respond)
     Route::get('/staff/tickets/{ticket}', [StaffController::class, 'showTicket'])->whereNumber('ticket')->name('staff.tickets.show');
+    // Staff tickets index page
+    Route::get('/staff/tickets', [StaffController::class, 'tickets'])->name('staff.tickets');
+    // Staff tickets data endpoint
+    Route::get('/staff/tickets/data', [StaffController::class, 'ticketsData'])->name('staff.tickets.data');
     // Live data endpoint for staff dashboard auto-refresh
     Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
 
@@ -268,6 +272,28 @@ Route::middleware('auth')->group(function () {
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Staff knowledgebase
+    Route::prefix('staff/knowledgebase')->name('staff.knowledgebase.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'store'])->name('store');
+        Route::get('/{faq}', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'show'])->name('show');
+        Route::get('/{faq}/edit', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'edit'])->name('edit');
+        Route::put('/{faq}', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'update'])->name('update');
+        Route::delete('/{faq}', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'destroy'])->name('destroy');
+        Route::post('/upload', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'uploadFile'])->name('upload');
+        Route::prefix('announcements')->name('announcements.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'announcementsIndex'])->name('index');
+            Route::post('/', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'announcementsStore'])->name('store');
+        });
+        Route::post('/process-closed-tickets', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'processClosedTickets'])->name('process-closed-tickets');
+    });
+
+    // Staff reports
+    Route::prefix('staff/reports')->name('staff.reports.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StaffReportsController::class, 'index'])->name('index');
+    });
 
     //Push Notification
     // Start Push Notification==========================================================

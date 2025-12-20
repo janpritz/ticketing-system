@@ -31,9 +31,18 @@ class StaffController extends Controller
 
         // Aggregate ticket stats for this staff member
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
-        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Re-routed')->count();
+        $inProgressCount = Ticket::where('staff_id', $user->id)->where('status', 'Forwarded')->count();
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
+
+        // Overdue tickets: Open tickets older than 1 day
+        $overdueDays = env('TICKET_OVERDUE_DAYS', 1);
+        $overdueTickets = Ticket::where('staff_id', $user->id)
+            ->where('status', 'Open')
+            ->where('date_created', '<', now()->subDays($overdueDays))
+            ->orderByDesc('date_created')
+            ->get();
+        $overdueCount = $overdueTickets->count();
 
         // Recent tickets assigned to this staff (default: only "Open")
         $recentTickets = Ticket::where('staff_id', $user->id)
@@ -42,17 +51,15 @@ class StaffController extends Controller
             ->with(['staff', 'routingHistories.staff'])
             ->get();
 
-        // Weekly throughput for last 7 days (per signed-in staff)
-        $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
-
         return view('dashboards.staff.index', [
             'user' => $user,
             'openCount' => $openCount,
             'inProgressCount' => $inProgressCount,
             'closedCount' => $closedCount,
             'totalCount' => $totalCount,
+            'overdueCount' => $overdueCount,
+            'overdueTickets' => $overdueTickets,
             'recentTickets' => $recentTickets,
-            'weeklyThroughput' => $weeklyThroughput,
         ]);
     }
 
@@ -205,9 +212,6 @@ class StaffController extends Controller
     /**
      * Live data endpoint for the staff dashboard.
      * Returns counts, tickets, and weekly throughput for the authenticated staff.
-     * Query params:
-     * - viewAll=true|false  when true returns all tickets (all statuses) for this staff;
-     *                       when false returns only 'Open' tickets.
      */
     public function data(Request $request)
     {
@@ -218,7 +222,7 @@ class StaffController extends Controller
         }
 
         $user = $auth;
-        $viewAll = filter_var($request->query('viewAll', 'false'), FILTER_VALIDATE_BOOLEAN);
+        $search = $request->query('search', '');
 
         // KPI counts (across all statuses)
         $openCount = Ticket::where('staff_id', $user->id)->whereIn('status', ['Open'])->count();
@@ -226,13 +230,26 @@ class StaffController extends Controller
         $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
         $totalCount = Ticket::where('staff_id', $user->id)->count();
 
+        // Overdue tickets: Open tickets older than 1 day
+        $overdueDays = env('TICKET_OVERDUE_DAYS', 1);
+        $overdueTickets = Ticket::where('staff_id', $user->id)
+            ->where('status', 'Open')
+            ->where('date_created', '<', now()->subDays($overdueDays))
+            ->orderByDesc('date_created')
+            ->get();
+        $overdueCount = $overdueTickets->count();
+
         $query = Ticket::where('staff_id', $user->id)
+            ->whereIn('status', ['Open', 'Forwarded'])
             ->orderByDesc('date_created')
             ->with(['staff', 'routingHistories.staff']);
 
-        if (!$viewAll) {
-            // Only active tickets (Open and Forwarded)
-            $query->whereIn('status', ['Open', 'Forwarded']);
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('question', 'like', '%' . $search . '%')
+                  ->orWhere('response', 'like', '%' . $search . '%')
+                  ->orWhere('status', 'like', '%' . $search . '%');
+            });
         }
 
         // Pagination support for table view
@@ -242,21 +259,122 @@ class StaffController extends Controller
         $paginated     = $query->paginate($perPage, ['*'], 'page', $page);
         $recentTickets = $paginated->items();
 
-        // Weekly throughput for last 7 days (per signed-in staff)
-        $weeklyThroughput = $this->buildWeeklyThroughput($user->id);
-
         return response()->json([
             'openCount'        => $openCount,
             'inProgressCount'  => $inProgressCount,
             'closedCount'      => $closedCount,
             'totalCount'       => $totalCount,
+            'overdueCount'     => $overdueCount,
             'recentTickets'    => $recentTickets,
-            'weeklyThroughput' => $weeklyThroughput,
             'pagination'       => [
                 'currentPage' => $paginated->currentPage(),
                 'lastPage'    => $paginated->lastPage(),
                 'perPage'     => $paginated->perPage(),
                 'total'       => $paginated->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Show the Staff Tickets page.
+     * Renders the view for staff to manage their assigned tickets.
+     */
+    public function tickets()
+    {
+        $auth = Auth::user();
+        
+        // Redirect Primary Administrator away from the staff tickets page
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return view('staff.tickets.index', [
+            'user' => $auth,
+        ]);
+    }
+
+    /**
+     * Data endpoint for the staff tickets page.
+     * Returns paginated ticket data with status counts and filtering support.
+     */
+    public function ticketsData(Request $request)
+    {
+        $auth = Auth::user();
+        // Block Primary Administrator from the staff tickets data endpoint
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $user = $auth;
+        
+        // Get query parameters
+        $status = $request->query('status', 'all');
+        $search = $request->query('search', '');
+        $page = max((int) $request->query('page', 1), 1);
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
+        $sortBy = $request->query('sort_by', 'date_created');
+        $sortDirection = strtolower($request->query('sort_direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        // Get counts for each status filter
+        $allCount = Ticket::where('staff_id', $user->id)->count();
+        $openCount = Ticket::where('staff_id', $user->id)->where('status', 'Open')->count();
+        $forwardedCount = Ticket::where('staff_id', $user->id)->where('status', 'Forwarded')->count();
+        $closedCount = Ticket::where('staff_id', $user->id)->where('status', 'Closed')->count();
+
+        // Build the base query
+        $query = Ticket::where('staff_id', $user->id)
+            ->with(['staff', 'routingHistories.staff']);
+
+        // Apply status filtering
+        if (in_array($status, ['open', 'forwarded', 'closed'])) {
+            $query->where('status', ucfirst($status));
+        }
+        // 'all' status doesn't need additional where clause
+
+        // Apply search filtering
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('question', 'like', '%' . $search . '%')
+                  ->orWhere('response', 'like', '%' . $search . '%')
+                  ->orWhere('category', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('status', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Apply sorting
+        $allowedSortFields = ['date_created', 'updated_at', 'status', 'category', 'email'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('date_created', 'desc');
+        }
+
+        // Paginate the results
+        $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+        $tickets = $paginated->items();
+
+        return response()->json([
+            'tickets' => $tickets,
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+            ],
+            'filters' => [
+                'status' => $status,
+                'search' => $search,
+                'sort_by' => $sortBy,
+                'sort_direction' => $sortDirection,
+            ],
+            'counts' => [
+                'all' => $allCount,
+                'open' => $openCount,
+                'forwarded' => $forwardedCount,
+                'closed' => $closedCount,
             ],
         ]);
     }
@@ -268,18 +386,15 @@ class StaffController extends Controller
     public function forward(Request $request, Ticket $ticket)
     {
         $request->validate([
-            'role' => 'required|string'
+            'user_id' => 'required|integer'
         ]);
 
         /** @var \App\Models\User|null $auth */
         $auth = Auth::user();
-    
+
         // Only currently assigned staff or Primary Administrator can reroute
         if ($ticket->staff_id !== $auth->id
-            && ! (
-                $auth
-                && (strtolower((string)($auth->role ?? '')) === 'primary administrator')
-            )
+            && strtolower((string)($auth->role ?? '')) !== 'primary administrator'
         ) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -289,14 +404,11 @@ class StaffController extends Controller
             return response()->json(['error' => 'Cannot reroute a closed ticket'], 422);
         }
 
-        // Find a staff member with the target role (using roles table)
-        $targetRole = $request->input('role');
-        $newStaff = User::whereHas('role', function ($q) use ($targetRole) {
-            $q->where('name', $targetRole);
-        })->inRandomOrder()->first();
+        // Find the target staff member by user ID
+        $newStaff = User::find($request->input('user_id'));
 
         if (!$newStaff) {
-            return response()->json(['error' => 'No staff found for the selected role'], 422);
+            return response()->json(['error' => 'Staff member not found'], 422);
         }
 
         // Dispatch job to handle ticket forwarding asynchronously
@@ -320,11 +432,15 @@ class StaffController extends Controller
     /**
      * Show a dedicated ticket detail page for staff (view + response form).
      * Accessible only to the assigned staff member or Primary Administrator.
+     * Returns JSON for AJAX requests, HTML view for regular requests.
      */
-    public function showTicket(Ticket $tickett)
+    public function showTicket(Ticket $ticket)
     {
         $auth = Auth::user();
         if (!$auth) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
             return redirect()->route('login');
         }
 
@@ -332,12 +448,25 @@ class StaffController extends Controller
         if ($ticket->staff_id !== $auth->id
             && ! (strtolower((string)($auth->role ?? '')) === 'primary administrator')
         ) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
             abort(403);
         }
 
-        // Load relations needed by the view
+        // Load relations needed by the view or JSON response
         $ticket->load(['staff', 'routingHistories.staff']);
 
+        // If it's an AJAX request wanting JSON, return JSON response
+        if (request()->ajax() || request()->wantsJson()) {
+            // Get list of users with roles for forwarding functionality
+            $users = \App\Models\User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
+            
+            // Return ticket data with users for frontend functionality
+            return response()->json(array_merge($ticket->toArray(), ['users' => $users]));
+        }
+
+        // Regular request - return HTML view
         return view('dashboards.staff.ticket', [
             'ticket' => $ticket,
         ]);
@@ -351,10 +480,7 @@ class StaffController extends Controller
         $auth = Auth::user();
         // Only the assigned staff or Primary Administrator may send responses
         if ($ticket->staff_id !== $auth->id
-            && ! (
-                $auth
-                && (strtolower((string)($auth->role ?? '')) === 'primary administrator')
-            )
+            && strtolower((string)($auth->role ?? '')) !== 'primary administrator'
         ) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }

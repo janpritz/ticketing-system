@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use App\Jobs\ProcessTicketCreation;
 
 class TicketController extends Controller
@@ -234,6 +235,46 @@ class TicketController extends Controller
 
     public function index(Request $request, $identifier = null)
     {
+        // Check if the authenticated user is staff (not admin)
+        $auth = Auth::user();
+        $isStaff = false;
+        
+        if ($auth) {
+            // User is staff if authenticated and not Primary Administrator
+            $isStaff = strtolower((string)($auth->role ?? '')) !== 'primary administrator';
+        }
+
+        // If user is staff, show their assigned tickets instead of existing logic
+        if ($isStaff) {
+            $userId = $auth->id;
+            
+            // Set default values for staff access
+            $identifier = null;
+            $isEmail = false;
+            
+            // Cache key for staff assigned tickets
+            $cacheKey = 'staff_assigned_tickets_' . $userId;
+
+            // For API requests, return JSON
+            if ($request->wantsJson()) {
+                $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
+                    return Ticket::where('staff_id', $userId)
+                        ->orderBy('date_created', 'desc')
+                        ->get();
+                });
+                return response()->json($tickets);
+            }
+
+            // For web requests, return a view with the tickets
+            $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
+                return Ticket::where('staff_id', $userId)
+                    ->orderBy('date_created', 'desc')
+                    ->get();
+            });
+            return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail'));
+        }
+
+        // Not staff or not authenticated - use existing logic
         // Support both recepient_id and email as identifier
         $identifier = $identifier ?? $request->query('email') ?? $request->recepient_id;
 
@@ -272,7 +313,7 @@ class TicketController extends Controller
             }
             return $query->orderBy('date_created', 'desc')->get();
         });
-        return view('tickets.index', compact('tickets', 'identifier', 'isEmail'));
+        return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff'));
     }
     public function updateStatus(Request $request, $id)
     {

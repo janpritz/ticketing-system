@@ -23,6 +23,9 @@ class TicketResponseMail extends Mailable
         $this->ticket = $ticket;
         $this->messageBody = $messageBody;
         $this->responderName = $responderName;
+        
+        // Eager load staff relationship to avoid N+1 queries
+        $this->ticket->load('staff');
     }
 
     /**
@@ -35,14 +38,16 @@ class TicketResponseMail extends Mailable
         $ticketNo = sprintf('T-%s-%04d', $year, $this->ticket->id);
 
         return $this
-            ->subject('[No-Reply] Response to your ticket ' . $ticketNo)
-            ->from(config('mail.from.address'), config('mail.from.name'))
+            ->subject('Re: Ticket ' . $ticketNo)
+            ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Sangkay Ticketing System'))
             ->view('emails.ticket_response')
             ->with([
                 'ticketNo' => $ticketNo,
                 'ticket' => $this->ticket,
                 'messageBody' => $this->messageBody,
                 'responderName' => $this->responderName,
+                'staffEmail' => $this->ticket->staff?->email,
+                'staffName' => $this->ticket->staff?->name ?: 'Support Team',
             ]);
     }
 }

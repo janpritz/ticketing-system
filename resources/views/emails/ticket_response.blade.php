@@ -14,6 +14,8 @@
             .mobile-bubble { max-width: 85% !important; margin: 0 auto !important; }
             .mobile-header-stack { display: block !important; text-align: center !important; }
             .mobile-header-right { margin-top: 8px !important; }
+            .mobile-contact-button { display: block !important; width: 100% !important; margin: 12px 0 !important; }
+            .mobile-contact-info { text-align: center !important; }
         }
     </style>
 </head>
@@ -71,6 +73,31 @@
 
                                 <div style="clear:both;"></div>
 
+                                <!-- Contact Information -->
+                                <div style="background:#f0f9ff;border:1px solid #0ea5e9;padding:20px;border-radius:8px;margin:24px 0;">
+                                    <p style="margin:0 0 12px 0;font-size:16px;color:#0c4a6e;font-weight:600;">Need to follow up?</p>
+                                    <p style="margin:0 0 16px 0;font-size:14px;color:#0c4a6e;line-height:1.5;">
+                                        If you have any additional questions or need clarification, feel free to contact the staff member who handled your ticket:
+                                    </p>
+                                    <div class="mobile-contact-info" style="background:#ffffff;border:1px solid #0ea5e9;border-radius:6px;padding:16px;margin:16px 0;">
+                                        <div class="mobile-contact-info" style="font-size:14px;color:#0c4a6e;margin-bottom:8px;">
+                                            <strong>Staff Member:</strong> {{ $staffName }}
+                                        </div>
+                                        <div class="mobile-contact-info" style="font-size:14px;color:#0c4a6e;margin-bottom:16px;">
+                                            <strong>Email:</strong> {{ $staffEmail }}
+                                        </div>
+                                        <a href="mailto:{{ $staffEmail }}?subject=Re: {{ $ticketNo }}&body=Reference: {{ $ticketNo }}%0A%0A{{ $ticket->question ? 'Original Question: ' . $ticket->question . '%0A%0A' : '' }}I would like to follow up on my ticket." 
+                                           class="mobile-contact-button"
+                                           style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;font-size:14px;text-align:center;"
+                                           target="_blank">
+                                            Click Here to Reply
+                                        </a>
+                                    </div>
+                                    <p style="margin:12px 0 0 0;font-size:12px;color:#0c4a6e;opacity:0.8;">
+                                        Click the button above to open your email client with a pre-filled message.
+                                    </p>
+                                </div>
+
                                 <!-- Closing Message -->
                                 <p style="margin:30px 0 0 0;font-size:14px;color:#1f2937;line-height:1.6;">
                                     Thank you for your patience.<br>
@@ -85,8 +112,8 @@
                     <tr>
                         <td class="mobile-padding" style="padding:16px 24px;background:#ffffff;color:#9ca3af;font-size:11px;line-height:1.5;border-top:1px solid #e5e7eb;">
                             <div class="mobile-text-center">
-                                This email was sent from an unmonitored mailbox. Please do not reply directly.<br>
-                                For further assistance, please contact us through the Sangkay Chatbot System.
+                                This email was sent from the Sangkay Ticketing System.<br>
+                                For support, please contact {{ $staffName }} at {{ $staffEmail }}.
                                 <div style="font-size:11px;color:#d1d5db;margin-top:10px;">
                                     &copy; {{ date('Y') }} Sangkay Chatbot Integrated Ticketing System
                                 </div>
