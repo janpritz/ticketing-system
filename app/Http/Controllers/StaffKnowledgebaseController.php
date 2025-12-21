@@ -687,19 +687,22 @@ class StaffKnowledgebaseController extends Controller
     /**
      * Cancel a queued document (AJAX)
      */
-    public function cancelQueuedDocument($id)
+    public function cancelQueuedDocument($filename)
     {
         try {
-            // Find the file by ID (which is MD5 of filename)
+            // Find the file by filename
             $storagePath = storage_path('app/queued_documents');
             $files = glob($storagePath . '/*.txt');
             
             $fileFound = false;
             foreach ($files as $file) {
-                $filename = basename($file);
-                $fileId = md5($filename);
+                $storedFilename = basename($file);
                 
-                if ($fileId === $id) {
+                // Extract original filename from the stored filename
+                // Format: original_filename_timestamp.txt
+                $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $storedFilename);
+                
+                if ($originalFilename === $filename) {
                     // Delete the file
                     if (unlink($file)) {
                         $fileFound = true;

@@ -951,37 +951,6 @@
                 }
             }
 
-            async function cancelQueuedDocument(docId) {
-                if (!confirm('Are you sure you want to cancel this queued document?')) {
-                    return;
-                }
-
-                try {
-                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch(`{{ route("staff.knowledgebase.cancel-queued-document", ":id") }}`.replace(':id', docId), {
-                        method: 'DELETE',
-                        headers: {
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    const result = await res.json();
-
-                    if (!res.ok || !result.success) {
-                        throw new Error(result.message || 'Failed to cancel document');
-                    }
-
-                    showToast('success', 'Queued document canceled successfully');
-
-                    // Refresh the queued documents list
-                    fetchQueuedDocuments();
-
-                } catch (err) {
-                    console.error('[DEBUG] Error canceling queued document:', err);
-                    showToast('error', err.message || 'Failed to cancel queued document');
-                }
-            }
 
             function renderQueuedDocuments(queuedDocuments) {
                 const docsListEl = $('#docsList');
@@ -996,25 +965,29 @@
                         <h3 class="text-sm font-medium text-gray-900 mb-3">Pending Uploads</h3>
                         <div class="space-y-3">
                             ${queuedDocuments.map(doc => `
-                                <div class="flex items-center justify-between p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                                     <div class="flex items-center gap-3">
-                                        <svg class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
                                         <div>
                                             <div class="text-sm font-medium text-gray-900">${escapeHtml(doc.file_name)}</div>
                                             <div class="text-xs text-gray-500">Queued ${formatDate(doc.created_at)}</div>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <div class="text-xs text-yellow-700 font-medium">Pending</div>
-                                        <button onclick="cancelQueuedDocument(${doc.id})"
-                                                class="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Pending Upload
+                                        </span>
+                                        <button onclick="cancelQueuedDocument('${escapeHtml(doc.file_name)}')"
+                                                class="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 text-sm font-medium px-3 py-1.5 text-red-700 transition-colors"
                                                 title="Cancel upload">
-                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                            Cancel
+                                            <span>Cancel</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1491,6 +1464,35 @@
                 });
             }
 
+            // Helper function to check Rasa server status
+            async function checkRasaServerStatus() {
+                try {
+                    const rasaUrl = '{{ config("services.faq_sync.url") }}';
+                    if (!rasaUrl) return false;
+                    
+                    // Remove /sync-faqs from the end to get base URL
+                    const baseUrl = rasaUrl.replace('/sync-faqs', '');
+                    const healthUrl = baseUrl + '/health';
+                    
+                    console.log('[DEBUG] Checking Rasa server status at:', healthUrl);
+                    
+                    const response = await fetch(healthUrl, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        timeout: 5000
+                    });
+                    
+                    const isOnline = response.ok;
+                    console.log('[DEBUG] Rasa server status:', isOnline ? 'ONLINE' : 'OFFLINE');
+                    return isOnline;
+                } catch (err) {
+                    console.log('[DEBUG] Rasa server status: OFFLINE (error:', err.message, ')');
+                    return false;
+                }
+            }
+
             // Upload file submit handler
             if (uploadSubmit) {
                 uploadSubmit.addEventListener('click', async () => {
@@ -1510,6 +1512,10 @@
                     }
 
                     $('#upload_file_error').classList.add('hidden');
+
+                    // Check Rasa server status for better user feedback
+                    const isRasaOnline = await checkRasaServerStatus();
+                    console.log('[File Upload] Rasa server status:', isRasaOnline ? 'ONLINE' : 'OFFLINE');
 
                     // Store original content and show loading spinner
                     const originalHTML = uploadSubmit.innerHTML;
@@ -1552,19 +1558,26 @@
 
                         console.log('[File Upload] Success! File uploaded:', result);
 
-                        // Show appropriate success message
-                        const message = result.queued
-                            ? 'Document queued for upload (server offline)'
-                            : 'Document uploaded successfully';
+                        // Show appropriate success message with server status info
+                        let message = '';
+                        if (result.queued) {
+                            message = 'Document queued for upload (server offline)';
+                        } else {
+                            message = 'Document uploaded successfully';
+                        }
+                        
+                        // Add server status info for debugging
+                        if (isRasaOnline && result.queued) {
+                            message += ' [DEBUG: Server was detected as online but file was queued]';
+                        }
+                        
                         showToast('success', message);
 
                         closeModal(uploadModal);
                         uploadForm.reset();
 
-                        // Refresh document list if uploaded directly
-                        if (!result.queued) {
-                            fetchDocs();
-                        }
+                        // Auto-refresh document list on successful upload (both queued and direct)
+                        fetchDocs();
 
                     } catch (err) {
                         console.error('Upload error:', err);
@@ -1969,6 +1982,71 @@
             checkTrainingStatus();
 
         })();
+
+        // Global function for canceling queued documents (accessible from onclick attributes)
+        async function cancelQueuedDocument(docId) {
+            const confirmResult = await Swal.fire({
+                title: 'Cancel Upload?',
+                text: 'Are you sure you want to cancel this queued document? This will delete the stored file.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, cancel it!',
+                cancelButtonText: 'No, keep it'
+            });
+
+            if (!confirmResult.isConfirmed) {
+                return;
+            }
+
+            try {
+                const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const res = await fetch(`{{ route("staff.knowledgebase.cancel-queued-document", ":id") }}`.replace(':id', docId), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const result = await res.json();
+
+                if (!res.ok || !result.success) {
+                    throw new Error(result.message || 'Failed to cancel document');
+                }
+
+                showToast('success', 'Queued document canceled successfully');
+
+                // Auto-refresh the document lists with a small delay for UI consistency
+                setTimeout(() => {
+                    // Refresh the main docs list to update the queued documents section
+                    try {
+                        // Try to access fetchDocs from the main scope
+                        if (typeof fetchDocs === 'function') {
+                            fetchDocs();
+                        } else {
+                            // Fallback: try to find and call the function from the main scope
+                            const mainScope = window;
+                            if (mainScope && typeof mainScope.fetchDocs === 'function') {
+                                mainScope.fetchDocs();
+                            } else {
+                                // Final fallback: reload the page to show updated state
+                                location.reload();
+                            }
+                        }
+                    } catch (refreshErr) {
+                        console.error('[DEBUG] Error refreshing after cancel:', refreshErr);
+                        // Final fallback: reload the page
+                        location.reload();
+                    }
+                }, 500);
+
+            } catch (err) {
+                console.error('[DEBUG] Error canceling queued document:', err);
+                showToast('error', err.message || 'Failed to cancel queued document');
+            }
+        }
 
     </script>
 
