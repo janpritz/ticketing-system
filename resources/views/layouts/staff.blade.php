@@ -32,39 +32,6 @@
         </a>
       </li>
       <li>
-        <button type="button" id="knowledgebaseDropdown" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.knowledgebase.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}" aria-expanded="false">
-          <div class="flex items-center">
-            <svg class="w-5 h-5 {{ request()->routeIs('staff.knowledgebase.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-              <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
-            </svg>
-            <span class="ms-3">Knowledgebase</span>
-          </div>
-          <svg id="knowledgebaseChevron" class="w-4 h-4 transition-transform duration-200 {{ request()->routeIs('staff.knowledgebase.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <div id="knowledgebaseMenu" class="hidden pl-4 mt-1 space-y-1">
-          <a href="{{ route('staff.knowledgebase.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.knowledgebase.index') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
-            <svg class="w-4 h-4 {{ request()->routeIs('staff.knowledgebase.index') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-              <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
-            </svg>
-            <span class="ms-3">FAQs</span>
-          </a>
-          <a href="{{ route('staff.knowledgebase.create') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.knowledgebase.create') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
-            <svg class="w-4 h-4 {{ request()->routeIs('staff.knowledgebase.create') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/>
-            </svg>
-            <span class="ms-3">Create FAQ</span>
-          </a>
-          <a href="{{ route('staff.knowledgebase.announcements.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.knowledgebase.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 {{ request()->routeIs('staff.knowledgebase.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M13 2.5a1.5 1.5 0 0 1 3 0v11a1.5 1.5 0 0 1-3 0zm-1 .724c-2.067.95-4.539 1.481-7 1.656v6.237a25 25 0 0 1 1.088.085c2.053.204 4.038.668 5.912 1.56zm-8 7.841V4.934c-.68.027-1.399.043-2.008.053A2.02 2.02 0 0 0 0 7v2c0 1.106.896 1.996 1.994 2.009l.496.008a64 64 0 0 1 1.51.048m1.39 1.081q.428.032.85.078l.253 1.69a1 1 0 0 1-.983 1.187h-.548a1 1 0 0 1-.916-.599l-1.314-2.48a66 66 0 0 1 1.692.064q.491.026.966.06"/>
-            </svg>
-            <span class="ms-3">Announcements</span>
-          </a>
-        </div>
-      </li>
-      <li>
         <a href="{{ route('staff.reports.index') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.reports.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('staff.reports.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
@@ -72,6 +39,25 @@
           </svg>
           <span class="ms-3">Reports</span>
         </a>
+      </li>
+      <li>
+        <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100" aria-controls="dropdown-faq" data-collapse-toggle="dropdown-faq">
+          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2L3 7v11a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V7l-7-5z"/>
+          </svg>
+          <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Knowledge Base</span>
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+          </svg>
+        </button>
+        <ul id="dropdown-faq" class="hidden py-2 space-y-2">
+          <li>
+            <a href="{{ route('staff.faqs.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">FAQs</a>
+          </li>
+          <li>
+            <a href="{{ route('staff.announcements.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">Announcements</a>
+          </li>
+        </ul>
       </li>
       <li>
         <a href="{{ route('staff.profile') }}"
@@ -127,6 +113,22 @@
 
 @section('scripts')
   @parent
+  <!-- Dropdown toggles -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const toggles = document.querySelectorAll('[data-collapse-toggle]');
+      toggles.forEach(toggle => {
+        toggle.addEventListener('click', function () {
+          const targetId = this.getAttribute('data-collapse-toggle');
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.classList.toggle('hidden');
+          }
+        });
+      });
+    });
+  </script>
+
   <!-- Sidebar collapse/expand for mobile + desktop -->
   <script>
     (function () {
@@ -242,34 +244,6 @@
     })();
   </script>
 
-  <!-- Knowledgebase Dropdown Script -->
-  <script>
-    (function () {
-      const dropdownBtn = document.getElementById('knowledgebaseDropdown');
-      const dropdownMenu = document.getElementById('knowledgebaseMenu');
-      const chevron = document.getElementById('knowledgebaseChevron');
-
-      if (!dropdownBtn || !dropdownMenu || !chevron) return;
-
-      dropdownBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-
-        const isOpen = !dropdownMenu.classList.contains('hidden');
-
-        dropdownMenu.classList.toggle('hidden', isOpen);
-        dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-        chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-      });
-
-      document.addEventListener('click', function (e) {
-        if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-          dropdownMenu.classList.add('hidden');
-          dropdownBtn.setAttribute('aria-expanded', 'false');
-          chevron.style.transform = 'rotate(0deg)';
-        }
-      });
-    })();
-  </script>
 
 
   @yield('staff-scripts')

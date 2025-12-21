@@ -2,352 +2,731 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DocumentChange;
-// use App\Models\Faq; // Removed - FAQ system deleted
-// use App\Models\ProcessedFaq; // Removed - FAQ system deleted
-use App\Models\Ticket;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
+use App\Models\DocumentChange;
+use App\Services\RasaServerService;
+use App\Jobs\ProcessQueuedDocument;
 
 class StaffKnowledgebaseController extends Controller
 {
-    // FAQ CRUD - COMMENTED OUT: FAQ system deleted
-    /*
+    /**
+     * FAQ Management - page (blade)
+     */
     public function index(Request $request)
     {
-        $search = $request->query('search', '');
-        $query = Faq::query();
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('intent', 'like', '%' . $search . '%')
-                  ->orWhere('response', 'like', '%' . $search . '%');
-            });
-        }
-
-        $faqs = $query->get();
-
-        if ($request->ajax()) {
-            return response()->json(['faqs' => $faqs]);
-        }
-
-        return view('staff.knowledgebase.index', compact('faqs'));
+        $isDeleted = (bool) $request->query('include_deleted', false);
+        $listUrl = $isDeleted ? route('staff.faqs.deleted.list') : route('staff.faqs.index');
+        return view('dashboards.staff.faqs.index', [
+            'listUrl' => $listUrl,
+            'isDeletedView' => $isDeleted,
+        ]);
     }
 
-    public function create()
-    {
-        return view('staff.knowledgebase.create');
-    }
-
+    /**
+     * Store new FAQ (AJAX)
+     */
     public function store(Request $request)
     {
-        $request->validate([
-            'intent' => 'required|string',
-            'description' => 'nullable|string',
+        $validated = $request->validate([
+            'intent' => 'required|string|max:255',
+            'description' => 'required|string',
             'response' => 'required|string',
+            'assigned_roles' => 'nullable|array',
+            'assigned_roles.*' => 'exists:roles,id',
         ]);
 
-        $faq = Faq::create($request->all());
-
-        // Log the change
-        $content = $faq->intent . $faq->response;
-        DocumentChange::create([
-            'file_name' => (string) $faq->id,
-            'action' => 'created',
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name,
-            'old_content_hash' => null,
-            'new_content_hash' => hash('sha256', $content),
-            'change_timestamp' => now(),
-            'training_required' => true,
-            'training_completed' => false,
-            'model_name' => 'Faq',
-        ]);
-
-        return redirect()->route('staff.knowledgebase.index')->with('success', 'FAQ created successfully');
-    }
-
-    public function show(Faq $faq)
-    {
-        return view('staff.knowledgebase.show', compact('faq'));
-    }
-
-    public function edit(Faq $faq)
-    {
-        return view('staff.knowledgebase.edit', compact('faq'));
-    }
-
-    public function update(Request $request, Faq $faq)
-    {
-        $request->validate([
-            'intent' => 'required|string',
-            'description' => 'nullable|string',
-            'response' => 'required|string',
-        ]);
-
-        // Get old content hash
-        $oldContent = $faq->intent . $faq->response;
-        $oldHash = hash('sha256', $oldContent);
-
-        $faq->update($request->all());
-
-        // Get new content hash
-        $newContent = $faq->intent . $faq->response;
-        $newHash = hash('sha256', $newContent);
-
-        // Log the change
-        DocumentChange::create([
-            'file_name' => (string) $faq->id,
-            'action' => 'updated',
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name,
-            'old_content_hash' => $oldHash,
-            'new_content_hash' => $newHash,
-            'change_timestamp' => now(),
-            'training_required' => true,
-            'training_completed' => false,
-            'model_name' => 'Faq',
-        ]);
-
-        return redirect()->route('staff.knowledgebase.index')->with('success', 'FAQ updated successfully');
-    }
-
-    public function destroy(Faq $faq)
-    {
-        // Get old content hash before deletion
-        $oldContent = $faq->intent . $faq->response;
-        $oldHash = hash('sha256', $oldContent);
-
-        // Log the change
-        DocumentChange::create([
-            'file_name' => (string) $faq->id,
-            'action' => 'deleted',
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name,
-            'old_content_hash' => $oldHash,
-            'new_content_hash' => null,
-            'change_timestamp' => now(),
-            'training_required' => true,
-            'training_completed' => false,
-            'model_name' => 'Faq',
-        ]);
-
-        $faq->delete();
-        return redirect()->route('staff.knowledgebase.index')->with('success', 'FAQ deleted successfully');
-    }
-    */
-
-    // File upload handling
-    public function uploadFile(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|max:10240', // 10MB max
-        ]);
-
-        $file = $request->file('file');
-        $rasaUrl = config('services.rasa.url');
-        $uploadUrl = $rasaUrl . '/upload';
-
+        // Log document change for training alert
         try {
-            $fileContent = file_get_contents($file->getRealPath());
-            $response = Http::attach(
-                'file',
-                $fileContent,
-                $file->getClientOriginalName()
-            )->post($uploadUrl);
+            \App\Models\DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log FAQ create change: ' . $e->getMessage());
+        }
 
-            if ($response->successful()) {
-                // Log the change
-                DocumentChange::create([
-                    'file_name' => $file->getClientOriginalName(),
-                    'action' => 'created',
-                    'user_id' => Auth::id(),
-                    'user_name' => Auth::user()->name,
-                    'old_content_hash' => null,
-                    'new_content_hash' => hash('sha256', $fileContent),
-                    'change_timestamp' => now(),
-                    'training_required' => true,
-                    'training_completed' => false,
-                    'model_name' => 'File',
+        return response()->json(['ok' => true], 201);
+    }
+
+    /**
+     * Update FAQ (AJAX)
+     */
+    public function update(Request $request)
+    {
+        $validated = $request->validate([
+            'intent' => 'required|string|max:255',
+            'description' => 'required|string',
+            'response' => 'required|string',
+            'assigned_roles' => 'nullable|array',
+            'assigned_roles.*' => 'exists:roles,id',
+        ]);
+
+        // Log document change for training alert
+        try {
+            DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to log FAQ update change: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Delete FAQ (AJAX)
+     */
+    public function destroy($faqId)
+    {
+        try {
+            \App\Models\DocumentChange::create([
+                'file_name' => 'faqs.json',
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? null,
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log FAQ delete change: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Announcements Management - page (blade)
+     */
+    public function announcementsIndex(Request $request)
+    {
+        return view('dashboards.staff.announcements.index');
+    }
+
+    /**
+     * Store new announcement (AJAX) - uploads to Rasa server
+     */
+    public function announcementsStore(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:10000',
+            'assigned_roles' => 'nullable|array',
+            'assigned_roles.*' => 'exists:roles,id',
+        ]);
+
+        // Check if server is online
+        if (RasaServerService::isServerOnline()) {
+            // Direct upload (existing logic)
+            try {
+                // Upload to Rasa server
+                $rasaUrl = config('services.faq_list_docs.url');
+                if (!$rasaUrl) {
+                    throw new \Exception('Rasa server URL not configured');
+                }
+
+                // Replace /list-docs with /update-document
+                $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+                $secret = config('services.faq_list_docs.secret');
+
+                // First, fetch current announcements to get next ID
+                $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+                $listResponse = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->get($listUrl);
+
+                $nextId = 1;
+                if ($listResponse->successful()) {
+                    $listData = $listResponse->json();
+                    if ($listData['ok'] && !empty($listData['announcements'])) {
+                        $maxId = max(array_column($listData['announcements'], 'id'));
+                        $nextId = $maxId + 1;
+                    }
+                }
+
+                // Format the announcement with role assignments
+                $assignedRoles = $validated['assigned_roles'] ?? [];
+                $rolesText = empty($assignedRoles) ? 'all' : implode(',', $assignedRoles);
+                $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\nroles: {$rolesText}\n{$validated['content']}\n---------\n";
+
+                // If there are existing announcements, append to the content
+                if ($listResponse->successful() && !empty($listData['announcements'])) {
+                    // We need to get the full file content and append
+                    // Since update-document replaces the file, we need to get current content first
+                    $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
+                    $downloadResponse = Http::withHeaders([
+                        'X-FAQ-UPDATER-TOKEN' => $secret,
+                        'X-Requested-With' => 'XMLHttpRequest'
+                    ])->get($downloadUrl);
+
+                    if ($downloadResponse->successful()) {
+                        $currentContent = $downloadResponse->body();
+                        $announcementText = $currentContent . $announcementText;
+                    }
+                }
+
+                // Upload the updated content
+                $response = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->post($uploadUrl, [
+                    'file_name' => 'Announcements.txt',
+                    'file_content' => $announcementText,
+                    'file_type' => 'txt'
                 ]);
 
-                return response()->json(['success' => true, 'message' => 'File uploaded successfully']);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Failed to upload file']);
+                if (!$response->successful()) {
+                    throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
+                }
+
+                $uploadData = $response->json();
+                if (!$uploadData['ok']) {
+                    throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
+                }
+
+                // Log the document change for tracking
+                try {
+                    \App\Models\DocumentChange::create([
+                        'file_name' => 'Announcements.txt',
+                        'action' => 'created',
+                        'user_id' => Auth::id(),
+                        'user_name' => Auth::user()->name ?? null,
+                        'training_required' => true,
+                        'training_completed' => false,
+                    ]);
+                } catch (\Exception $e) {
+                    // Log error but don't fail the announcement creation
+                    \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement added successfully',
+                    'announcement' => [
+                        'id' => $nextId,
+                        'title' => $validated['title'],
+                        'content' => $validated['content']
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to store announcement: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to add announcement: ' . $e->getMessage()
+                ], 500);
             }
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error uploading file']);
+        } else {
+            // Server offline, save to filesystem immediately
+            $filename = 'Announcements.txt_' . uniqid() . '.txt';
+            $filePath = storage_path('app/queued_documents/' . $filename);
+            
+            // Ensure directory exists
+            $directory = storage_path('app/queued_documents');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            // Save file
+            file_put_contents($filePath, $validated['content']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement queued for upload (server offline)',
+                'queued' => true
+            ]);
         }
     }
 
-    // Announcements CRUD
-    public function announcementsIndex()
+    /**
+     * List announcements (AJAX) - fetches from Rasa server
+     */
+    public function announcementsList(Request $request)
     {
-        // Similar to admin, but for staff
-        // Assuming announcements are fetched from Rasa
-        $rasaUrl = config('services.rasa.url');
         try {
-            $response = Http::get($rasaUrl . '/list-docs');
-            $docs = $response->json();
-            $announcements = [];
-            foreach ($docs as $doc) {
-                if ($doc['file_name'] === 'Announcements.txt') {
-                    $downloadResponse = Http::get(str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl));
-                    $content = $downloadResponse->body();
-                    // Parse announcements from content
-                    $announcements = $this->parseAnnouncements($content);
+            // Fetch announcements from Rasa server
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
+
+            // Replace /list-docs with /download-announcements
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server: ' . $response->status());
+            }
+
+            $data = $response->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            $announcements = $data['announcements'] ?? [];
+
+            // Filter announcements based on user role (unless admin)
+            $user = Auth::user();
+            if (strtolower($user->role ?? '') !== 'primary administrator') {
+                $userRoleId = $user->role_id;
+                $filteredAnnouncements = [];
+                foreach ($announcements as $ann) {
+                    $roles = $ann['roles'] ?? 'all';
+                    if ($roles === 'all' || in_array($userRoleId, explode(',', $roles))) {
+                        $filteredAnnouncements[] = $ann;
+                    }
+                }
+                $announcements = $filteredAnnouncements;
+            }
+
+            // Get pinned announcement IDs
+            $pinnedIds = DB::table('pinned_announcements')->pluck('announcement_id')->toArray();
+
+            // Add pinned flag
+            foreach ($announcements as &$ann) {
+                $ann['pinned'] = in_array($ann['id'], $pinnedIds);
+            }
+
+            // Sort: pinned first, then by ID descending
+            usort($announcements, function ($a, $b) {
+                if ($a['pinned'] && !$b['pinned']) return -1;
+                if (!$a['pinned'] && $b['pinned']) return 1;
+                return $b['id'] <=> $a['id'];
+            });
+
+            return response()->json([
+                'success' => true,
+                'announcements' => $announcements
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Rasa server is offline.'
+            ]);
+        }
+    }
+
+    /**
+     * Update announcement (AJAX)
+     */
+    public function announcementsUpdate(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:10000',
+            'assigned_roles' => 'nullable|array',
+            'assigned_roles.*' => 'exists:roles,id',
+        ]);
+
+        try {
+            // Fetch current announcements
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
+            }
+
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            $listResponse = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            if (!$listResponse->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server');
+            }
+
+            $data = $listResponse->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            $announcements = $data['announcements'];
+
+            // Find and update
+            $found = false;
+            foreach ($announcements as &$ann) {
+                if ($ann['id'] == $id) {
+                    $ann['title'] = $validated['title'];
+                    $ann['content'] = $validated['content'];
+                    $assignedRoles = $validated['assigned_roles'] ?? [];
+                    $ann['roles'] = empty($assignedRoles) ? 'all' : implode(',', $assignedRoles);
+                    $found = true;
                     break;
                 }
             }
-        } catch (\Exception $e) {
-            $announcements = [];
-        }
 
-        return view('staff.knowledgebase.announcements.index', compact('announcements'));
-    }
+            if (!$found) {
+                throw new \Exception('Announcement not found');
+            }
 
-    public function announcementsStore(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string',
-            'content' => 'required|string',
-        ]);
+            // Reconstruct content
+            $content = '';
+            foreach ($announcements as $ann) {
+                $rolesText = $ann['roles'] ?? 'all';
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\nroles: {$rolesText}\n{$ann['content']}\n---------\n";
+            }
 
-        $rasaUrl = config('services.rasa.url');
-        $uploadUrl = $rasaUrl . '/upload';
-
-        try {
-            // Get current announcements
-            $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
-            $downloadResponse = Http::get($downloadUrl);
-            $currentContent = $downloadResponse->successful() ? $downloadResponse->body() : '';
-
-            $newAnnouncement = "Title: " . $request->input('title') . "\nContent: " . $request->input('content') . "\n---\n";
-            $updatedContent = $currentContent . $newAnnouncement;
-
-            Http::post($uploadUrl, [
+            // Upload updated content
+            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->post($uploadUrl, [
                 'file_name' => 'Announcements.txt',
-                'file_content' => $updatedContent,
+                'file_content' => $content,
+                'file_type' => 'txt'
             ]);
 
-            // Log the change
-            DocumentChange::create([
-                'file_name' => $request->input('title'),
-                'action' => 'created',
-                'user_id' => Auth::id(),
-                'user_name' => Auth::user()->name,
-                'old_content_hash' => hash('sha256', $currentContent),
-                'new_content_hash' => hash('sha256', $updatedContent),
-                'change_timestamp' => now(),
-                'training_required' => true,
-                'training_completed' => false,
-                'model_name' => 'Announcement',
-            ]);
+            if (!$response->successful()) {
+                throw new \Exception('Failed to upload updated announcements');
+            }
 
-            return response()->json(['success' => true, 'message' => 'Announcement added successfully']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Failed to add announcement']);
-        }
-    }
+            $uploadData = $response->json();
+            if (!$uploadData['ok']) {
+                throw new \Exception($uploadData['error'] ?? 'Failed to update announcement');
+            }
 
-    public function announcementsUpdate(Request $request, $id)
-    {
-        // Similar logic for update
-        // Omitted for brevity, implement similarly
-        // Note: Add logging similar to store, with action 'updated'
-    }
-
-    public function announcementsDestroy($id)
-    {
-        // Similar logic for delete
-        // Note: Add logging similar to store, with action 'deleted'
-    }
-
-    // Process closed tickets - COMMENTED OUT: FAQ system deleted
-    /*
-    public function processClosedTickets()
-    {
-        $staffId = Auth::id();
-
-        // Get closed tickets handled by this staff that are not yet processed
-        $closedTickets = Ticket::where('status', 'closed')
-            ->where('staff_id', $staffId)
-            ->whereDoesntHave('processedFaqs')
-            ->get();
-
-        foreach ($closedTickets as $ticket) {
-            // Send to LLM for FAQ generation
-            $faqData = $this->generateFaqFromTicket($ticket);
-
-            if ($faqData) {
-                $processedFaq = ProcessedFaq::create([
-                    'ticket_id' => $ticket->id,
-                    'staff_id' => $staffId,
-                    'question' => $faqData['question'],
-                    'response' => $faqData['response'],
-                    'processed_at' => now(),
-                ]);
-
-                // Log the change
-                $content = $processedFaq->question . $processedFaq->response;
-                DocumentChange::create([
-                    'file_name' => (string) $processedFaq->id,
-                    'action' => 'created',
-                    'user_id' => $staffId,
-                    'user_name' => Auth::user()->name,
-                    'old_content_hash' => null,
-                    'new_content_hash' => hash('sha256', $content),
-                    'change_timestamp' => now(),
+            // Log the document change for training alert
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'updated',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
                     'training_required' => true,
                     'training_completed' => false,
-                    'model_name' => 'ProcessedFaq',
                 ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to log announcement update change: ' . $e->getMessage());
             }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update announcement: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['message' => 'Closed tickets processed successfully']);
-    }
-    */
-
-    private function generateFaqFromTicket(Ticket $ticket)
-    {
-        // Stub for LLM call
-        // In real implementation, call OpenAI or other LLM API
-        // For now, return dummy data
-        return [
-            'question' => 'How to ' . $ticket->subject,
-            'response' => $ticket->response,
-        ];
     }
 
-    private function parseAnnouncements($content)
+    /**
+     * Delete announcement (AJAX)
+     */
+    public function announcementsDestroy($id)
     {
-        // Parse announcements from text
-        $announcements = [];
-        $parts = explode('---', $content);
-        foreach ($parts as $index => $part) {
-            $lines = explode("\n", trim($part));
-            $title = '';
-            $content = '';
-            foreach ($lines as $line) {
-                if (str_starts_with($line, 'Title: ')) {
-                    $title = substr($line, 7);
-                } elseif (str_starts_with($line, 'Content: ')) {
-                    $content = substr($line, 9);
-                }
+        try {
+            // Fetch current announcements
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) {
+                throw new \Exception('Rasa server URL not configured');
             }
-            if ($title || $content) {
-                $announcements[] = [
-                    'id' => $index + 1,
-                    'title' => $title,
-                    'content' => $content,
+
+            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+            $secret = config('services.faq_list_docs.secret');
+
+            $listResponse = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($announcementsUrl);
+
+            if (!$listResponse->successful()) {
+                throw new \Exception('Failed to fetch announcements from Rasa server');
+            }
+
+            $data = $listResponse->json();
+
+            if (!$data['ok']) {
+                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
+            }
+
+            $announcements = $data['announcements'];
+
+            // Find and remove
+            $announcements = array_filter($announcements, function ($ann) use ($id) {
+                return $ann['id'] != $id;
+            });
+
+            // Reconstruct content
+            $content = '';
+            foreach ($announcements as $ann) {
+                $rolesText = $ann['roles'] ?? 'all';
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\nroles: {$rolesText}\n{$ann['content']}\n---------\n";
+            }
+
+            // Upload updated content
+            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+            $response = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->post($uploadUrl, [
+                'file_name' => 'Announcements.txt',
+                'file_content' => $content,
+                'file_type' => 'txt'
+            ]);
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to upload updated announcements');
+            }
+
+            $uploadData = $response->json();
+            if (!$uploadData['ok']) {
+                throw new \Exception($uploadData['error'] ?? 'Failed to delete announcement');
+            }
+
+            // Log the document change for training alert
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'deleted',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to log announcement delete change: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Announcement deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete announcement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Pin/unpin announcement (AJAX)
+     */
+    public function announcementsPin($id)
+    {
+        try {
+            // Check if already pinned
+            $existing = DB::table('pinned_announcements')->where('announcement_id', $id)->first();
+
+            if ($existing) {
+                // Unpin
+                DB::table('pinned_announcements')->where('announcement_id', $id)->delete();
+                $message = 'Announcement unpinned successfully';
+            } else {
+                // Pin
+                DB::table('pinned_announcements')->insert([
+                    'announcement_id' => $id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                $message = 'Announcement pinned successfully';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to pin/unpin announcement: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to pin/unpin announcement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload document to knowledgebase (AJAX)
+     */
+    public function uploadDocument(Request $request)
+    {
+        $validated = $request->validate([
+            'file_content' => 'required|string',
+            'file_name' => 'required|string|max:255',
+            'file_type' => 'required|string|max:10',
+        ]);
+
+        // Check if Rasa server is online
+        if (RasaServerService::isServerOnline()) {
+            // Direct upload to Rasa server
+            try {
+                $uploadResult = RasaServerService::uploadDocument(
+                    $validated['file_name'],
+                    $validated['file_content'],
+                    $validated['file_type']
+                );
+
+                if (!$uploadResult['ok']) {
+                    throw new \Exception($uploadResult['error'] ?? 'Upload failed');
+                }
+
+                // Log document change for training
+                try {
+                    DocumentChange::create([
+                        'file_name' => $validated['file_name'],
+                        'action' => 'created',
+                        'user_id' => Auth::id(),
+                        'user_name' => Auth::user()->name ?? null,
+                        'training_required' => true,
+                        'training_completed' => false,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to log document upload change: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Document uploaded successfully'
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to upload document: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload document: ' . $e->getMessage()
+                ], 500);
+            }
+        } else {
+            // Server offline, save to filesystem immediately
+            $filename = $validated['file_name'] . '_' . uniqid() . '.txt';
+            $filePath = storage_path('app/queued_documents/' . $filename);
+            
+            // Ensure directory exists
+            $directory = storage_path('app/queued_documents');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            // Save file
+            file_put_contents($filePath, $validated['file_content']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document queued for upload (server offline)',
+                'queued' => true
+            ]);
+        }
+    }
+
+    /**
+     * Get queued documents from filesystem (AJAX)
+     */
+    public function getQueuedDocuments(Request $request)
+    {
+        $queuedDocuments = [];
+        $storagePath = storage_path('app/queued_documents');
+        
+        if (file_exists($storagePath)) {
+            $files = glob($storagePath . '/*.txt');
+            
+            foreach ($files as $file) {
+                $filename = basename($file);
+                $createdAt = filemtime($file);
+                
+                // Extract original filename from the stored filename
+                // Format: original_filename_timestamp.txt
+                $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $filename);
+                
+                $queuedDocuments[] = [
+                    'id' => md5($filename), // Generate ID from filename
+                    'file_name' => $originalFilename,
+                    'file_path' => 'queued_documents/' . $filename,
+                    'file_type' => 'txt',
+                    'status' => 'pending',
+                    'uploaded_by' => Auth::id(),
+                    'created_at' => date('Y-m-d H:i:s', $createdAt),
+                    'updated_at' => date('Y-m-d H:i:s', $createdAt)
                 ];
             }
         }
-        return $announcements;
+
+        return response()->json([
+            'success' => true,
+            'queued_documents' => $queuedDocuments
+        ]);
+    }
+
+    /**
+     * Cancel a queued document (AJAX)
+     */
+    public function cancelQueuedDocument($id)
+    {
+        try {
+            // Find the file by ID (which is MD5 of filename)
+            $storagePath = storage_path('app/queued_documents');
+            $files = glob($storagePath . '/*.txt');
+            
+            $fileFound = false;
+            foreach ($files as $file) {
+                $filename = basename($file);
+                $fileId = md5($filename);
+                
+                if ($fileId === $id) {
+                    // Delete the file
+                    if (unlink($file)) {
+                        $fileFound = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$fileFound) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Queued document not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Queued document canceled successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to cancel queued document: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel queued document'
+            ], 500);
+        }
     }
 }

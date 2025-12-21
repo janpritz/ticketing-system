@@ -16,6 +16,9 @@ use App\Services\FaqDeleterService;
 use App\Events\FaqEnabled;
 use App\Events\FaqDisabled;
 use App\Models\DocumentChange;
+use App\Models\QueuedDocument;
+use App\Services\RasaServerService;
+use App\Jobs\ProcessQueuedDocument;
 
 class AdminController extends Controller
 {
@@ -646,103 +649,124 @@ class AdminController extends Controller
             'content' => 'required|string|max:10000',
         ]);
 
-        try {
-            // Upload to Rasa server
-            $rasaUrl = config('services.faq_list_docs.url');
-            if (!$rasaUrl) {
-                throw new \Exception('Rasa server URL not configured');
-            }
-
-            // Replace /list-docs with /update-document
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-            $secret = config('services.faq_list_docs.secret');
-
-            // First, fetch current announcements to get next ID
-            $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-            $listResponse = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($listUrl);
-
-            $nextId = 1;
-            if ($listResponse->successful()) {
-                $listData = $listResponse->json();
-                if ($listData['ok'] && !empty($listData['announcements'])) {
-                    $maxId = max(array_column($listData['announcements'], 'id'));
-                    $nextId = $maxId + 1;
+        // Check if server is online
+        if (RasaServerService::isServerOnline()) {
+            // Direct upload (existing logic)
+            try {
+                // Upload to Rasa server
+                $rasaUrl = config('services.faq_list_docs.url');
+                if (!$rasaUrl) {
+                    throw new \Exception('Rasa server URL not configured');
                 }
-            }
 
-            // Format the announcement
-            $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
+                // Replace /list-docs with /update-document
+                $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+                $secret = config('services.faq_list_docs.secret');
 
-            // If there are existing announcements, append to the content
-            if ($listResponse->successful() && !empty($listData['announcements'])) {
-                // We need to get the full file content and append
-                // Since update-document replaces the file, we need to get current content first
-                $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
-                $downloadResponse = Http::withHeaders([
+                // First, fetch current announcements to get next ID
+                $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+                $listResponse = Http::withHeaders([
                     'X-FAQ-UPDATER-TOKEN' => $secret,
                     'X-Requested-With' => 'XMLHttpRequest'
-                ])->get($downloadUrl);
+                ])->get($listUrl);
 
-                if ($downloadResponse->successful()) {
-                    $currentContent = $downloadResponse->body();
-                    $announcementText = $currentContent . $announcementText;
+                $nextId = 1;
+                if ($listResponse->successful()) {
+                    $listData = $listResponse->json();
+                    if ($listData['ok'] && !empty($listData['announcements'])) {
+                        $maxId = max(array_column($listData['announcements'], 'id'));
+                        $nextId = $maxId + 1;
+                    }
                 }
-            }
 
-            // Upload the updated content
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $announcementText,
-                'file_type' => 'txt'
-            ]);
+                // Format the announcement
+                $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
 
-            if (!$response->successful()) {
-                throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
-            }
+                // If there are existing announcements, append to the content
+                if ($listResponse->successful() && !empty($listData['announcements'])) {
+                    // We need to get the full file content and append
+                    // Since update-document replaces the file, we need to get current content first
+                    $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
+                    $downloadResponse = Http::withHeaders([
+                        'X-FAQ-UPDATER-TOKEN' => $secret,
+                        'X-Requested-With' => 'XMLHttpRequest'
+                    ])->get($downloadUrl);
 
-            $uploadData = $response->json();
-            if (!$uploadData['ok']) {
-                throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
-            }
+                    if ($downloadResponse->successful()) {
+                        $currentContent = $downloadResponse->body();
+                        $announcementText = $currentContent . $announcementText;
+                    }
+                }
 
-            // Log the document change for tracking
-            try {
-                \App\Models\DocumentChange::create([
+                // Upload the updated content
+                $response = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->post($uploadUrl, [
                     'file_name' => 'Announcements.txt',
-                    'action' => 'created',
-                    'user_id' => Auth::id(),
-                    'user_name' => Auth::user()->name ?? null,
-                    'training_required' => true,
-                    'training_completed' => false,
+                    'file_content' => $announcementText,
+                    'file_type' => 'txt'
                 ]);
+
+                if (!$response->successful()) {
+                    throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
+                }
+
+                $uploadData = $response->json();
+                if (!$uploadData['ok']) {
+                    throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
+                }
+
+                // Log the document change for tracking
+                try {
+                    \App\Models\DocumentChange::create([
+                        'file_name' => 'Announcements.txt',
+                        'action' => 'created',
+                        'user_id' => Auth::id(),
+                        'user_name' => Auth::user()->name ?? null,
+                        'training_required' => true,
+                        'training_completed' => false,
+                    ]);
+                } catch (\Exception $e) {
+                    // Log error but don't fail the announcement creation
+                    \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement added successfully',
+                    'announcement' => [
+                        'id' => $nextId,
+                        'title' => $validated['title'],
+                        'content' => $validated['content']
+                    ]
+                ]);
+
             } catch (\Exception $e) {
-                // Log error but don't fail the announcement creation
-                \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                Log::error('Failed to store announcement: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to add announcement: ' . $e->getMessage()
+                ], 500);
             }
+        } else {
+            // Server offline, queue immediately
+            QueuedDocument::create([
+                'file_name' => 'Announcements.txt',
+                'file_content' => $validated['content'],
+                'file_type' => 'txt',
+                'uploaded_by' => Auth::id(),
+                'assigned_roles' => [Auth::user()->role_id], // Auto-assign uploader's role
+                'operation_type' => 'create',
+                'document_id' => null,
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Announcement added successfully',
-                'announcement' => [
-                    'id' => $nextId,
-                    'title' => $validated['title'],
-                    'content' => $validated['content']
-                ]
+                'message' => 'Announcement queued for upload (server offline)',
+                'queued' => true
             ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to store announcement: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to add announcement: ' . $e->getMessage()
-            ], 500);
         }
     }
 
