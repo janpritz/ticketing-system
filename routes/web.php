@@ -266,6 +266,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/create-backup', [RasaServerController::class, 'createBackup'])->name('create-backup');
         Route::delete('/delete-backup/{backupId}', [RasaServerController::class, 'deleteBackup'])->name('delete-backup');
         Route::post('/cleanup-models', [RasaServerController::class, 'cleanupModels'])->name('cleanup-models');
+        Route::get('/fetch-faqs', [RasaServerController::class, 'fetchFaqs'])->name('fetch-faqs');
     });
 
     // Admin logs
@@ -290,6 +291,12 @@ Route::middleware('auth')->group(function () {
         });
         Route::post('/process-closed-tickets', [\App\Http\Controllers\StaffKnowledgebaseController::class, 'processClosedTickets'])->name('process-closed-tickets');
     });
+
+    // Staff FAQs from Rasa server
+    Route::get('/staff/faqs/fetch', [StaffController::class, 'fetchFaqs'])->name('staff.faqs.fetch');
+    Route::get('/staff/faqs/test', function () {
+        return view('staff.faqs.test');
+    })->name('staff.faqs.test');
 
     // Staff reports
     Route::prefix('staff/reports')->name('staff.reports.')->group(function () {

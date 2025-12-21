@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentChange;
-use App\Models\Faq;
-use App\Models\ProcessedFaq;
+// use App\Models\Faq; // Removed - FAQ system deleted
+// use App\Models\ProcessedFaq; // Removed - FAQ system deleted
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class StaffKnowledgebaseController extends Controller
 {
-    // FAQ CRUD
+    // FAQ CRUD - COMMENTED OUT: FAQ system deleted
+    /*
     public function index(Request $request)
     {
         $search = $request->query('search', '');
@@ -138,6 +139,7 @@ class StaffKnowledgebaseController extends Controller
         $faq->delete();
         return redirect()->route('staff.knowledgebase.index')->with('success', 'FAQ deleted successfully');
     }
+    */
 
     // File upload handling
     public function uploadFile(Request $request)
@@ -265,7 +267,8 @@ class StaffKnowledgebaseController extends Controller
         // Note: Add logging similar to store, with action 'deleted'
     }
 
-    // Process closed tickets
+    // Process closed tickets - COMMENTED OUT: FAQ system deleted
+    /*
     public function processClosedTickets()
     {
         $staffId = Auth::id();
@@ -308,6 +311,7 @@ class StaffKnowledgebaseController extends Controller
 
         return response()->json(['message' => 'Closed tickets processed successfully']);
     }
+    */
 
     private function generateFaqFromTicket(Ticket $ticket)
     {

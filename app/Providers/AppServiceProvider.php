@@ -5,8 +5,6 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Event;
-use App\Models\Faq;
-use App\Observers\FaqObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,8 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register model observers
-        Faq::observe(FaqObserver::class);
 
         // Register NoCaptcha service provider for reCAPTCHA
         $this->app->register(\Anhskohbo\NoCaptcha\NoCaptchaServiceProvider::class);

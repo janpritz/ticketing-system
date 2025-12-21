@@ -60,10 +60,6 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // Seed FAQs from response.yml (if present)
-        if (class_exists(\Database\Seeders\FaqSeeder::class)) {
-            $this->call(\Database\Seeders\FaqSeeder::class);
-        }
 
         // Seed categories (creates a 'General' category for every existing role
         // plus some extras for common roles)

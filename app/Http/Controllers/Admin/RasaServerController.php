@@ -875,6 +875,71 @@ class RasaServerController extends Controller
     }
 
     /**
+     * Fetch FAQs from Rasa server.
+     */
+    public function fetchFaqs(Request $request)
+    {
+        // Ensure only Primary Administrator can access
+        $user = Auth::user();
+        abort_unless($user && strtolower((string) ($user->role ?? '')) === 'primary administrator', 403, 'Unauthorized');
+
+        try {
+            // Get FAQ updater service configuration
+            $faqUpdaterUrl = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+
+            if (!$faqUpdaterUrl || !$secret) {
+                throw new \Exception('FAQ updater service not configured');
+            }
+
+            // First, try to get FAQs from the Rasa server's faqs.json file
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($faqUpdaterUrl . '/download/faqs.json?token=' . urlencode($secret));
+
+            if ($response->successful()) {
+                $faqContent = $response->body();
+                $faqsData = json_decode($faqContent, true);
+
+                if (isset($faqsData['faqs'])) {
+                    return response()->json([
+                        'success' => true,
+                        'faqs' => $faqsData['faqs'],
+                        'count' => count($faqsData['faqs']),
+                        'source' => 'rasa_server'
+                    ]);
+                } else {
+                    throw new \Exception('Invalid FAQ data format from Rasa server');
+                }
+            } else {
+                // If faqs.json is not available, try to get FAQs from the database
+                $faqs = \App\Models\Faq::where('response_disabled', false)
+                    ->select('id', 'intent', 'description', 'response')
+                    ->get();
+
+                return response()->json([
+                    'success' => true,
+                    'faqs' => $faqs,
+                    'count' => $faqs->count(),
+                    'source' => 'database_fallback'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch FAQs from Rasa server', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch FAQs: ' . $e->getMessage(),
+                'source' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
      * Format bytes into human readable format.
      */
     private function formatBytes($bytes)

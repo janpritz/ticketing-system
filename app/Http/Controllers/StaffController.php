@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Jobs\SendPushNotificationJob;
 use App\Jobs\SendTicketForwardJob;
 
@@ -569,6 +570,51 @@ class StaffController extends Controller
     }
 
     /**
+     * Get recent tickets for the authenticated staff member.
+     * Returns last 10 tickets with optional search filtering.
+     */
+    public function recentTickets(Request $request)
+    {
+        $auth = Auth::user();
+        
+        // Block Primary Administrator from the staff recent tickets endpoint
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$auth) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $search = $request->query('search', '');
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 50);
+
+        $query = Ticket::where('staff_id', $auth->id)
+            ->orderByDesc('date_created')
+            ->with(['staff', 'routingHistories.staff']);
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('question', 'like', '%' . $search . '%')
+                  ->orWhere('response', 'like', '%' . $search . '%')
+                  ->orWhere('category', 'like', '%' . $search . '%');
+            });
+        }
+
+        $paginated = $query->paginate($perPage);
+
+        return response()->json([
+            'tickets' => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ]);
+    }
+
+    /**
      * Send a test email to the authenticated user's email to verify SMTP works.
      * This uses a dummy Ticket instance and the existing TicketResponseMail.
      */
@@ -601,6 +647,78 @@ class StaffController extends Controller
             return response()->json([
                 'sent' => false,
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Fetch FAQs from Rasa server for staff.
+     */
+    public function fetchFaqs(Request $request)
+    {
+        $auth = Auth::user();
+
+        // Block Primary Administrator from the staff FAQs endpoint
+        if ($auth && (strtolower((string)($auth->role ?? '')) === 'primary administrator')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$auth) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            // Get FAQ updater service configuration
+            $faqUpdaterUrl = config('services.faq_updater.url');
+            $secret = config('services.faq_updater.secret');
+
+            if (!$faqUpdaterUrl || !$secret) {
+                throw new \Exception('FAQ updater service not configured');
+            }
+
+            // First, try to get FAQs from the Rasa server's faqs.json file
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($faqUpdaterUrl . '/download/faqs.json?token=' . urlencode($secret));
+
+            if ($response->successful()) {
+                $faqContent = $response->body();
+                $faqsData = json_decode($faqContent, true);
+
+                if (isset($faqsData['faqs'])) {
+                    return response()->json([
+                        'success' => true,
+                        'faqs' => $faqsData['faqs'],
+                        'count' => count($faqsData['faqs']),
+                        'source' => 'rasa_server'
+                    ]);
+                } else {
+                    throw new \Exception('Invalid FAQ data format from Rasa server');
+                }
+            } else {
+                // If faqs.json is not available, try to get FAQs from the database
+                $faqs = \App\Models\Faq::where('response_disabled', false)
+                    ->select('id', 'intent', 'description', 'response')
+                    ->get();
+
+                return response()->json([
+                    'success' => true,
+                    'faqs' => $faqs,
+                    'count' => $faqs->count(),
+                    'source' => 'database_fallback'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch FAQs from Rasa server', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch FAQs: ' . $e->getMessage(),
+                'source' => 'error'
             ], 500);
         }
     }
