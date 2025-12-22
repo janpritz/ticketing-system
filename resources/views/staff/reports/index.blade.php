@@ -80,15 +80,15 @@
         </div>
     </div>
 
-    <!-- FAQ Analysis Chart -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4">
+    {{-- FAQ Analysis Chart --}}
+    {{-- <div class="bg-white rounded-xl border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-semibold text-slate-800">FAQ Processing</h3>
         </div>
         <div class="h-48">
             <canvas id="faqChart" class="w-full h-full"></canvas>
         </div>
-    </div>
+    </div> --}}
 </div>
 
 <!-- Weekly Tickets Chart -->
@@ -172,8 +172,8 @@
     </div>
 </div>
 
-<!-- FAQ Analysis -->
-<div class="bg-white rounded-xl border border-gray-200 p-4">
+{{-- FAQ Analysis --}}
+{{-- <div class="bg-white rounded-xl border border-gray-200 p-4">
     <h3 class="text-sm font-semibold text-slate-800 mb-4">Frequently Asked Questions Analysis</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -185,7 +185,7 @@
             <div class="mt-2 text-2xl font-semibold text-slate-900">{{ $faqAnalysis['total_faqs'] }}</div>
         </div>
     </div>
-</div>
+</div> --}}
 
 <!-- Modals -->
 <!-- Total Tickets Modal -->
@@ -475,35 +475,35 @@
     }
 
     // FAQ Chart
-    const faqEl = document.getElementById('faqChart');
-    if (faqEl) {
-        const processed = {{ $faqAnalysis['processed_faqs'] }};
-        const total = {{ $faqAnalysis['total_faqs'] }};
-        const unprocessed = total - processed;
+    // const faqEl = document.getElementById('faqChart');
+    // if (faqEl) {
+    //     const processed = {{ $faqAnalysis['processed_faqs'] }};
+    //     const total = {{ $faqAnalysis['total_faqs'] }};
+    //     const unprocessed = total - processed;
 
-        new Chart(faqEl, {
-            type: 'bar',
-            data: {
-                labels: ['Processed', 'Total Available'],
-                datasets: [{
-                    label: 'FAQs',
-                    data: [processed, total],
-                    backgroundColor: ['#3B82F6', '#E5E7EB'],
-                    borderRadius: 6,
-                    maxBarThickness: 40
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } }
-                },
-                plugins: { legend: { display: false } }
-            }
-        });
-    }
+    //     new Chart(faqEl, {
+    //         type: 'bar',
+    //         data: {
+    //             labels: ['Processed', 'Total Available'],
+    //             datasets: [{
+    //                 label: 'FAQs',
+    //                 data: [processed, total],
+    //                 backgroundColor: ['#3B82F6', '#E5E7EB'],
+    //                 borderRadius: 6,
+    //                 maxBarThickness: 40
+    //             }]
+    //         },
+    //         options: {
+    //             responsive: true,
+    //             maintainAspectRatio: false,
+    //             scales: {
+    //                 x: { grid: { display: false } },
+    //                 y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } }
+    //             },
+    //             plugins: { legend: { display: false } }
+    //         }
+    //     });
+    // }
 
     // Weekly Chart Animation
     const weeklyChartEl = document.getElementById('weeklyChart');

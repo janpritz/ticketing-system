@@ -3,7 +3,7 @@
 @section('title', 'Staff Tickets')
 
 @section('staff-content')
-<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+<div class="sm-pt:2">
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Tickets Management</h1>
         <p class="mt-1 text-sm text-gray-600">Manage and track all assigned tickets</p>

@@ -1,21 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.staff')
 
-@section('title', 'My Profile')
+@section('title', 'Staff Dashboard')
 
-@section('content')
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+@section('staff-content')
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 sm:px-2 lg:px-2">
         <div class="mx-auto max-w-5xl">
-            <!-- Header with Back Button -->
-            <div class="mb-6">
-                <a href="{{ route('staff.dashboard') }}"
-                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white hover:shadow-sm transition-all duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M10.828 11H20a1 1 0 1 1 0 2h-9.172l3.536 3.536a1 1 0 1 1-1.414 1.414l-5.243-5.243a1 1 0 0 1 0-1.414l5.243-5.243a1 1 0 1 1 1.414 1.414L10.828 11Z" />
-                    </svg>
-                    <span>Back to Dashboard</span>
-                </a>
-            </div>
-
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 

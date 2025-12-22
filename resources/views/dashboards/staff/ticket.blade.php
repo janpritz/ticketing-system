@@ -1,10 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.staff')
 
-@section('title', 'Ticket Details')
+@section('title', 'Staff Dashboard')
 
-@section('content')
-<div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5 p-6">
+@section('staff-content')
+<div class="sm:pt-2">
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-slate-900/5">
         <div class="flex items-start justify-between">
             <div>
                 <h1 class="text-lg font-semibold text-gray-900">Ticket Details</h1>

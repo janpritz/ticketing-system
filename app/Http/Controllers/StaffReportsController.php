@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Faq;
-use App\Models\ProcessedFaq;
+// use App\Models\Faq;
+// use App\Models\ProcessedFaq;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +17,7 @@ class StaffReportsController extends Controller
 
         $performanceMetrics = $this->getPerformanceMetrics($staffId);
         $overdueTickets = $this->getOverdueTickets($staffId);
-        $faqAnalysis = $this->getFaqAnalysis($staffId);
+        $faqAnalysis = ['processed_faqs' => 0, 'total_faqs' => 0]; // Default values since FAQ processing is commented out
         $weeklyThroughput = $this->buildWeeklyThroughput($staffId);
 
         return view('staff.reports.index', compact('performanceMetrics', 'overdueTickets', 'faqAnalysis', 'weeklyThroughput'));
@@ -55,16 +55,16 @@ class StaffReportsController extends Controller
         return $overdue;
     }
 
-    private function getFaqAnalysis($staffId)
-    {
-        $processedFaqs = ProcessedFaq::where('staff_id', $staffId)->count();
-        $totalFaqs = Faq::count();
+    // private function getFaqAnalysis($staffId)
+    // {
+    //     $processedFaqs = ProcessedFaq::where('staff_id', $staffId)->count();
+    //     $totalFaqs = Faq::count();
 
-        return [
-            'processed_faqs' => $processedFaqs,
-            'total_faqs' => $totalFaqs,
-        ];
-    }
+    //     return [
+    //         'processed_faqs' => $processedFaqs,
+    //         'total_faqs' => $totalFaqs,
+    //     ];
+    // }
 
     /**
      * Build dynamic weekly throughput (last 7 days) for a staff user.
