@@ -274,7 +274,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/logs', [AdminController::class, 'logsIndex'])->name('admin.logs');
 
     // Logout (authenticated only)
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->middleware(['web', 'handle.logout.csrf'])
+        ->name('logout');
 
 
     // Staff FAQs from Rasa server

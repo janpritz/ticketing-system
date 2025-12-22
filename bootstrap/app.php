@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ForceHttps::class,
             \App\Http\Middleware\UpgradeToHttpsUnderNgrok::class,
             \App\Http\Middleware\UpgradeToHttpUnderNetworkHost::class,
+            \App\Http\Middleware\HandleLogoutCsrf::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

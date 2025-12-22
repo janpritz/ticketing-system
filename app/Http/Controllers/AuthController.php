@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
 use App\Mail\PasswordOtpMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cookie;
 
 class AuthController extends Controller
 {
@@ -75,12 +76,48 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
-        
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        
-        return redirect('/login');
+        // Log the logout attempt for debugging
+        Log::info('Logout attempt', [
+            'user_id' => $request->user() ? $request->user()->id : 'guest',
+            'session_id' => $request->session()->getId(),
+            'has_csrf' => $request->has('_token'),
+        ]);
+
+        try {
+            // Clear any cached data
+            $request->session()->flush();
+            
+            // Invalidate the session
+            $request->session()->invalidate();
+            
+            // Regenerate the CSRF token
+            $request->session()->regenerateToken();
+            
+            // Clear remember me cookie if exists
+            if ($request->hasCookie('remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d')) {
+                Cookie::queue(Cookie::forget('remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d'));
+            }
+            
+            // Logout the user
+            Auth::logout();
+            
+            Log::info('Logout successful', ['session_id' => $request->session()->getId()]);
+            
+            return redirect('/login')->with('status', 'You have been logged out successfully.');
+            
+        } catch (\Exception $e) {
+            Log::error('Logout error', [
+                'error' => $e->getMessage(),
+                'session_id' => $request->session()->getId(),
+            ]);
+            
+            // Force logout even if there's an error
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            
+            return redirect('/login')->with('error', 'Logout completed. Please try again if you experience issues.');
+        }
     }
 
     /**
