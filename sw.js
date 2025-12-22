@@ -114,7 +114,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(notification.title || 'Notification', {
       body: notification.body || '',
       // Use a root-relative icon path; service worker will resolve with origin.
-      icon: '/icon-512-maskable.png',
+      icon: '/logo.png',
       data: {
         url: destUrl,
         ticket_id: ticketId || null
