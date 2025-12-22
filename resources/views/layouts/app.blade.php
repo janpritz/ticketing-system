@@ -41,8 +41,6 @@
     <!-- Rasa Widget -->
     <script type="module" src="https://unpkg.com/@rasahq/chat-widget-ui/dist/rasa-chatwidget/rasa-chatwidget.esm.js">
     </script>
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="font-sans antialiased">
@@ -127,43 +125,6 @@
             return show;
         })();
     </script>
-    <script>
-            // PWA update toast functionality only (no automatic refresh)
-            function showUpdateToast(worker) {
-                const toast = document.getElementById('pwa-update-toast');
-                toast.classList.remove('translate-y-32');
-                document.getElementById('pwa-update-btn').onclick = () => {
-                    worker.postMessage({
-                        type: 'SKIP_WAITING'
-                    });
-                };
-            }
-        </script>
-
-    <div id="pwa-update-toast"
-        class="fixed bottom-5 left-5 right-5 md:left-auto md:right-5 md:w-80 bg-gray-900 text-white p-4 rounded-lg shadow-2xl transform translate-y-32 transition-transform duration-300 flex flex-col gap-3 z-50">
-        <div class="flex items-center gap-3">
-            <div class="bg-orange-500 p-2 rounded-full">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="id=123"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                    </path>
-                </svg>
-            </div>
-            <p class="text-sm font-medium">New version available!</p>
-        </div>
-        <div class="flex gap-2">
-            <button id="pwa-update-btn"
-                class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2 px-4 rounded">
-                Update Now
-            </button>
-            <button onclick="document.getElementById('pwa-update-toast').classList.add('translate-y-32')"
-                class="text-gray-400 hover:text-white text-xs py-2 px-2">
-                Later
-            </button>
-        </div>
-    </div>
     <footer class="p-4 text-center text-gray-500 text-xs">
         Sangkay TS &copy; {{ date('Y') }} |
         <span class="bg-gray-200 px-2 py-1 rounded">v{{ config('app.version') }}</span>
