@@ -523,11 +523,71 @@ def download_file(filename):
         except Exception as e:
             print(f"[download] Error reading file {filename}: {e}", file=sys.stderr)
             return jsonify({"ok": False, "error": "Error reading file"}), 500
-
     except Exception as e:
         print(f"[download] Unexpected error in /download/{filename}: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    """
+    Health check endpoint.
+    Returns: { "status": "ok", "timestamp": "..." }
+    """
+    return jsonify({
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "service": "faq_updater"
+    })
+
+@app.route("/download-faqs", methods=["GET", "OPTIONS"])
+def download_faqs():
+    """
+    Download the FAQs JSON file from the database directory.
+    Returns the FAQs data as JSON.
+    Accepts token via header (X-FAQ-UPDATER-TOKEN) or query parameter (token).
+    """
+    try:
+        print("[download_faqs] /download-faqs called")
+
+        # Check for token in header first, then query parameter
+        token = request.headers.get("X-FAQ-UPDATER-TOKEN") or request.args.get("token")
+        if not token:
+            print("[download_faqs] Missing X-FAQ-UPDATER-TOKEN header or token query parameter")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        # Verify the token manually since verify_secret expects it in headers
+        if FAQ_UPDATER_SECRET and not hmac.compare_digest(token, FAQ_UPDATER_SECRET):
+            print("[download_faqs] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        print("[download_faqs] Authentication successful")
+
+        # Path to the FAQs JSON file in the database directory
+        database_dir = BASE_DIR / "database"
+        faqs_json_path = database_dir / "faqs.json"
+
+        # Check if the FAQs file exists
+        if not faqs_json_path.exists():
+            print("[download_faqs] faqs.json not found in database directory")
+            return jsonify({"ok": False, "error": "FAQs not found", "details": "faqs.json file does not exist"}), 404
+
+        try:
+            with open(faqs_json_path, 'r', encoding='utf-8') as f:
+                faqs_data = json.load(f)
+            print(f"[download_faqs] Successfully read FAQs from {faqs_json_path}")
+            return jsonify({"ok": True, "faqs": faqs_data.get("faqs", []), "count": len(faqs_data.get("faqs", []))})
+        except Exception as e:
+            print(f"[download_faqs] Error reading FAQs: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": "Error reading FAQs", "details": str(e)}), 500
+
+    except Exception as e:
+        print(f"[download_faqs] Unexpected error in /download-faqs: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 @app.route("/update-document", methods=["POST", "OPTIONS"])
 def update_document():
@@ -1167,6 +1227,7 @@ def update_faq():
 @app.route("/list-docs", methods=["GET", "OPTIONS"])
 @app.route("/download-announcements", methods=["GET", "OPTIONS"])
 @app.route("/download/<filename>", methods=["GET", "OPTIONS"])
+@app.route("/health", methods=["GET", "OPTIONS"])
 def handle_preflight():
     """Handle preflight CORS requests"""
     if request.method == "OPTIONS":

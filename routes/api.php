@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\StaffController;
-use App\Http\Controllers\Api\FaqController;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 use App\Http\Controllers\RasaController;
@@ -16,11 +15,6 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Public FAQ endpoints used by Rasa
-// Bulk fetch for cache refresh: GET https://your-laravel-app.com/api/faqs
-Route::get('/faqs', [FaqController::class, 'index']);
-// Single FAQ lookup: GET https://your-laravel-app.com/api/faqs/{intent}
-Route::get('/faqs/{intent}', [FaqController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     // Create ticket (rate-limited)
@@ -34,4 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/staff', [StaffController::class, 'index']);
+    
+    // Get recent tickets for authenticated staff member
+    Route::get('/staff/tickets/recent', [StaffController::class, 'recentTickets'])->middleware('throttle:60,1');
 });

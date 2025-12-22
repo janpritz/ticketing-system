@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
+<<<<<<< HEAD
 @section('title', trim($__env->yieldContent('title', 'Staff')))
+=======
+@section('title', trim($__env->yieldContent('title', 'Staff Dashboard')))
+>>>>>>> v15
 
 @section('content')
 <!-- Staff Shell: Sidebar + Header -->
@@ -23,33 +27,52 @@
         </a>
       </li>
       <li>
+<<<<<<< HEAD
         <a href="#"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group text-gray-900">
           <svg class="w-5 h-5 text-gray-500 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+=======
+        <a href="{{ route('staff.tickets') }}"
+           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.tickets') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
+          <svg class="w-5 h-5 {{ request()->routeIs('staff.tickets') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+>>>>>>> v15
             <path d="M2 5h16v2H2V5zm0 4h16v2H2V9zm0 4h12v2H2v-2z"/>
           </svg>
           <span class="ms-3">Tickets</span>
         </a>
       </li>
       <li>
-        <a href="#"
-           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group text-gray-900">
-          <svg class="w-5 h-5 text-gray-500 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-            <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
-          </svg>
-          <span class="ms-3">Knowledgebase</span>
-        </a>
-      </li>
-      <li>
-        <a href="#"
-           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group text-gray-900">
-          <svg class="w-5 h-5 text-gray-500 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <a href="{{ route('staff.reports.index') }}"
+           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.reports.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
+          <svg class="w-5 h-5 {{ request()->routeIs('staff.reports.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
             <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
           </svg>
           <span class="ms-3">Reports</span>
         </a>
       </li>
       <li>
+<<<<<<< HEAD
+=======
+        <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100" aria-controls="dropdown-faq" data-collapse-toggle="dropdown-faq">
+          <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2L3 7v11a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V7l-7-5z"/>
+          </svg>
+          <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Knowledge Base</span>
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+          </svg>
+        </button>
+        <ul id="dropdown-faq" class="hidden py-2 space-y-2">
+          <li>
+            <a href="{{ route('staff.faqs.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">FAQs</a>
+          </li>
+          <li>
+            <a href="{{ route('staff.announcements.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">Announcements</a>
+          </li>
+        </ul>
+      </li>
+      <li>
+>>>>>>> v15
         <a href="{{ route('staff.profile') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.profile*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('staff.profile*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
@@ -103,6 +126,25 @@
 
 @section('scripts')
   @parent
+<<<<<<< HEAD
+=======
+  <!-- Dropdown toggles -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const toggles = document.querySelectorAll('[data-collapse-toggle]');
+      toggles.forEach(toggle => {
+        toggle.addEventListener('click', function () {
+          const targetId = this.getAttribute('data-collapse-toggle');
+          const target = document.getElementById(targetId);
+          if (target) {
+            target.classList.toggle('hidden');
+          }
+        });
+      });
+    });
+  </script>
+
+>>>>>>> v15
   <!-- Sidebar collapse/expand for mobile + desktop -->
   <script>
     (function () {
@@ -218,5 +260,10 @@
     })();
   </script>
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> v15
   @yield('staff-scripts')
 @endsection

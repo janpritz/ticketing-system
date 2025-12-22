@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Role;
-use App\Models\Faq;
-use App\Models\FaqRevision;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,6 +15,10 @@ use Illuminate\Support\Facades\Log;
 use App\Services\FaqDeleterService;
 use App\Events\FaqEnabled;
 use App\Events\FaqDisabled;
+use App\Models\DocumentChange;
+use App\Models\QueuedDocument;
+use App\Services\RasaServerService;
+use App\Jobs\ProcessQueuedDocument;
 
 class AdminController extends Controller
 {
@@ -28,9 +30,7 @@ class AdminController extends Controller
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
         $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
-        $faqCount = Faq::count();
-        // number of new FAQs (created today, displayed under Total FAQs on dashboard)
-        $faqPendingCount = Faq::whereDate('created_at', today())->count();
+        // FAQ system removed - no longer counting FAQs
         $userCount = User::count();
 
         // Get last Rasa training timestamp
@@ -158,9 +158,7 @@ class AdminController extends Controller
         return view('dashboards.admin.index', [
             'openTickets'       => $openTickets,
             'forwardedTickets' => $forwardedTickets,
-            'faqCount'          => $faqCount,
-            // pending FAQs count used by dashboard UI
-            'faqPendingCount'   => $faqPendingCount,
+            // FAQ system removed - no longer showing FAQ counts
             'userCount'         => $userCount,
             'activeStaffCount'  => $activeStaffCount,
             'lastTraining'      => $lastTrainingFormatted,
@@ -185,9 +183,7 @@ class AdminController extends Controller
         // KPI metrics
         $openTickets = Ticket::where('status', 'Open')->count();
         $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
-        $faqCount = Faq::count();
-        // include new FAQ count for live admin data
-        $faqPendingCount = Faq::whereDate('created_at', today())->count();
+        // FAQ system removed - no longer counting FAQs
         $userCount = User::count();
 
         // Get last Rasa training timestamp for live updates
@@ -334,8 +330,7 @@ class AdminController extends Controller
         return response()->json([
             'openTickets'       => (int) $openTickets,
             'forwardedTickets' => (int) $forwardedTickets,
-            'faqCount'          => (int) $faqCount,
-            'faqPendingCount'   => (int) $faqPendingCount,
+            // FAQ system removed - no longer showing FAQ counts
             'userCount'         => (int) $userCount,
             'activeStaffCount'  => (int) $activeStaffCount,
             'lastTraining'      => $lastTrainingLiveFormatted,
@@ -557,162 +552,6 @@ class AdminController extends Controller
             'isDeletedView' => $isDeleted,
         ]);
     }
-
-    /**
-     * FAQ list (AJAX) - supports search and per_page options
-     */
-    public function faqsList(Request $request)
-    {
-        $this->ensureAdmin();
-
-        $q = trim((string) $request->query('q', ''));
-        $perPage = (int) $request->query('per_page', 25);
-        if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
-
-        // Build base query (search)
-        $faqsQuery = Faq::when($q !== '', function ($query) use ($q) {
-                $like = '%' . $q . '%';
-                $query->where(function ($qq) use ($like) {
-                    $qq->where('intent', 'like', $like)
-                       ->orWhere('response', 'like', $like);
-                });
-            });
-
-        $faqs = $faqsQuery
-            ->orderBy('intent')
-            ->paginate($perPage)
-            ->appends(['q' => $q, 'per_page' => $perPage]);
-
-        // Format items so created_at / updated_at use "yyyy-mm-dd hh:mm am/pm"
-        $items = array_map(function ($f) {
-            return [
-                'id' => $f->id,
-                'intent' => $f->intent,
-                'description' => $f->description ?? '',
-                'response' => $f->response,
-                'response_disabled' => (bool) ($f->response_disabled ?? false),
-                'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
-                'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
-            ];
-        }, $faqs->items());
-
-        return response()->json([
-            'items' => $items,
-            'meta' => [
-                'total' => $faqs->total(),
-                'per_page' => $faqs->perPage(),
-                'current_page' => $faqs->currentPage(),
-                'last_page' => $faqs->lastPage(),
-            ],
-        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    }
- 
-    /**
-     * Deleted FAQs page (redirect)
-     *
-     * Redirects to the main FAQ index with a flag so the index will load
-     * the deleted-list AJAX endpoint instead of the normal list.
-     */
-    public function faqsDeletedIndex(Request $request)
-    {
-        $this->ensureAdmin();
-        return redirect()->route('admin.faqs.index', ['include_deleted' => '1']);
-    }
- 
-    /**
-     * Deleted FAQs list (AJAX) - shows only soft-deleted FAQs
-     */
-    public function faqsDeletedList(Request $request)
-    {
-        $this->ensureAdmin();
- 
-        $q = trim((string) $request->query('q', ''));
-        $perPage = (int) $request->query('per_page', 25);
-        if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
- 
-        $faqs = Faq::onlyTrashed()
-            ->when($q !== '', function ($query) use ($q) {
-                $like = '%' . $q . '%';
-                $query->where(function ($qq) use ($like) {
-                    $qq->where('intent', 'like', $like)
-                       ->orWhere('response', 'like', $like);
-                });
-            })
-            ->orderBy('intent')
-            ->paginate($perPage)
-            ->appends(['q' => $q, 'per_page' => $perPage]);
- 
-        $items = array_map(function ($f) {
-            return [
-                'id' => $f->id,
-                'intent' => $f->intent,
-                'description' => $f->description ?? '',
-                'response' => $f->response,
-                'response_disabled' => (bool) ($f->response_disabled ?? false),
-                'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
-                'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
-                'deleted_at' => optional($f->deleted_at)->format('Y-m-d h:i a'),
-            ];
-        }, $faqs->items());
- 
-        return response()->json([
-            'items' => $items,
-            'meta' => [
-                'total' => $faqs->total(),
-                'per_page' => $faqs->perPage(),
-                'current_page' => $faqs->currentPage(),
-                'last_page' => $faqs->lastPage(),
-            ],
-        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    }
- 
-    /**
-     * Return single FAQ (AJAX)
-     *
-     * Includes helper flags/urls used by the frontend to show contextual
-     * "more actions" (restore / undo / view revisions) in the modal.
-     */
-    public function faqsShow(Faq $faq)
-    {
-        $this->ensureAdmin();
-
-        $canRestore = method_exists($faq, 'trashed') ? $faq->trashed() : false;
-        $canRevert = $faq->revisions()->exists();
-        // We can offer an "undo" when there are revisions (the latest revision contains a snapshot)
-        $canUndo = $faq->revisions()->exists();
-
-        // Attach latest revision snapshot (if any) so the frontend can show a
-        // collapsible "previous response" block and allow restoring to it.
-        $latest = FaqRevision::where('faq_id', $faq->id)->orderByDesc('created_at')->first();
-        $latestRevision = null;
-        if ($latest) {
-            $latestRevision = [
-                'id' => $latest->id,
-                'intent' => $latest->intent ?? $latest->topic,
-                'response' => $latest->response,
-                'action' => $latest->action,
-                'created_at' => optional($latest->created_at)->format('Y-m-d h:i a'),
-            ];
-        }
-
-        return response()->json([
-            'id' => $faq->id,
-            'intent' => $faq->intent,
-            'description' => $faq->description ?? '',
-            'response' => $faq->response,
-            'created_at' => optional($faq->created_at)->format('Y-m-d h:i a'),
-            'updated_at' => optional($faq->updated_at)->format('Y-m-d h:i a'),
-            'response_disabled' => (bool) ($faq->response_disabled ?? false),
-            'can_restore' => $canRestore,
-            'can_revert' => $canRevert,
-            'can_undo' => $canUndo,
-            'revisions_url' => route('admin.faqs.revisions', ['faq' => $faq->id]),
-            'restore_url' => route('admin.faqs.restore', ['faq' => $faq->id]),
-            'undo_url' => route('admin.faqs.undo', ['faq' => $faq->id]),
-            'latest_revision' => $latestRevision,
-        ]);
-    }
-
     /**
      * Store new FAQ (AJAX)
      */
@@ -725,13 +564,6 @@ class AdminController extends Controller
             'response' => 'required|string',
         ]);
 
-        // Create FAQ locally - event will trigger sync
-        $faq = Faq::create([
-            'intent' => $validated['intent'],
-            'description' => $validated['description'],
-            'response' => $validated['response'],
-        ]);
-
         // Log document change for training alert
         try {
             \App\Models\DocumentChange::create([
@@ -743,16 +575,16 @@ class AdminController extends Controller
                 'training_completed' => false,
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to log FAQ create change: ' . $e->getMessage());
+            Log::error('Failed to log FAQ create change: ' . $e->getMessage());
         }
 
-        return response()->json(['ok' => true, 'faq' => $faq], 201);
+        return response()->json(['ok' => true], 201);
     }
 
     /**
      * Update FAQ (AJAX)
      */
-    public function faqsUpdate(Request $request, Faq $faq)
+    public function faqsUpdate(Request $request)
     {
         $this->ensureAdmin();
         $validated = $request->validate([
@@ -761,15 +593,9 @@ class AdminController extends Controller
             'response' => 'required|string',
         ]);
 
-        $faq->update([
-            'intent' => $validated['intent'],
-            'description' => $validated['description'],
-            'response' => $validated['response'],
-        ]);
-
         // Log document change for training alert
         try {
-            \App\Models\DocumentChange::create([
+            DocumentChange::create([
                 'file_name' => 'faqs.json',
                 'action' => 'updated',
                 'user_id' => Auth::id(),
@@ -781,7 +607,7 @@ class AdminController extends Controller
             \Illuminate\Support\Facades\Log::error('Failed to log FAQ update change: ' . $e->getMessage());
         }
 
-        return response()->json(['success' => true, 'faq' => $faq]);
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -794,48 +620,6 @@ class AdminController extends Controller
     public function faqsDestroy($faqId)
     {
         $this->ensureAdmin();
-
-        // Resolve the FAQ whether it's trashed or not so we can handle permanent deletes.
-        $faq = Faq::withTrashed()->findOrFail($faqId);
-
-        if ($faq->trashed()) {
-            // Permanently delete the FAQ - MUST call external deleter service first and require success
-            try {
-                $deleterService = new FaqDeleterService();
-                $deleterService->deleteFaq($faq->intent, true);
-            } catch (\Exception $e) {
-                // If external deleter fails, DO NOT delete locally
-                Log::error("FAQ deleter service failed for intent={$faq->intent}: " . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to delete FAQ from external system: ' . $e->getMessage()
-                ], 502);
-            }
-
-            // Only delete locally if external service succeeded
-            $faq->forceDelete();
-
-            // Note: faq_revisions are configured to cascade on delete, so any revision rows
-            // tied to this FAQ will be removed by the DB. If you want to retain a separate
-            // audit trail for permanent deletions, consider storing a record outside of
-            // the faq_revisions table.
-            return response()->json(['success' => true]);
-        }
-
-        // Not trashed yet — perform soft-delete and record deletion revision
-        $faq->delete();
-
-        // Create a revision snapshot for the deletion event (auditable)
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'delete',
-            'meta'     => null,
-        ]);
-
-        // Log document change for training alert
         try {
             \App\Models\DocumentChange::create([
                 'file_name' => 'faqs.json',
@@ -846,284 +630,14 @@ class AdminController extends Controller
                 'training_completed' => false,
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to log FAQ delete change: ' . $e->getMessage());
+            Log::error('Failed to log FAQ delete change: ' . $e->getMessage());
         }
 
         return response()->json(['success' => true]);
     }
-
-    /**
-     * Restore a soft-deleted FAQ (AJAX).
-     */
-    public function faqsRestore($faqId)
-    {
-        $this->ensureAdmin();
-
-        $faq = Faq::withTrashed()->findOrFail($faqId);
-
-        if (!$faq->trashed()) {
-            return response()->json(['message' => 'FAQ is not deleted'], 422);
-        }
-
-        // Restore the soft-deleted model
-        $faq->restore();
-
-        // Record a revision for the restore action so it is auditable / undoable
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'restore',
-            'meta'     => null,
-        ]);
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
-
-    /**
-     * Undo the most recent change for a FAQ (AJAX).
-     *
-     * This applies the latest revision snapshot (which the observer writes before changes)
-     * so invoking undo will revert the FAQ to the state captured by the newest revision row.
-     */
-    public function faqsUndo($faqId)
-    {
-        $this->ensureAdmin();
-
-        $faq = Faq::withTrashed()->findOrFail($faqId);
-
-        // Get the latest revision (newest first)
-        $latest = FaqRevision::where('faq_id', $faq->id)->orderByDesc('created_at')->first();
-
-        if (!$latest) {
-            return response()->json(['message' => 'No revisions available to undo'], 422);
-        }
-
-        // Save a snapshot of current state before undoing so the action is auditable
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'undo',
-            'meta'     => ['undone_revision' => $latest->id],
-        ]);
-
-        // Apply the snapshot from the latest revision
-        $faq->intent = $latest->intent ?? $latest->topic;
-        $faq->response = $latest->response;
-        $faq->save();
-
-        // Record final 'undone_to' state
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'undone_to',
-            'meta'     => ['source_revision' => $latest->id],
-        ]);
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
-
-    /**
-     * List revisions for a FAQ (blade) - shows history and allows revert.
-     */
-    public function faqsRevisions(Faq $faq)
-    {
-        $this->ensureAdmin();
-        // Paginate revisions for manageability
-        $revisions = $faq->revisions()->with('user')->paginate(20);
-        return view('dashboards.admin.faqs.revisions', compact('faq', 'revisions'));
-    }
-
-    /**
-     * Revert a FAQ to a given revision (AJAX).
-     */
-    public function faqsRevert(Request $request, Faq $faq, FaqRevision $revision)
-    {
-        $this->ensureAdmin();
-
-        // Ensure revision belongs to the FAQ
-        if ($revision->faq_id !== $faq->id) {
-            return response()->json(['message' => 'Invalid revision'], 422);
-        }
-
-        DB::transaction(function () use ($faq, $revision) {
-            // Save current snapshot so the revert itself is auditable and undoable
-            FaqRevision::create([
-                'faq_id'   => $faq->id,
-                'intent'   => $faq->intent ?? $faq->topic,
-                'response' => $faq->response,
-                'user_id'  => Auth::id(),
-                'action'   => 'revert',
-                'meta'     => ['reverted_to' => $revision->id],
-            ]);
-
-            // Apply the snapshot from the revision
-            $faq->intent = $revision->intent ?? $revision->topic;
-            $faq->response = $revision->response;
-            $faq->save();
-
-            // Record final 'reverted_to' state
-            FaqRevision::create([
-                'faq_id'   => $faq->id,
-                'intent'   => $faq->intent ?? $faq->topic,
-                'response' => $faq->response,
-                'user_id'  => Auth::id(),
-                'action'   => 'reverted_to',
-                'meta'     => ['source_revision' => $revision->id],
-            ]);
-        });
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * Untrained FAQs page (blade)
-     */
-    public function faqsUntrainIndex(Request $request)
-    {
-        $this->ensureAdmin();
-        return view('dashboards.admin.faqs.untrained');
-    }
-
-    /**
-     * Pending FAQs list (AJAX) - supports search and per_page options
-     */
-    public function faqsUntrainList(Request $request)
-    {
-        $this->ensureAdmin();
-
-        $q = trim((string) $request->query('q', ''));
-        $perPage = (int) $request->query('per_page', 25);
-        if (!in_array($perPage, [25,50,100])) { $perPage = 25; }
-
-        $faqs = Faq::when($q !== '', function ($query) use ($q) {
-                $like = '%' . $q . '%';
-                $query->where(function ($qq) use ($like) {
-                    $qq->where('intent', 'like', $like)
-                       ->orWhere('response', 'like', $like);
-                });
-            })
-            ->orderBy('intent')
-            ->paginate($perPage)
-            ->appends(['q' => $q, 'per_page' => $perPage]);
- 
-        // Format pending items so timestamps follow desired format (Y-m-d h:i am/pm)
-        $items = array_map(function ($f) {
-            return [
-                'id' => $f->id,
-                'intent' => $f->intent,
-                'description' => $f->description ?? '',
-                'response' => $f->response,
-                'response_disabled' => (bool) ($f->response_disabled ?? false),
-                'created_at' => optional($f->created_at)->format('Y-m-d h:i a'),
-                'updated_at' => optional($f->updated_at)->format('Y-m-d h:i a'),
-            ];
-        }, $faqs->items());
-
-        return response()->json([
-            'items' => $items,
-            'meta' => [
-                'total' => $faqs->total(),
-                'per_page' => $faqs->perPage(),
-                'current_page' => $faqs->currentPage(),
-                'last_page' => $faqs->lastPage(),
-            ],
-        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    }
-
-
     /**
      * Disable a FAQ response so external systems (Rasa) will treat it as unavailable.
      * This sets the `response_disabled` flag and records a revision for audit.
-     */
-    public function faqsDisable(Request $request, Faq $faq)
-    {
-        $this->ensureAdmin();
-
-        if ($faq->response_disabled) {
-            return response()->json(['message' => 'FAQ already disabled'], 422);
-        }
-
-        // record revision snapshot
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'disable',
-            'meta'     => null,
-        ]);
-
-        $faq->response_disabled = true;
-        $faq->save();
-
-        // Dispatch event for sync system
-        event(new FaqDisabled($faq));
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
-
-    /**
-     * Re-enable a previously disabled FAQ response.
-     */
-    public function faqsEnable(Request $request, Faq $faq)
-    {
-        $this->ensureAdmin();
-
-        if (!$faq->response_disabled) {
-            return response()->json(['message' => 'FAQ is not disabled'], 422);
-        }
-
-        // record revision snapshot
-        FaqRevision::create([
-            'faq_id'   => $faq->id,
-            'intent'   => $faq->intent ?? $faq->topic,
-            'response' => $faq->response,
-            'user_id'  => Auth::id(),
-            'action'   => 'enable',
-            'meta'     => null,
-        ]);
-
-        $faq->response_disabled = false;
-        $faq->save();
-
-        // Dispatch event for sync system
-        event(new FaqEnabled($faq));
-
-        return response()->json(['success' => true, 'faq' => $faq]);
-    }
-
-    /**
-     * Get all FAQs as JSON for sync purposes.
-     */
-    public function faqsAllJson(Request $request)
-    {
-        $this->ensureAdmin();
-
-        $faqs = Faq::where('response_disabled', false)
-            ->select('id', 'intent', 'description', 'response')
-            ->get()
-            ->map(function ($faq) {
-                return [
-                    'id' => $faq->id,
-                    'intent' => $faq->intent,
-                    'description' => $faq->description ?? '',
-                    'response' => $faq->response ?? '',
-                    'sync_type' => 'update'
-                ];
-            });
-
-        return response()->json([
-            'faqs' => $faqs->toArray()
-        ]);
-    }
-
-    /**
      * Store new announcement (AJAX) - uploads to Rasa server
      */
     public function announcementsStore(Request $request)
@@ -1135,103 +649,124 @@ class AdminController extends Controller
             'content' => 'required|string|max:10000',
         ]);
 
-        try {
-            // Upload to Rasa server
-            $rasaUrl = config('services.faq_list_docs.url');
-            if (!$rasaUrl) {
-                throw new \Exception('Rasa server URL not configured');
-            }
-
-            // Replace /list-docs with /update-document
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-            $secret = config('services.faq_list_docs.secret');
-
-            // First, fetch current announcements to get next ID
-            $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-            $listResponse = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($listUrl);
-
-            $nextId = 1;
-            if ($listResponse->successful()) {
-                $listData = $listResponse->json();
-                if ($listData['ok'] && !empty($listData['announcements'])) {
-                    $maxId = max(array_column($listData['announcements'], 'id'));
-                    $nextId = $maxId + 1;
+        // Check if server is online
+        if (RasaServerService::isServerOnline()) {
+            // Direct upload (existing logic)
+            try {
+                // Upload to Rasa server
+                $rasaUrl = config('services.faq_list_docs.url');
+                if (!$rasaUrl) {
+                    throw new \Exception('Rasa server URL not configured');
                 }
-            }
 
-            // Format the announcement
-            $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
+                // Replace /list-docs with /update-document
+                $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+                $secret = config('services.faq_list_docs.secret');
 
-            // If there are existing announcements, append to the content
-            if ($listResponse->successful() && !empty($listData['announcements'])) {
-                // We need to get the full file content and append
-                // Since update-document replaces the file, we need to get current content first
-                $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
-                $downloadResponse = Http::withHeaders([
+                // First, fetch current announcements to get next ID
+                $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
+                $listResponse = Http::withHeaders([
                     'X-FAQ-UPDATER-TOKEN' => $secret,
                     'X-Requested-With' => 'XMLHttpRequest'
-                ])->get($downloadUrl);
+                ])->get($listUrl);
 
-                if ($downloadResponse->successful()) {
-                    $currentContent = $downloadResponse->body();
-                    $announcementText = $currentContent . $announcementText;
+                $nextId = 1;
+                if ($listResponse->successful()) {
+                    $listData = $listResponse->json();
+                    if ($listData['ok'] && !empty($listData['announcements'])) {
+                        $maxId = max(array_column($listData['announcements'], 'id'));
+                        $nextId = $maxId + 1;
+                    }
                 }
-            }
 
-            // Upload the updated content
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $announcementText,
-                'file_type' => 'txt'
-            ]);
+                // Format the announcement
+                $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
 
-            if (!$response->successful()) {
-                throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
-            }
+                // If there are existing announcements, append to the content
+                if ($listResponse->successful() && !empty($listData['announcements'])) {
+                    // We need to get the full file content and append
+                    // Since update-document replaces the file, we need to get current content first
+                    $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
+                    $downloadResponse = Http::withHeaders([
+                        'X-FAQ-UPDATER-TOKEN' => $secret,
+                        'X-Requested-With' => 'XMLHttpRequest'
+                    ])->get($downloadUrl);
 
-            $uploadData = $response->json();
-            if (!$uploadData['ok']) {
-                throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
-            }
+                    if ($downloadResponse->successful()) {
+                        $currentContent = $downloadResponse->body();
+                        $announcementText = $currentContent . $announcementText;
+                    }
+                }
 
-            // Log the document change for tracking
-            try {
-                \App\Models\DocumentChange::create([
+                // Upload the updated content
+                $response = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->post($uploadUrl, [
                     'file_name' => 'Announcements.txt',
-                    'action' => 'created',
-                    'user_id' => Auth::id(),
-                    'user_name' => Auth::user()->name ?? null,
-                    'training_required' => true,
-                    'training_completed' => false,
+                    'file_content' => $announcementText,
+                    'file_type' => 'txt'
                 ]);
+
+                if (!$response->successful()) {
+                    throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
+                }
+
+                $uploadData = $response->json();
+                if (!$uploadData['ok']) {
+                    throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
+                }
+
+                // Log the document change for tracking
+                try {
+                    \App\Models\DocumentChange::create([
+                        'file_name' => 'Announcements.txt',
+                        'action' => 'created',
+                        'user_id' => Auth::id(),
+                        'user_name' => Auth::user()->name ?? null,
+                        'training_required' => true,
+                        'training_completed' => false,
+                    ]);
+                } catch (\Exception $e) {
+                    // Log error but don't fail the announcement creation
+                    \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Announcement added successfully',
+                    'announcement' => [
+                        'id' => $nextId,
+                        'title' => $validated['title'],
+                        'content' => $validated['content']
+                    ]
+                ]);
+
             } catch (\Exception $e) {
-                // Log error but don't fail the announcement creation
-                \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                Log::error('Failed to store announcement: ' . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to add announcement: ' . $e->getMessage()
+                ], 500);
             }
+        } else {
+            // Server offline, queue immediately
+            QueuedDocument::create([
+                'file_name' => 'Announcements.txt',
+                'file_content' => $validated['content'],
+                'file_type' => 'txt',
+                'uploaded_by' => Auth::id(),
+                'assigned_roles' => [Auth::user()->role_id], // Auto-assign uploader's role
+                'operation_type' => 'create',
+                'document_id' => null,
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Announcement added successfully',
-                'announcement' => [
-                    'id' => $nextId,
-                    'title' => $validated['title'],
-                    'content' => $validated['content']
-                ]
+                'message' => 'Announcement queued for upload (server offline)',
+                'queued' => true
             ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to store announcement: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to add announcement: ' . $e->getMessage()
-            ], 500);
         }
     }
 

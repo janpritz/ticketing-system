@@ -10,6 +10,7 @@ use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\Admin\RasaServerController;
+use App\Http\Controllers\StaffKnowledgebaseController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -63,13 +64,18 @@ Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
     ->middleware('throttle:10,1')
     ->name('tickets.destroy');
 
+    // Staff tickets data endpoint (outside auth for JSON responses)
+    Route::get('/staff/tickets/data', [StaffController::class, 'ticketsData'])->name('staff.tickets.data');
+    // Live data endpoint for staff dashboard auto-refresh (outside auth for JSON responses)
+    Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
+
 Route::middleware('auth')->group(function () {
     // Staff dashboard
     Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
     // Individual ticket page for staff (view + respond)
     Route::get('/staff/tickets/{ticket}', [StaffController::class, 'showTicket'])->whereNumber('ticket')->name('staff.tickets.show');
-    // Live data endpoint for staff dashboard auto-refresh
-    Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
+    // Staff tickets index page
+    Route::get('/staff/tickets', [StaffController::class, 'tickets'])->name('staff.tickets');
 
     // Staff profile
     Route::get('/staff/profile', [StaffController::class, 'profile'])->name('staff.profile');
@@ -261,6 +267,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/create-backup', [RasaServerController::class, 'createBackup'])->name('create-backup');
         Route::delete('/delete-backup/{backupId}', [RasaServerController::class, 'deleteBackup'])->name('delete-backup');
         Route::post('/cleanup-models', [RasaServerController::class, 'cleanupModels'])->name('cleanup-models');
+        Route::get('/fetch-faqs', [RasaServerController::class, 'fetchFaqs'])->name('fetch-faqs');
     });
 
     // Admin logs
@@ -268,6 +275,41 @@ Route::middleware('auth')->group(function () {
 
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
+    // Staff FAQs from Rasa server
+    Route::get('/staff/faqs/fetch', [StaffController::class, 'fetchFaqs'])->name('staff.faqs.fetch');
+    Route::get('/staff/faqs/test', function () {
+        return view('staff.faqs.test');
+    })->name('staff.faqs.test');
+
+    // Staff reports
+    Route::prefix('staff/reports')->name('staff.reports.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StaffReportsController::class, 'index'])->name('index');
+    });
+
+    // Staff FAQ management
+    Route::prefix('staff/faqs')->name('staff.faqs.')->group(function () {
+        Route::get('/', [StaffKnowledgebaseController::class, 'index'])->name('index');
+        Route::post('/', [StaffKnowledgebaseController::class, 'store'])->middleware('throttle:20,1')->name('store');
+        Route::put('/{faq}', [StaffKnowledgebaseController::class, 'update'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
+        Route::delete('/{faq}', [StaffKnowledgebaseController::class, 'destroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
+    });
+
+    // Staff knowledgebase document upload
+    Route::post('/staff/knowledgebase/upload-document', [StaffKnowledgebaseController::class, 'uploadDocument'])->middleware('throttle:10,1')->name('staff.knowledgebase.upload-document');
+    Route::get('/staff/knowledgebase/queued-documents', [StaffKnowledgebaseController::class, 'getQueuedDocuments'])->name('staff.knowledgebase.queued-documents');
+    Route::delete('/staff/knowledgebase/queued-documents/{id}', [StaffKnowledgebaseController::class, 'cancelQueuedDocument'])->name('staff.knowledgebase.cancel-queued-document');
+
+    // Staff announcements
+    Route::prefix('staff/announcements')->name('staff.announcements.')->group(function () {
+        Route::get('/', [StaffKnowledgebaseController::class, 'announcementsIndex'])->name('index');
+        Route::get('/list', [StaffKnowledgebaseController::class, 'announcementsList'])->name('list');
+        Route::post('/', [StaffKnowledgebaseController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
+        Route::put('/{id}', [StaffKnowledgebaseController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
+        Route::delete('/{id}', [StaffKnowledgebaseController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
+        Route::post('/pin/{id}', [StaffKnowledgebaseController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
+    });
 
     //Push Notification
     // Start Push Notification==========================================================

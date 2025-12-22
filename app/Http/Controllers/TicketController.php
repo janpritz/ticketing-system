@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use App\Jobs\ProcessTicketCreation;
 
 class TicketController extends Controller
@@ -84,13 +85,23 @@ class TicketController extends Controller
         // For API requests, return JSON
         if ($request->wantsJson()) {
             // Include assigned staff explicitly for client-side flows (AJAX form)
-            return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
+            return response()->json([
+                'ticket' => $ticket,
+                'staff_id' => $ticket->staff_id,
+                'message' => $ticket->staff_id
+                    ? 'Ticket created and assigned to staff successfully!'
+                    : 'Ticket created but assignment is pending. Staff will be assigned shortly.'
+            ], 201);
         }
 
-        // For web requests, redirect to tickets page for the recipient id.
-        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recipient_id}
+        // For web requests, redirect to tickets page for the recepient id.
+        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
+        $message = $ticket->staff_id
+            ? 'Ticket created and assigned to staff successfully! Please wait for a response, which will be sent to your email.'
+            : 'Ticket created successfully! Assignment is being processed and you will receive a response via email shortly.';
+            
         return redirect()->to(url('/tickets/' . $request->recepient_id))
-            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
+            ->with('success', $message);
     }
 
 
@@ -234,6 +245,46 @@ class TicketController extends Controller
 
     public function index(Request $request, $identifier = null)
     {
+        // Check if the authenticated user is staff (not admin)
+        $auth = Auth::user();
+        $isStaff = false;
+        
+        if ($auth) {
+            // User is staff if authenticated and not Primary Administrator
+            $isStaff = strtolower((string)($auth->role ?? '')) !== 'primary administrator';
+        }
+
+        // If user is staff, show their assigned tickets instead of existing logic
+        if ($isStaff) {
+            $userId = $auth->id;
+            
+            // Set default values for staff access
+            $identifier = null;
+            $isEmail = false;
+            
+            // Cache key for staff assigned tickets
+            $cacheKey = 'staff_assigned_tickets_' . $userId;
+
+            // For API requests, return JSON
+            if ($request->wantsJson()) {
+                $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
+                    return Ticket::where('staff_id', $userId)
+                        ->orderBy('date_created', 'desc')
+                        ->get();
+                });
+                return response()->json($tickets);
+            }
+
+            // For web requests, return a view with the tickets
+            $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
+                return Ticket::where('staff_id', $userId)
+                    ->orderBy('date_created', 'desc')
+                    ->get();
+            });
+            return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail'));
+        }
+
+        // Not staff or not authenticated - use existing logic
         // Support both recepient_id and email as identifier
         $identifier = $identifier ?? $request->query('email') ?? $request->recepient_id;
 
@@ -272,7 +323,7 @@ class TicketController extends Controller
             }
             return $query->orderBy('date_created', 'desc')->get();
         });
-        return view('tickets.index', compact('tickets', 'identifier', 'isEmail'));
+        return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff'));
     }
     public function updateStatus(Request $request, $id)
     {
