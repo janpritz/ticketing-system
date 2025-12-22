@@ -1,10 +1,6 @@
 @extends('layouts.app')
 
-<<<<<<< HEAD
-@section('title', trim($__env->yieldContent('title', 'Staff')))
-=======
 @section('title', trim($__env->yieldContent('title', 'Staff Dashboard')))
->>>>>>> v15
 
 @section('content')
 <!-- Staff Shell: Sidebar + Header -->
@@ -27,15 +23,9 @@
         </a>
       </li>
       <li>
-<<<<<<< HEAD
-        <a href="#"
-           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group text-gray-900">
-          <svg class="w-5 h-5 text-gray-500 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-=======
         <a href="{{ route('staff.tickets') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.tickets') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('staff.tickets') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
->>>>>>> v15
             <path d="M2 5h16v2H2V5zm0 4h16v2H2V9zm0 4h12v2H2v-2z"/>
           </svg>
           <span class="ms-3">Tickets</span>
@@ -51,8 +41,6 @@
         </a>
       </li>
       <li>
-<<<<<<< HEAD
-=======
         <button type="button" class="flex items-center w-full p-2 text-base text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100" aria-controls="dropdown-faq" data-collapse-toggle="dropdown-faq">
           <svg class="w-5 h-5 text-gray-500 transition duration-75 group-hover:text-gray-900" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
             <path d="M10 2L3 7v11a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V7l-7-5z"/>
@@ -72,7 +60,6 @@
         </ul>
       </li>
       <li>
->>>>>>> v15
         <a href="{{ route('staff.profile') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.profile*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('staff.profile*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
@@ -126,8 +113,6 @@
 
 @section('scripts')
   @parent
-<<<<<<< HEAD
-=======
   <!-- Dropdown toggles -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -144,7 +129,6 @@
     });
   </script>
 
->>>>>>> v15
   <!-- Sidebar collapse/expand for mobile + desktop -->
   <script>
     (function () {
@@ -260,10 +244,7 @@
     })();
   </script>
 
-<<<<<<< HEAD
-=======
 
 
->>>>>>> v15
   @yield('staff-scripts')
 @endsection
