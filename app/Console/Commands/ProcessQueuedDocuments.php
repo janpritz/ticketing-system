@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Jobs\ProcessQueuedDocument;
-use App\Models\QueuedDocument;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class ProcessQueuedDocuments extends Command
 {
@@ -13,20 +13,58 @@ class ProcessQueuedDocuments extends Command
 
     public function handle()
     {
-        $pending = QueuedDocument::pending()->count();
-        $failed = QueuedDocument::readyForRetry()->count();
+        $queuedDir = storage_path('app/queued_documents');
 
-        $this->info("Found {$pending} pending and {$failed} failed documents to process");
+        if (!file_exists($queuedDir)) {
+            $this->info('No queued documents directory found');
+            return;
+        }
 
-        // Process pending documents
-        QueuedDocument::pending()->each(function ($doc) {
-            ProcessQueuedDocument::dispatch($doc);
-        });
+        $files = glob($queuedDir . '/*.txt');
+        $this->info("Found " . count($files) . " files in {$queuedDir}");
+        foreach ($files as $file) {
+            $this->info("File: {$file}");
+        }
 
-        // Process failed documents ready for retry
-        QueuedDocument::readyForRetry()->each(function ($doc) {
-            ProcessQueuedDocument::dispatch($doc);
-        });
+        $pendingCount = count($files);
+
+        // Check for retry files (files with next_retry_at in the past)
+        $retryCount = 0;
+        foreach ($files as $file) {
+            $fileData = json_decode(file_get_contents($file), true);
+            if ($fileData && isset($fileData['next_retry_at'])) {
+                $retryTime = strtotime($fileData['next_retry_at']);
+                if ($retryTime && $retryTime <= time()) {
+                    $retryCount++;
+                } else {
+                    // Remove from pending count if not ready for retry
+                    $pendingCount--;
+                }
+            }
+        }
+
+        $this->info("Found {$pendingCount} pending and {$retryCount} retry documents to process");
+
+        // Process all valid files
+        foreach ($files as $file) {
+            $fileName = basename($file);
+            $this->info("Dispatching job for file: {$fileName}");
+            $fileData = json_decode(file_get_contents($file), true);
+            if (!$fileData) {
+                $this->error("Invalid JSON in file: {$file}");
+                continue;
+            }
+
+            // Check if it's ready for retry
+            if (isset($fileData['next_retry_at'])) {
+                $retryTime = strtotime($fileData['next_retry_at']);
+                if ($retryTime && $retryTime > time()) {
+                    continue; // Not ready for retry yet
+                }
+            }
+
+            ProcessQueuedDocument::dispatch($fileName);
+        }
 
         $this->info('Queued document processing jobs dispatched');
     }

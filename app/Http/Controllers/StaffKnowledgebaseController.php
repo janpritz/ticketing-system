@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Models\DocumentChange;
 use App\Services\RasaServerService;
-use App\Jobs\ProcessQueuedDocument;
 
 class StaffKnowledgebaseController extends Controller
 {
@@ -231,24 +230,12 @@ class StaffKnowledgebaseController extends Controller
                 ], 500);
             }
         } else {
-            // Server offline, save to filesystem immediately
-            $filename = 'Announcements.txt_' . uniqid() . '.txt';
-            $filePath = storage_path('app/queued_documents/' . $filename);
-            
-            // Ensure directory exists
-            $directory = storage_path('app/queued_documents');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-            
-            // Save file
-            file_put_contents($filePath, $validated['content']);
-
+            // Server offline, return error message
             return response()->json([
-                'success' => true,
-                'message' => 'Announcement queued for upload (server offline)',
-                'queued' => true
-            ]);
+                'success' => false,
+                'message' => 'Rasa server is currently offline. Please try again later.',
+                'server_offline' => true
+            ], 503);
         }
     }
 
@@ -625,7 +612,7 @@ class StaffKnowledgebaseController extends Controller
                 ], 500);
             }
         } else {
-            // Server offline, save to filesystem immediately
+            // Server offline, save to filesystem for later upload
             $filename = $validated['file_name'] . '_' . uniqid() . '.txt';
             $filePath = storage_path('app/queued_documents/' . $filename);
             
@@ -635,8 +622,17 @@ class StaffKnowledgebaseController extends Controller
                 mkdir($directory, 0755, true);
             }
             
-            // Save file
-            file_put_contents($filePath, $validated['file_content']);
+            // Save file with metadata
+            $fileData = [
+                'file_name' => $validated['file_name'],
+                'file_content' => $validated['file_content'],
+                'file_type' => $validated['file_type'],
+                'uploaded_by' => Auth::id(),
+                'uploaded_at' => now()->toDateTimeString(),
+                'status' => 'pending'
+            ];
+            
+            file_put_contents($filePath, json_encode($fileData));
 
             return response()->json([
                 'success' => true,
@@ -653,18 +649,18 @@ class StaffKnowledgebaseController extends Controller
     {
         $queuedDocuments = [];
         $storagePath = storage_path('app/queued_documents');
-        
+
         if (file_exists($storagePath)) {
             $files = glob($storagePath . '/*.txt');
-            
+
             foreach ($files as $file) {
                 $filename = basename($file);
                 $createdAt = filemtime($file);
-                
+
                 // Extract original filename from the stored filename
                 // Format: original_filename_timestamp.txt
                 $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $filename);
-                
+
                 $queuedDocuments[] = [
                     'id' => md5($filename), // Generate ID from filename
                     'file_name' => $originalFilename,
@@ -693,15 +689,15 @@ class StaffKnowledgebaseController extends Controller
             // Find the file by filename
             $storagePath = storage_path('app/queued_documents');
             $files = glob($storagePath . '/*.txt');
-            
+
             $fileFound = false;
             foreach ($files as $file) {
                 $storedFilename = basename($file);
-                
+
                 // Extract original filename from the stored filename
                 // Format: original_filename_timestamp.txt
                 $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $storedFilename);
-                
+
                 if ($originalFilename === $filename) {
                     // Delete the file
                     if (unlink($file)) {

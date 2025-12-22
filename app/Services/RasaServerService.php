@@ -10,16 +10,16 @@ class RasaServerService
     public static function isServerOnline(): bool
     {
         try {
-            $rasaUrl = config('services.faq_sync.url');
+            $rasaUrl = config('services.faq_list_docs.url');
             if (!$rasaUrl) {
                 return false;
             }
 
-            // Remove /sync-faqs from the end to get base URL
-            $baseUrl = rtrim($rasaUrl, '/sync-faqs');
-
-            // Try to ping the server by making a simple request to /health or similar
-            $response = Http::timeout(5)->get($baseUrl . '/health');
+            // Use /list-docs endpoint to check server status (it exists and returns 200 when server is online)
+            $response = Http::timeout(10)->withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => config('services.faq_list_docs.secret'),
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($rasaUrl);
 
             return $response->successful();
         } catch (\Exception $e) {
@@ -40,7 +40,12 @@ class RasaServerService
             'secret_length' => strlen($secret),
             'file_name' => $fileName,
             'file_type' => $fileType,
-            'content_length' => strlen($fileContent)
+            'content_length' => strlen($fileContent),
+            'request_data' => [
+                'file_name' => $fileName,
+                'file_content' => substr($fileContent, 0, 100) . (strlen($fileContent) > 100 ? '...' : ''),
+                'file_type' => $fileType
+            ]
         ]);
 
         $response = Http::withHeaders([
@@ -55,11 +60,17 @@ class RasaServerService
 
         Log::info('Rasa upload response', [
             'status' => $response->status(),
-            'body' => $response->body()
+            'body' => $response->body(),
+            'headers' => $response->headers(),
+            'successful' => $response->successful()
         ]);
 
         if (!$response->successful()) {
-            throw new \Exception('Upload failed with status: ' . $response->status());
+            Log::error('Upload failed', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            throw new \Exception('Upload failed with status: ' . $response->status() . ', body: ' . $response->body());
         }
 
         return $response->json();
