@@ -5,16 +5,6 @@ import 'flowbite';
 const APP_VERSION = window.appConfig ? window.appConfig.version : '1.0.0';
 
 if ('serviceWorker' in navigator) {
-    let refreshing = false;
-
-    // Automatic reload when the new worker takes control
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-            window.location.reload();
-            refreshing = true;
-        }
-    });
-
     window.addEventListener('load', () => {
         // We append the version here. 
         // If v=1.0.6 changes to v=1.0.7, the browser treats it as a brand new file.

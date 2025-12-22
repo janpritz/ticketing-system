@@ -128,47 +128,17 @@
         })();
     </script>
     <script>
-        // 1. Get the version from Laravel's config/env
-        const APP_VERSION = "{{ config('app.version') }}";
-
-        if ('serviceWorker' in navigator) {
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
-                    window.location.reload();
-                    refreshing = true;
-                }
-            });
-
-            window.addEventListener('load', () => {
-                // 2. Register with the version as a query string
-                // This forces the browser to see sw.js as a "new file"
-                navigator.serviceWorker.register(`/sw.js?v=${APP_VERSION}`)
-                    .then(reg => {
-                        if (reg.waiting) showUpdateToast(reg.waiting);
-                        reg.addEventListener('updatefound', () => {
-                            const newWorker = reg.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker
-                                    .controller) {
-                                    showUpdateToast(newWorker);
-                                }
-                            });
-                        });
+            // PWA update toast functionality only (no automatic refresh)
+            function showUpdateToast(worker) {
+                const toast = document.getElementById('pwa-update-toast');
+                toast.classList.remove('translate-y-32');
+                document.getElementById('pwa-update-btn').onclick = () => {
+                    worker.postMessage({
+                        type: 'SKIP_WAITING'
                     });
-            });
-        }
-
-        function showUpdateToast(worker) {
-            const toast = document.getElementById('pwa-update-toast');
-            toast.classList.remove('translate-y-32');
-            document.getElementById('pwa-update-btn').onclick = () => {
-                worker.postMessage({
-                    type: 'SKIP_WAITING'
-                });
-            };
-        }
-    </script>
+                };
+            }
+        </script>
 
     <div id="pwa-update-toast"
         class="fixed bottom-5 left-5 right-5 md:left-auto md:right-5 md:w-80 bg-gray-900 text-white p-4 rounded-lg shadow-2xl transform translate-y-32 transition-transform duration-300 flex flex-col gap-3 z-50">
