@@ -162,7 +162,7 @@ class ProcessTicketCreation implements ShouldQueue
             $subscriptionPath = 'push_subscriptions/user-' . $ticket->staff_id . '.json';
             if (Storage::exists($subscriptionPath)) {
                 try {
-                    $ticketUrl = url('/tickets/' . $ticket->id);
+                    $ticketUrl = url('/staff/dashboard?ticket_id=' . $ticket->id);
                     $payload = [
                         'title' => 'You have received a new ticket',
                         'body' => $ticket->question,

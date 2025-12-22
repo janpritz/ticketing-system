@@ -65,7 +65,7 @@ class SendTicketForwardJob implements ShouldQueue
 
         if (Storage::exists($subscriptionPath)) {
             try {
-                $ticketsUrl = url('/staff/tickets');
+                $ticketsUrl = url('/staff/dashboard?ticket_id=' . $ticket->id);
                 $payload = [
                     'title' => 'Ticket Forwarded to You',
                     'body' => "Ticket #{$ticket->id} has been forwarded to you for handling.",
