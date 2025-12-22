@@ -3,7 +3,7 @@
   "short_name": "Sangkay TS",
   "start_url": "/login",
   "scope": "/",
-  "display": "standalone",
+  "display": "minimal-ui",
   "background_color": "#ff9d00",
   "theme_color": "#ff9d00",
   "description": "Chatbot integrated ticketing system",

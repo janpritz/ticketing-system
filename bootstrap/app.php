@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\UpgradeToHttpUnderNetworkHost::class,
             \App\Http\Middleware\HandleLogoutCsrf::class,
         ]);
+        
+        $middleware->alias([
+            'handle.logout.csrf' => \App\Http\Middleware\HandleLogoutCsrf::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
