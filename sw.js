@@ -1,6 +1,7 @@
 const CACHE_NAME = 'sangkay-ts-v2';
 const urlsToCache = [
   '/',
+  '/login?source=pwa',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
