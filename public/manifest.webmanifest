@@ -2,7 +2,7 @@
   "name": "Sangkay Ticketing System",
   "short_name": "Sangkay TS",
   "id": "/",
-  "start_url": "/login?source=pwa",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ff9d00",
