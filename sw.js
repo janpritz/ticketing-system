@@ -1,7 +1,5 @@
-// 1. Automatically grab the version from the URL (?v=1.0.6)
-const urlParams = new URLSearchParams(self.location.search);
-const VERSION = urlParams.get('v') || '1.0.0';
-const CACHE_NAME = `sangkay-ts-cache-${VERSION}`;
+// 1. Cache name
+const CACHE_NAME = 'sangkay-ts-cache-v1';
 // 2. Define the resources to cache
 const urlsToCache = [
   '/',
@@ -30,12 +28,6 @@ self.addEventListener('install', (event) => {
   //self.skipWaiting();
 });
 
-// Listen for the message from the UI to skip waiting
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
-});
 
 // ----------------------------------------------------------------------
 // Activate event: Clean up old caches
