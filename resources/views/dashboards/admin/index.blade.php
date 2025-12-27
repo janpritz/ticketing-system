@@ -219,7 +219,7 @@
                     <div>
                         <div class="text-xs font-medium text-slate-500">Active Staff (last 10 min)</div>
                         <div class="mt-2 flex items-center gap-2">
-                            <div id="activeStaffDot" class="w-4 h-4 rounded-full bg-green-500 {{ ($activeStaffCount ?? 0) > 0 ? '' : 'hidden' }}"></div>
+                            <div id="activeStaffDot" class="w-4 h-4 rounded-full {{ ($activeStaffCount ?? 0) > 0 ? '' : 'hidden' }}"></div>
                             <span id="activeStaffCountText" class="text-sm text-slate-700">{{ $activeStaffCount ?? 0 }}</span>
                         </div>
                     </div>
