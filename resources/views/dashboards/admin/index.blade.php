@@ -218,8 +218,10 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Active Staff (last 10 min)</div>
-                        <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="activeStaffCount">{{ number_format($activeStaffCount ?? 0) }}</span></div>
-                        <div class="mt-1 text-xs text-slate-500">Users with recent activity</div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <div id="activeStaffDot" class="w-4 h-4 rounded-full bg-green-500 {{ ($activeStaffCount ?? 0) > 0 ? '' : 'hidden' }}"></div>
+                            <span id="activeStaffCountText" class="text-sm text-slate-700">{{ $activeStaffCount ?? 0 }}</span>
+                        </div>
                     </div>
                     <div class="rounded-md bg-purple-50 p-2 text-purple-600 border border-purple-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -698,7 +700,6 @@
             const elUserNew = document.getElementById('userNewCount');
             const wrapUser = document.getElementById('userNewWrap');
 
-            const elActive = document.getElementById('activeStaffCount');
             const elLastTraining = document.getElementById('lastTrainingValue');
 
             if (elOpen) elOpen.textContent = fmt.format(payload.openTickets ?? 0);
@@ -722,8 +723,6 @@
                 const signU = nu > 0 ? '+' : '';
                 elUserNew.textContent = `${signU}${fmt.format(nu)} new users`;
             }
-
-            if (elActive) elActive.textContent = fmt.format(payload.activeStaffCount ?? 0);
 
             if (elLastTraining) elLastTraining.textContent = payload.lastTraining ?? 'Never';
         }
@@ -842,6 +841,7 @@
                 .replace(/'/g, '&#039;');
         }
         function renderContacts(list) {
+            console.log('Active staff list for debugging:', list);
             if (!contactsListEl) return;
             const arr = Array.isArray(list) ? list.slice() : [];
             if (!arr.length) {
@@ -1009,13 +1009,6 @@
                 updateOpenList(data.openList || []);
                 updateMyTicketsList(data.myTicketsList || []);
 
-                // Keep active staff list fresh for drawer
-                if (Array.isArray(data.activeStaff)) {
-                    activeStaffList = data.activeStaff;
-                    if (typeof asd !== 'undefined' && asd && !asd.classList.contains('hidden') && typeof renderActiveStaff === 'function') {
-                        renderActiveStaff(activeStaffList);
-                    }
-                }
                 // Update right-side contacts
                 if (Array.isArray(data.staffContacts)) {
                     staffContactsList = data.staffContacts;
@@ -1120,6 +1113,27 @@
 
         // Check training status on page load
         checkTrainingStatus();
+
+        // Listen for real-time active staff updates
+        if (typeof Echo !== 'undefined') {
+            Echo.channel('active-staff').listen('.active-staff.updated', (e) => {
+                console.log('Active staff count received from broadcast event:', e.count);
+                const dot = document.getElementById('activeStaffDot');
+                const countText = document.getElementById('activeStaffCountText');
+                if (dot) {
+                    if (e.count > 0) {
+                        dot.classList.remove('hidden');
+                        console.log('Green dot shown');
+                    } else {
+                        dot.classList.add('hidden');
+                        console.log('Green dot hidden');
+                    }
+                }
+                if (countText) {
+                    countText.textContent = e.count;
+                }
+            });
+        }
 
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change

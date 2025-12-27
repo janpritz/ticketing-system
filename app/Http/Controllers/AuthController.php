@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use App\Mail\PasswordOtpMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
+use App\Events\ActiveStaffUpdated;
 
 class AuthController extends Controller
 {
@@ -58,13 +59,28 @@ class AuthController extends Controller
         // 3) Credentials are valid — sign in and redirect based on role
         if (Auth::attempt(['email' => $email, 'password' => $password], $remember)) {
             $request->session()->regenerate();
-    
+
             /** @var \App\Models\User|null $authUser */
             $authUser = Auth::user();
             // Use the model helper directly (User::isPrimaryAdministrator exists on App\Models\User).
             if ($authUser && $authUser->isPrimaryAdministrator()) {
                 return redirect()->intended('/admin/dashboard');
             }
+
+            // Broadcast active staff update for staff login
+            $cutoff = now()->subMinutes(10)->getTimestamp();
+            $activeStaffCount = DB::table('sessions')
+                ->join('users', 'sessions.user_id', '=', 'users.id')
+                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->whereNotNull('sessions.user_id')
+                ->where('sessions.last_activity', '>=', $cutoff)
+                ->where(function ($qb) {
+                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->distinct('sessions.user_id')
+                ->count('sessions.user_id');
+            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
             return redirect()->intended('/staff/dashboard');
         }
 
@@ -100,9 +116,23 @@ class AuthController extends Controller
             
             // Logout the user
             Auth::logout();
-            
+
+            // Broadcast active staff update
+            $cutoff = now()->subMinutes(10)->getTimestamp();
+            $activeStaffCount = DB::table('sessions')
+                ->join('users', 'sessions.user_id', '=', 'users.id')
+                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->whereNotNull('sessions.user_id')
+                ->where('sessions.last_activity', '>=', $cutoff)
+                ->where(function ($qb) {
+                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->distinct('sessions.user_id')
+                ->count('sessions.user_id');
+            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
             Log::info('Logout successful', ['session_id' => $request->session()->getId()]);
-            
+
             return redirect('/login')->with('status', 'You have been logged out successfully.');
             
         } catch (\Exception $e) {
@@ -115,7 +145,21 @@ class AuthController extends Controller
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            
+
+            // Broadcast active staff update
+            $cutoff = now()->subMinutes(10)->getTimestamp();
+            $activeStaffCount = DB::table('sessions')
+                ->join('users', 'sessions.user_id', '=', 'users.id')
+                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->whereNotNull('sessions.user_id')
+                ->where('sessions.last_activity', '>=', $cutoff)
+                ->where(function ($qb) {
+                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->distinct('sessions.user_id')
+                ->count('sessions.user_id');
+            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
             return redirect('/login')->with('error', 'Logout completed. Please try again if you experience issues.');
         }
     }
