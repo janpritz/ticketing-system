@@ -15,13 +15,15 @@ class ActiveStaffUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $count;
+    public $staffContacts;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($count)
+    public function __construct($count, $staffContacts = [])
     {
         $this->count = $count;
+        $this->staffContacts = $staffContacts;
     }
 
     /**
@@ -51,6 +53,7 @@ class ActiveStaffUpdated implements ShouldBroadcast
     {
         return [
             'count' => $this->count,
+            'staffContacts' => $this->staffContacts,
         ];
     }
 }

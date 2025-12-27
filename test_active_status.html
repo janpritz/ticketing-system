@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Active Status Updates</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .contact-item { display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .bg-emerald-500 { background-color: #10b981; }
+        .bg-slate-300 { background-color: #94a3b8; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 5px 10px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Test Active Status Updates</h1>
+    
+    <div class="test-section">
+        <h3>Staff Data</h3>
+        <div id="staffData">
+            <p>Staff data will be displayed here</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Contacts List</h3>
+        <div id="contactsList">
+            <!-- Contacts will be rendered here -->
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Controls</h3>
+        <button onclick="simulateUpdate()">Simulate Ana Reyes becomes active</button>
+        <button onclick="simulateInactive()">Simulate Ana Reyes becomes inactive</button>
+        <button onclick="simulateDifferentTypes()">Test different data types</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        // Simulate the staff data structure
+        let staffContactsList = [
+            { id: 1, name: 'Ana Reyes', email: 'ana.reyes@example.com', is_active: false },
+            { id: 2, name: 'John Smith', email: 'john.smith@example.com', is_active: true },
+            { id: 3, name: 'Maria Santos', email: 'maria.santos@example.com', is_active: false }
+        ];
+
+        // More robust check for is_active - handle different data types
+        function isActiveCheck(user) {
+            const isActive = Boolean(user.is_active) || 
+                            user.is_active === true || 
+                            user.is_active === 'true' || 
+                            user.is_active === 1 || 
+                            user.is_active === '1' ||
+                            user.is_active === '1.0' ||
+                            user.is_active === 'yes' ||
+                            user.is_active === 'YES' ||
+                            user.is_active === 'Yes' ||
+                            (typeof user.is_active === 'string' && user.is_active.toLowerCase() === 'true') ||
+                            (typeof user.is_active === 'number' && user.is_active > 0);
+            return isActive;
+        }
+
+        function renderContacts(list) {
+            const contactsListEl = document.getElementById('contactsList');
+            const staffDataEl = document.getElementById('staffData');
+            
+            if (!contactsListEl) return;
+            
+            // Display staff data for debugging
+            staffDataEl.innerHTML = '<h4>Current Staff Data:</h4>' + 
+                list.map(u => 
+                    `<div><strong>${u.name}</strong>: is_active = ${u.is_active} (type: ${typeof u.is_active})</div>`
+                ).join('');
+
+            const arr = Array.isArray(list) ? list.slice() : [];
+            if (!arr.length) {
+                contactsListEl.innerHTML = '<div class="contact-item">No staff found.</div>';
+                return;
+            }
+            
+            // Sort by active first, then name
+            arr.sort((a, b) => {
+                const aa = isActiveCheck(a) ? 0 : 1;
+                const bb = isActiveCheck(b) ? 0 : 1;
+                if (aa !== bb) return aa - bb;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+            
+            const html = arr.map(u => {
+                const isActive = isActiveCheck(u);
+                const dot = isActive ? 'bg-emerald-500' : 'bg-slate-300';
+                
+                console.log('Processing user:', u.name, 'is_active:', u.is_active, 'type:', typeof u.is_active, 'isActive:', isActive, 'dot class:', dot);
+                
+                return `
+                <div class="contact-item">
+                    <div class="dot ${dot}"></div>
+                    <div>
+                        <div><strong>${u.name}</strong></div>
+                        <div style="font-size: 12px; color: #666;">${u.email}</div>
+                        <div style="font-size: 11px; color: #999;">is_active: ${u.is_active} (${typeof u.is_active})</div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            contactsListEl.innerHTML = html;
+        }
+
+        function simulateUpdate() {
+            console.log('=== Simulating Ana Reyes becomes active ===');
+            const ana = staffContactsList.find(u => u.name === 'Ana Reyes');
+            if (ana) {
+                ana.is_active = true;
+                console.log('Updated Ana Reyes is_active to:', ana.is_active);
+                renderContacts(staffContactsList);
+            }
+        }
+
+        function simulateInactive() {
+            console.log('=== Simulating Ana Reyes becomes inactive ===');
+            const ana = staffContactsList.find(u => u.name === 'Ana Reyes');
+            if (ana) {
+                ana.is_active = false;
+                console.log('Updated Ana Reyes is_active to:', ana.is_active);
+                renderContacts(staffContactsList);
+            }
+        }
+
+        function simulateDifferentTypes() {
+            console.log('=== Testing different data types ===');
+            
+            // Test different data types
+            const testCases = [
+                { name: 'Test 1', is_active: 1 },
+                { name: 'Test 2', is_active: '1' },
+                { name: 'Test 3', is_active: 'true' },
+                { name: 'Test 4', is_active: 'TRUE' },
+                { name: 'Test 5', is_active: 'yes' },
+                { name: 'Test 6', is_active: 0 },
+                { name: 'Test 7', is_active: 'false' },
+                { name: 'Test 8', is_active: null },
+                { name: 'Test 9', is_active: undefined }
+            ];
+            
+            testCases.forEach(user => {
+                const isActive = isActiveCheck(user);
+                console.log(`User: ${user.name}, is_active: ${user.is_active} (${typeof user.is_active}), isActive: ${isActive}`);
+            });
+            
+            // Update staff list with test data
+            staffContactsList = testCases;
+            renderContacts(staffContactsList);
+        }
+
+        function clearConsole() {
+            console.clear();
+        }
+
+        // Initial render
+        renderContacts(staffContactsList);
+    </script>
+</body>
+</html>

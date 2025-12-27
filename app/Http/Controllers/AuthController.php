@@ -79,7 +79,38 @@ class AuthController extends Controller
                 })
                 ->distinct('sessions.user_id')
                 ->count('sessions.user_id');
-            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
+            // Build full staff contacts with active flag
+            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->where(function ($q) {
+                    $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
+                ])
+                ->orderBy('users.name')
+                ->get()
+                ->map(function ($row) use ($cutoff) {
+                    $ts = (int) ($row->last_activity_ts ?? 0);
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => (string) ($row->name ?? ''),
+                        'email' => (string) ($row->email ?? ''),
+                        'last_activity_ts' => $ts,
+                        'is_active' => $ts >= $cutoff,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            dispatch(function () use ($activeStaffCount, $staffContacts) {
+                broadcast(new ActiveStaffUpdated($activeStaffCount, $staffContacts));
+            })->afterResponse();
 
             return redirect()->intended('/staff/dashboard');
         }
@@ -129,7 +160,38 @@ class AuthController extends Controller
                 })
                 ->distinct('sessions.user_id')
                 ->count('sessions.user_id');
-            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
+            // Build full staff contacts with active flag
+            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->where(function ($q) {
+                    $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
+                ])
+                ->orderBy('users.name')
+                ->get()
+                ->map(function ($row) use ($cutoff) {
+                    $ts = (int) ($row->last_activity_ts ?? 0);
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => (string) ($row->name ?? ''),
+                        'email' => (string) ($row->email ?? ''),
+                        'last_activity_ts' => $ts,
+                        'is_active' => $ts >= $cutoff,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            dispatch(function () use ($activeStaffCount, $staffContacts) {
+                broadcast(new ActiveStaffUpdated($activeStaffCount, $staffContacts));
+            })->afterResponse();
 
             Log::info('Logout successful', ['session_id' => $request->session()->getId()]);
 
@@ -158,7 +220,38 @@ class AuthController extends Controller
                 })
                 ->distinct('sessions.user_id')
                 ->count('sessions.user_id');
-            broadcast(new ActiveStaffUpdated($activeStaffCount));
+
+            // Build full staff contacts with active flag
+            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->where(function ($q) {
+                    $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
+                ])
+                ->orderBy('users.name')
+                ->get()
+                ->map(function ($row) use ($cutoff) {
+                    $ts = (int) ($row->last_activity_ts ?? 0);
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => (string) ($row->name ?? ''),
+                        'email' => (string) ($row->email ?? ''),
+                        'last_activity_ts' => $ts,
+                        'is_active' => $ts >= $cutoff,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            dispatch(function () use ($activeStaffCount, $staffContacts) {
+                broadcast(new ActiveStaffUpdated($activeStaffCount, $staffContacts));
+            })->afterResponse();
 
             return redirect('/login')->with('error', 'Logout completed. Please try again if you experience issues.');
         }

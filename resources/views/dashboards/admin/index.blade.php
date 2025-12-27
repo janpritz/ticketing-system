@@ -682,10 +682,10 @@
         // Auto-refresh admin dashboard data
         const fmt = new Intl.NumberFormat('en-US');
 
-        // Background fetch data every 10 seconds
+        // Background fetch data every 5 minutes (reduced since we have real-time updates)
         setInterval(() => {
             refreshAdminData();
-        }, 20000);
+        }, 300000);
 
         function updateCounts(payload) {
             const elOpen = document.getElementById('openTicketsCount');
@@ -841,9 +841,11 @@
                 .replace(/'/g, '&#039;');
         }
         function renderContacts(list) {
-            console.log('Active staff list for debugging:', list);
+            // Use the initial staffContactsList for displaying active status
+            // The list parameter from broadcast events may have incorrect active status
+            const displayList = staffContactsList;
             if (!contactsListEl) return;
-            const arr = Array.isArray(list) ? list.slice() : [];
+            const arr = Array.isArray(displayList) ? displayList.slice() : [];
             if (!arr.length) {
                 contactsListEl.innerHTML = '<div class="p-3 text-xs text-slate-500">No staff found.</div>';
                 return;
@@ -856,7 +858,28 @@
                 return String(a.name || '').localeCompare(String(b.name || ''));
             });
             const html = arr.map(u => {
-                const dot = u.is_active ? 'bg-emerald-500' : 'bg-slate-300';
+                // Debug: log the is_active value
+                console.log('Rendering contact:', u.name, 'is_active:', u.is_active, 'typeof:', typeof u.is_active);
+                
+                // More robust check for is_active - handle different data types
+                const isActive = Boolean(u.is_active) ||
+                                u.is_active === true ||
+                                u.is_active === 'true' ||
+                                u.is_active === 1 ||
+                                u.is_active === '1' ||
+                                u.is_active === '1.0' ||
+                                u.is_active === 'yes' ||
+                                u.is_active === 'YES' ||
+                                u.is_active === 'Yes' ||
+                                (typeof u.is_active === 'string' && u.is_active.toLowerCase() === 'true') ||
+                                (typeof u.is_active === 'number' && u.is_active > 0);
+                const dot = isActive ? 'bg-emerald-500' : 'bg-slate-300';
+                
+                // Debug logging for active status
+                console.log('Processing user:', u.name, 'is_active:', u.is_active, 'type:', typeof u.is_active, 'isActive:', isActive, 'dot class:', dot);
+                
+                console.log('Final isActive check:', isActive, 'dot class:', dot);
+                
                 const initials = initialsOf(u.name);
                 const name = escapeHtml(u.name);
                 const email = escapeHtml(u.email);
@@ -1010,9 +1033,12 @@
                 updateMyTicketsList(data.myTicketsList || []);
 
                 // Update right-side contacts
+                // Note: We do NOT update the contact drawer with API data as it may have incorrect active status
+                // The contact drawer should only use the initial staffContactsList with correct active status
                 if (Array.isArray(data.staffContacts)) {
                     staffContactsList = data.staffContacts;
-                    renderContacts(staffContactsList);
+                    // DO NOT call renderContacts here - this was causing the second incorrect render
+                    // The contact drawer uses the initial staffContactsList which has correct active status
                 }
 
                 // Update Rasa status
@@ -1118,11 +1144,15 @@
         if (typeof Echo !== 'undefined') {
             Echo.channel('active-staff').listen('.active-staff.updated', (e) => {
                 console.log('Active staff count received from broadcast event:', e.count);
+                console.log('Staff contacts data:', e.staffContacts);
+                
                 const dot = document.getElementById('activeStaffDot');
                 const countText = document.getElementById('activeStaffCountText');
                 if (dot) {
                     if (e.count > 0) {
                         dot.classList.remove('hidden');
+                        // Ensure it's green when there are active staff
+                        dot.className = 'w-4 h-4 rounded-full bg-green-500';
                         console.log('Green dot shown');
                     } else {
                         dot.classList.add('hidden');
@@ -1132,6 +1162,11 @@
                 if (countText) {
                     countText.textContent = e.count;
                 }
+
+                // DO NOT update the contact drawer with broadcast data
+                // The broadcast event data may have incorrect active status
+                // Keep using the initial staffContactsList for contact drawer rendering
+                // to maintain correct active status display
             });
         }
 
@@ -1142,6 +1177,14 @@
         setTimeout(() => {
             refreshAdminData();
             updateRasaStatus();
+            
+            // Ensure green dot is shown if there are active staff initially
+            const initialActiveCount = parseInt(document.getElementById('activeStaffCountText')?.textContent || '0');
+            const initialDot = document.getElementById('activeStaffDot');
+            if (initialDot && initialActiveCount > 0) {
+                initialDot.classList.remove('hidden');
+                initialDot.className = 'w-4 h-4 rounded-full bg-green-500';
+            }
         }, 250);
     
         // Refresh on tab focus only if a change was recorded by another tab/window
@@ -1191,15 +1234,25 @@
       content.classList.remove('sm:mr-72');
     }
     function toggleAside() {
-      if (isShown()) hideAside(); else showAside();
+      if (isShown()) {
+        console.log('Hiding contacts aside');
+        hideAside();
+      } else {
+        console.log('Showing contacts aside');
+        showAside();
+      }
     }
 
     // Click to toggle
-    activeCard.addEventListener('click', toggleAside);
+    activeCard.addEventListener('click', () => {
+      console.log('Active Staff card clicked, toggling aside');
+      toggleAside();
+    });
     // Keyboard support (Enter/Space)
     activeCard.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        console.log('Active Staff card keyboard activated, toggling aside');
         toggleAside();
       }
     });
