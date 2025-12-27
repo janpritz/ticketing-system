@@ -481,18 +481,27 @@
 
                 if (mobileMenuButton && mobileMenu) {
                     mobileMenuButton.addEventListener('click', function() {
-                        const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
-                        mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
-                        mobileMenu.classList.toggle('hidden');
+                        // Disable button and show spinner
+                        const originalContent = mobileMenuButton.innerHTML;
+                        setButtonLoadingState(mobileMenuButton, true, originalContent);
 
-                        // Toggle icons
-                        if (mobileMenu.classList.contains('hidden')) {
-                            mobileMenuOpen.classList.remove('hidden');
-                            mobileMenuClose.classList.add('hidden');
-                        } else {
-                            mobileMenuOpen.classList.add('hidden');
-                            mobileMenuClose.classList.remove('hidden');
-                        }
+                        setTimeout(() => {
+                            const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
+                            mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
+                            mobileMenu.classList.toggle('hidden');
+
+                            // Toggle icons
+                            if (mobileMenu.classList.contains('hidden')) {
+                                mobileMenuOpen.classList.remove('hidden');
+                                mobileMenuClose.classList.add('hidden');
+                            } else {
+                                mobileMenuOpen.classList.add('hidden');
+                                mobileMenuClose.classList.remove('hidden');
+                            }
+
+                            // Re-enable button and restore original content
+                            setButtonLoadingState(mobileMenuButton, false, originalContent);
+                        }, 100);
                     });
                 }
 
@@ -502,9 +511,18 @@
 
                 if (userMenuButton && userMenu) {
                     userMenuButton.addEventListener('click', function() {
-                        const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
-                        userMenuButton.setAttribute('aria-expanded', !isExpanded);
-                        userMenu.classList.toggle('hidden');
+                        // Disable button and show spinner
+                        const originalContent = userMenuButton.innerHTML;
+                        setButtonLoadingState(userMenuButton, true, originalContent);
+
+                        setTimeout(() => {
+                            const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
+                            userMenuButton.setAttribute('aria-expanded', !isExpanded);
+                            userMenu.classList.toggle('hidden');
+
+                            // Re-enable button and restore original content
+                            setButtonLoadingState(userMenuButton, false, originalContent);
+                        }, 100);
                     });
 
                     // Close dropdown when clicking outside
@@ -514,6 +532,27 @@
                             userMenuButton.setAttribute('aria-expanded', 'false');
                         }
                     });
+                }
+
+                // Utility function to handle button loading states
+                function setButtonLoadingState(button, isLoading, originalContent = null) {
+                    if (!button) return;
+                    
+                    if (isLoading) {
+                        button.disabled = true;
+                        button.innerHTML = `
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                        `;
+                    } else {
+                        button.disabled = false;
+                        if (originalContent) {
+                            button.innerHTML = originalContent;
+                        }
+                    }
                 }
 
                 // Toast helper
@@ -565,9 +604,18 @@
                 const overdueTicketsList = document.getElementById('overdueTicketsList');
                 if (overdueDropdownBtn && overdueTicketsList) {
                     overdueDropdownBtn.addEventListener('click', () => {
-                        overdueTicketsList.classList.toggle('hidden');
-                        overdueDropdownBtn.textContent = overdueTicketsList.classList.contains('hidden') ? 'View Tickets' :
-                            'Hide Tickets';
+                        // Disable button and show spinner
+                        const originalContent = overdueDropdownBtn.innerHTML;
+                        setButtonLoadingState(overdueDropdownBtn, true, originalContent);
+
+                        setTimeout(() => {
+                            overdueTicketsList.classList.toggle('hidden');
+                            overdueDropdownBtn.textContent = overdueTicketsList.classList.contains('hidden') ? 'View Tickets' :
+                                'Hide Tickets';
+
+                            // Re-enable button and restore original content
+                            setButtonLoadingState(overdueDropdownBtn, false, originalContent);
+                        }, 100);
                     });
                 }
 
@@ -827,6 +875,10 @@
                     // React to toggle changes immediately
                     if (toggleEl) {
                         toggleEl.addEventListener('change', () => {
+                            // Disable button and show spinner
+                            const originalDisabled = toggleEl.disabled;
+                            toggleEl.disabled = true;
+
                             // reset pagination to first page
                             currentPage = 1;
                             lastSnapshot = '';
@@ -835,6 +887,10 @@
                     }
                     if (perPageSelect) {
                         perPageSelect.addEventListener('change', () => {
+                            // Disable button and show spinner
+                            const originalDisabled = perPageSelect.disabled;
+                            perPageSelect.disabled = true;
+
                             perPage = normalizePerPage(perPageSelect.value);
                             localStorage.setItem('ts_staff_perPage', String(perPage));
                             currentPage = 1;
@@ -845,6 +901,10 @@
                     if (pagerPrev) {
                         pagerPrev.addEventListener('click', () => {
                             if (currentPage > 1) {
+                                // Disable button and show spinner
+                                const originalContent = pagerPrev.innerHTML;
+                                setButtonLoadingState(pagerPrev, true, originalContent);
+
                                 currentPage -= 1;
                                 lastSnapshot = '';
                                 fetchData();
@@ -854,6 +914,10 @@
                     if (pagerNext) {
                         pagerNext.addEventListener('click', () => {
                             if (currentPage < lastPage) {
+                                // Disable button and show spinner
+                                const originalContent = pagerNext.innerHTML;
+                                setButtonLoadingState(pagerNext, true, originalContent);
+
                                 currentPage += 1;
                                 lastSnapshot = '';
                                 fetchData();
@@ -1139,6 +1203,13 @@
                             console.log('Closest target:', target);
                             if (!target) return;
                             e.preventDefault();
+                            
+                            // Disable the row and show spinner
+                            const originalCursor = target.style.cursor;
+                            const originalOpacity = target.style.opacity;
+                            target.style.cursor = 'not-allowed';
+                            target.style.opacity = '0.5';
+                            
                             let id;
                             if (target.tagName === 'TR') {
                                 id = target.getAttribute('data-id');
@@ -1167,7 +1238,32 @@
                                 };
                             }
                             console.log('Calling openModalFrom with ticket:', ticket);
+                            
+                            // Add a spinner overlay to the row
+                            let spinner = target.querySelector('.ticket-row-spinner');
+                            if (!spinner) {
+                                spinner = document.createElement('div');
+                                spinner.className = 'ticket-row-spinner absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 rounded';
+                                spinner.innerHTML = `
+                                    <svg class="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                `;
+                                target.style.position = 'relative';
+                                target.appendChild(spinner);
+                            }
+                            
                             openModalFrom(ticket);
+                            
+                            // Re-enable the row after a short delay
+                            setTimeout(() => {
+                                target.style.cursor = originalCursor;
+                                target.style.opacity = originalOpacity;
+                                if (spinner) {
+                                    spinner.remove();
+                                }
+                            }, 300);
                         });
                     } else {
                         console.error('ticketsBodyEl not found');
@@ -1227,9 +1323,18 @@
                     if (tmOptionsBtn && tmOptionsMenu) {
                         tmOptionsBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            const isOpen = !tmOptionsMenu.classList.contains('hidden');
-                            tmOptionsMenu.classList.toggle('hidden', isOpen);
-                            tmOptionsBtn.setAttribute('aria-expanded', String(!isOpen));
+                            // Disable button and show spinner
+                            const originalContent = tmOptionsBtn.innerHTML;
+                            setButtonLoadingState(tmOptionsBtn, true, originalContent);
+
+                            setTimeout(() => {
+                                const isOpen = !tmOptionsMenu.classList.contains('hidden');
+                                tmOptionsMenu.classList.toggle('hidden', isOpen);
+                                tmOptionsBtn.setAttribute('aria-expanded', String(!isOpen));
+
+                                // Re-enable button and restore original content
+                                setButtonLoadingState(tmOptionsBtn, false, originalContent);
+                            }, 100);
                         });
 
                         document.addEventListener('click', (e) => {
@@ -1275,7 +1380,11 @@
                                         title: 'Selection Required',
                                         text: 'Please choose a role to forward to.',
                                         timer: 3000,
-                                        showConfirmButton: false
+                                        showConfirmButton: false,
+                                        customClass: {
+                                            confirmButton: 'swal2-confirm-btn',
+                                            cancelButton: 'swal2-cancel-btn'
+                                        }
                                     });
                                 } else {
                                     showToast('error', 'Please choose a role to forward to.');
@@ -1285,9 +1394,9 @@
                             const role = tmForwardSelect.value;
 
                             // Disable button and show loading
-                            tmForwardApply.disabled = true;
+                            const originalContent = tmForwardApply.innerHTML;
+                            setButtonLoadingState(tmForwardApply, true, originalContent);
                             tmForwardApply.classList.add('opacity-50', 'pointer-events-none');
-                            const originalText = tmForwardApply.textContent;
                             tmForwardApply.innerHTML =
                                 '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Forwarding...';
 
@@ -1318,7 +1427,11 @@
                                                 title: 'Ticket Forwarded',
                                                 text: 'The ticket has been successfully forwarded.',
                                                 timer: 3000,
-                                                showConfirmButton: false
+                                                showConfirmButton: false,
+                                                customClass: {
+                                                    confirmButton: 'swal2-confirm-btn',
+                                                    cancelButton: 'swal2-cancel-btn'
+                                                }
                                             });
                                         } else {
                                             showToast('success', 'Ticket forwarded successfully.');
@@ -1377,7 +1490,8 @@
                                 return;
                             }
                             try {
-                                tmSendResponse.disabled = true;
+                                const originalContent = tmSendResponse.innerHTML;
+                                setButtonLoadingState(tmSendResponse, true, originalContent);
                                 tmSendResponse.classList.add('opacity-50', 'pointer-events-none');
                                 const res = await fetch(`${forwardBase}/${currentTicketId}/respond`, {
                                     method: 'POST',
@@ -1445,6 +1559,7 @@
                             } finally {
                                 tmSendResponse.disabled = false;
                                 tmSendResponse.classList.remove('opacity-50', 'pointer-events-none');
+                                setButtonLoadingState(tmSendResponse, false, originalContent);
                             }
                         });
                     }

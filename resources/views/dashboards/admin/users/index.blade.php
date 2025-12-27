@@ -486,26 +486,33 @@
               }
             } catch (e) { /* ignore */ }
 
-            // Delete confirmation via SweetAlert2 (fallback to native confirm if unavailable)
+            // Delete confirmation via SweetAlert2
             $$('form.deleteUserForm').forEach((form) => {
               form.addEventListener('submit', function (e) {
-                if (typeof Swal === 'undefined') {
-                  if (!confirm('Delete this user? This action cannot be undone.')) {
-                    e.preventDefault();
-                  }
-                  return;
-                }
                 e.preventDefault();
                 const name = form.getAttribute('data-user-name') || 'this user';
+                
                 Swal.fire({
                   title: 'Delete ' + name + '?',
                   text: 'This will move the user to trash. You can restore them later.',
                   icon: 'warning',
+                  iconColor: '#ef4444',
                   showCancelButton: true,
-                  confirmButtonColor: '#d33',
+                  confirmButtonColor: '#ef4444',
                   cancelButtonColor: '#6b7280',
-                  confirmButtonText: 'Yes, delete',
-                  cancelButtonText: 'Cancel'
+                  confirmButtonText: 'Delete',
+                  cancelButtonText: 'Cancel',
+                  confirmButtonAriaLabel: 'Delete user',
+                  cancelButtonAriaLabel: 'Cancel deletion',
+                  customClass: {
+                    popup: 'rounded-lg shadow-lg border border-gray-200',
+                    title: 'text-lg font-semibold text-gray-900',
+                    content: 'text-sm text-gray-700',
+                    confirmButton: 'px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium',
+                    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+                  },
+                  buttonsStyling: false,
+                  reverseButtons: true
                 }).then((result) => {
                   if (result.isConfirmed) form.submit();
                 });
@@ -515,23 +522,30 @@
             // Restore confirmation via SweetAlert2
             $$('form.restoreUserForm').forEach((form) => {
               form.addEventListener('submit', function (e) {
-                if (typeof Swal === 'undefined') {
-                  if (!confirm('Restore this user?')) {
-                    e.preventDefault();
-                  }
-                  return;
-                }
                 e.preventDefault();
                 const name = form.getAttribute('data-user-name') || 'this user';
+                
                 Swal.fire({
                   title: 'Restore ' + name + '?',
                   text: 'This will restore the user account.',
-                  icon: 'question',
+                  icon: 'info',
+                  iconColor: '#3b82f6',
                   showCancelButton: true,
-                  confirmButtonColor: '#3085d6',
+                  confirmButtonColor: '#3b82f6',
                   cancelButtonColor: '#6b7280',
-                  confirmButtonText: 'Yes, restore',
-                  cancelButtonText: 'Cancel'
+                  confirmButtonText: 'Restore',
+                  cancelButtonText: 'Cancel',
+                  confirmButtonAriaLabel: 'Restore user',
+                  cancelButtonAriaLabel: 'Cancel restoration',
+                  customClass: {
+                    popup: 'rounded-lg shadow-lg border border-gray-200',
+                    title: 'text-lg font-semibold text-gray-900',
+                    content: 'text-sm text-gray-700',
+                    confirmButton: 'px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium',
+                    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+                  },
+                  buttonsStyling: false,
+                  reverseButtons: true
                 }).then((result) => {
                   if (result.isConfirmed) form.submit();
                 });

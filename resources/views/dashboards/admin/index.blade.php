@@ -231,7 +231,7 @@
                 </div>
             </div>
             <!-- Last Rasa Training -->
-            <div class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+            <div id="lastTrainingCard" class="block bg-white rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors cursor-pointer" role="button" tabindex="0" aria-label="View training history">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Last Rasa Training</div>
@@ -566,6 +566,67 @@
     <button id="lightboxNext" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&rarr;</button>
     <button id="lightboxClose" class="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center">&times;</button>
   </div>
+</div>
+
+<!-- Training History Modal - Consistent with Admin Dashboard Modal Design -->
+<div id="trainingHistoryModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+    <!-- Centered panel with modern minimal design -->
+    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+        <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+            
+            <!-- Header - Minimal & Clean -->
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold text-gray-900">Training History</h3>
+                        <span id="trainingHistoryCount" class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 text-purple-700 bg-purple-50 ring-purple-600/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            <span id="trainingCountText">0 trainings</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 ml-4">
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" aria-label="Close" data-modal-close>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content - Scrollable -->
+            <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                
+                <!-- Training History List -->
+                <div id="trainingHistoryList" class="space-y-3">
+                    <!-- Training items will be populated here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="trainingHistoryEmpty" class="hidden text-center py-8">
+                    <div class="text-gray-400 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <p class="text-gray-500 text-sm">No training history available</p>
+                </div>
+            </div>
+
+            <!-- Footer - Actions -->
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0">
+                <!-- Actions -->
+                <div class="flex items-center justify-end gap-2">
+                    <button type="button"
+                        class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50 transition-colors"
+                        data-modal-close>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Secondary right-side Contacts nav (hidden by default; toggled by Active Staff card) -->
@@ -1139,6 +1200,146 @@
 
         // Check training status on page load
         checkTrainingStatus();
+
+        // Training History Modal functionality
+        const trainingHistoryModal = document.getElementById('trainingHistoryModal');
+        const trainingHistoryBackdrop = trainingHistoryModal ? trainingHistoryModal.querySelector('[data-modal-backdrop]') : null;
+        const trainingHistoryCloseBtns = trainingHistoryModal ? trainingHistoryModal.querySelectorAll('[data-modal-close]') : [];
+        const trainingHistoryList = document.getElementById('trainingHistoryList');
+        const trainingHistoryEmpty = document.getElementById('trainingHistoryEmpty');
+        const trainingCountText = document.getElementById('trainingCountText');
+
+        // Open training history modal when clicking the Last Rasa Training card
+        const lastTrainingCard = document.getElementById('lastTrainingCard');
+        if (lastTrainingCard) {
+            lastTrainingCard.addEventListener('click', () => {
+                openTrainingHistoryModal();
+            });
+        }
+
+        // Close modal handlers
+        if (trainingHistoryBackdrop) trainingHistoryBackdrop.addEventListener('click', closeTrainingHistoryModal);
+        if (trainingHistoryCloseBtns && trainingHistoryCloseBtns.length) {
+            trainingHistoryCloseBtns.forEach(btn => btn.addEventListener('click', closeTrainingHistoryModal));
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && trainingHistoryModal && !trainingHistoryModal.classList.contains('hidden')) {
+                closeTrainingHistoryModal();
+            }
+        });
+
+        async function openTrainingHistoryModal() {
+            if (!trainingHistoryModal) return;
+            
+            // Show loading state
+            trainingHistoryList.innerHTML = '<div class="text-center py-4 text-gray-500">Loading training history...</div>';
+            trainingHistoryEmpty.classList.add('hidden');
+            
+            try {
+                const response = await fetch('{{ route("admin.rasa-server.training-history") }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch training history');
+                }
+
+                const data = await response.json();
+                const trainings = data.trainings || [];
+
+                // Update count
+                if (trainingCountText) {
+                    trainingCountText.textContent = `${trainings.length} training${trainings.length !== 1 ? 's' : ''}`;
+                }
+
+                // Render training history
+                if (trainings.length > 0) {
+                    trainingHistoryList.innerHTML = trainings.map(training => {
+                        const statusBadge = getStatusBadge(training.status);
+                        const user = training.user || 'System';
+                        const fileName = training.file_name || 'N/A';
+                        const action = training.action || 'N/A';
+                        
+                        return `
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="text-sm font-medium text-gray-900">${training.date}</span>
+                                            ${statusBadge}
+                                        </div>
+                                        <div class="text-sm text-gray-700 mb-1">
+                                            <span class="font-medium">User:</span> ${user}
+                                        </div>
+                                        <div class="text-sm text-gray-700 mb-1">
+                                            <span class="font-medium">File:</span> ${fileName}
+                                        </div>
+                                        <div class="text-sm text-gray-700">
+                                            <span class="font-medium">Action:</span> ${action}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    trainingHistoryEmpty.classList.add('hidden');
+                } else {
+                    trainingHistoryList.innerHTML = '';
+                    trainingHistoryEmpty.classList.remove('hidden');
+                }
+
+                // Show modal
+                trainingHistoryModal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+
+            } catch (error) {
+                console.error('Error loading training history:', error);
+                trainingHistoryList.innerHTML = '<div class="text-center py-4 text-red-500">Failed to load training history. Please try again.</div>';
+                trainingHistoryEmpty.classList.add('hidden');
+            }
+        }
+
+        function closeTrainingHistoryModal() {
+            if (!trainingHistoryModal) return;
+            trainingHistoryModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function getStatusBadge(status) {
+            const statusConfig = {
+                'success': {
+                    text: 'Success',
+                    bg: 'bg-emerald-50',
+                    textClass: 'text-emerald-700',
+                    ring: 'ring-emerald-600/20'
+                },
+                'pending': {
+                    text: 'Pending',
+                    bg: 'bg-amber-50',
+                    textClass: 'text-amber-700',
+                    ring: 'ring-amber-600/20'
+                },
+                'superseded': {
+                    text: 'Superseded',
+                    bg: 'bg-gray-50',
+                    textClass: 'text-gray-700',
+                    ring: 'ring-gray-600/20'
+                }
+            };
+
+            const config = statusConfig[status] || statusConfig['pending'];
+            
+            return `
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${config.bg} ${config.textClass} ${config.ring}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    ${config.text}
+                </span>
+            `;
+        }
 
         // Listen for real-time active staff updates
         if (typeof Echo !== 'undefined') {

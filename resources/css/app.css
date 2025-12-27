@@ -12,3 +12,40 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+/* SweetAlert Button Spacing Styles */
+.swal2-confirm-btn,
+.swal2-cancel-btn {
+    margin: 0 8px !important;
+    padding: 10px 20px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    border: 1px solid transparent !important;
+}
+
+.swal2-confirm-btn {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
+}
+
+.swal2-confirm-btn:hover {
+    background-color: #2563eb !important;
+    transform: translateY(-1px) !important;
+}
+
+.swal2-cancel-btn {
+    background-color: #f3f4f6 !important;
+    color: #374151 !important;
+    border-color: #e5e7eb !important;
+}
+
+.swal2-cancel-btn:hover {
+    background-color: #e5e7eb !important;
+    border-color: #d1d5db !important;
+}
+
+/* Ensure proper spacing between buttons */
+.swal2-actions {
+    gap: 12px !important;
+    margin-top: 16px !important;
+}

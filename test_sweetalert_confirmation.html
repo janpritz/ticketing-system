@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SweetAlert2 Delete Confirmation Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-right: 10px;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background-color: #f3f4f6;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .status.success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .status.error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .code-block {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SweetAlert2 Delete Confirmation Test</h1>
+        
+        <div class="test-section">
+            <div class="test-title">Test 1: Delete User Confirmation (Red Theme)</div>
+            <p>Click the button below to test the delete confirmation dialog:</p>
+            <button class="btn btn-danger" id="testDeleteBtn">Delete User</button>
+            <div id="deleteStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">Test 2: Restore User Confirmation (Blue Theme)</div>
+            <p>Click the button below to test the restore confirmation dialog:</p>
+            <button class="btn btn-primary" id="testRestoreBtn">Restore User</button>
+            <div id="restoreStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">Test 3: Form Submission Simulation</div>
+            <p>This simulates the actual form submission behavior:</p>
+            <form id="testForm" method="POST" action="#">
+                <input type="hidden" name="user_id" value="123">
+                <button type="submit" class="btn btn-danger">Submit Delete Form</button>
+            </form>
+            <div id="formStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <div class="code-block">
+<!-- SweetAlert2 Delete Confirmation Implementation -->
+Swal.fire({
+  title: 'Delete John Doe?',
+  text: 'This will move the user to trash. You can restore them later.',
+  icon: 'warning',
+  iconColor: '#ef4444',
+  showCancelButton: true,
+  confirmButtonColor: '#ef4444',
+  cancelButtonColor: '#6b7280',
+  confirmButtonText: 'Yes, delete',
+  cancelButtonText: 'Cancel',
+  confirmButtonAriaLabel: 'Delete user',
+  cancelButtonAriaLabel: 'Cancel deletion',
+  customClass: {
+    popup: 'rounded-lg shadow-lg border border-gray-200',
+    title: 'text-lg font-semibold text-gray-900',
+    content: 'text-sm text-gray-700',
+    confirmButton: 'px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium',
+    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+  },
+  buttonsStyling: false,
+  reverseButtons: true
+}).then((result) => {
+  if (result.isConfirmed) form.submit();
+});
+        </div>
+    </div>
+
+    <script>
+        // Delete confirmation test
+        document.getElementById('testDeleteBtn').addEventListener('click', function() {
+            const statusEl = document.getElementById('deleteStatus');
+            statusEl.style.display = 'none';
+            
+            Swal.fire({
+                title: 'Delete John Doe?',
+                text: 'This will move the user to trash. You can restore them later.',
+                icon: 'warning',
+                iconColor: '#ef4444',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete',
+                cancelButtonText: 'Cancel',
+                confirmButtonAriaLabel: 'Delete user',
+                cancelButtonAriaLabel: 'Cancel deletion',
+                customClass: {
+                    popup: 'rounded-lg shadow-lg border border-gray-200',
+                    title: 'text-lg font-semibold text-gray-900',
+                    content: 'text-sm text-gray-700',
+                    confirmButton: 'px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium',
+                    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+                },
+                buttonsStyling: false,
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    statusEl.textContent = '✅ User deletion confirmed!';
+                    statusEl.className = 'status success';
+                    statusEl.style.display = 'block';
+                } else {
+                    statusEl.textContent = '❌ User deletion cancelled!';
+                    statusEl.className = 'status error';
+                    statusEl.style.display = 'block';
+                }
+            });
+        });
+
+        // Restore confirmation test
+        document.getElementById('testRestoreBtn').addEventListener('click', function() {
+            const statusEl = document.getElementById('restoreStatus');
+            statusEl.style.display = 'none';
+            
+            Swal.fire({
+                title: 'Restore John Doe?',
+                text: 'This will restore the user account.',
+                icon: 'info',
+                iconColor: '#3b82f6',
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, restore',
+                cancelButtonText: 'Cancel',
+                confirmButtonAriaLabel: 'Restore user',
+                cancelButtonAriaLabel: 'Cancel restoration',
+                customClass: {
+                    popup: 'rounded-lg shadow-lg border border-gray-200',
+                    title: 'text-lg font-semibold text-gray-900',
+                    content: 'text-sm text-gray-700',
+                    confirmButton: 'px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium',
+                    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+                },
+                buttonsStyling: false,
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    statusEl.textContent = '✅ User restoration confirmed!';
+                    statusEl.className = 'status success';
+                    statusEl.style.display = 'block';
+                } else {
+                    statusEl.textContent = '❌ User restoration cancelled!';
+                    statusEl.className = 'status error';
+                    statusEl.style.display = 'block';
+                }
+            });
+        });
+
+        // Form submission test
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const statusEl = document.getElementById('formStatus');
+            statusEl.style.display = 'none';
+            
+            const form = this;
+            Swal.fire({
+                title: 'Delete User?',
+                text: 'This will move the user to trash. You can restore them later.',
+                icon: 'warning',
+                iconColor: '#ef4444',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete',
+                cancelButtonText: 'Cancel',
+                confirmButtonAriaLabel: 'Delete user',
+                cancelButtonAriaLabel: 'Cancel deletion',
+                customClass: {
+                    popup: 'rounded-lg shadow-lg border border-gray-200',
+                    title: 'text-lg font-semibold text-gray-900',
+                    content: 'text-sm text-gray-700',
+                    confirmButton: 'px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium',
+                    cancelButton: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium'
+                },
+                buttonsStyling: false,
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    statusEl.textContent = '✅ Form would be submitted (in real app, this would delete the user)';
+                    statusEl.className = 'status success';
+                    statusEl.style.display = 'block';
+                    // In a real app: form.submit();
+                } else {
+                    statusEl.textContent = '❌ Form submission cancelled';
+                    statusEl.className = 'status error';
+                    statusEl.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
