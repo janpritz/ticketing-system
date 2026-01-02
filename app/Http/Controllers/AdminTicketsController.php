@@ -52,7 +52,9 @@ class AdminTicketsController extends Controller
 
             // Filter by status
             if ($status = $request->query('status')) {
-                $query->where('status', $status);
+                if ($status !== 'all') {
+                    $query->where('status', $status);
+                }
             }
 
             // Filter by assignee name (partial match)

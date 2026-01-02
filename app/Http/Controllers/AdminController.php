@@ -426,7 +426,14 @@ class AdminController extends Controller
     
         // Resolve role id from provided role name
         $roleModel = Role::where('name', $validated['role'])->first();
-    
+
+        // Validate category belongs to the role if provided
+        if (!empty($validated['category'])) {
+            if (!$roleModel || !$roleModel->categories()->where('name', $validated['category'])->exists()) {
+                return back()->withErrors(['category' => 'The selected category is not valid for the chosen role.'])->withInput();
+            }
+        }
+
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
@@ -471,7 +478,14 @@ class AdminController extends Controller
     
         // Resolve role id
         $roleModel = Role::where('name', $validated['role'])->first();
-    
+
+        // Validate category belongs to the role if provided
+        if (!empty($validated['category'])) {
+            if (!$roleModel || !$roleModel->categories()->where('name', $validated['category'])->exists()) {
+                return back()->withErrors(['category' => 'The selected category is not valid for the chosen role.'])->withInput();
+            }
+        }
+
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role_id = $roleModel ? $roleModel->id : null;
@@ -1076,6 +1090,31 @@ class AdminController extends Controller
                 'message' => 'Failed to pin/unpin announcement: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get categories for a specific role (AJAX endpoint for conditional dropdowns)
+     */
+    public function categoriesByRole(Request $request)
+    {
+        $this->ensureAdmin();
+
+        $roleName = $request->query('role_name');
+        if (!$roleName) {
+            return response()->json([]);
+        }
+
+        $role = \App\Models\Role::where('name', $roleName)->first();
+        if (!$role) {
+            return response()->json([]);
+        }
+
+        $categories = $role->categories()
+            ->orderBy('name')
+            ->pluck('name')
+            ->toArray();
+
+        return response()->json($categories);
     }
 
     /**

@@ -273,6 +273,9 @@ Route::middleware('auth')->group(function () {
     // Admin logs
     Route::get('/admin/logs', [AdminController::class, 'logsIndex'])->name('admin.logs');
 
+    // Admin categories by role (for conditional dropdowns)
+    Route::get('/admin/categories-by-role', [AdminController::class, 'categoriesByRole'])->name('admin.categories.by-role');
+
     // Logout (authenticated only)
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware(['web', 'handle.logout.csrf'])

@@ -96,7 +96,7 @@
             <div>
                 <label for="filterStatus" class="block text-xs text-slate-600 mb-1">Status</label>
                 <select id="filterStatus" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
-                    <option value="">All</option>
+                    <option value="all">All</option>
                     <option value="Open">Open</option>
                     <option value="Forwarded">Forwarded</option>
                     <option value="Closed">Closed</option>
@@ -608,7 +608,7 @@
                     const roleEl = document.getElementById('filterRole');
                     const assigneeIdEl = document.getElementById('filterAssigneeId');
                     const assigneeEl = document.getElementById('filterAssignee');
-                    if (statusEl) statusEl.value = '';
+                    if (statusEl) statusEl.value = 'all';
                     if (sortEl) sortEl.value = 'created_desc';
                     if (roleEl) roleEl.value = '';
                     if (assigneeIdEl) assigneeIdEl.value = '';

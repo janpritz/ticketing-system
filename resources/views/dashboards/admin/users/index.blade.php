@@ -265,7 +265,7 @@
                             @php
                                 $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
                             @endphp
-                            <select name="role"
+                            <select name="role" id="create_role"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 required>
                                 <option value="" disabled
@@ -287,17 +287,9 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            @php
-                                $createCategories = \App\Models\Category::orderBy('name')->pluck('name')->unique()->toArray();
-                            @endphp
-                            <select name="category"
+                            <select name="category" id="create_category"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">— None —</option>
-                                @foreach($createCategories as $c)
-                                    <option value="{{ $c }}"
-                                        {{ old('form_context') === 'create' && old('category') === $c ? 'selected' : '' }}>
-                                        {{ $c }}</option>
-                                @endforeach
                             </select>
                             @if (old('form_context') === 'create')
                                 @error('category')
@@ -402,15 +394,9 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            @php
-                                $editCategories = \App\Models\Category::orderBy('name')->pluck('name')->unique()->toArray();
-                            @endphp
                             <select name="category" id="edit_category"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">— None —</option>
-                                @foreach($editCategories as $c)
-                                    <option value="{{ $c }}">{{ $c }}</option>
-                                @endforeach
                             </select>
                             @if (old('editing_user_id'))
                                 @error('category')
@@ -582,38 +568,6 @@
             // Close Create
             createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
 
-            // Open Edit with data
-            $$('.openEditModalBtn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-id');
-                    const name = btn.getAttribute('data-name') || '';
-                    const email = btn.getAttribute('data-email') || '';
-                    const role = btn.getAttribute('data-role') || '';
-                    const category = btn.getAttribute('data-category') || '';
-                    const profilePhoto = btn.getAttribute('data-profile-photo') || '';
-
-                    if (editId) editId.value = id || '';
-                    if (editName) editName.value = name;
-                    if (editEmail) editEmail.value = email;
-                    if (editRole) editRole.value = role;
-                    if (editCategory) editCategory.value = category;
-
-                    // Set profile photo
-                    const photoEl = $('#edit_profile_photo');
-                    if (photoEl) {
-                        if (profilePhoto) {
-                            photoEl.src = '/storage/' + profilePhoto;
-                        } else {
-                            photoEl.src = 'https://via.placeholder.com/80x80?text=No+Photo'; // Fallback placeholder
-                        }
-                    }
-
-                    if (editForm && updateTemplate && id) {
-                        editForm.setAttribute('action', updateTemplate.replace('__ID__', id));
-                    }
-                    openModal(editModal);
-                });
-            });
 
             // Close Edit
             editCloseEls.forEach(el => el.addEventListener('click', () => closeModal(editModal)));
@@ -656,6 +610,10 @@
                     if (editForm && updateTemplate && OLD_EDIT_ID) {
                         editForm.setAttribute('action', updateTemplate.replace('__ID__', OLD_EDIT_ID));
                     }
+                    // Load categories for the role
+                    if (editRole && editRole.value && editCategory) {
+                        updateCategories(editCategory, editRole.value);
+                    }
                     openModal(editModal);
                 } else if (OLD_FORM_CONTEXT === 'create') {
                     openModal(createModal);
@@ -697,6 +655,89 @@
                     // navigate to the index without query
                     window.location.href = "{{ route('admin.users.index') }}";
                 });
+            }
+
+            // Conditional dropdowns for role-category
+            function updateCategories(selectElement, roleName) {
+                if (!roleName) {
+                    selectElement.innerHTML = '<option value="">— None —</option>';
+                    return;
+                }
+                fetch(`{{ route('admin.categories.by-role') }}?role_name=${encodeURIComponent(roleName)}`)
+                    .then(response => response.json())
+                    .then(categories => {
+                        selectElement.innerHTML = '<option value="">— None —</option>';
+                        categories.forEach(cat => {
+                            const option = document.createElement('option');
+                            option.value = cat;
+                            option.textContent = cat;
+                            selectElement.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching categories:', error);
+                        selectElement.innerHTML = '<option value="">— None —</option>';
+                    });
+            }
+
+            // Create modal role change
+            const createRole = $('#create_role');
+            const createCategory = $('#create_category');
+            if (createRole && createCategory) {
+                createRole.addEventListener('change', () => {
+                    updateCategories(createCategory, createRole.value);
+                });
+            }
+
+            // Edit modal role change
+            if (editRole && editCategory) {
+                editRole.addEventListener('change', () => {
+                    updateCategories(editCategory, editRole.value);
+                });
+            }
+
+            // Load categories for edit modal on open
+            $$('.openEditModalBtn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-id');
+                    const name = btn.getAttribute('data-name') || '';
+                    const email = btn.getAttribute('data-email') || '';
+                    const role = btn.getAttribute('data-role') || '';
+                    const category = btn.getAttribute('data-category') || '';
+                    const profilePhoto = btn.getAttribute('data-profile-photo') || '';
+
+                    if (editId) editId.value = id || '';
+                    if (editName) editName.value = name;
+                    if (editEmail) editEmail.value = email;
+                    if (editRole) editRole.value = role;
+                    if (editCategory) editCategory.value = category;
+
+                    // Set profile photo
+                    const photoEl = $('#edit_profile_photo');
+                    if (photoEl) {
+                        if (profilePhoto) {
+                            photoEl.src = '/storage/' + profilePhoto;
+                        } else {
+                            photoEl.src = 'https://via.placeholder.com/80x80?text=No+Photo'; // Fallback placeholder
+                        }
+                    }
+
+                    if (editForm && updateTemplate && id) {
+                        editForm.setAttribute('action', updateTemplate.replace('__ID__', id));
+                    }
+
+                    // Load categories for the role
+                    if (editRole && editRole.value && editCategory) {
+                        updateCategories(editCategory, editRole.value);
+                    }
+
+                    openModal(editModal);
+                });
+            });
+
+            // Also for auto-open on validation errors
+            if (HAS_ERRORS && OLD_EDIT_ID && editRole && editRole.value && editCategory) {
+                updateCategories(editCategory, editRole.value);
             }
         })();
     </script>
