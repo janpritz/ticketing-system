@@ -6,13 +6,13 @@
     <div class="sm:px-2">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">FAQ Management</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Document Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
-                    <a href="{{ route('admin.faqs.index') }}"
+                    <a href="{{ route('admin.knowledgebase.index') }}"
                         class="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-50"
-                        aria-label="Back to FAQ Management (mobile)">
+                        aria-label="Back to Knowledgebase Management (mobile)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M15 6l-6 6 6 6" />
                         </svg>
@@ -23,9 +23,9 @@
             <!-- Desktop actions -->
             @if (!empty($isDeletedView))
                 <div class="hidden sm:flex items-center gap-2">
-                    <a href="{{ route('admin.faqs.index') }}"
+                    <a href="{{ route('admin.knowledgebase.index') }}"
                         class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2">
-                        ← Back to FAQ Management
+                        ← Back to Knowledgebase Management
                     </a>
                 </div>
             @else
@@ -55,7 +55,7 @@
         </div>
 
         <div class="mt-4 relative">
-            <p class="text-sm text-gray-600 mb-4">Documents stored in the Rasa server for FAQ training.</p>
+            <p class="text-sm text-gray-600 mb-4">Documents stored in the Rasa server for Knowledgebase training.</p>
             <!-- Mobile hamburger menu aligned with text -->
             <div class="sm:hidden absolute top-0 right-0">
                 <button id="mobileActionsToggle" type="button"
@@ -142,14 +142,14 @@
     <!-- Mobile Drawer Overlay -->
     <div id="mobileDrawerOverlay" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
 
-    <!-- Create FAQ Modal -->
+    <!-- Create Knowledgebase Modal -->
     <div id="createFaqModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-black/40" data-close="create"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
             <div
                 class="w-full max-w-full sm:max-w-2xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
-                    <div class="text-sm font-semibold text-slate-800">Add FAQ</div>
+                    <div class="text-sm font-semibold text-slate-800">Add Document</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="create"
                         aria-label="Close">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -187,8 +187,7 @@
                             class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
                             data-close="create">Cancel</button>
                         <button id="createFaqSubmit" type="button"
-                            class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create
-                            FAQ</button>
+                            class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Submit</button>
                     </div>
                 </form>
             </div>
@@ -202,7 +201,7 @@
             <div
                 class="w-full max-w-full sm:max-w-lg bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
-                    <div class="text-sm font-semibold text-slate-800">Upload FAQ File</div>
+                    <div class="text-sm font-semibold text-slate-800">Upload File</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="upload"
                         aria-label="Close">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -230,11 +229,11 @@
         </div>
     </div>
 
-    <!-- View/Edit FAQ Modal -->
+    <!-- View/Edit Knowledgebase Modal -->
     <div id="viewFaqModal" class="fixed inset-0 z-50 hidden"
-        data-update-template="{{ route('admin.faqs.update', ['faq' => '__ID__']) }}"
-        data-show-url-template="{{ route('admin.faqs.show', ['faq' => '__ID__']) }}"
-        data-destroy-template="{{ route('admin.faqs.destroy', ['faq' => '__ID__']) }}">
+        data-update-template="{{ route('admin.knowledgebase.update', ['faq' => '__ID__']) }}"
+        data-show-url-template="{{ route('admin.knowledgebase.show', ['faq' => '__ID__']) }}"
+        data-destroy-template="{{ route('admin.knowledgebase.destroy', ['faq' => '__ID__']) }}">
         <div class="absolute inset-0 bg-black/40" data-close="view"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
             <div
@@ -242,7 +241,7 @@
 
                 <!-- Header -->
                 <div class="h-12 flex items-center px-4 border-b">
-                    <div class="text-sm font-semibold text-slate-800">FAQ Details</div>
+                    <div class="text-sm font-semibold text-slate-800">Document Details</div>
                 </div>
 
                 <!-- Close button top-right -->
@@ -268,7 +267,7 @@
                             Revisions</button>
                         <button id="more_restore_btn" type="button"
                             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Restore
-                            FAQ</button>
+                            Document</button>
                     </div>
                 </div>
 
@@ -386,15 +385,15 @@
     </div>
 
     <!-- Hidden state with URLs -->
-    <div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.faqs.list') }}"
-        data-store-url="{{ route('admin.faqs.store') }}"
-        data-show-url-template="{{ route('admin.faqs.show', ['faq' => '__ID__']) }}"
-        data-update-url-template="{{ route('admin.faqs.update', ['faq' => '__ID__']) }}"
-        data-destroy-url-template="{{ route('admin.faqs.destroy', ['faq' => '__ID__']) }}"
-        data-revisions-url-template="{{ route('admin.faqs.revisions', ['faq' => '__ID__']) }}"
-        data-restore-url-template="{{ route('admin.faqs.restore', ['faq' => '__ID__']) }}"
-        data-enable-url-template="{{ route('admin.faqs.enable', ['faq' => '__ID__']) }}"
-        data-disable-url-template="{{ route('admin.faqs.disable', ['faq' => '__ID__']) }}"></div>
+    <div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.knowledgebase.list') }}"
+        data-store-url="{{ route('admin.knowledgebase.store') }}"
+        data-show-url-template="{{ route('admin.knowledgebase.show', ['faq' => '__ID__']) }}"
+        data-update-url-template="{{ route('admin.knowledgebase.update', ['faq' => '__ID__']) }}"
+        data-destroy-url-template="{{ route('admin.knowledgebase.destroy', ['faq' => '__ID__']) }}"
+        data-revisions-url-template="{{ route('admin.knowledgebase.revisions', ['faq' => '__ID__']) }}"
+        data-restore-url-template="{{ route('admin.knowledgebase.restore', ['faq' => '__ID__']) }}"
+        data-enable-url-template="{{ route('admin.knowledgebase.enable', ['faq' => '__ID__']) }}"
+        data-disable-url-template="{{ route('admin.knowledgebase.disable', ['faq' => '__ID__']) }}"></div>
 
 @endsection
 
@@ -1124,7 +1123,7 @@
 
                     try {
                         // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("admin.faqs.all-json") }}', {
+                        const faqRes = await fetch('{{ route("admin.knowledgebase.all-json") }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
@@ -1579,7 +1578,7 @@
 
                     try {
                         // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("admin.faqs.all-json") }}', {
+                        const faqRes = await fetch('{{ route("admin.knowledgebase.all-json") }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }

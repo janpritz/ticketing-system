@@ -65,23 +65,23 @@
         </a>
       </li>
       <li>
-        <button type="button" id="faqManagementDropdown" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}" aria-expanded="false">
+        <button type="button" id="faqManagementDropdown" class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.knowledgebase.*') || request()->routeIs('admin.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}" aria-expanded="false">
           <div class="flex items-center">
-            <svg class="w-5 h-5 {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-5 h-5 {{ request()->routeIs('admin.knowledgebase.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
               <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
             </svg>
-            <span class="ms-3">FAQ Management</span>
+            <span class="ms-3">Knowledgebase</span>
           </div>
-          <svg id="faqManagementChevron" class="w-4 h-4 transition-transform duration-200 {{ request()->routeIs('admin.faqs.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+          <svg id="faqManagementChevron" class="w-4 h-4 transition-transform duration-200 {{ request()->routeIs('admin.knowledgebase.*') || request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
             <path d="M7 10l5 5 5-5z"/>
           </svg>
         </button>
         <div id="faqManagementMenu" class="hidden pl-4 mt-1 space-y-1">
-          <a href="{{ route('admin.faqs.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
-            <svg class="w-4 h-4 {{ request()->routeIs('admin.faqs.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <a href="{{ route('admin.knowledgebase.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.knowledgebase.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+            <svg class="w-4 h-4 {{ request()->routeIs('admin.knowledgebase.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
               <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
             </svg>
-            <span class="ms-3">FAQS</span>
+            <span class="ms-3">Document Management</span>
           </a>
           <a href="{{ route('admin.announcements.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 {{ request()->routeIs('admin.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" fill="currentColor" viewBox="0 0 16 16">

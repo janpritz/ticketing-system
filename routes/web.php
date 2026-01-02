@@ -146,36 +146,36 @@ Route::middleware('auth')->group(function () {
         Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');
     });
 
-    // Admin FAQ management (CRUD via AJAX)
-    Route::prefix('admin/faqs')->name('admin.faqs.')->group(function () {
-        Route::get('/', [AdminController::class, 'faqsIndex'])->name('index');
-        Route::get('/list', [AdminController::class, 'faqsList'])->name('list');
-        Route::post('/', [AdminController::class, 'faqsStore'])->middleware('throttle:20,1')->name('store');
-        Route::get('/{faq}', [AdminController::class, 'faqsShow'])->whereNumber('faq')->name('show');
-        Route::put('/{faq}', [AdminController::class, 'faqsUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
-        Route::delete('/{faq}', [AdminController::class, 'faqsDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
+    // Admin Knowledgebase management (CRUD via AJAX)
+    Route::prefix('admin/knowledgebase')->name('admin.knowledgebase.')->group(function () {
+        Route::get('/', [AdminController::class, 'knowledgebaseIndex'])->name('index');
+        Route::get('/list', [AdminController::class, 'knowledgebaseList'])->name('list');
+        Route::post('/', [AdminController::class, 'knowledgebaseStore'])->middleware('throttle:20,1')->name('store');
+        Route::get('/{faq}', [AdminController::class, 'knowledgebaseShow'])->whereNumber('faq')->name('show');
+        Route::put('/{faq}', [AdminController::class, 'knowledgebaseUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
+        Route::delete('/{faq}', [AdminController::class, 'knowledgebaseDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
 
         // Get all FAQs as JSON (for sync)
-        Route::get('/all-json', [AdminController::class, 'faqsAllJson'])->name('all-json');
+        Route::get('/all-json', [AdminController::class, 'knowledgebaseAllJson'])->name('all-json');
 
         // Deleted FAQs view + AJAX list (trash)
-        Route::get('/deleted', [AdminController::class, 'faqsDeletedIndex'])->name('deleted');
-        Route::get('/deleted/list', [AdminController::class, 'faqsDeletedList'])->name('deleted.list');
+        Route::get('/deleted', [AdminController::class, 'knowledgebaseDeletedIndex'])->name('deleted');
+        Route::get('/deleted/list', [AdminController::class, 'knowledgebaseDeletedList'])->name('deleted.list');
 
         // Revisions & revert for FAQ responses (audit / undo)
-        Route::get('/{faq}/revisions', [AdminController::class, 'faqsRevisions'])->whereNumber('faq')->name('revisions');
-        Route::post('/{faq}/revert/{revision}', [AdminController::class, 'faqsRevert'])->whereNumber('faq')->whereNumber('revision')->name('revert');
+        Route::get('/{faq}/revisions', [AdminController::class, 'knowledgebaseRevisions'])->whereNumber('faq')->name('revisions');
+        Route::post('/{faq}/revert/{revision}', [AdminController::class, 'knowledgebaseRevert'])->whereNumber('faq')->whereNumber('revision')->name('revert');
 
         // Restore soft-deleted FAQ
-        Route::post('/{faq}/restore', [AdminController::class, 'faqsRestore'])->whereNumber('faq')->name('restore');
+        Route::post('/{faq}/restore', [AdminController::class, 'knowledgebaseRestore'])->whereNumber('faq')->name('restore');
 
         // Undo most recent change for a FAQ
-        Route::post('/{faq}/undo', [AdminController::class, 'faqsUndo'])->whereNumber('faq')->name('undo');
+        Route::post('/{faq}/undo', [AdminController::class, 'knowledgebaseUndo'])->whereNumber('faq')->name('undo');
 
 
         // Disable / Enable FAQ response (used to temporarily unpublish an answer without deleting)
-        Route::post('/{faq}/disable', [AdminController::class, 'faqsDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
-        Route::post('/{faq}/enable', [AdminController::class, 'faqsEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
+        Route::post('/{faq}/disable', [AdminController::class, 'knowledgebaseDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
+        Route::post('/{faq}/enable', [AdminController::class, 'knowledgebaseEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
     });
 
     // Document change tracking and Rasa training

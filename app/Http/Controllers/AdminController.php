@@ -148,12 +148,18 @@ class AdminController extends Controller
             ->get();
 
         // Show unassigned tickets (no staff assigned)
-        $myTicketsList = Ticket::with('staff')
+        $unassignedTickets = Ticket::with('staff')
             ->whereNull('staff_id')
             ->where('status', 'Open')
             ->orderByDesc('updated_at')
             ->take(6)
             ->get();
+
+        // Debug: Log the unassigned tickets to check for issues
+        \Illuminate\Support\Facades\Log::info('Unassigned tickets count: ' . $unassignedTickets->count());
+        foreach ($unassignedTickets as $ticket) {
+            \Illuminate\Support\Facades\Log::info('Ticket ID: ' . $ticket->id . ', staff_id: ' . ($ticket->staff_id ?? 'null') . ', status: ' . $ticket->status . ', staff name: ' . (optional($ticket->staff)->name ?? 'none'));
+        }
 
         return view('dashboards.admin.index', [
             'openTickets'       => $openTickets,
@@ -167,7 +173,7 @@ class AdminController extends Controller
             'categoryLabels'    => $categoryLabels,
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
-            'myTicketsList'    => $myTicketsList,
+            'unassignedTickets'    => $unassignedTickets,
             'activeStaff'       => $activeStaff,
             'staffContacts'     => $staffContacts,
             'faqUpdaterSecret'  => env('RASA_SECRET'),
@@ -306,7 +312,7 @@ class AdminController extends Controller
             ->values()
             ->toArray();
 
-        $myTicketsListArr = Ticket::with('staff')
+        $unassignedTicketsArr = Ticket::with('staff')
             ->whereNull('staff_id')
             ->where('status', 'Open')
             ->orderByDesc('updated_at')
@@ -327,6 +333,12 @@ class AdminController extends Controller
         ->values()
         ->toArray();
 
+        // Debug: Log the unassigned tickets for AJAX refresh
+        \Illuminate\Support\Facades\Log::info('Unassigned tickets AJAX count: ' . count($unassignedTicketsArr));
+        foreach ($unassignedTicketsArr as $ticket) {
+            \Illuminate\Support\Facades\Log::info('AJAX Ticket ID: ' . $ticket['id'] . ', status: ' . $ticket['status'] . ', staff: ' . ($ticket['staff'] ? $ticket['staff']['name'] : 'none'));
+        }
+
         return response()->json([
             'openTickets'       => (int) $openTickets,
             'forwardedTickets' => (int) $forwardedTickets,
@@ -339,7 +351,7 @@ class AdminController extends Controller
             'categoryLabels'    => $categoryLabels,
             'categoryData'      => $categoryData,
             'topSenders'        => $topSenders,
-            'myTicketsList'    => $myTicketsListArr,
+            'unassignedTickets'    => $unassignedTicketsArr,
             'activeStaff'       => $activeStaffArr,
             'staffContacts'     => $staffContactsArr,
         ])
@@ -551,25 +563,25 @@ class AdminController extends Controller
     }
 
     /**
-     * FAQ Management - page (blade)
+     * Knowledgebase Management - page (blade)
      *
      * If called with ?include_deleted=1, the page will load its list from the
      * deleted-list endpoint so this same blade can be reused for the Trash view.
      */
-    public function faqsIndex(Request $request)
+    public function knowledgebaseIndex(Request $request)
     {
         $this->ensureAdmin();
         $isDeleted = (bool) $request->query('include_deleted', false);
-        $listUrl = $isDeleted ? route('admin.faqs.deleted.list') : route('admin.faqs.list');
-        return view('dashboards.admin.faqs.index', [
+        $listUrl = $isDeleted ? route('admin.knowledgebase.deleted.list') : route('admin.knowledgebase.list');
+        return view('dashboards.admin.knowledgebase.index', [
             'listUrl' => $listUrl,
             'isDeletedView' => $isDeleted,
         ]);
     }
     /**
-     * Store new FAQ (AJAX)
+     * Store new Knowledgebase item (AJAX)
      */
-    public function faqsStore(Request $request)
+    public function knowledgebaseStore(Request $request)
     {
         $this->ensureAdmin();
         $validated = $request->validate([
@@ -596,9 +608,9 @@ class AdminController extends Controller
     }
 
     /**
-     * Update FAQ (AJAX)
+     * Update Knowledgebase item (AJAX)
      */
-    public function faqsUpdate(Request $request)
+    public function knowledgebaseUpdate(Request $request)
     {
         $this->ensureAdmin();
         $validated = $request->validate([
@@ -625,13 +637,13 @@ class AdminController extends Controller
     }
 
     /**
-     * Delete FAQ (AJAX)
+     * Delete Knowledgebase item (AJAX)
      *
      * Accepts soft-deleted items as well (permanent delete from Trash).
-     * When called on a non-deleted FAQ it will perform the usual soft-delete.
-     * When called on an already trashed FAQ it will permanently remove it.
+     * When called on a non-deleted item it will perform the usual soft-delete.
+     * When called on an already trashed item it will permanently remove it.
      */
-    public function faqsDestroy($faqId)
+    public function knowledgebaseDestroy($faqId)
     {
         $this->ensureAdmin();
         try {
