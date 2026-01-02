@@ -12,13 +12,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Services\FaqDeleterService;
-use App\Events\FaqEnabled;
-use App\Events\FaqDisabled;
 use App\Models\DocumentChange;
 use App\Models\QueuedDocument;
 use App\Services\RasaServerService;
-use App\Jobs\ProcessQueuedDocument;
 
 class AdminController extends Controller
 {
@@ -27,158 +23,167 @@ class AdminController extends Controller
      */
     public function index(Request $request)
     {
-        // KPI metrics
-        $openTickets = Ticket::where('status', 'Open')->count();
-        $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
-        // FAQ system removed - no longer counting FAQs
-        $userCount = User::count();
+        // Use caching for admin dashboard data
+        $dashboardData = \App\Observers\AdminObserver::getCachedAdminDashboardData(function () {
+            // KPI metrics
+            $openTickets = Ticket::where('status', 'Open')->count();
+            $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
+            // FAQ system removed - no longer counting FAQs
+            $userCount = User::count();
 
-        // Get last Rasa training timestamp
-        $lastTraining = \App\Models\DocumentChange::getLastTrainingTimestamp();
-        $lastTrainingFormatted = $lastTraining ? $lastTraining->format('M j, Y g:i A') : 'Never';
+            // Get last Rasa training timestamp
+            $lastTraining = \App\Models\DocumentChange::getLastTrainingTimestamp();
+            $lastTrainingFormatted = $lastTraining ? $lastTraining->format('M j, Y g:i A') : 'Never';
 
-        // Active staff in the last 10 minutes (based on sessions table)
-        // sessions.last_activity is an epoch seconds integer
-        $cutoff = now()->subMinutes(10)->getTimestamp();
-        $activeStaffCount = DB::table('sessions')
-            ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
-            ->whereNotNull('sessions.user_id')
-            ->where('sessions.last_activity', '>=', $cutoff)
-            // exclude Primary Administrator by role name (supports migrated role_id and legacy null-role rows)
-            ->where(function ($qb) {
-                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->distinct('sessions.user_id')
-            ->count('sessions.user_id');
+            // Active staff in the last 10 minutes (based on sessions table)
+            // sessions.last_activity is an epoch seconds integer
+            $cutoff = now()->subMinutes(10)->getTimestamp();
+            $activeStaffCount = DB::table('sessions')
+                ->join('users', 'sessions.user_id', '=', 'users.id')
+                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->whereNotNull('sessions.user_id')
+                ->where('sessions.last_activity', '>=', $cutoff)
+                // exclude Primary Administrator by role name (supports migrated role_id and legacy null-role rows)
+                ->where(function ($qb) {
+                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->distinct('sessions.user_id')
+                ->count('sessions.user_id');
 
-        // Build initial active staff list (name, email, last_activity)
-        $activeStaff = DB::table('sessions')
-            ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
-            ->whereNotNull('sessions.user_id')
-            ->where('sessions.last_activity', '>=', $cutoff)
-            ->where(function ($qb) {
-                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->groupBy('users.id', 'users.name', 'users.email')
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-            ])
-            ->orderByDesc('last_activity_ts')
-            ->get()
-            ->map(function ($row) {
-                return [
-                    'id' => (int) $row->id,
-                    'name' => (string) ($row->name ?? ''),
-                    'email' => (string) ($row->email ?? ''),
-                    'last_activity_ts' => (int) ($row->last_activity_ts ?? 0),
-                ];
-            })
-            ->values()
-            ->toArray();
+            // Build initial active staff list (name, email, last_activity)
+            $activeStaff = DB::table('sessions')
+                ->join('users', 'sessions.user_id', '=', 'users.id')
+                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->whereNotNull('sessions.user_id')
+                ->where('sessions.last_activity', '>=', $cutoff)
+                ->where(function ($qb) {
+                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
+                ])
+                ->orderByDesc('last_activity_ts')
+                ->get()
+                ->map(function ($row) {
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => (string) ($row->name ?? ''),
+                        'email' => (string) ($row->email ?? ''),
+                        'last_activity_ts' => (int) ($row->last_activity_ts ?? 0),
+                    ];
+                })
+                ->values()
+                ->toArray();
 
-        // Build full staff contacts with last activity and active flag
-        $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
-            ->where(function ($q) {
-                $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
-            ->groupBy('users.id', 'users.name', 'users.email')
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-            ])
-            ->orderBy('users.name')
-            ->get()
-            ->map(function ($row) use ($cutoff) {
-                $ts = (int) ($row->last_activity_ts ?? 0);
-                return [
-                    'id' => (int) $row->id,
-                    'name' => (string) ($row->name ?? ''),
-                    'email' => (string) ($row->email ?? ''),
-                    'last_activity_ts' => $ts,
-                    'is_active' => $ts >= $cutoff,
-                ];
-            })
-            ->values()
-            ->toArray();
+            // Build full staff contacts with last activity and active flag
+            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->where(function ($q) {
+                    $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
+                })
+                ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
+                ])
+                ->orderBy('users.name')
+                ->get()
+                ->map(function ($row) use ($cutoff) {
+                    $ts = (int) ($row->last_activity_ts ?? 0);
+                    return [
+                        'id' => (int) $row->id,
+                        'name' => (string) ($row->name ?? ''),
+                        'email' => (string) ($row->email ?? ''),
+                        'last_activity_ts' => $ts,
+                        'is_active' => $ts >= $cutoff,
+                    ];
+                })
+                ->values()
+                ->toArray();
 
-        // Weekly ticket analytics (current week Mon-Sun)
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
+            // Weekly ticket analytics (current week Mon-Sun)
+            $startOfWeek = Carbon::now()->startOfWeek();
+            $endOfWeek = Carbon::now()->endOfWeek();
 
-        $byDay = Ticket::select(DB::raw('DATE(date_created) as d'), DB::raw('COUNT(*) as c'))
-            ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
-            ->groupBy('d')
-            ->pluck('c', 'd')
-            ->toArray();
+            $byDay = Ticket::select(DB::raw('DATE(date_created) as d'), DB::raw('COUNT(*) as c'))
+                ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
+                ->groupBy('d')
+                ->pluck('c', 'd')
+                ->toArray();
 
-        $weekLabels = [];
-        $weekData = [];
-        $cursor = $startOfWeek->copy();
-        for ($i = 0; $i < 7; $i++) {
-            $weekLabels[] = $cursor->format('D'); // Mon, Tue, ...
-            $dateKey = $cursor->toDateString();
-            $weekData[] = (int)($byDay[$dateKey] ?? 0);
-            $cursor->addDay();
-        }
+            $weekLabels = [];
+            $weekData = [];
+            $cursor = $startOfWeek->copy();
+            for ($i = 0; $i < 7; $i++) {
+                $weekLabels[] = $cursor->format('D'); // Mon, Tue, ...
+                $dateKey = $cursor->toDateString();
+                $weekData[] = (int)($byDay[$dateKey] ?? 0);
+                $cursor->addDay();
+            }
 
-        // Tickets by Category
-        $categoryRows = Ticket::select('category', DB::raw('COUNT(*) as c'))
-            ->groupBy('category')
-            ->orderByDesc('c')
-            ->get();
+            // Tickets by Category
+            $categoryRows = Ticket::select('category', DB::raw('COUNT(*) as c'))
+                ->groupBy('category')
+                ->orderByDesc('c')
+                ->get();
 
-        $categoryLabels = $categoryRows->pluck('category')->map(function ($v) {
-            return $v ?: 'Uncategorized';
-        })->toArray();
-        $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->toArray();
+            $categoryLabels = $categoryRows->pluck('category')->map(function ($v) {
+                return $v ?: 'Uncategorized';
+            })->toArray();
+            $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->toArray();
 
-        // Top senders (frequent ticket creators) - top 10
-        $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
-            ->groupBy('email')
-            ->orderByDesc('c')
-            ->limit(10)
-            ->get();
+            // Top senders (frequent ticket creators) - top 10
+            $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
+                ->groupBy('email')
+                ->orderByDesc('c')
+                ->limit(10)
+                ->get();
 
-        // Show unassigned tickets (no staff assigned)
-        $unassignedTickets = Ticket::with('staff')
-            ->whereNull('staff_id')
-            ->where('status', 'Open')
-            ->orderByDesc('updated_at')
-            ->take(6)
-            ->get();
+            // Show unassigned tickets (no staff assigned or assigned to Primary Administrator)
+            $unassignedTickets = Ticket::with('staff')
+                ->where(function ($query) {
+                    $query->whereNull('staff_id')
+                          ->orWhere('staff_id', 1);
+                })
+                ->where('status', 'Open')
+                ->orderByDesc('updated_at')
+                ->take(6)
+                ->get();
 
-        // Debug: Log the unassigned tickets to check for issues
-        \Illuminate\Support\Facades\Log::info('Unassigned tickets count: ' . $unassignedTickets->count());
-        foreach ($unassignedTickets as $ticket) {
-            \Illuminate\Support\Facades\Log::info('Ticket ID: ' . $ticket->id . ', staff_id: ' . ($ticket->staff_id ?? 'null') . ', status: ' . $ticket->status . ', staff name: ' . (optional($ticket->staff)->name ?? 'none'));
-        }
+            // Debug: Log the unassigned tickets to check for issues
+            \Illuminate\Support\Facades\Log::info('Unassigned tickets count: ' . $unassignedTickets->count());
+            foreach ($unassignedTickets as $ticket) {
+                \Illuminate\Support\Facades\Log::info('Ticket ID: ' . $ticket->id . ', staff_id: ' . ($ticket->staff_id ?? 'null') . ', status: ' . $ticket->status . ', staff name: ' . (optional($ticket->staff)->name ?? 'none'));
+            }
 
-        return view('dashboards.admin.index', [
-            'openTickets'       => $openTickets,
-            'forwardedTickets' => $forwardedTickets,
-            // FAQ system removed - no longer showing FAQ counts
-            'userCount'         => $userCount,
-            'activeStaffCount'  => $activeStaffCount,
-            'lastTraining'      => $lastTrainingFormatted,
-            'weekLabels'        => $weekLabels,
-            'weekData'          => $weekData,
-            'categoryLabels'    => $categoryLabels,
-            'categoryData'      => $categoryData,
-            'topSenders'        => $topSenders,
-            'unassignedTickets'    => $unassignedTickets,
-            'activeStaff'       => $activeStaff,
-            'staffContacts'     => $staffContacts,
-            'faqUpdaterSecret'  => env('RASA_SECRET'),
-            'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
-        ]);
+            return [
+                'openTickets'       => $openTickets,
+                'forwardedTickets' => $forwardedTickets,
+                // FAQ system removed - no longer showing FAQ counts
+                'userCount'         => $userCount,
+                'activeStaffCount'  => $activeStaffCount,
+                'lastTraining'      => $lastTrainingFormatted,
+                'weekLabels'        => $weekLabels,
+                'weekData'          => $weekData,
+                'categoryLabels'    => $categoryLabels,
+                'categoryData'      => $categoryData,
+                'topSenders'        => $topSenders,
+                'unassignedTickets'    => $unassignedTickets,
+                'activeStaff'       => $activeStaff,
+                'staffContacts'     => $staffContacts,
+                'faqUpdaterSecret'  => env('RASA_SECRET'),
+                'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
+            ];
+        });
+
+        return response()->view('dashboards.admin.index', $dashboardData)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     /**
@@ -313,7 +318,10 @@ class AdminController extends Controller
             ->toArray();
 
         $unassignedTicketsArr = Ticket::with('staff')
-            ->whereNull('staff_id')
+            ->where(function ($query) {
+                $query->whereNull('staff_id')
+                      ->orWhere('staff_id', 1);
+            })
             ->where('status', 'Open')
             ->orderByDesc('updated_at')
             ->take(6)
@@ -354,9 +362,7 @@ class AdminController extends Controller
             'unassignedTickets'    => $unassignedTicketsArr,
             'activeStaff'       => $activeStaffArr,
             'staffContacts'     => $staffContactsArr,
-        ])
-        ->header('Cache-Control', 'public, max-age=10')
-        ->header('Pragma', 'cache');
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     /**
@@ -454,6 +460,13 @@ class AdminController extends Controller
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
+        
+        // Clear admin dashboard cache after user creation
+        try {
+            \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after user creation: ' . $e->getMessage());
+        }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
@@ -602,6 +615,13 @@ class AdminController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to log FAQ create change: ' . $e->getMessage());
+        }
+
+        // Clear admin dashboard cache after knowledgebase changes
+        try {
+            \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after knowledgebase change: ' . $e->getMessage());
         }
 
         return response()->json(['ok' => true], 201);
@@ -756,6 +776,13 @@ class AdminController extends Controller
                 } catch (\Exception $e) {
                     // Log error but don't fail the announcement creation
                     \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
+                }
+
+                // Clear admin dashboard cache after announcement changes
+                try {
+                    \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after announcement change: ' . $e->getMessage());
                 }
 
                 return response()->json([

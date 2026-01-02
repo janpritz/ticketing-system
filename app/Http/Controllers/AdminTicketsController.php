@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -26,11 +25,8 @@ class AdminTicketsController extends Controller
         $perPage = (int) $request->query('per_page', 25);
         $page = (int) $request->query('page', 1);
 
-        // Create a cache key based on request parameters
-        $cacheKey = 'tickets_list_' . md5(serialize($request->query()));
-
-        // Cache the entire response for 20 seconds
-        $response = Cache::remember($cacheKey, 20, function () use ($request, $perPage, $page) {
+        // Create response directly without caching
+        $response = (function () use ($request, $perPage, $page) {
             // Base query with eager staff relation (only load needed staff columns to avoid unnecessary data transfer).
             // Also ensure the query selects tickets.* so joins (used later for sorting) don't pollute the column set.
             $query = Ticket::with([
@@ -111,14 +107,9 @@ class AdminTicketsController extends Controller
             $paginator = $query->paginate($perPage, ['*'], 'page', max(1, $page));
 
             // Provide a last_changed timestamp (epoch seconds) so clients can poll efficiently.
-            // Prefer a cache key when available to avoid expensive queries.
-            $lastChanged = Cache::get('tickets_last_changed');
-            if (!$lastChanged) {
-                $maxUpdated = Ticket::max('updated_at');
-                $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
-                // seed the cache to avoid repeated DB hits
-                Cache::put('tickets_last_changed', $lastChanged, 3600);
-            }
+            // Always query DB for fresh data.
+            $maxUpdated = Ticket::max('updated_at');
+            $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
 
             // Standardized response structure expected by the frontend
             return [
@@ -131,9 +122,9 @@ class AdminTicketsController extends Controller
                 ],
                 'last_changed' => $lastChanged,
             ];
-        });
+        })();
 
-        return response()->json($response);
+        return response()->json($response)->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     /**
@@ -141,10 +132,8 @@ class AdminTicketsController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $cacheKey = 'ticket_detail_' . $id;
-
-        // Cache the ticket detail for 20 seconds
-        $data = Cache::remember($cacheKey, 20, function () use ($id) {
+        // Get ticket detail directly without caching
+        $data = (function () use ($id) {
             // Eager-load minimal related data to avoid N+1 and reduce payload size.
             // Load staff (id, name, role_id) and the staff->role relation, plus recent routing histories.
             $ticket = Ticket::with([
@@ -164,9 +153,9 @@ class AdminTicketsController extends Controller
 
             // Normalize a bit for the UI
             return array_merge($ticket->toArray(), ['users' => $users]);
-        });
+        })();
 
-        return response()->json($data);
+        return response()->json($data)->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     /**
@@ -204,15 +193,6 @@ class AdminTicketsController extends Controller
             DB::commit();
 
 
-            // Clear tickets cache on update
-            Cache::flush();
-
-            // update last-changed cache so other clients can poll efficiently
-            try {
-                Cache::put('tickets_last_changed', time(), 3600);
-            } catch (\Throwable $cacheEx) {
-                Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-            }
 
             // Dispatch job to send response email to the ticket owner.
             // We dispatch after committing the DB so the saved response is durable.
@@ -262,6 +242,7 @@ class AdminTicketsController extends Controller
         ]);
 
         $ticket = Ticket::findOrFail($id);
+        $originalStaffId = $ticket->staff_id;
         Log::info('Ticket found for forwarding', ['ticket_id' => $ticket->id, 'ticket_status' => $ticket->status]);
 
         $user = User::findOrFail($request->user_id);
@@ -286,16 +267,6 @@ class AdminTicketsController extends Controller
 
             DB::commit();
 
-            // Clear tickets cache on update
-            Cache::flush();
-
-            // update last-changed cache
-            try {
-                Cache::put('tickets_last_changed', time(), 3600);
-            } catch (\Throwable $cacheEx) {
-                Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-            }
-
             Log::info('Ticket forward completed successfully', ['ticket_id' => $ticket->id, 'forwarded_to' => $user->name]);
 
             // Dispatch job for push notification (non-critical)
@@ -306,7 +277,7 @@ class AdminTicketsController extends Controller
                 'Forwarded by admin to user: ' . $user->name
             );
 
-            return response()->json(['message' => 'Ticket forwarded successfully', 'staff' => $user]);
+            return response()->json(['message' => 'Ticket forwarded successfully', 'staff' => $user, 'refresh_dashboard' => true]);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Ticket forward failed', ['error' => $e->getMessage(), 'ticket_id' => $id]);
@@ -340,15 +311,6 @@ class AdminTicketsController extends Controller
             'notes' => 'Admin updated ticket',
         ]);
 
-        // Clear tickets cache on update
-        Cache::flush();
-
-        // update last-changed cache
-        try {
-            Cache::put('tickets_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-        }
 
         return response()->json($ticket);
     }
@@ -370,15 +332,6 @@ class AdminTicketsController extends Controller
             'notes' => 'Deleted by admin',
         ]);
 
-        // Clear tickets cache on delete
-        Cache::flush();
-
-        // update last-changed cache
-        try {
-            Cache::put('tickets_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update tickets_last_changed cache: ' . $cacheEx->getMessage());
-        }
 
         return response()->json(['deleted' => true]);
     }

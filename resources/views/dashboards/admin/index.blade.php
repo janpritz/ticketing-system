@@ -1752,6 +1752,10 @@
             confirmButtonText: 'OK'
           });
         }
+        // Refresh dashboard data if the response indicates it
+        if (data && data.refresh_dashboard) {
+          if (typeof refreshAdminData === 'function') refreshAdminData();
+        }
       } catch (err) {
         console.error('Forward error', err);
         alert('Network error during forward.');
