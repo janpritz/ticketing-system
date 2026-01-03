@@ -61,10 +61,17 @@ self.addEventListener('fetch', (event) => {
   }
 
   // --- CRITICAL FIX START ---
-  // If the request is for the dashboard or staff pages, BYPASS the Service Worker.
-  // This ensures Laravel's "index" data is never stale.
-  if (url.pathname.includes('dashboard') || url.pathname.includes('staff')) {
-    return; // This tells the SW to do nothing and let the browser fetch from network.
+  // Bypass the Service Worker for admin/staff dashboard and ticket data endpoints so that
+  // any data fetched from the backend is always network-fresh and never served from the SW cache.
+  // This avoids stale ticket detail/list payloads being shown in the UI.
+  if (
+    url.pathname.startsWith('/admin/tickets') ||
+    url.pathname.startsWith('/staff/tickets') ||
+    url.pathname.startsWith('/admin/dashboard') ||
+    url.pathname.startsWith('/staff/dashboard') ||
+    url.pathname.startsWith('/dashboard')
+  ) {
+    return;
   }
   // --- CRITICAL FIX END ---
 
@@ -159,7 +166,7 @@ self.addEventListener('notificationclick', (event) => {
           client.focus();
           try {
             client.postMessage({ type: 'notification-click', url: urlToOpen });
-          } catch (_) {}
+          } catch (_) { }
           return;
         }
       }

@@ -35,6 +35,18 @@
                         class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Search</button>
                 </div>
 
+                <button id="refreshBtn"
+                    class="ml-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm inline-flex items-center gap-2"
+                    title="Refresh" aria-label="Refresh tickets">
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 6V3L8 7l4 4V8a4 4 0 110 8 4 4 0 01-4-4H6a6 6 0 106-6z" />
+                    </svg>
+                    <svg id="refreshSpinner" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M5.636 5.636A9 9 0 0018.364 18.364" />
+                    </svg>
+                    <!-- check icon intentionally removed; spinner indicates both loading and brief success state -->
+                    <span class="hidden md:inline">Refresh</span>
+                </button>
                 <button id="openFiltersBtn"
                     class="ml-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm">Filters</button>
             </div>
@@ -348,11 +360,15 @@
                             <button type="button" title="Send response" aria-label="Send response"
                                 class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
                                 id="tmSendResponse">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
-                                    fill="currentColor">
+                                <!-- icon shown when idle -->
+                                <svg id="tmSendIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M3 12l18-9-9 18-2-7-7-2z" />
                                 </svg>
-                                Send Response
+                                <!-- spinner shown while requesting -->
+                                <svg id="tmSendSpinner" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                </svg>
+                                <span id="tmSendText">Send Response</span>
                             </button>
                         </div>
                     </div>
@@ -423,9 +439,6 @@
                     const assigneeIdVal = assigneeIdEl ? assigneeIdEl.value : '';
                     const assigneeVal = assigneeEl ? assigneeEl.value.trim() : '';
 
-                    // When in minimal mode (used by the poller) request just 1 item to keep payload small
-                    if (minimal) per = '1';
-
                     const sep = LIST_URL.includes('?') ? '&' : '?';
                     let url = `${LIST_URL}${sep}page=${page}&per_page=${encodeURIComponent(per)}`;
 
@@ -451,28 +464,9 @@
                     });
                     if (!res.ok) throw new Error('Failed to load tickets');
                     const json = await res.json();
-
-                    // Poll-only mode: check last_changed and update main list only when it differs
-                    if (minimal) {
-                        const serverLast = json.last_changed || null;
-                        const localLast = Number(localStorage.getItem('ts_tickets_last_changed') || 0);
-                        if (serverLast && serverLast !== localLast) {
-                            // record server's last_changed so other tabs or subsequent polls are in sync
-                            localStorage.setItem('ts_tickets_last_changed', String(serverLast));
-                            // refresh the currently visible page to show new data
-                            fetchList(currentPage);
-                        }
-                        return;
-                    }
-
                     renderTable(json.items || []);
                     renderPagination(json.meta || {});
-                    // store last_changed in localStorage to allow efficient cross-tab / poll comparisons
-                    if (json.last_changed) {
-                        try {
-                            localStorage.setItem('ts_tickets_last_changed', String(json.last_changed));
-                        } catch (e) {}
-                    }
+                    // do not cache server data in localStorage or elsewhere — always render fresh data
                 } catch (err) {
                     ticketsTbody.innerHTML =
                         '<tr><td colspan="6" class="px-5 py-6 text-center text-sm text-red-600">Error loading tickets</td></tr>';
@@ -499,9 +493,13 @@
         </tr>
       `;
                 }).join('');
-                // Use event delegation for row clicks (more reliable with dynamic table updates)
+                // Rendering only — do not attach event listeners here (attach once globally below)
+            }
+
+            // Attach a single delegated click listener for ticket rows (attach once)
+            if (ticketsTbody) {
                 ticketsTbody.addEventListener('click', (e) => {
-                    const tr = e.target.closest('tr');
+                    const tr = e.target.closest('tr[data-id]');
                     if (!tr) return;
                     const id = tr.getAttribute('data-id');
                     if (!id) return;
@@ -896,7 +894,32 @@
                         document.body.classList.add('overflow-hidden');
                     }
                 } catch (err) {
-                    console.error('Dashboard: error loading ticket', err);
+                    console.error('Dashboard: error loading ticket', err, 'url=', url);
+                    // Try a relative URL fallback (some dev setups have origin mismatches)
+                    try {
+                        const altUrl = '/admin/tickets/' + id;
+                        const altRes = await fetch(altUrl, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        if (altRes && altRes.ok) {
+                            const t = await altRes.json();
+                            // reuse rendering code path (keep simple: fill modal minimally)
+                            const tmTicketNo = document.getElementById('tmTicketNo');
+                            const tmQuestion = document.getElementById('tmQuestion');
+                            if (tmTicketNo) tmTicketNo.textContent = 'Ticket #' + String(t.id);
+                            if (tmQuestion) tmQuestion.textContent = t.question || '';
+                            if (ticketModal) {
+                                ticketModal.classList.remove('hidden');
+                                document.body.classList.add('overflow-hidden');
+                            }
+                            return;
+                        }
+                    } catch (err2) {
+                        console.error('Dashboard: fallback fetch also failed', err2);
+                    }
                 }
             }
 
@@ -971,9 +994,7 @@
                         body: JSON.stringify(payload)
                     });
                     if (!res.ok) throw new Error('Failed to update');
-                    try {
-                        localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                    } catch (e) {}
+                    // immediately refresh list after update
                     fetchList(currentPage);
                 } catch (err) {
                     console.error(err);
@@ -991,9 +1012,7 @@
                         }
                     });
                     if (!res.ok) throw new Error('Failed to delete');
-                    try {
-                        localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                    } catch (e) {}
+                    // immediately refresh list after delete
                     fetchList(currentPage);
                 } catch (err) {
                     console.error(err);
@@ -1122,9 +1141,7 @@
                                 alert('Ticket forwarded successfully.');
                             }
                             closeModal();
-                            try {
-                                localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                            } catch (e) {}
+                            // refresh list after forward
                             fetchList(currentPage);
                         } else {
                             const errorText = await res.text();
@@ -1163,6 +1180,10 @@
             const tmResponse = document.getElementById('tmResponse');
 
             if (tmSendResponse && tmResponse) {
+                const tmSendIcon = document.getElementById('tmSendIcon');
+                const tmSendSpinner = document.getElementById('tmSendSpinner');
+                const tmSendText = document.getElementById('tmSendText');
+
                 tmSendResponse.addEventListener('click', async () => {
                     const msg = tmResponse.value.trim();
                     if (!msg) {
@@ -1191,9 +1212,15 @@
                         }
                         return;
                     }
+
+                    // Show spinner and disable button to prevent multiple clicks
                     try {
                         tmSendResponse.disabled = true;
                         tmSendResponse.classList.add('opacity-50', 'pointer-events-none');
+                        if (tmSendIcon) tmSendIcon.classList.add('hidden');
+                        if (tmSendText) tmSendText.classList.add('hidden');
+                        if (tmSendSpinner) tmSendSpinner.classList.remove('hidden');
+
                         const rUrl = RESPOND_TEMPLATE.replace('__ID__', currentTicketId);
                         const res = await fetch(rUrl, {
                             method: 'POST',
@@ -1207,6 +1234,7 @@
                                 message: msg
                             })
                         });
+
                         if (res.ok) {
                             if (window.Swal) {
                                 Swal.fire({
@@ -1224,9 +1252,7 @@
                             }
                             tmResponse.value = '';
                             closeModal();
-                            try {
-                                localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                            } catch (e) {}
+                            // refresh list after sending response
                             fetchList(currentPage);
                         } else {
                             const txt = await res.text();
@@ -1255,6 +1281,10 @@
                             alert('Network error while sending response.');
                         }
                     } finally {
+                        // Restore button state
+                        if (tmSendSpinner) tmSendSpinner.classList.add('hidden');
+                        if (tmSendIcon) tmSendIcon.classList.remove('hidden');
+                        if (tmSendText) tmSendText.classList.remove('hidden');
                         tmSendResponse.disabled = false;
                         tmSendResponse.classList.remove('opacity-50', 'pointer-events-none');
                     }
@@ -1307,51 +1337,53 @@
                 }
             });
 
-            // Cross-tab refresh listeners
-            window.addEventListener('storage', (e) => {
-                if (e && e.key === 'ts_tickets_changed') fetchList(currentPage);
-            });
-            window.addEventListener('focus', () => {
-                try {
-                    if (localStorage.getItem('ts_tickets_changed')) fetchList(currentPage);
-                } catch (_) {}
-            });
+            // When the user focuses or visibility changes, refresh data to ensure it's up-to-date.
+            window.addEventListener('focus', () => fetchList(currentPage));
             document.addEventListener('visibilitychange', () => {
-                try {
-                    if (!document.hidden && localStorage.getItem('ts_tickets_changed')) fetchList(currentPage);
-                } catch (_) {}
+                if (!document.hidden) fetchList(currentPage);
             });
 
-            // Lightweight auto-reload poller using minimal payload (no backend DB pooling/optimization changes)
-            let ticketsPollTimer = null;
+            // Background auto-polling has been disabled per request to avoid unexpected auto-open behavior.
+            // If you want to re-enable a poller in the future, implement a user-toggle and attach listeners
+            // carefully so they don't interfere with modal interactions.
 
-            function startTicketsPoller() {
-                if (ticketsPollTimer) clearInterval(ticketsPollTimer);
-                ticketsPollTimer = setInterval(() => {
-                    // minimal=true: server should return last_changed; only refresh when it differs
-                    fetchList(currentPage, true);
-                }, 15000); // 15s cadence
+            // Refresh button logic (near filters)
+            const refreshBtn = document.getElementById('refreshBtn');
+            const refreshSpinner = document.getElementById('refreshSpinner');
+            const refreshIcon = document.getElementById('refreshIcon');
+
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', async (e) => {
+                    try {
+                        // disable to prevent multiple clicks
+                        refreshBtn.disabled = true;
+                        refreshBtn.classList.add('opacity-50', 'pointer-events-none');
+                        // show spinner while fetching and for a brief success period
+                        refreshSpinner.classList.remove('hidden');
+                        refreshIcon.classList.add('hidden');
+
+                        await fetchList(1);
+
+                        // keep spinner visible for a short success delay (2s) then restore
+                        setTimeout(() => {
+                            refreshSpinner.classList.add('hidden');
+                            refreshIcon.classList.remove('hidden');
+                            refreshBtn.disabled = false;
+                            refreshBtn.classList.remove('opacity-50', 'pointer-events-none');
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Refresh failed', err);
+                        // re-enable
+                        refreshSpinner.classList.add('hidden');
+                        refreshIcon.classList.remove('hidden');
+                        refreshBtn.disabled = false;
+                        refreshBtn.classList.remove('opacity-50', 'pointer-events-none');
+                    }
+                });
             }
-
-            function stopTicketsPoller() {
-                if (ticketsPollTimer) {
-                    clearInterval(ticketsPollTimer);
-                    ticketsPollTimer = null;
-                }
-            }
-
-            // Pause/resume polling with page lifecycle
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) stopTicketsPoller();
-                else startTicketsPoller();
-            });
-            window.addEventListener('focus', startTicketsPoller);
-            window.addEventListener('blur', stopTicketsPoller);
 
             // initial load
             fetchList(1);
-            // start background poller
-            startTicketsPoller();
         })();
     </script>
 @endsection

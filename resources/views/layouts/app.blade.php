@@ -134,6 +134,9 @@
         <span class="bg-gray-200 px-2 py-1 rounded">v{{ config('app.version') }}</span>
     </footer>
 
+    <!-- SweetAlert2 (global) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- Scripts -->
     @yield('scripts')
 </body>
