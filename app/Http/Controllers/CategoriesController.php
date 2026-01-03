@@ -8,7 +8,6 @@ use Illuminate\Validation\Rule;
 use App\Models\Category;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class CategoriesController extends Controller
@@ -50,11 +49,6 @@ class CategoriesController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        try {
-            Cache::put('categories_last_changed', time(), 3600);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to update categories_last_changed cache: '.$e->getMessage());
-        }
 
         return redirect()->route('admin.categories.index')->with('status','Category created.');
     }
@@ -81,11 +75,6 @@ class CategoriesController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        try {
-            Cache::put('categories_last_changed', time(), 3600);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to update categories_last_changed cache: '.$e->getMessage());
-        }
 
         return redirect()->route('admin.categories.index')->with('status','Category updated.');
     }
@@ -105,11 +94,6 @@ class CategoriesController extends Controller
 
         $category->delete();
 
-        try {
-            Cache::put('categories_last_changed', time(), 3600);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to update categories_last_changed cache: '.$e->getMessage());
-        }
 
         return response()->json([
             'success' => true,

@@ -332,8 +332,14 @@
 
             <!-- Unassigned Tickets -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-300">
+            <div class="px-5 py-4 border-b border-gray-300 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-800">Unassigned Tickets</h3>
+                    <button type="button" id="refreshUnassignedBtn" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors" title="Refresh unassigned tickets">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                        Refresh
+                    </button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -578,6 +584,8 @@
   </div>
 </aside>
 @endsection
+
+
 
 <!-- Right-side drawer for Active Staff -->
 <div id="activeStaffDrawer" class="fixed inset-0 z-50 hidden" aria-hidden="true">
@@ -1211,6 +1219,79 @@
     })();
 </script>
 
+<script>
+  // Unassigned tickets refresh handler: use DOMContentLoaded to ensure elements exist
+  document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('refreshUnassignedBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async function () {
+      const orig = btn.innerHTML;
+      try {
+        console.log('Unassigned tickets refresh: start');
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.classList.add('opacity-70', 'pointer-events-none');
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" role="img" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Refreshing';
+
+        const analyticsEl = document.getElementById('analytics-data');
+        const url = analyticsEl ? analyticsEl.getAttribute('data-admin-url') : null;
+        if (!url) return;
+
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin', cache: 'no-store' });
+        if (!res.ok) {
+          console.warn('Unassigned tickets refresh: network response not ok', res.status);
+          return;
+        }
+        const data = await res.json();
+
+        const tbody = document.getElementById('unassignedTicketsListBody');
+        if (!tbody) return;
+        const list = Array.isArray(data.unassignedTickets) ? data.unassignedTickets : [];
+        tbody.innerHTML = '';
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No unassigned tickets.</td></tr>';
+          return;
+        }
+
+        const rows = list.map(t => {
+          const updatedAt = (t.updated_at || t.date_created || t.created_at) || '';
+          const staffName = t.staff && t.staff.name ? `Staff: ${t.staff.name}` : '';
+          const status = t.status || '';
+          return `
+            <tr class="hover:bg-gray-50 cursor-pointer btn-view" data-id="${t.id}">
+              <td class="py-3 pl-5 pr-3 align-top">
+                <div class="text-indigo-700 font-medium">${t.id}</div>
+                <div class="mt-1 text-xs text-gray-500">Updated ${updatedAt}</div>
+              </td>
+              <td class="px-3 py-3 align-top">
+                <div class="text-gray-900">${t.email || '—'}</div>
+                <div class="text-xs text-gray-500">${staffName}</div>
+              </td>
+              <td class="px-3 py-3 align-top">
+                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 text-slate-700 bg-slate-50 ring-slate-600/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"></circle></svg>
+                  ${status}
+                </span>
+              </td>
+            </tr>`;
+        }).join('');
+
+        tbody.innerHTML = rows;
+        console.log('Unassigned tickets refresh: complete, rows rendered:', list.length);
+      } catch (err) {
+        console.error('Failed to refresh unassigned tickets', err);
+      } finally {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.classList.remove('opacity-70', 'pointer-events-none');
+        btn.innerHTML = orig;
+        console.log('Unassigned tickets refresh: UI restored');
+      }
+    });
+  });
+</script>
+
 <!-- Toggle Contacts Aside via Active Staff card -->
 <script>
   (function () {
@@ -1726,9 +1807,10 @@
         });
         console.log('Forward request sent to:', `${forwardBase}/${currentTicketId}/forward`);
         console.log('Response status:', res.status, res.statusText);
+        let forwardResp = null;
         if (res.ok) {
-          const data = await res.json();
-          console.log('Forward successful:', data);
+          forwardResp = await res.json();
+          console.log('Forward successful:', forwardResp);
           Swal.fire({
             icon: 'success',
             title: currentIsAssigning ? 'Ticket Assigned' : 'Ticket Forwarded',
@@ -1753,9 +1835,9 @@
           });
         }
         // Refresh dashboard data if the response indicates it
-        if (data && data.refresh_dashboard) {
-          if (typeof refreshAdminData === 'function') refreshAdminData();
-        }
+          if (forwardResp && forwardResp.refresh_dashboard) {
+            if (typeof refreshAdminData === 'function') refreshAdminData();
+          }
       } catch (err) {
         console.error('Forward error', err);
         alert('Network error during forward.');

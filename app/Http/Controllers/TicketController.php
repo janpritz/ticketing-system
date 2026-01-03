@@ -10,7 +10,6 @@ use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use App\Jobs\ProcessTicketCreation;
@@ -76,8 +75,6 @@ class TicketController extends Controller
             'attachments' => json_encode($attachmentsPaths),
         ]);
 
-        // Clear tickets cache on creation
-        Cache::flush();
 
         // Dispatch job to process the rest
         ProcessTicketCreation::dispatch($ticket->id, $request->category);
@@ -142,8 +139,6 @@ class TicketController extends Controller
             'attachments' => json_encode($attachmentsPaths),
         ]);
 
-        // Clear tickets cache on creation
-        Cache::flush();
 
         // Dispatch job to process the rest
         ProcessTicketCreation::dispatch($ticket->id, $request->category);
@@ -262,25 +257,18 @@ class TicketController extends Controller
             $identifier = null;
             $isEmail = false;
             
-            // Cache key for staff assigned tickets
-            $cacheKey = 'staff_assigned_tickets_' . $userId;
-
             // For API requests, return JSON
             if ($request->wantsJson()) {
-                $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
-                    return Ticket::where('staff_id', $userId)
-                        ->orderBy('date_created', 'desc')
-                        ->get();
-                });
+                $tickets = Ticket::where('staff_id', $userId)
+                    ->orderBy('date_created', 'desc')
+                    ->get();
                 return response()->json($tickets);
             }
 
             // For web requests, return a view with the tickets
-            $tickets = Cache::remember($cacheKey, 20, function () use ($userId) {
-                return Ticket::where('staff_id', $userId)
-                    ->orderBy('date_created', 'desc')
-                    ->get();
-            });
+            $tickets = Ticket::where('staff_id', $userId)
+                ->orderBy('date_created', 'desc')
+                ->get();
             return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail'));
         }
 
@@ -295,34 +283,27 @@ class TicketController extends Controller
         // Determine if identifier is email or recepient_id
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
-        // Cache key for user tickets
-        $cacheKey = 'user_tickets_' . ($isEmail ? 'email_' : 'recepient_') . $identifier;
-
         // For API requests, return JSON
         if ($request->wantsJson()) {
-            // Retrieve all tickets for the specified identifier with caching
-            $tickets = Cache::remember($cacheKey, 20, function () use ($identifier, $isEmail) {
-                $query = Ticket::query();
-                if ($isEmail) {
-                    $query->where('email', $identifier);
-                } else {
-                    $query->where('recepient_id', $identifier);
-                }
-                return $query->orderBy('date_created', 'desc')->get();
-            });
-            return response()->json($tickets);
-        }
-
-        // For web requests, return a view with the tickets
-        $tickets = Cache::remember($cacheKey, 20, function () use ($identifier, $isEmail) {
+            // Retrieve all tickets for the specified identifier
             $query = Ticket::query();
             if ($isEmail) {
                 $query->where('email', $identifier);
             } else {
                 $query->where('recepient_id', $identifier);
             }
-            return $query->orderBy('date_created', 'desc')->get();
-        });
+            $tickets = $query->orderBy('date_created', 'desc')->get();
+            return response()->json($tickets);
+        }
+
+        // For web requests, return a view with the tickets
+        $query = Ticket::query();
+        if ($isEmail) {
+            $query->where('email', $identifier);
+        } else {
+            $query->where('recepient_id', $identifier);
+        }
+        $tickets = $query->orderBy('date_created', 'desc')->get();
         return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff'));
     }
     public function updateStatus(Request $request, $id)
@@ -385,8 +366,6 @@ class TicketController extends Controller
             'attachments' => json_encode(array_values($currentAttachments)),
         ]);
 
-        // Clear tickets cache on update
-        Cache::flush();
 
         if ($request->wantsJson()) {
             return response()->json($ticket);
@@ -402,8 +381,6 @@ class TicketController extends Controller
         // Delete the ticket
         $ticket->delete();
 
-        // Clear tickets cache on delete
-        Cache::flush();
 
         if ($request->wantsJson()) {
             return response()->json(['deleted' => true]);

@@ -8,7 +8,6 @@ use Illuminate\Validation\Rule;
 use App\Models\Role;
 use App\Models\Category;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class RolesController extends Controller
@@ -27,13 +26,9 @@ class RolesController extends Controller
             ->orderBy('name')
             ->paginate($perPage);
 
-        // Cache a "last changed" timestamp to avoid repeated MAX() scans
-        $lastChanged = Cache::get('roles_last_changed');
-        if (!$lastChanged) {
-            $maxUpdated = Role::max('updated_at');
-            $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
-            Cache::put('roles_last_changed', $lastChanged, 3600);
-        }
+        // Calculate last changed timestamp directly from database
+        $maxUpdated = Role::max('updated_at');
+        $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
 
         return view('dashboards.admin.roles.index', compact('roles'))
             ->with('lastChanged', $lastChanged);
@@ -87,12 +82,6 @@ class RolesController extends Controller
             }
         }
 
-        // bump roles last-changed cache
-        try {
-            Cache::put('roles_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
-        }
 
         return redirect()->route('admin.roles.index')->with('status', 'Role created.');
     }
@@ -133,12 +122,6 @@ class RolesController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        // bump roles last-changed cache
-        try {
-            Cache::put('roles_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
-        }
 
         return redirect()->route('admin.roles.index')->with('status', 'Role updated.');
     }
@@ -168,12 +151,6 @@ class RolesController extends Controller
 
         $role->delete();
 
-        // bump roles last-changed cache
-        try {
-            Cache::put('roles_last_changed', time(), 3600);
-        } catch (\Throwable $cacheEx) {
-            Log::warning('Failed to update roles_last_changed cache: ' . $cacheEx->getMessage());
-        }
 
         return response()->json([
             'success' => true,

@@ -19,8 +19,25 @@
     RewriteRule ^ %1 [L,R=301]
 
     # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
-
-</IfModule>
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteRule ^ index.php [L]
+    
+    </IfModule>
+    
+    # ----------------------------------------------------------------------
+    # CACHING CONFIGURATION FOR PUBLIC ASSETS
+    # ----------------------------------------------------------------------
+    <IfModule mod_headers.c>
+        # Cache static assets for 1 year
+        <FilesMatch "\.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot|webp|webmanifest)$">
+            Header set Cache-Control "public, max-age=31536000, immutable"
+        </FilesMatch>
+        
+        # Disable caching for HTML and data responses
+        <FilesMatch "\.(html|htm|php)$">
+            Header set Cache-Control "no-cache, no-store, must-revalidate, private"
+            Header set Pragma "no-cache"
+            Header set Expires "0"
+        </FilesMatch>
+    </IfModule>

@@ -23,8 +23,8 @@ class AdminController extends Controller
      */
     public function index(Request $request)
     {
-        // Use caching for admin dashboard data
-        $dashboardData = \App\Observers\AdminObserver::getCachedAdminDashboardData(function () {
+        // Get admin dashboard data directly without caching
+        $dashboardData = (function () {
             // KPI metrics
             $openTickets = Ticket::where('status', 'Open')->count();
             $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
@@ -180,10 +180,9 @@ class AdminController extends Controller
                 'faqUpdaterSecret'  => env('RASA_SECRET'),
                 'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
             ];
-        });
+        })();
 
-        return response()->view('dashboards.admin.index', $dashboardData)
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        return response()->view('dashboards.admin.index', $dashboardData);
     }
 
     /**
@@ -362,7 +361,7 @@ class AdminController extends Controller
             'unassignedTickets'    => $unassignedTicketsArr,
             'activeStaff'       => $activeStaffArr,
             'staffContacts'     => $staffContactsArr,
-        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        ]);
     }
 
     /**
@@ -460,13 +459,6 @@ class AdminController extends Controller
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
-        
-        // Clear admin dashboard cache after user creation
-        try {
-            \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after user creation: ' . $e->getMessage());
-        }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
@@ -617,12 +609,6 @@ class AdminController extends Controller
             Log::error('Failed to log FAQ create change: ' . $e->getMessage());
         }
 
-        // Clear admin dashboard cache after knowledgebase changes
-        try {
-            \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after knowledgebase change: ' . $e->getMessage());
-        }
 
         return response()->json(['ok' => true], 201);
     }
@@ -778,12 +764,6 @@ class AdminController extends Controller
                     \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
                 }
 
-                // Clear admin dashboard cache after announcement changes
-                try {
-                    \App\Observers\AdminObserver::getCachedAdminDashboardData(function () { return []; }, true);
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to clear admin cache after announcement change: ' . $e->getMessage());
-                }
 
                 return response()->json([
                     'success' => true,

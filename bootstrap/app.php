@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\UpgradeToHttpsUnderNgrok::class,
             \App\Http\Middleware\UpgradeToHttpUnderNetworkHost::class,
             \App\Http\Middleware\HandleLogoutCsrf::class,
+            \App\Http\Middleware\DisableDataCaching::class,
         ]);
         
         $middleware->alias([

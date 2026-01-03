@@ -152,7 +152,16 @@ class AdminTicketsController extends Controller
             $users = User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
 
             // Normalize a bit for the UI
-            return array_merge($ticket->toArray(), ['users' => $users]);
+            $ticketArray = $ticket->toArray();
+            // Ensure we're working with arrays only
+            if (is_array($ticketArray)) {
+                // Convert $users to an array before merging
+                $usersArray = $users->toArray();
+                return array_merge($ticketArray, ['users' => $usersArray]);
+            } else {
+                // If toArray() didn't return an array (shouldn't happen, but defensive)
+                return ['users' => $users->toArray()];
+            }
         })();
 
         return response()->json($data)->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

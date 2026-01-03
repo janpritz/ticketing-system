@@ -1,9 +1,8 @@
-// 1. Cache name
+// 1. Cache name - Increment this version (e.g., v2) to force an update
 const CACHE_NAME = 'sangkay-ts-cache-v1';
-// 2. Define the resources to cache
+
+// 2. Define the static resources to cache
 const urlsToCache = [
-  '/',
-  '/login',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
@@ -21,23 +20,24 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[SW] Caching app shell');
-        return cache.addAll(urlsToCache);
+        return cache.addAll(urlsToCache.map(url => new Request(url, { cache: 'reload' })));
       })
   );
-  // Force the waiting service worker to become the active one immediately
-  //self.skipWaiting();
+  // Force the waiting service worker to become active immediately
+  self.skipWaiting();
 });
-
 
 // ----------------------------------------------------------------------
 // Activate event: Clean up old caches
 // ----------------------------------------------------------------------
-// 3. Activate Event (Deletes old versions automatically)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys.map((key) => {
-        if (key !== CACHE_NAME) return caches.delete(key);
+        if (key !== CACHE_NAME) {
+          console.log('[SW] Removing old cache:', key);
+          return caches.delete(key);
+        }
       })
     ))
   );
@@ -45,22 +45,38 @@ self.addEventListener('activate', (event) => {
 });
 
 // ----------------------------------------------------------------------
-// Fetch event: Network-First for Pages, Cache-First for Assets
+// Fetch event: The Fix for the Dashboard Refresh
 // ----------------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
-  // STRATEGY: Network-First for Navigation (HTML pages)
-  // This ensures Laravel updates are seen immediately if online.
+  // Skip font requests to avoid caching issues
+  if (event.request.url.includes('fonts.bunny.net') || event.request.url.includes('.woff2')) {
+    return;
+  }
+
+  // --- CRITICAL FIX START ---
+  // If the request is for the dashboard or staff pages, BYPASS the Service Worker.
+  // This ensures Laravel's "index" data is never stale.
+  if (url.pathname.includes('dashboard') || url.pathname.includes('staff')) {
+    return; // This tells the SW to do nothing and let the browser fetch from network.
+  }
+  // --- CRITICAL FIX END ---
+
+  // STRATEGY: Network-First for other Navigation (HTML pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
           return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
+            if (event.request.method === 'GET') {
+              cache.put(event.request, networkResponse.clone());
+            }
             return networkResponse;
           });
         })
@@ -77,7 +93,6 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         return response || fetch(event.request).then((networkResponse) => {
           return caches.open(CACHE_NAME).then((cache) => {
-            // Only cache successful GET requests
             if (event.request.method === 'GET' && networkResponse.status === 200) {
               cache.put(event.request, networkResponse.clone());
             }
@@ -89,7 +104,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ----------------------------------------------------------------------
-// Push Notifications
+// Push Notifications (Keep existing logic)
 // ----------------------------------------------------------------------
 self.addEventListener('push', (event) => {
   let notification = {};
@@ -130,11 +145,10 @@ self.addEventListener('push', (event) => {
 });
 
 // ----------------------------------------------------------------------
-// Notification Click Action
+// Notification Click Action (Keep existing logic)
 // ----------------------------------------------------------------------
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-
   let urlToOpen = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/staff/dashboard';
 
   event.waitUntil(
