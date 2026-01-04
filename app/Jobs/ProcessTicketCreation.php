@@ -20,15 +20,15 @@ class ProcessTicketCreation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $ticketId;
-    protected $category;
+    protected $categoryId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($ticketId, $category)
+    public function __construct($ticketId, $categoryId)
     {
         $this->ticketId = $ticketId;
-        $this->category = $category;
+        $this->categoryId = $categoryId;
     }
 
     /**
@@ -44,45 +44,37 @@ class ProcessTicketCreation implements ShouldQueue
 
         Log::info('ProcessTicketCreation: Starting ticket assignment', [
             'ticket_id' => $this->ticketId,
-            'category' => $this->category
+            'category_id' => $this->categoryId
         ]);
 
-        // Determine role based on the selected category
+        // Determine role based on the selected category id
         $roleModel = null;
-        $categoryModel = Category::where('name', $this->category)->with('role')->first();
-        
-        if ($categoryModel && $categoryModel->role) {
-            $roleModel = $categoryModel->role;
-            Log::info('ProcessTicketCreation: Found category with role', [
-                'category' => $this->category,
-                'role_id' => $roleModel->id,
-                'role_name' => $roleModel->name
+        $categoryModel = null;
+
+        if ($this->categoryId) {
+            $categoryModel = Category::with('role')->find($this->categoryId);
+        }
+
+        // If category not provided or not found, clear category and staff on ticket and exit
+        if (!$categoryModel) {
+            $ticket->update(['category_id' => null, 'staff_id' => null]);
+            Log::info('ProcessTicketCreation: Category not found or not provided; cleared category and staff', [
+                'ticket_id' => $this->ticketId,
+                'category_id' => $this->categoryId
             ]);
-        } else {
-            // Try to find a role that matches the category name
-            $roleModel = Role::where('name', $this->category)->first();
-            
-            if (!$roleModel) {
-                // Fall back to Primary Administrator
-                $roleModel = Role::where('name', 'Primary Administrator')->first();
-            }
-            
-            if ($roleModel) {
-                // Create the category if it doesn't exist
-                $categoryModel = Category::firstOrCreate(
-                    ['name' => $this->category, 'role_id' => $roleModel->id],
-                    ['description' => null]
-                );
-                Log::info('ProcessTicketCreation: Created category or found role', [
-                    'category' => $this->category,
-                    'role_id' => $roleModel->id,
-                    'role_name' => $roleModel->name
-                ]);
-            } else {
-                Log::warning('ProcessTicketCreation: No suitable role found for category', [
-                    'category' => $this->category
-                ]);
-            }
+            return;
+        }
+
+        // Use the category's role if available
+        $roleModel = $categoryModel->role;
+        if (!$roleModel) {
+            // Category exists but has no associated role; do not assign staff
+            $ticket->update(['staff_id' => null]);
+            Log::info('ProcessTicketCreation: Category has no role; not assigning staff', [
+                'ticket_id' => $this->ticketId,
+                'category_id' => $categoryModel->id
+            ]);
+            return;
         }
 
         // Find staff with the lowest open-ticket load within the selected role
@@ -145,7 +137,7 @@ class ProcessTicketCreation implements ShouldQueue
         Log::info('ProcessTicketCreation: Updated ticket assignment', [
             'ticket_id' => $this->ticketId,
             'staff_id' => $staffId,
-            'category' => $this->category
+            'category_id' => $ticket->category_id
         ]);
 
         // Record initial routing history

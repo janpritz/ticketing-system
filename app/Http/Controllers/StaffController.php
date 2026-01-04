@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Models\Category;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\SendPushNotificationJob;
 use App\Jobs\SendTicketForwardJob;
@@ -82,11 +83,17 @@ class StaffController extends Controller
             ->take(5)
             ->get();
 
+        // Load categories that belong to the staff member's current role so the form
+        // can render a role-scoped category dropdown (server-side only).
+        $roleId = $user->role_id ?? null;
+        $categories_for_role = $roleId ? Category::where('role_id', $roleId)->orderBy('name')->get() : collect();
+
         return view('dashboards.staff.profile', [
             'user' => $user,
             'assignedCount' => $assignedCount,
             'resolvedCount' => $resolvedCount,
             'recentTickets' => $recentTickets,
+            'categories_for_role' => $categories_for_role,
         ]);
     }
 
@@ -103,12 +110,13 @@ class StaffController extends Controller
 
         $validated = $request->validate([
             'name'   => 'required|string|max:255',
-            'category' => 'nullable|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'photo'  => 'nullable|image|mimes:jpg,jpeg,png|max:5120', // 5MB
         ]);
 
         $user->name = $validated['name'];
-        $user->category = $validated['category'] ?? $user->category;
+        // Store nullable foreign key to categories table. Keep existing behavior for nulls.
+        $user->category_id = $validated['category_id'] ?? null;
 
         if ($request->hasFile('photo')) {
             $file = $request->file('photo');
@@ -149,14 +157,11 @@ class StaffController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
+        // NOTE: password change flow updated to not require the current password
+        // Validation: require new password and confirmation only
         $request->validate([
-            'current_password' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
         ]);
-
-        if (!Hash::check($request->input('current_password'), $user->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
-        }
 
         $user->password = Hash::make($request->input('password'));
         $user->save();

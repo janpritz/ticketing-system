@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Role;
+use App\Models\Category;
 
 class User extends Authenticatable
 {
@@ -30,7 +31,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
-        'category',
+        'category_id',
         'profile_photo',
     ];
 
@@ -64,6 +65,16 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Category the user belongs to.
+     *
+     * @return BelongsTo
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /**

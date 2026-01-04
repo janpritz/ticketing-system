@@ -20,6 +20,69 @@ class StaffReportsController extends Controller
         $faqAnalysis = ['processed_faqs' => 0, 'total_faqs' => 0]; // Default values since FAQ processing is commented out
         $weeklyThroughput = $this->buildWeeklyThroughput($staffId);
 
+        // Build a simple, robust recently forwarded list (forwarder name + ticket category)
+        $recentForwarders = [];
+        $limit = 10;
+
+        $recentRouting = \App\Models\TicketRoutingHistory::where('staff_id', $staffId)
+            ->orderByDesc('routed_at')
+            ->with(['ticket.category'])
+            ->take(30)
+            ->get();
+
+        $prevStaffIds = [];
+        $prevMap = [];
+        foreach ($recentRouting as $entry) {
+            $prev = \App\Models\TicketRoutingHistory::where('ticket_id', $entry->ticket_id)
+                ->where('routed_at', '<', $entry->routed_at)
+                ->orderByDesc('routed_at')
+                ->first();
+
+            if ($prev && $prev->staff_id) {
+                $prevStaffIds[] = $prev->staff_id;
+                $prevMap[$entry->id] = $prev->staff_id;
+            } elseif ($entry->ticket && isset($entry->ticket->staff_id) && $entry->ticket->staff_id) {
+                $prevStaffIds[] = $entry->ticket->staff_id;
+                $prevMap[$entry->id] = $entry->ticket->staff_id;
+            }
+        }
+
+        $userNames = [];
+        if (!empty($prevStaffIds)) {
+            $userNames = \App\Models\User::whereIn('id', array_values(array_unique($prevStaffIds)))->pluck('name', 'id')->toArray();
+        }
+
+        foreach ($recentRouting as $entry) {
+            $forwarderName = 'Unknown';
+            if (isset($prevMap[$entry->id]) && isset($userNames[$prevMap[$entry->id]])) {
+                $forwarderName = $userNames[$prevMap[$entry->id]];
+            }
+
+            // Normalize category: category may be a related model object or a plain string in some records
+            $categoryName = 'Uncategorized';
+            if ($entry->ticket) {
+                // Prefer the relation (Category model) if present
+                if ($entry->ticket->category && is_object($entry->ticket->category)) {
+                    $categoryName = $entry->ticket->category->name ?? 'Uncategorized';
+                } else {
+                    // Fallback to legacy category string column if present
+                    $legacy = $entry->ticket->getAttribute('category');
+                    if (is_string($legacy) && trim($legacy) !== '') {
+                        $categoryName = $legacy;
+                    }
+                }
+            }
+
+            $recentForwarders[] = [
+                'name' => $forwarderName,
+                'category' => $categoryName,
+            ];
+
+            if (count($recentForwarders) >= $limit) break;
+        }
+
+        $totalForwardsCount = \App\Models\TicketRoutingHistory::where('staff_id', $staffId)->count();
+
         return view('staff.reports.index', compact('performanceMetrics', 'overdueTickets', 'faqAnalysis', 'weeklyThroughput'));
     }
 

@@ -330,7 +330,7 @@ class AdminController extends Controller
                 'id'           => (int) $t->id,
                 'status'       => (string) $t->status,
                 'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) ($t->category ?? ''),
+                'category'     => (string) (is_object($t->category) ? ($t->category->name ?? '') : ($t->getAttribute('category') ?? '')) ,
                 'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
                 'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
                 'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
@@ -399,7 +399,9 @@ class AdminController extends Controller
                        ->orWhereHas('role', function ($qr) use ($like) {
                            $qr->where('name', 'like', $like);
                        })
-                       ->orWhere('category', 'like', $like);
+                        ->orWhereHas('category', function ($qc) use ($like) {
+                            $qc->where('name', 'like', $like);
+                        });
                 });
             });
 
@@ -437,17 +439,17 @@ class AdminController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             // Restrict creation to staff accounts (avoid creating another Primary Administrator)
             'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
-            'category' => 'nullable|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'required|string|min:8|confirmed',
         ]);
     
         // Resolve role id from provided role name
         $roleModel = Role::where('name', $validated['role'])->first();
 
-        // Validate category belongs to the role if provided
-        if (!empty($validated['category'])) {
-            if (!$roleModel || !$roleModel->categories()->where('name', $validated['category'])->exists()) {
-                return back()->withErrors(['category' => 'The selected category is not valid for the chosen role.'])->withInput();
+        // Validate category_id belongs to the role if provided
+        if (!empty($validated['category_id'])) {
+            if (!$roleModel || !$roleModel->categories()->where('id', $validated['category_id'])->exists()) {
+                return back()->withErrors(['category_id' => 'The selected category is not valid for the chosen role.'])->withInput();
             }
         }
 
@@ -455,7 +457,8 @@ class AdminController extends Controller
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role_id = $roleModel ? $roleModel->id : null;
-        $user->category = $validated['category'] ?? null;
+        // Use category_id as single source of truth
+        $user->category_id = $validated['category_id'] ?? null;
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
@@ -489,24 +492,25 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
             'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
-            'category' => 'nullable|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
     
         // Resolve role id
         $roleModel = Role::where('name', $validated['role'])->first();
 
-        // Validate category belongs to the role if provided
-        if (!empty($validated['category'])) {
-            if (!$roleModel || !$roleModel->categories()->where('name', $validated['category'])->exists()) {
-                return back()->withErrors(['category' => 'The selected category is not valid for the chosen role.'])->withInput();
+        // Validate category_id belongs to the role if provided
+        if (!empty($validated['category_id'])) {
+            if (!$roleModel || !$roleModel->categories()->where('id', $validated['category_id'])->exists()) {
+                return back()->withErrors(['category_id' => 'The selected category is not valid for the chosen role.'])->withInput();
             }
         }
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role_id = $roleModel ? $roleModel->id : null;
-        $user->category = $validated['category'] ?? null;
+        // Use category_id as single source of truth
+        $user->category_id = $validated['category_id'] ?? null;
         if (!empty($validated['password'] ?? '')) {
             // Auto-hashed via casts
             $user->password = $validated['password'];
@@ -1130,8 +1134,10 @@ class AdminController extends Controller
 
         $categories = $role->categories()
             ->orderBy('name')
-            ->pluck('name')
-            ->toArray();
+            ->get(['id', 'name'])
+            ->map(function ($c) {
+                return ['id' => $c->id, 'name' => $c->name];
+            })->values()->toArray();
 
         return response()->json($categories);
     }

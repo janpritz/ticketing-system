@@ -80,15 +80,30 @@
         </div>
     </div>
 
-    {{-- FAQ Analysis Chart --}}
-    {{-- <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <!-- Recently Forwarded (to me) card - simple rendering from $recentForwarders passed by controller -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-semibold text-slate-800">FAQ Processing</h3>
+            <h3 class="text-sm font-semibold text-slate-800">Recently Forwarded (to me)</h3>
         </div>
-        <div class="h-48">
-            <canvas id="faqChart" class="w-full h-full"></canvas>
+
+        <div class="max-h-44 overflow-y-auto mt-2">
+            <ul class="divide-y divide-gray-100">
+                @if(!empty($recentForwarders))
+                    @foreach($recentForwarders as $item)
+                        <li class="py-2 text-sm text-gray-800">{{ $item['name'] }} &mdash; <span class="text-gray-500">{{ $item['category'] }}</span></li>
+                    @endforeach
+                @else
+                    <li class="py-4 text-sm text-gray-500">No recently forwarded tickets.</li>
+                @endif
+            </ul>
         </div>
-    </div> --}}
+
+        @if(isset($totalForwardsCount) && $totalForwardsCount > count($recentForwarders))
+            <div class="mt-3 text-right">
+                <a href="{{ route('staff.reports.index') }}" class="text-sm text-indigo-600 hover:underline">View all forwards</a>
+            </div>
+        @endif
+    </div>
 </div>
 
 <!-- Weekly Tickets Chart -->
@@ -305,11 +320,24 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ticket->question }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     @php
-                                        $resolutionTime = $ticket->updated_at->diffInHours($ticket->created_at);
+                                        // Show resolution time in minutes and seconds; ensure non-negative
+                                        $created = $ticket->created_at ? $ticket->created_at->getTimestamp() : null;
+                                        $updated = $ticket->updated_at ? $ticket->updated_at->getTimestamp() : null;
+                                        if ($created === null || $updated === null) {
+                                            $seconds = 0;
+                                        } else {
+                                            $seconds = max(0, $updated - $created);
+                                        }
+                                        $hours = intdiv($seconds, 3600);
+                                        $minutes = intdiv(($seconds % 3600), 60);
                                     @endphp
-                                    {{ $resolutionTime }}h
+                                    @if($hours > 0)
+                                        {{ $hours }}h {{ $minutes }}m
+                                    @else
+                                        {{ $minutes }}m
+                                    @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ticket->updated_at->format('Y-m-d H:i') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $ticket->updated_at->format('F j, Y g:i A') }}</td>
                             </tr>
                             @empty
                             <tr>

@@ -20,7 +20,8 @@ class TicketController extends Controller
     public function showCreateForm(Request $request, $recepient_id = null)
     {
         // Fetch categories from DB at page load (we show categories only; role is resolved from category)
-        $categories = Category::orderBy('name')->pluck('name')->toArray();
+        // Provide id => name pairs so the dropdown value is the category id
+        $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
 
         $email = $request->query('email');
 
@@ -32,8 +33,8 @@ class TicketController extends Controller
      */
     public function showTicketSubmitForm(Request $request, $recepient_id = null, $email)
     {
-        // Fetch categories from DB
-        $categories = Category::orderBy('name')->pluck('name')->toArray();
+        // Fetch categories from DB (id => name) so the form submits category_id correctly
+        $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
 
         return view('tickets.submit', compact('recepient_id', 'categories', 'email'));
     }
@@ -44,7 +45,7 @@ class TicketController extends Controller
     public function submitTicket(Request $request)
     {
         $request->validate([
-            'category' => 'required|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
@@ -63,21 +64,32 @@ class TicketController extends Controller
             }
         }
 
-        $ticket = Ticket::create([
-            'category' => $request->category,
-            'question' => $request->question,
-            'recepient_id' => $request->recepient_id,
-            'email' => $request->email,
-            'status' => 'Open',
-            'staff_id' => null, // will be set by job
-            'date_created' => now(),
-            'date_closed' => null,
-            'attachments' => json_encode($attachmentsPaths),
-        ]);
+        // Create ticket instance and set attributes explicitly so we can also persist the legacy
+        // 'category' string for DB compatibility while using category_id as the source of truth.
+        $ticket = new Ticket();
+        $ticket->category_id = $request->input('category_id');
+        $ticket->question = $request->question;
+        $ticket->recepient_id = $request->recepient_id;
+        $ticket->email = $request->email;
+        $ticket->status = 'Open';
+        $ticket->staff_id = null;
+        $ticket->date_created = now();
+        $ticket->date_closed = null;
+        $ticket->attachments = json_encode($attachmentsPaths);
+
+        // Write legacy category string from selected category_id for DB compatibility
+        $categoryName = 'Uncategorized';
+        if ($request->input('category_id')) {
+            $cat = Category::find($request->input('category_id'));
+            if ($cat) $categoryName = $cat->name;
+        }
+        $ticket->category = $categoryName;
+
+        $ticket->save();
 
 
         // Dispatch job to process the rest
-        ProcessTicketCreation::dispatch($ticket->id, $request->category);
+        ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
@@ -108,7 +120,7 @@ class TicketController extends Controller
         //dd($request->all());  // This will stop execution and dump the data to the browser
 
         $request->validate([
-            'category' => 'required|string|max:255',
+            'category_id' => 'nullable|integer|exists:categories,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
@@ -127,21 +139,30 @@ class TicketController extends Controller
             }
         }
 
-        $ticket = Ticket::create([
-            'category' => $request->category,
-            'question' => $request->question,
-            'recepient_id' => $request->recepient_id,
-            'email' => $request->email,
-            'status' => 'Open',
-            'staff_id' => null, // will be set by job
-            'date_created' => now(),
-            'date_closed' => null,
-            'attachments' => json_encode($attachmentsPaths),
-        ]);
+        $ticket = new Ticket();
+        $ticket->category_id = $request->input('category_id');
+        $ticket->question = $request->question;
+        $ticket->recepient_id = $request->recepient_id;
+        $ticket->email = $request->email;
+        $ticket->status = 'Open';
+        $ticket->staff_id = null;
+        $ticket->date_created = now();
+        $ticket->date_closed = null;
+        $ticket->attachments = json_encode($attachmentsPaths);
+
+        // Persist legacy category string for DB compatibility
+        $categoryName = 'Uncategorized';
+        if ($request->input('category_id')) {
+            $cat = Category::find($request->input('category_id'));
+            if ($cat) $categoryName = $cat->name;
+        }
+        $ticket->category = $categoryName;
+
+        $ticket->save();
 
 
         // Dispatch job to process the rest
-        ProcessTicketCreation::dispatch($ticket->id, $request->category);
+        ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
 
         // For API requests, return JSON
         if ($request->wantsJson()) {

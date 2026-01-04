@@ -44,11 +44,17 @@ class PopulateTicketSnapshots extends Command
         $snapshots = [];
 
         foreach ($tickets as $ticket) {
+            // Get category name from relation (we now use category_id as source of truth)
+            $categoryName = 'Uncategorized';
+            if ($ticket->category && is_object($ticket->category)) {
+                $categoryName = $ticket->category->name ?? 'Uncategorized';
+            }
+
             $snapshots[] = [
                 'ticket_id' => $ticket->id,
                 'status' => $ticket->status,
                 'assigned_agent_id' => $ticket->staff_id,
-                'category' => $ticket->category,
+                'category' => $categoryName,
                 'snapshot_date' => $date->toDateString(),
                 'created_at' => now(),
                 'updated_at' => now(),

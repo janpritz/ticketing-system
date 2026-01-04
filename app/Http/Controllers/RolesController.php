@@ -64,6 +64,19 @@ class RolesController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
+        // Also create a matching category that mirrors the role name and references the role_id.
+        // Use firstOrCreate to avoid accidentally reassigning or overwriting existing categories.
+        try {
+            Category::firstOrCreate([
+                'role_id' => $role->id,
+                'name' => $role->name,
+            ], [
+                'description' => null,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to create default category for role ' . $role->id . ': ' . $e->getMessage());
+        }
+
         // Create categories and attach to role
         foreach ($validated['categories'] as $catName) {
             $catName = trim((string)$catName);

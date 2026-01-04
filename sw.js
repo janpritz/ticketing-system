@@ -65,10 +65,8 @@ self.addEventListener('fetch', (event) => {
   // any data fetched from the backend is always network-fresh and never served from the SW cache.
   // This avoids stale ticket detail/list payloads being shown in the UI.
   if (
-    url.pathname.startsWith('/admin/tickets') ||
-    url.pathname.startsWith('/staff/tickets') ||
-    url.pathname.startsWith('/admin/dashboard') ||
-    url.pathname.startsWith('/staff/dashboard') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/staff') ||
     url.pathname.startsWith('/dashboard')
   ) {
     return;

@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
     protected $fillable = [
-        'category',
+        'category_id',
         'question',
         'response',
         'recepient_id',
@@ -23,6 +24,10 @@ class Ticket extends Model
     public function staff()
     {
         return $this->belongsTo(User::class, 'staff_id');
+    }
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id');
     }
     public function routingHistories()
     {

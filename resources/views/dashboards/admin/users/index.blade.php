@@ -153,9 +153,9 @@
                                          {{ $u->role }}
                                      </span>
                                  </td>
-                                 <td class="px-3 py-3 align-top">
-                                     <div class="text-slate-900">{{ $u->category ?? '—' }}</div>
-                                 </td>
+                                  <td class="px-3 py-3 align-top">
+                                      <div class="text-slate-900">{{ is_object($u->category) ? ($u->category->name ?? '—') : ($u->category ?? '—') }}</div>
+                                  </td>
                                  <td class="py-3 pl-3 pr-5 align-top">
                                      <div class="flex items-center gap-2">
                                          @if ($u->trashed())
@@ -171,7 +171,7 @@
                                                  class="openEditModalBtn inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
                                                  data-id="{{ $u->id }}" data-name="{{ $u->name }}"
                                                  data-email="{{ $u->email }}" data-role="{{ $u->role }}"
-                                                 data-category="{{ $u->category }}" data-profile-photo="{{ $u->profile_photo }}" aria-label="Edit user">
+                                                  data-category="{{ $u->category }}" data-category-id="{{ $u->category_id }}" data-profile-photo="{{ $u->profile_photo }}" aria-label="Edit user">
                                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
                                                      fill="currentColor">
                                                      <path
@@ -287,12 +287,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            <select name="category" id="create_category"
+                            <select name="category_id" id="create_category"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">— None —</option>
                             </select>
                             @if (old('form_context') === 'create')
-                                @error('category')
+                                @error('category_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
@@ -394,12 +394,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            <select name="category" id="edit_category"
+                            <select name="category_id" id="edit_category"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">— None —</option>
                             </select>
                             @if (old('editing_user_id'))
-                                @error('category')
+                                @error('category_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
@@ -441,7 +441,7 @@
 <div id="admin-users-state" class="hidden" data-has-errors="{{ $errors->any() ? '1' : '0' }}"
     data-old-edit-id="{{ old('editing_user_id') }}" data-old-form-context="{{ old('form_context') }}"
     data-old-name="{{ old('name') }}" data-old-email="{{ old('email') }}" data-old-role="{{ old('role') }}"
-    data-old-category="{{ old('category') }}" data-old-profile-photo="{{ old('profile_photo') }}"></div>
+    data-old-category-id="{{ old('category_id') }}" data-old-profile-photo="{{ old('profile_photo') }}"></div>
 @section('admin-scripts')
     <script>
         (function() {
@@ -588,7 +588,7 @@
             const OLD_NAME = stateEl ? stateEl.getAttribute('data-old-name') : '';
             const OLD_EMAIL = stateEl ? stateEl.getAttribute('data-old-email') : '';
             const OLD_ROLE = stateEl ? stateEl.getAttribute('data-old-role') : '';
-            const OLD_CATEGORY = stateEl ? stateEl.getAttribute('data-old-category') : '';
+            const OLD_CATEGORY_ID = stateEl ? stateEl.getAttribute('data-old-category-id') : '';
             const OLD_PROFILE_PHOTO = stateEl ? stateEl.getAttribute('data-old-profile-photo') : '';
 
             if (HAS_ERRORS) {
@@ -597,7 +597,7 @@
                     if (editName) editName.value = OLD_NAME || '';
                     if (editEmail) editEmail.value = OLD_EMAIL || '';
                     if (editRole) editRole.value = OLD_ROLE || '';
-                    if (editCategory) editCategory.value = OLD_CATEGORY || '';
+                    if (editCategory) editCategory.value = OLD_CATEGORY_ID || '';
                     // Set profile photo
                     const photoEl = $('#edit_profile_photo');
                     if (photoEl) {
@@ -616,6 +616,11 @@
                     }
                     openModal(editModal);
                 } else if (OLD_FORM_CONTEXT === 'create') {
+                    // If old create values exist, pre-load categories for the selected role and preserve selection
+                    if (createRole && createRole.value && createCategory) {
+                        // Use the same OLD_CATEGORY_ID stored in the state element
+                        updateCategories(createCategory, createRole.value, OLD_CATEGORY_ID);
+                    }
                     openModal(createModal);
                 }
             }
@@ -658,7 +663,7 @@
             }
 
             // Conditional dropdowns for role-category
-            function updateCategories(selectElement, roleName) {
+            function updateCategories(selectElement, roleName, selectedId) {
                 if (!roleName) {
                     selectElement.innerHTML = '<option value="">— None —</option>';
                     return;
@@ -666,11 +671,19 @@
                 fetch(`{{ route('admin.categories.by-role') }}?role_name=${encodeURIComponent(roleName)}`)
                     .then(response => response.json())
                     .then(categories => {
+                        // Expect objects: { id, name }
                         selectElement.innerHTML = '<option value="">— None —</option>';
                         categories.forEach(cat => {
                             const option = document.createElement('option');
-                            option.value = cat;
-                            option.textContent = cat;
+                            if (cat && typeof cat === 'object') {
+                                option.value = String(cat.id || '');
+                                option.textContent = cat.name || '';
+                                if (selectedId && String(cat.id) === String(selectedId)) option.selected = true;
+                            } else {
+                                // Fallback for older responses
+                                option.value = String(cat || '');
+                                option.textContent = String(cat || '');
+                            }
                             selectElement.appendChild(option);
                         });
                     })
@@ -692,7 +705,7 @@
             // Edit modal role change
             if (editRole && editCategory) {
                 editRole.addEventListener('change', () => {
-                    updateCategories(editCategory, editRole.value);
+                    updateCategories(editCategory, editRole.value, editCategory.value);
                 });
             }
 
@@ -704,13 +717,14 @@
                     const email = btn.getAttribute('data-email') || '';
                     const role = btn.getAttribute('data-role') || '';
                     const category = btn.getAttribute('data-category') || '';
+                    const categoryId = btn.getAttribute('data-category-id') || '';
                     const profilePhoto = btn.getAttribute('data-profile-photo') || '';
 
                     if (editId) editId.value = id || '';
                     if (editName) editName.value = name;
                     if (editEmail) editEmail.value = email;
                     if (editRole) editRole.value = role;
-                    if (editCategory) editCategory.value = category;
+                    if (editCategory) editCategory.value = categoryId || '';
 
                     // Set profile photo
                     const photoEl = $('#edit_profile_photo');
@@ -726,9 +740,9 @@
                         editForm.setAttribute('action', updateTemplate.replace('__ID__', id));
                     }
 
-                    // Load categories for the role
+                    // Load categories for the role (preserve selected)
                     if (editRole && editRole.value && editCategory) {
-                        updateCategories(editCategory, editRole.value);
+                        updateCategories(editCategory, editRole.value, editCategory.value);
                     }
 
                     openModal(editModal);
@@ -737,7 +751,30 @@
 
             // Also for auto-open on validation errors
             if (HAS_ERRORS && OLD_EDIT_ID && editRole && editRole.value && editCategory) {
-                updateCategories(editCategory, editRole.value);
+                updateCategories(editCategory, editRole.value, OLD_CATEGORY_ID);
+            }
+
+            // Ensure form submits integer category_id only (protect against legacy name values)
+            function sanitizeCategorySelectBeforeSubmit(form) {
+                const sel = form.querySelector('select[name="category_id"]');
+                if (!sel) return;
+                // If selected value is not an integer, clear it so server receives null
+                if (!/^\d+$/.test(String(sel.value))) {
+                    sel.value = '';
+                }
+            }
+
+            // Attach sanitizer to create/edit forms
+            const createForm = createModal ? createModal.querySelector('form') : null;
+            if (createForm) {
+                createForm.addEventListener('submit', function () {
+                    sanitizeCategorySelectBeforeSubmit(createForm);
+                });
+            }
+            if (editForm) {
+                editForm.addEventListener('submit', function () {
+                    sanitizeCategorySelectBeforeSubmit(editForm);
+                });
             }
         })();
     </script>
