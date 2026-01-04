@@ -196,7 +196,7 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Total Open Tickets</div>
-                        <div class="mt-2 text-3xl font-semibold text-slate-900"><span id="openTicketsCount">{{ number_format($openTickets ?? 0) }}</span></div>
+                        <div class="mt-2"><span id="openTicketsCount" class="text-2xl sm:text-2xl font-bold text-slate-900">{{ number_format($openTickets ?? 0) }}</span></div>
                         @if(($openTicketsDelta ?? 0) > 0)
                         <div id="openTicketsDeltaWrap" class="mt-1 text-xs text-emerald-600 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -220,7 +220,7 @@
                         <div class="text-xs font-medium text-slate-500">Active Staff (last 10 min)</div>
                         <div class="mt-2 flex items-center gap-2">
                             <div id="activeStaffDot" class="w-4 h-4 rounded-full {{ ($activeStaffCount ?? 0) > 0 ? '' : 'hidden' }}"></div>
-                            <span id="activeStaffCountText" class="text-sm text-slate-700">{{ $activeStaffCount ?? 0 }}</span>
+                            <span id="activeStaffCountText" class="text-2xl sm:text-2xl font-bold text-slate-900">{{ $activeStaffCount ?? 0 }}</span>
                         </div>
                     </div>
                     <div class="rounded-md bg-purple-50 p-2 text-purple-600 border border-purple-100">
@@ -235,7 +235,7 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Last Rasa Training</div>
-                        <div class="mt-2 text-lg font-semibold text-slate-900" id="lastTrainingValue">{{ $lastTraining ?? 'Never' }}</div>
+                        <div class="mt-2"><span id="lastTrainingValue" class="text-2xl sm:text-2xl font-bold text-slate-900">{{ $lastTraining ?? 'Never' }}</span></div>
                     </div>
                     <div class="rounded-md bg-purple-50 p-2 text-purple-600 border border-purple-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -249,7 +249,7 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="text-xs font-medium text-slate-500">Rasa Server Status</div>
-                        <div class="mt-2 text-2xl sm:text-3xl font-semibold text-slate-900" id="rasaStatusText">Checking...</div>
+                        <div class="mt-2"><span id="rasaStatusText" class="text-2xl sm:text-2xl font-bold text-slate-900">Checking...</span></div>
                     </div>
                     <div class="rounded-md p-2 border" id="rasaStatusIcon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-globe" viewBox="0 0 16 16">
