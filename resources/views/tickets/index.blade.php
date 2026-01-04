@@ -46,7 +46,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center">
                                 <p class="text-sm font-medium text-indigo-600 truncate">
-                                    {{ $ticket->category }}
+                                    {{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}
                                 </p>
                                 <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $ticket->status === 'Open' ? 'bg-green-100 text-green-800' : ($ticket->status === 'Re-routed' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
                                     {{ $ticket->status }}
@@ -64,14 +64,16 @@
                             </p>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 edit-ticket-btn mr-2"
                                 data-id="{{ $ticket->id }}"
-                                data-category="{{ $ticket->category }}"
+                                data-category-id="{{ $ticket->category_id }}"
+                                data-category="{{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}"
                                 data-question="{{ $ticket->question }}"
                                 data-attachments="{{ $ticket->attachments }}">
                                 Edit
                             </button>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 delete-ticket-btn"
                                 data-id="{{ $ticket->id }}"
-                                data-category="{{ $ticket->category }}">
+                                data-category-id="{{ $ticket->category_id }}"
+                                data-category="{{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}">
                                 Delete
                             </button>
                         </div>

@@ -34,6 +34,8 @@ class AdminTicketsController extends Controller
                 'staff' => function($q) {
                     $q->select('id', 'name', 'role_id');
                 },
+                // load category relation so the frontend can render category.name without an extra query
+                'category',
                 'staff.role'
             ])->select('tickets.*');
 
@@ -42,7 +44,10 @@ class AdminTicketsController extends Controller
                 $query->where(function ($qBuilder) use ($q) {
                     $qBuilder->where('question', 'like', "%{$q}%")
                         ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('category', 'like', "%{$q}%");
+                        // category is now a relation (categories.name); search via whereHas to match name
+                        ->orWhereHas('category', function ($catQ) use ($q) {
+                            $catQ->where('name', 'like', "%{$q}%");
+                        });
                 });
             }
 
@@ -111,9 +116,18 @@ class AdminTicketsController extends Controller
             $maxUpdated = Ticket::max('updated_at');
             $lastChanged = $maxUpdated ? strtotime($maxUpdated) : time();
 
+            // Convert items to arrays and attach a normalized category_name field so the frontend
+            // can consistently render the category name regardless of migration state.
+            $items = array_map(function ($m) {
+                // $m is a Ticket model instance
+                $arr = $m->toArray();
+                $arr['category_name'] = isset($m->category) && is_object($m->category) ? ($m->category->name ?? null) : ($m->getAttribute('category') ?? null);
+                return $arr;
+            }, $paginator->items());
+
             // Standardized response structure expected by the frontend
             return [
-                'items' => $paginator->items(),
+                'items' => $items,
                 'meta' => [
                     'current_page' => $paginator->currentPage(),
                     'last_page' => $paginator->lastPage(),
@@ -142,6 +156,8 @@ class AdminTicketsController extends Controller
                     $q->select('id', 'name', 'role_id');
                 },
                 'staff.role',
+                // ensure category is loaded so the frontend can read category.name
+                'category',
                 'routingHistories' => function ($q) {
                     $q->select('id', 'ticket_id', 'staff_id', 'status', 'routed_at', 'notes')
                       ->orderBy('routed_at', 'desc');
@@ -153,6 +169,8 @@ class AdminTicketsController extends Controller
 
             // Normalize a bit for the UI
             $ticketArray = $ticket->toArray();
+            // provide a normalized category_name for the frontend modal
+            $ticketArray['category_name'] = isset($ticket->category) && is_object($ticket->category) ? ($ticket->category->name ?? null) : ($ticket->getAttribute('category') ?? null);
             // Ensure we're working with arrays only
             if (is_array($ticketArray)) {
                 // Convert $users to an array before merging
@@ -298,13 +316,13 @@ class AdminTicketsController extends Controller
     {
         $request->validate([
             'question' => 'sometimes|string',
-            'category' => 'sometimes|string',
+            'category_id' => 'sometimes|nullable|integer|exists:categories,id',
             'status' => 'sometimes|string',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
-        $data = $request->only(['question', 'category', 'status']);
+        $data = $request->only(['question', 'category_id', 'status']);
         if (array_key_exists('status', $data) && $data['status'] === 'Closed' && !$ticket->date_closed) {
             $data['date_closed'] = now();
         }
@@ -343,5 +361,61 @@ class AdminTicketsController extends Controller
 
 
         return response()->json(['deleted' => true]);
+    }
+
+    /**
+     * Create a new ticket from the admin UI and assign staff based on category_id.
+     * This runs the same assignment logic as the queued job but executes it synchronously
+     * so admins see immediate assignment results in the UI.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'question' => 'required|string',
+            'recepient_id' => ['required'],
+            'email' => 'required|email|max:255',
+            'attachments' => 'nullable|array|max:5',
+            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
+        ]);
+
+        // Handle attachments
+        $attachmentsPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('attachments', $filename, 'public');
+                $attachmentsPaths[] = $path;
+            }
+        }
+
+        $ticket = new Ticket();
+        $ticket->category_id = $request->input('category_id');
+        $ticket->question = $request->input('question');
+        $ticket->recepient_id = $request->input('recepient_id');
+        $ticket->email = $request->input('email');
+        $ticket->status = 'Open';
+        $ticket->staff_id = null;
+        $ticket->date_created = now();
+        $ticket->date_closed = null;
+        $ticket->attachments = json_encode($attachmentsPaths);
+        $ticket->save();
+
+        // Run the assignment logic synchronously so admin sees immediate assignment
+        try {
+            \App\Jobs\ProcessTicketCreation::dispatchSync($ticket->id, $request->input('category_id'));
+        } catch (\Throwable $e) {
+            // Log and continue; assignment failed but ticket creation succeeded
+            \Illuminate\Support\Facades\Log::error('AdminTicketsController::store - assignment failed: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+        }
+
+        if ($request->wantsJson()) {
+            // reload fresh ticket with relations
+            $ticket->load('staff', 'category');
+            return response()->json(['ticket' => $ticket], 201);
+        }
+
+        // For web requests redirect back to admin tickets UI with status
+        return redirect()->route('admin.tickets.index')->with('status', 'Ticket created. Assignment in progress.');
     }
 }

@@ -198,6 +198,8 @@ Route::middleware('auth')->group(function () {
             $roles = \App\Models\Role::orderBy('name')->pluck('name');
             return view('dashboards.admin.tickets.index', compact('users', 'roles'));
         })->name('index');
+        // create ticket (admin) - store
+        Route::post('/', [\App\Http\Controllers\AdminTicketsController::class, 'store'])->name('store');
 
         // show single ticket details (JSON)
         Route::get('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'show'])->whereNumber('ticket')->name('show');

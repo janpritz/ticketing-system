@@ -214,7 +214,7 @@
                                                         {{ \Illuminate\Support\Str::limit($t->question, 80) }}</div>
                                                     <div class="mt-1 text-xs text-gray-500 flex items-center gap-2">
                                                         <span
-                                                            class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">{{ $t->category }}</span>
+                                                            class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">{{ is_object($t->category) ? ($t->category->name ?? ($t->getAttribute('category') ?? '')) : ($t->getAttribute('category') ?? '') }}</span>
                                                     </div>
                                                 </td>
 

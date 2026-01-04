@@ -376,7 +376,10 @@ class StaffController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('question', 'like', '%' . $search . '%')
                   ->orWhere('response', 'like', '%' . $search . '%')
-                  ->orWhere('category', 'like', '%' . $search . '%')
+                  // category is now a relation; search by related categories.name
+                  ->orWhereHas('category', function ($cq) use ($search) {
+                      $cq->where('name', 'like', '%' . $search . '%');
+                  })
                   ->orWhere('email', 'like', '%' . $search . '%')
                   ->orWhere('status', 'like', '%' . $search . '%');
             });
@@ -385,9 +388,16 @@ class StaffController extends Controller
         // Apply sorting - prioritize Open and Forwarded tickets first
         $allowedSortFields = ['id', 'date_created', 'updated_at', 'status', 'category', 'email', 'question'];
         if (in_array($sortBy, $allowedSortFields)) {
-            // First order by status priority (Open=1, Forwarded=2, Closed=3), then by the selected field
-            $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END")
-                  ->orderBy($sortBy, $sortDirection);
+            // First order by status priority (Open=1, Forwarded=2, Closed=3)
+            $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END");
+            if ($sortBy === 'category') {
+                // Order by related categories.name when sorting by category
+                $query->leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
+                      ->orderBy('categories.name', $sortDirection)
+                      ->select('tickets.*');
+            } else {
+                $query->orderBy($sortBy, $sortDirection);
+            }
         } else {
             // Default: prioritize status, then by date_created desc
             $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END")
@@ -602,7 +612,9 @@ class StaffController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('question', 'like', '%' . $search . '%')
                   ->orWhere('response', 'like', '%' . $search . '%')
-                  ->orWhere('category', 'like', '%' . $search . '%');
+                  ->orWhereHas('category', function ($cq) use ($search) {
+                      $cq->where('name', 'like', '%' . $search . '%');
+                  });
             });
         }
 

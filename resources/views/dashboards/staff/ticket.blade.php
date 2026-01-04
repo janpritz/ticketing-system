@@ -20,7 +20,7 @@
         <div class="mt-6 grid grid-cols-1 gap-6">
             <div>
                 <div class="text-xs text-gray-500">Category</div>
-                <div class="text-sm font-medium text-gray-900">{{ $ticket->category }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}</div>
             </div>
             <div>
                 <div class="text-xs text-gray-500">Question</div>

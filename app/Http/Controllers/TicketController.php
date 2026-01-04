@@ -77,13 +77,7 @@ class TicketController extends Controller
         $ticket->date_closed = null;
         $ticket->attachments = json_encode($attachmentsPaths);
 
-        // Write legacy category string from selected category_id for DB compatibility
-        $categoryName = 'Uncategorized';
-        if ($request->input('category_id')) {
-            $cat = Category::find($request->input('category_id'));
-            if ($cat) $categoryName = $cat->name;
-        }
-        $ticket->category = $categoryName;
+        // Legacy category string removed: category_id is the single source of truth.
 
         $ticket->save();
 
@@ -150,13 +144,7 @@ class TicketController extends Controller
         $ticket->date_closed = null;
         $ticket->attachments = json_encode($attachmentsPaths);
 
-        // Persist legacy category string for DB compatibility
-        $categoryName = 'Uncategorized';
-        if ($request->input('category_id')) {
-            $cat = Category::find($request->input('category_id'));
-            if ($cat) $categoryName = $cat->name;
-        }
-        $ticket->category = $categoryName;
+        // Legacy category string removed: category_id is the single source of truth.
 
         $ticket->save();
 

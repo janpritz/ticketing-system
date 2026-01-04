@@ -485,7 +485,7 @@
                     return `
         <tr class="hover:bg-gray-50 cursor-pointer" data-id="${t.id}">
           <td class="py-4 pl-5 pr-3">${ticketNo}</td>
-          <td class="px-3 py-4">${escapeHtml(t.category||'')}</td>
+          <td class="px-3 py-4">${escapeHtml(t.category_name || (t.category && t.category.name) || '')}</td>
           <td class="px-3 py-4">${escapeHtml((t.question||'').slice(0,80))}</td>
           <td class="px-3 py-4">${escapeHtml(t.status||'')}</td>
           <td class="px-3 py-4">${escapeHtml((t.staff && t.staff.name) || '-')}</td>
@@ -774,7 +774,7 @@
                     const ticketNo = String(t.id);
                     const createdAt = fmtDate(t.date_created || t.created_at);
                     const updatedAt = fmtDate(t.updated_at);
-                    const category = t.category ?? '';
+                    const category = t.category_name ?? (t.category && t.category.name) ?? '';
                     const question = t.question ?? '';
                     const email = t.email ?? '';
                     const recepient = t.recepient_id ?? '';

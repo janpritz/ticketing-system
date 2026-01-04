@@ -275,18 +275,22 @@ class ReportsController extends Controller
         // Assuming category is a field, but in the model, perhaps it's category_id
         // For simplicity, let's assume category is a string field
         // If it's id, need to join
-        return Ticket::where('created_at', '>=', $startDate)
-            ->select('category', DB::raw('COUNT(*) as count'))
-            ->groupBy('category')
+        // Group by the categories table (use category_id as source of truth)
+        $rows = Ticket::where('created_at', '>=', $startDate)
+            ->leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
+            ->select(DB::raw("COALESCE(categories.name, 'Unknown') as category_name"), DB::raw('COUNT(*) as count'))
+            ->groupBy('category_name')
             ->orderByDesc('count')
             ->get()
             ->map(function ($item) {
                 return [
-                    'label' => $item->category ?: 'Unknown',
+                    'label' => $item->category_name ?: 'Unknown',
                     'count' => (int) $item->count,
                 ];
             })
             ->toArray();
+
+        return $rows;
     }
 
     private function getTicketsByOrgForPeriod($days)

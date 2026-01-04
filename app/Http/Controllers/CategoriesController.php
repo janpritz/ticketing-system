@@ -84,7 +84,8 @@ class CategoriesController extends Controller
         $this->ensureAdmin();
 
         // Check if any users (including soft deleted) are assigned to this category
-        $userCount = User::withTrashed()->where('category', $category->name)->count();
+        // Use category_id as single source of truth
+        $userCount = User::withTrashed()->where('category_id', $category->id)->count();
         if ($userCount > 0) {
             return response()->json([
                 'success' => false,

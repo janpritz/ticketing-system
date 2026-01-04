@@ -127,15 +127,14 @@ class AdminController extends Controller
                 $cursor->addDay();
             }
 
-            // Tickets by Category
-            $categoryRows = Ticket::select('category', DB::raw('COUNT(*) as c'))
-                ->groupBy('category')
+            // Tickets by Category (use category_id relation -> categories.name)
+            $categoryRows = Ticket::leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
+                ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
+                ->groupBy('category_name')
                 ->orderByDesc('c')
                 ->get();
 
-            $categoryLabels = $categoryRows->pluck('category')->map(function ($v) {
-                return $v ?: 'Uncategorized';
-            })->toArray();
+            $categoryLabels = $categoryRows->pluck('category_name')->toArray();
             $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->toArray();
 
             // Top senders (frequent ticket creators) - top 10
@@ -289,15 +288,14 @@ class AdminController extends Controller
             $cursor->addDay();
         }
 
-        // Tickets by Category (all)
-        $categoryRows = Ticket::select('category', DB::raw('COUNT(*) as c'))
-            ->groupBy('category')
+        // Tickets by Category (all) - use category_id relation
+        $categoryRows = Ticket::leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
+            ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
+            ->groupBy('category_name')
             ->orderByDesc('c')
             ->get();
 
-        $categoryLabels = $categoryRows->pluck('category')->map(function ($v) {
-            return $v ?: 'Uncategorized';
-        })->values()->toArray();
+        $categoryLabels = $categoryRows->pluck('category_name')->values()->toArray();
 
         $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->values()->toArray();
 
