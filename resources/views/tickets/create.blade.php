@@ -87,13 +87,14 @@
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                             <div class="mt-1">
-                                <input list="category-list" name="category" id="category"
+                                <input list="category-list" name="category_name" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     required value="{{ old('category') }}">
+                                <input type="hidden" name="category_id" id="category_id_input" value="{{ old('category_id') }}">
                                 <datalist id="category-list">
                                     @if(isset($categories) && count($categories))
-                                        @foreach($categories as $c)
-                                            <option value="{{ $c }}">
+                                        @foreach($categories as $id => $name)
+                                            <option value="{{ $name }}">
                                         @endforeach
                                     @else
                                         <!-- Fallback to the hard-coded list if controller did not provide categories -->
@@ -262,10 +263,10 @@
                                 const submitBtn = this;
                                 const form = this.closest('form');
 
-                                // Basic validation
-                                const email = document.getElementById('email').value.trim();
-                                const category = document.getElementById('category').value.trim();
-                                const question = document.getElementById('question').value.trim();
+                            // Basic validation
+                            const email = document.getElementById('email').value.trim();
+                            const category = document.getElementById('category').value.trim();
+                            const question = document.getElementById('question').value.trim();
 
                                 if (!email || !category || !question) {
                                     e.preventDefault();
@@ -285,6 +286,27 @@
                                 // Allow form submission to continue
                                 form.submit();
                             });
+
+                            // Map category name -> id and keep hidden category_id in sync
+                            const categoryMapCreate = {};
+                            @if(isset($categories) && count($categories))
+                                @foreach($categories as $id => $name)
+                                    categoryMapCreate["{{ addslashes($name) }}"] = "{{ $id }}";
+                                @endforeach
+                            @endif
+
+                            const cnameInput = document.getElementById('category');
+                            const cidInput = document.getElementById('category_id_input');
+                            if (cnameInput) {
+                                cnameInput.addEventListener('input', function () {
+                                    const v = this.value.trim();
+                                    if (v && categoryMapCreate[v]) {
+                                        cidInput.value = categoryMapCreate[v];
+                                    } else {
+                                        cidInput.value = '';
+                                    }
+                                });
+                            }
                         });
                     </script>
                 </div>
