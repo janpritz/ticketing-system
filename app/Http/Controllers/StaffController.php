@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Category;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\SendPushNotificationJob;
@@ -62,6 +63,7 @@ class StaffController extends Controller
             'overdueCount' => $overdueCount,
             'overdueTickets' => $overdueTickets,
             'recentTickets' => $recentTickets,
+            'users' => User::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -296,6 +298,7 @@ class StaffController extends Controller
 
         return view('staff.tickets.index', [
             'user' => $auth,
+            'users' => User::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -449,43 +452,51 @@ class StaffController extends Controller
     public function forward(Request $request, Ticket $ticket)
     {
         $request->validate([
-            'user_id' => 'required|integer'
+            'user_id' => 'required|integer|exists:users,id',
         ]);
 
-        /** @var \App\Models\User|null $auth */
         $auth = Auth::user();
 
-        // Only currently assigned staff or Primary Administrator can reroute
+        // Authorization: only assigned staff or Primary Administrator may forward
         if ($ticket->staff_id !== $auth->id
-            && strtolower((string)($auth->role ?? '')) !== 'primary administrator'
-        ) {
+            && strtolower((string)($auth->role ?? '')) !== 'primary administrator') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Reject rerouting if ticket is already closed
-        if ($ticket->status === 'Closed') {
-            return response()->json(['error' => 'Cannot reroute a closed ticket'], 422);
+        $newStaff = User::findOrFail($request->input('user_id'));
+
+        DB::beginTransaction();
+        try {
+            // Update ticket assignment and status immediately (synchronous, like admin)
+            $ticket->staff_id = $newStaff->id;
+            $ticket->status = 'Forwarded';
+            $ticket->date_closed = null; // reset closed date if any
+            $ticket->save();
+
+            // Record routing history
+            TicketRoutingHistory::create([
+                'ticket_id' => $ticket->id,
+                'staff_id' => $newStaff->id,
+                'status' => 'Forwarded',
+                'routed_at' => now(),
+                'notes' => 'Forwarded by staff to user: ' . $newStaff->name,
+            ]);
+
+            DB::commit();
+
+            // Dispatch push notification job asynchronously (non-blocking)
+            SendTicketForwardJob::dispatch(
+                $ticket->id,
+                $newStaff->id,
+                $auth->id,
+                'Forwarded by staff to user: ' . $newStaff->name
+            );
+
+            return response()->json(['message' => 'Ticket forwarded successfully', 'new_staff' => $newStaff, 'refresh_dashboard' => true]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to forward ticket', 'error' => $e->getMessage()], 500);
         }
-
-        // Find the target staff member by user ID
-        $newStaff = User::find($request->input('user_id'));
-
-        if (!$newStaff) {
-            return response()->json(['error' => 'Staff member not found'], 422);
-        }
-
-        // Dispatch job to handle ticket forwarding asynchronously
-        SendTicketForwardJob::dispatch(
-            $ticket->id,
-            $newStaff->id,
-            $auth->id,
-            $request->input('notes')
-        );
-
-        return response()->json([
-            'message' => 'Ticket forwarding initiated',
-            'new_staff' => $newStaff
-        ]);
     }
 
     /**

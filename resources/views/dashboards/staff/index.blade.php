@@ -426,7 +426,7 @@
                                                 <label for="tmForwardSelect" class="text-xs font-medium text-gray-700">Forward to:</label>
                                                 <select id="tmForwardSelect"
                                                     class="flex-1 sm:flex-none rounded-lg border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500">
-                                                    <option value="" selected disabled>Select user</option>
+                                                    <!-- options will be populated dynamically when opening a ticket (mirrors admin dashboard) -->
                                                 </select>
                                                 <button type="button" id="tmForwardApply"
                                                     class="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors">
@@ -944,8 +944,28 @@
                         list.innerHTML = items.join('');
                     }
 
-                    function openModalFrom(ticket) {
+                    async function openModalFrom(ticket) {
                         console.log('openModalFrom called with ticket:', ticket);
+                        // If the ticket object doesn't include detailed fields (users, attachments, histories),
+                        // fetch the full ticket from the server (mirrors admin modal behavior).
+                        try {
+                            if (!ticket || !ticket.users) {
+                                const res = await fetch(`${forwardBase}/${ticket.id}`, {
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'Accept': 'application/json'
+                                    },
+                                    credentials: 'same-origin'
+                                });
+                                if (res && res.ok) {
+                                    const full = await res.json();
+                                    // use detailed payload when available
+                                    ticket = full || ticket;
+                                }
+                            }
+                        } catch (err) {
+                            console.warn('Could not fetch detailed ticket data, falling back to provided ticket', err);
+                        }
                         if (!modalEl) {
                             console.error('modalEl not found');
                             return;
@@ -1031,6 +1051,35 @@
                         // Hide forward controls initially
                         const tmForwardControls = document.getElementById('tmForwardControls');
                         if (tmForwardControls) tmForwardControls.classList.add('hidden');
+
+                        // Populate forward select with users (mirror admin behavior)
+                        const tmForwardSelect = document.getElementById('tmForwardSelect');
+                        if (tmForwardSelect) {
+                            // clear existing options and add placeholder
+                            tmForwardSelect.innerHTML = '';
+                            if (ticket.users && Array.isArray(ticket.users) && ticket.users.length > 0) {
+                                const placeholder = document.createElement('option');
+                                placeholder.value = '';
+                                placeholder.disabled = true;
+                                placeholder.selected = true;
+                                placeholder.textContent = 'Select user';
+                                tmForwardSelect.appendChild(placeholder);
+                                ticket.users.forEach(user => {
+                                    const option = document.createElement('option');
+                                    option.value = user.id;
+                                    option.textContent = user.name + (user.email ? (' <' + user.email + '>') : '');
+                                    tmForwardSelect.appendChild(option);
+                                });
+                            } else {
+                                // fallback: if server provided a static list at render time, keep it; otherwise show disabled
+                                if (tmForwardSelect.options.length === 0) {
+                                    const opt = document.createElement('option');
+                                    opt.disabled = true;
+                                    opt.textContent = 'No users available';
+                                    tmForwardSelect.appendChild(opt);
+                                }
+                            }
+                        }
 
                         // Prepare and render history; keep hidden by default until toggled in Options
                         const hsObj = ensureHistorySection();
@@ -1255,17 +1304,17 @@
                                     hs.classList.toggle('hidden');
                                     btn.textContent = willShow ? 'Hide History' : 'Show History';
                                 }
-                            } else if (action === 'show-forward') {
+                    } else if (action === 'show-forward') {
                                 const tmForwardControls = document.getElementById('tmForwardControls');
                                 if (tmForwardControls) tmForwardControls.classList.remove('hidden');
                             }
                         });
                     }
 
-                    // Forward via select + apply
+                    // Forward via select + apply (use same behavior as admin: select user and POST user_id)
                     const tmForwardSelect = document.getElementById('tmForwardSelect');
                     const tmForwardApply = document.getElementById('tmForwardApply');
-                    if (tmForwardApply) {
+                    if (tmForwardApply && tmForwardSelect) {
                         tmForwardApply.addEventListener('click', async () => {
                             if (!currentTicketId) return;
                             if (!tmForwardSelect || !tmForwardSelect.value) {
@@ -1273,23 +1322,21 @@
                                     Swal.fire({
                                         icon: 'warning',
                                         title: 'Selection Required',
-                                        text: 'Please choose a role to forward to.',
-                                        timer: 3000,
-                                        showConfirmButton: false
+                                        text: 'Please choose a user to forward to.',
+                                        confirmButtonText: 'OK'
                                     });
                                 } else {
-                                    showToast('error', 'Please choose a role to forward to.');
+                                    alert('Please choose a user to forward to.');
                                 }
                                 return;
                             }
-                            const role = tmForwardSelect.value;
+                            const userId = tmForwardSelect.value;
 
                             // Disable button and show loading
                             tmForwardApply.disabled = true;
                             tmForwardApply.classList.add('opacity-50', 'pointer-events-none');
                             const originalText = tmForwardApply.textContent;
-                            tmForwardApply.innerHTML =
-                                '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Forwarding...';
+                            tmForwardApply.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Forwarding...';
 
                             try {
                                 const res = await fetch(`${forwardBase}/${currentTicketId}/forward`, {
@@ -1300,15 +1347,48 @@
                                         'X-CSRF-TOKEN': csrfToken
                                     },
                                     credentials: 'same-origin',
-                                    body: JSON.stringify({
-                                        role
-                                    })
+                                    body: JSON.stringify({ user_id: userId })
                                 });
+
+                                console.log('Forward request sent to:', `${forwardBase}/${currentTicketId}/forward`);
+                                console.log('Response status:', res.status, res.statusText);
+
                                 if (res.ok) {
-                                    lastSnapshot = '';
+                                    let forwardResp = null;
                                     try {
-                                        localStorage.setItem('ts_tickets_changed', String(Date.now()));
-                                    } catch (e) {}
+                                        forwardResp = await res.json();
+                                    } catch (_) {}
+                                    // If backend returned the new staff info, update UI immediately (job may be async)
+                                    if (forwardResp && forwardResp.new_staff) {
+                                        try {
+                                            const newStaff = forwardResp.new_staff;
+                                            // Update ticketsMap entry if present
+                                            const key = String(currentTicketId);
+                                            if (ticketsMap && ticketsMap.has(key)) {
+                                                const t = ticketsMap.get(key);
+                                                if (t) {
+                                                    t.staff = t.staff || {};
+                                                    t.staff.name = newStaff.name || (newStaff.name ?? '');
+                                                    ticketsMap.set(key, t);
+                                                }
+                                            }
+                                            // Update table row assignee cell if visible
+                                            const row = document.querySelector(`tr[data-id="${currentTicketId}"]`);
+                                            if (row) {
+                                                const cells = row.querySelectorAll('td');
+                                                if (cells && cells.length >= 4) {
+                                                    const assigneeDiv = cells[3].querySelector('div');
+                                                    if (assigneeDiv) assigneeDiv.textContent = newStaff.name || '';
+                                                    const metaDiv = cells[3].querySelector('.mt-1.text-xs');
+                                                    if (metaDiv) metaDiv.textContent = 'Updated ' + (new Date()).toLocaleString();
+                                                }
+                                            }
+                                        } catch (e) {
+                                            console.warn('Failed to apply immediate assignee update', e);
+                                        }
+                                    }
+                                    lastSnapshot = '';
+                                    try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
                                     fetchData();
                                     closeModal();
                                     setTimeout(() => {
@@ -1316,50 +1396,49 @@
                                             Swal.fire({
                                                 icon: 'success',
                                                 title: 'Ticket Forwarded',
-                                                text: 'The ticket has been successfully forwarded.',
+                                                text: 'Ticket has been forwarded successfully!',
                                                 timer: 3000,
-                                                showConfirmButton: false
+                                                timerProgressBar: true,
+                                                showConfirmButton: false,
+                                                position: 'top-end',
+                                                toast: true
                                             });
                                         } else {
-                                            showToast('success', 'Ticket forwarded successfully.');
+                                            alert('Ticket forwarded successfully.');
                                         }
                                     }, 500);
                                 } else {
-                                    console.error('Forward failed', await res.text());
-                                    setTimeout(() => {
-                                        if (window.Swal) {
-                                            Swal.fire({
-                                                icon: 'error',
-                                                title: 'Forward Failed',
-                                                text: 'Failed to forward the ticket. Please try again.',
-                                                timer: 3000,
-                                                showConfirmButton: false
-                                            });
-                                        } else {
-                                            showToast('error', 'Failed to forward the ticket.');
-                                        }
-                                    }, 500);
-                                }
-                            } catch (err) {
-                                console.error('Forward error', err);
-                                setTimeout(() => {
+                                    const errorText = await res.text();
+                                    console.error('Forward failed', res.status, errorText);
                                     if (window.Swal) {
                                         Swal.fire({
                                             icon: 'error',
-                                            title: 'Network Error',
-                                            text: 'Network error during forward. Please check your connection.',
-                                            timer: 3000,
-                                            showConfirmButton: false
+                                            title: 'Forward Failed',
+                                            text: 'Failed to forward ticket. Please try again. Error: ' + res.status + ' ' + res.statusText,
+                                            confirmButtonText: 'OK'
                                         });
                                     } else {
-                                        showToast('error', 'Network error during forward.');
+                                        alert('Forward failed. Please try again. Error: ' + res.status + ' ' + res.statusText);
                                     }
-                                }, 500);
+                                }
+                            } catch (err) {
+                                console.error('Forward error', err);
+                                if (window.Swal) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Network Error',
+                                        text: 'Network error during forward.',
+                                        confirmButtonText: 'OK'
+                                    });
+                                } else {
+                                    alert('Network error during forward.');
+                                }
                             } finally {
                                 // Re-enable button
                                 tmForwardApply.disabled = false;
                                 tmForwardApply.classList.remove('opacity-50', 'pointer-events-none');
                                 tmForwardApply.textContent = originalText;
+                                // Refresh dashboard if server requested it (mirrors admin logic)
                             }
                         });
                     }

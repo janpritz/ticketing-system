@@ -178,6 +178,7 @@ class AdminController extends Controller
                 'staffContacts'     => $staffContacts,
                 'faqUpdaterSecret'  => env('RASA_SECRET'),
                 'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
+                'users'             => User::orderBy('name')->get(['id', 'name']),
             ];
         })();
 

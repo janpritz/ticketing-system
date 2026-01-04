@@ -86,7 +86,7 @@ if (csrf && csrf.content) {
       if (window.axios && typeof window.axios.post === 'function') {
         // Use a relative path (no leading slash) so the request respects any /public
         // prefix in the current site URL (e.g. https://example.com/public/...)
-        const response = await window.axios.post('staff/push/subscribe', { subscription });
+        const response = await window.axios.post('/staff/push/subscribe', { subscription });
         console.debug('[push] Subscription sent to server successfully:', response.status, response.data);
       } else {
         console.warn('[push] axios not available; subscription not sent to server');

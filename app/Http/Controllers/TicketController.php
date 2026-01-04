@@ -278,7 +278,8 @@ class TicketController extends Controller
             $tickets = Ticket::where('staff_id', $userId)
                 ->orderBy('date_created', 'desc')
                 ->get();
-            return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail'));
+            $users = User::orderBy('name')->get(['id', 'name']);
+            return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail', 'users'));
         }
 
         // Not staff or not authenticated - use existing logic
@@ -313,7 +314,8 @@ class TicketController extends Controller
             $query->where('recepient_id', $identifier);
         }
         $tickets = $query->orderBy('date_created', 'desc')->get();
-        return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff'));
+        $users = User::orderBy('name')->get(['id', 'name']);
+        return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff', 'users'));
     }
     public function updateStatus(Request $request, $id)
     {

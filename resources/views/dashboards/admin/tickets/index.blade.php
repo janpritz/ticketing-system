@@ -336,7 +336,13 @@
                             <label for="tmForwardSelect" class="text-xs font-medium text-gray-700">Forward to:</label>
                             <select id="tmForwardSelect"
                                 class="flex-1 sm:flex-none rounded-lg border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500">
-                                <option value="" selected disabled>Select user</option>
+                                @if(!empty($users) && count($users) > 0)
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}">{{ $user->name }} &lt;{{ $user->email }}&gt;</option>
+                                    @endforeach
+                                @else
+                                    <option disabled>No users available</option>
+                                @endif
                             </select>
                             <button type="button" id="tmForwardApply"
                                 class="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors">
