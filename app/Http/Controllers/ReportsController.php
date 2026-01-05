@@ -37,6 +37,9 @@ class ReportsController extends Controller
             })
             ->toArray();
 
+        // (index placeholder previously had fallback here; removed — actual fallback
+        // logic is applied inside getBacklogTrendData where snapshot variables exist)
+
         // 2.2 Tickets Solved/Closed in last 30 days
         $thirtyDaysAgo = now()->subDays(30);
         $ticketsSolved = Ticket::whereNotNull('date_closed')
@@ -126,14 +129,38 @@ class ReportsController extends Controller
         $endDate = Carbon::today();
         $startDate = $endDate->copy()->subDays($days - 1);
 
-        // Get daily counts from snapshots
+        // Get daily counts from snapshots. Use explicit mapping to Y-m-d keys to avoid
+        // mismatches between date formats (Carbon vs string) when indexing the result.
         $dailyCounts = AnalyticsTicketSnapshot::selectRaw('snapshot_date, COUNT(*) as open_count')
             ->whereIn('status', ['Open', 'Forwarded'])
             ->whereBetween('snapshot_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->groupBy('snapshot_date')
             ->orderBy('snapshot_date')
-            ->pluck('open_count', 'snapshot_date')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                // snapshot_date is cast to date on the model, ensure Y-m-d string key
+                $key = $row->snapshot_date instanceof \Carbon\Carbon ? $row->snapshot_date->toDateString() : (string)$row->snapshot_date;
+                return [$key => (int)$row->open_count];
+            })
             ->toArray();
+
+        // If there are no snapshot rows (or all counts are zero), fall back to
+        // calculating open ticket counts from the tickets table so the chart
+        // still shows meaningful data.
+        if (empty($dailyCounts) || array_sum($dailyCounts) === 0) {
+            $fallback = [];
+            for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
+                $endOfDay = $date->copy()->endOfDay();
+                $count = Ticket::where('created_at', '<=', $endOfDay)
+                    ->where(function ($q) use ($endOfDay) {
+                        $q->whereNull('date_closed')
+                          ->orWhere('date_closed', '>', $endOfDay);
+                    })
+                    ->count();
+                $fallback[$date->toDateString()] = (int) $count;
+            }
+            $dailyCounts = $fallback;
+        }
 
         // Fill missing dates with 0
         $labels = [];
@@ -276,10 +303,11 @@ class ReportsController extends Controller
         // For simplicity, let's assume category is a string field
         // If it's id, need to join
         // Group by the categories table (use category_id as source of truth)
-        $rows = Ticket::where('created_at', '>=', $startDate)
+        // disambiguate created_at (categories also has timestamps) and group by the real column
+        $rows = Ticket::where('tickets.created_at', '>=', $startDate)
             ->leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
             ->select(DB::raw("COALESCE(categories.name, 'Unknown') as category_name"), DB::raw('COUNT(*) as count'))
-            ->groupBy('category_name')
+            ->groupBy('categories.name')
             ->orderByDesc('count')
             ->get()
             ->map(function ($item) {
