@@ -93,51 +93,64 @@
     </div>
 </div>
 
-<!-- Edit Ticket Modal -->
-<div id="editModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3 text-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Ticket</h3>
-            <form id="editTicketForm" action="" method="POST" enctype="multipart/form-data">
-                @csrf
-                @method('PUT')
-                <input type="hidden" id="edit-ticket-id" name="id">
-                <div class="mt-2 px-7 py-3">
-                    <div class="mb-4">
-                        <label for="edit-category" class="block text-sm font-medium text-gray-700">Category</label>
-                        <input type="text" id="edit-category" name="category" readonly aria-readonly="true" class="mt-1 block w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-md shadow-sm py-2 px-3 cursor-not-allowed focus:outline-none focus:ring-0 focus:border-gray-200 sm:text-sm">
-                    </div>
-                    <div class="mb-4">
-                        <label for="edit-question" class="block text-sm font-medium text-gray-700">Question</label>
-                        <textarea id="edit-question" name="question" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Current Attachments</label>
-                        <div id="edit-attachments-container" class="mt-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Add Attachments (Screenshots - Max 5MB per image)</label>
-                        <button type="button" id="add-photo-btn" class="mt-1 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Add Photo
-                        </button>
-                        <input type="file" name="attachments[]" id="edit-attachments" multiple accept="image/*" class="hidden">
-                        <div id="selected-thumbnails" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
-                        <p class="mt-1 text-sm text-gray-500">You can upload up to 5 files. (Only jpeg,jpg,png files are allowed.)</p>
-                        <input type="hidden" name="delete_attachments" id="delete-attachments">
-                    </div>
+<!-- Edit Ticket Modal (admin-style for consistent look) -->
+<div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+    <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+        <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+            <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div class="flex-1 min-w-0">
+                    <h3 class="modal-title text-lg font-semibold text-gray-900">Edit Ticket</h3>
+                    <div class="text-xs text-gray-500">Modify your ticket details</div>
                 </div>
-                <div class="items-center px-4 py-3">
-                    <button type="button" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-24 mr-2 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300" onclick="document.getElementById('editModal').classList.add('hidden')">
-                        Cancel
-                    </button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-base font-medium rounded-md w-24 shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                        Update
+                <div class="flex items-center gap-2 ml-4">
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg" aria-label="Close" data-modal-close onclick="document.getElementById('editModal').classList.add('hidden')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-            </form>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 py-5 modal-body text-sm text-gray-800">
+                <form id="editTicketForm" action="" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" id="edit-ticket-id" name="id">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="edit-category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <input type="text" id="edit-category" name="category" readonly aria-readonly="true" class="mt-1 block w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-md shadow-sm py-2 px-3 cursor-not-allowed focus:outline-none focus:ring-0 focus:border-gray-200 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="edit-question" class="block text-sm font-medium text-gray-700">Question</label>
+                            <textarea id="edit-question" name="question" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Current Attachments</label>
+                            <div id="edit-attachments-container" class="mt-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Add Attachments (Screenshots - Max 5MB per image)</label>
+                            <div class="mt-1 flex items-center gap-3">
+                                <button type="button" id="add-photo-btn" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Photo
+                                </button>
+                                <input type="file" name="attachments[]" id="edit-attachments" multiple accept="image/*" class="hidden">
+                            </div>
+                            <div id="selected-thumbnails" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                            <p class="mt-1 text-sm text-gray-500">You can upload up to 5 files. (Only jpeg,jpg,png files are allowed.)</p>
+                            <input type="hidden" name="delete_attachments" id="delete-attachments">
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="px-4 sm:px-6 py-4 border-t border-gray-100 flex items-center justify-end shrink-0 gap-3">
+                <button type="button" class="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-600" onclick="document.getElementById('editModal').classList.add('hidden')">Cancel</button>
+                <button type="button" id="editTicketSubmitBtn" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-700">Update</button>
+            </div>
         </div>
     </div>
 </div>
@@ -272,6 +285,15 @@
                 // Show modal
                 document.getElementById('editModal').classList.remove('hidden');
             });
+
+        // Submit handler for the admin-style edit modal (wire the Update button)
+        const editSubmitBtn = document.getElementById('editTicketSubmitBtn');
+        if (editSubmitBtn) {
+            editSubmitBtn.addEventListener('click', function () {
+                const form = document.getElementById('editTicketForm');
+                if (form) form.submit();
+            });
+        }
         });
 
         // Add event listeners to all delete buttons (SweetAlert2 confirmation)

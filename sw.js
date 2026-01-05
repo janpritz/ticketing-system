@@ -67,6 +67,7 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/admin') ||
     url.pathname.startsWith('/staff') ||
+    url.pathname.startsWith('/tickets') ||
     url.pathname.startsWith('/dashboard')
   ) {
     return;

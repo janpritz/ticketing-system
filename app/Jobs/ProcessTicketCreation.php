@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -148,6 +149,16 @@ class ProcessTicketCreation implements ShouldQueue
             'routed_at' => now(),
             'notes' => 'Ticket created' . ($staffId ? ' and assigned to staff ' . $staffId : ''),
         ]);
+
+        // Send confirmation email to ticket creator
+        try {
+            if ($ticket->email) {
+                Mail::to($ticket->email)->send(new \App\Mail\TicketCreatedMail($ticket));
+                Log::info('ProcessTicketCreation: Sent ticket created email', ['ticket_id' => $ticket->id, 'email' => $ticket->email]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('ProcessTicketCreation: Failed to send ticket created email: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+        }
 
         // Send push notification to the assigned staff
         if ($ticket->staff_id) {

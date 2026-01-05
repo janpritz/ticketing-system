@@ -82,8 +82,14 @@ class TicketController extends Controller
         $ticket->save();
 
 
-        // Dispatch job to process the rest
-        ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+        // Process assignment synchronously so the page can show the ticket immediately
+        try {
+            (new ProcessTicketCreation($ticket->id, $request->input('category_id')))->handle();
+        } catch (\Throwable $e) {
+            // If synchronous processing fails, fall back to queueing the job and log the error
+            \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+        }
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
@@ -103,7 +109,10 @@ class TicketController extends Controller
             ? 'Ticket created and assigned to staff successfully! Please wait for a response, which will be sent to your email.'
             : 'Ticket created successfully! Assignment is being processed and you will receive a response via email shortly.';
             
-        return redirect()->to(url('/tickets/' . $request->recepient_id))
+        // Include the creator email as a query parameter so the tickets index can immediately
+        // resolve and display all tickets for that email without waiting for the background job.
+        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($ticket->email);
+        return redirect()->to($redirectUrl)
             ->with('success', $message);
     }
 
@@ -149,8 +158,13 @@ class TicketController extends Controller
         $ticket->save();
 
 
-        // Dispatch job to process the rest
-        ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+        // Process assignment synchronously so the page can show the ticket immediately
+        try {
+            (new ProcessTicketCreation($ticket->id, $request->input('category_id')))->handle();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+        }
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
@@ -160,7 +174,9 @@ class TicketController extends Controller
 
         // For web requests, redirect to tickets page for the recepient id.
         // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
-        return redirect()->to(url('/tickets/' . $request->recepient_id))
+        // Append the email so the tickets page shows the newly created ticket immediately
+        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($ticket->email);
+        return redirect()->to($redirectUrl)
             ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }
 
@@ -249,38 +265,9 @@ class TicketController extends Controller
 
     public function index(Request $request, $identifier = null)
     {
-        // Check if the authenticated user is staff (not admin)
-        $auth = Auth::user();
+        // Ticket CRUD is public/guest-facing; do not gate listing by authenticated staff users.
+        // Treat all visitors as guests for the purposes of viewing tickets by recepient/email.
         $isStaff = false;
-        
-        if ($auth) {
-            // User is staff if authenticated and not Primary Administrator
-            $isStaff = strtolower((string)($auth->role ?? '')) !== 'primary administrator';
-        }
-
-        // If user is staff, show their assigned tickets instead of existing logic
-        if ($isStaff) {
-            $userId = $auth->id;
-            
-            // Set default values for staff access
-            $identifier = null;
-            $isEmail = false;
-            
-            // For API requests, return JSON
-            if ($request->wantsJson()) {
-                $tickets = Ticket::where('staff_id', $userId)
-                    ->orderBy('date_created', 'desc')
-                    ->get();
-                return response()->json($tickets);
-            }
-
-            // For web requests, return a view with the tickets
-            $tickets = Ticket::where('staff_id', $userId)
-                ->orderBy('date_created', 'desc')
-                ->get();
-            $users = User::orderBy('name')->get(['id', 'name']);
-            return view('tickets.index', compact('tickets', 'isStaff', 'identifier', 'isEmail', 'users'));
-        }
 
         // Not staff or not authenticated - use existing logic
         // Support both recepient_id and email as identifier
@@ -293,27 +280,72 @@ class TicketController extends Controller
         // Determine if identifier is email or recepient_id
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
+        // If identifier looks like a recepient id (not an email), attempt to resolve it to an
+        // email address by checking recent tickets created with that recepient_id. Keep the
+        // resolved email separate so we can query BOTH recepient_id and email (if found).
+        $resolvedEmail = null;
+        if (!$isEmail && $identifier) {
+            try {
+                $resolvedEmail = Ticket::where('recepient_id', $identifier)
+                    ->orderBy('date_created', 'desc')
+                    ->value('email');
+                if (!($resolvedEmail && filter_var($resolvedEmail, FILTER_VALIDATE_EMAIL))) {
+                    $resolvedEmail = null;
+                }
+            } catch (\Throwable $e) {
+                // Swallow and continue using the original identifier if lookup fails
+                \Illuminate\Support\Facades\Log::warning('TicketController@index: failed to resolve recepient_id to email', ['recepient_id' => $identifier, 'error' => $e->getMessage()]);
+                $resolvedEmail = null;
+            }
+        }
+
         // For API requests, return JSON
         if ($request->wantsJson()) {
             // Retrieve all tickets for the specified identifier
             $query = Ticket::query();
+            // If the incoming identifier is an email, match by email. If it's a recepient id,
+            // match by recepient_id and also include tickets that have the resolved email (if found).
             if ($isEmail) {
-                $query->where('email', $identifier);
+                // Case-insensitive email match
+                $query->whereRaw('LOWER(email) = ?', [strval(strtolower($identifier))]);
             } else {
-                $query->where('recepient_id', $identifier);
+                if ($resolvedEmail) {
+                    $query->where(function ($q) use ($identifier, $resolvedEmail) {
+                        $q->where('recepient_id', $identifier)
+                          ->orWhereRaw('LOWER(email) = ?', [strval(strtolower($resolvedEmail))]);
+                    });
+                } else {
+                    $query->where('recepient_id', $identifier);
+                }
             }
-            $tickets = $query->orderBy('date_created', 'desc')->get();
+            // Ensure all tickets are returned regardless of status, but sort by priority:
+            // Open first, then Forwarded, then Closed. Within each group sort by newest.
+            $tickets = $query
+                ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
+                ->orderBy('date_created', 'desc')
+                ->get();
             return response()->json($tickets);
         }
 
         // For web requests, return a view with the tickets
         $query = Ticket::query();
         if ($isEmail) {
-            $query->where('email', $identifier);
+            $query->whereRaw('LOWER(email) = ?', [strval(strtolower($identifier))]);
         } else {
-            $query->where('recepient_id', $identifier);
+            if ($resolvedEmail) {
+                $query->where(function ($q) use ($identifier, $resolvedEmail) {
+                    $q->where('recepient_id', $identifier)
+                      ->orWhereRaw('LOWER(email) = ?', [strval(strtolower($resolvedEmail))]);
+                });
+            } else {
+                $query->where('recepient_id', $identifier);
+            }
         }
-        $tickets = $query->orderBy('date_created', 'desc')->get();
+        // Return all tickets and sort by status priority (Open, Forwarded, Closed) then newest first
+        $tickets = $query
+            ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
+            ->orderBy('date_created', 'desc')
+            ->get();
         $users = User::orderBy('name')->get(['id', 'name']);
         return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff', 'users'));
     }
