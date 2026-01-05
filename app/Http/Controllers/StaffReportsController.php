@@ -11,14 +11,20 @@ use Illuminate\Support\Facades\DB;
 
 class StaffReportsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $staffId = Auth::id();
+        $days = (int) $request->get('days', 7);
 
-        $performanceMetrics = $this->getPerformanceMetrics($staffId);
-        $overdueTickets = $this->getOverdueTickets($staffId);
+        // Normalize allowed days to 7,30,90
+        if (!in_array($days, [7, 30, 90])) {
+            $days = 7;
+        }
+
+        $performanceMetrics = $this->getPerformanceMetrics($staffId, $days);
+        $overdueTickets = $this->getOverdueTickets($staffId, $days);
         $faqAnalysis = ['processed_faqs' => 0, 'total_faqs' => 0]; // Default values since FAQ processing is commented out
-        $weeklyThroughput = $this->buildWeeklyThroughput($staffId);
+        $weeklyThroughput = $this->buildThroughput($staffId, $days);
 
         // Build a simple, robust recently forwarded list (forwarder name + ticket category)
         $recentForwarders = [];
@@ -83,20 +89,26 @@ class StaffReportsController extends Controller
 
         $totalForwardsCount = \App\Models\TicketRoutingHistory::where('staff_id', $staffId)->count();
 
-        return view('staff.reports.index', compact('performanceMetrics', 'overdueTickets', 'faqAnalysis', 'weeklyThroughput'));
+        return view('staff.reports.index', compact('performanceMetrics', 'overdueTickets', 'faqAnalysis', 'weeklyThroughput', 'recentForwarders', 'totalForwardsCount', 'days'));
     }
 
-    private function getPerformanceMetrics($staffId)
+    private function getPerformanceMetrics($staffId, int $days)
     {
-        // Example: tickets resolved by staff
+        $start = now()->subDays($days)->startOfDay();
+
+        // Example: tickets resolved by staff within range
         $resolvedTickets = Ticket::where('staff_id', $staffId)
             ->where('status', 'Closed')
+            ->where('created_at', '>=', $start)
             ->count();
 
-        $totalTickets = Ticket::where('staff_id', $staffId)->count();
+        $totalTickets = Ticket::where('staff_id', $staffId)
+            ->where('created_at', '>=', $start)
+            ->count();
 
         $avgResolutionTime = Ticket::where('staff_id', $staffId)
             ->where('status', 'Closed')
+            ->where('created_at', '>=', $start)
             ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as avg_time')
             ->first()->avg_time ?? 0;
 
@@ -107,12 +119,15 @@ class StaffReportsController extends Controller
         ];
     }
 
-    private function getOverdueTickets($staffId)
+    private function getOverdueTickets($staffId, int $days)
     {
-        // Assuming tickets with status not closed and created more than 24 hours ago
+        // Overdue: tickets not closed, older than 24 hours, and within the selected window
+        $start = now()->subDays($days)->startOfDay();
+
         $overdue = Ticket::where('staff_id', $staffId)
             ->where('status', '!=', 'Closed')
             ->where('created_at', '<', now()->subHours(24))
+            ->where('created_at', '>=', $start)
             ->get();
 
         return $overdue;
@@ -138,14 +153,14 @@ class StaffReportsController extends Controller
      *   'max'    => maxCount
      * ]
      */
-    private function buildWeeklyThroughput(int $staffId): array
+    private function buildThroughput(int $staffId, int $days): array
     {
-        // Weekly analytics (Mon–Sun) scoped to the signed-in staff's tickets
-        $startOfWeek = \Illuminate\Support\Carbon::now()->startOfWeek();
-        $endOfWeek = \Illuminate\Support\Carbon::now()->endOfWeek();
+        // Build throughput for the last N days (inclusive), ending today
+        $end = \Illuminate\Support\Carbon::now()->endOfDay();
+        $start = \Illuminate\Support\Carbon::now()->subDays($days - 1)->startOfDay();
 
         $rows = \App\Models\Ticket::where('staff_id', $staffId)
-            ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
+            ->whereBetween('date_created', [$start, $end])
             ->selectRaw('DATE(date_created) as d, COUNT(*) as c')
             ->groupBy('d')
             ->orderBy('d')
@@ -156,12 +171,12 @@ class StaffReportsController extends Controller
         $labels = [];
         $max = 0;
 
-        $cursor = $startOfWeek->copy();
-        for ($i = 0; $i < 7; $i++) {
+        $cursor = $start->copy();
+        for ($i = 0; $i < $days; $i++) {
             $dayKey = $cursor->toDateString();
             $count = (int)($rows[$dayKey] ?? 0);
             $series[] = $count;
-            $labels[] = $cursor->format('D'); // Mon, Tue, ...
+            $labels[] = $cursor->format('M j'); // e.g., Jan 5
             if ($count > $max) {
                 $max = $count;
             }

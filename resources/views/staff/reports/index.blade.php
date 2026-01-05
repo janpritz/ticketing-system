@@ -3,9 +3,23 @@
 @section('title', 'Staff Reports')
 
 @section('staff-content')
-<div class="ps-2">
-    <h1 class="text-2xl font-semibold text-slate-900">Reports</h1>
-    <p class="text-sm text-slate-500">Performance metrics and analysis for your tickets</p>
+<div class="sm:px-2">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900">Reports</h1>
+            <p class="text-sm text-slate-500 mt-1">Performance metrics and analysis for your tickets</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700">Time Range:</label>
+                <select id="timeRangeSelect" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                    <option value="7" {{ ($days ?? 7) == 7 ? 'selected' : '' }}>Last 7 Days</option>
+                    <option value="30" {{ ($days ?? 7) == 30 ? 'selected' : '' }}>Last 30 Days</option>
+                    <option value="90" {{ ($days ?? 7) == 90 ? 'selected' : '' }}>Last 90 Days</option>
+                </select>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Performance Dashboard -->
@@ -117,7 +131,8 @@
                 $labels = $wt['labels'] ?? [];
                 $max = (int) ($wt['max'] ?? 0);
             @endphp
-            @for ($i = 0; $i < 7; $i++)
+            @php $dCount = $days ?? 7; @endphp
+            @for ($i = 0; $i < $dCount; $i++)
                 @php
                     $count = (int) ($series[$i] ?? 0);
                     $label = $labels[$i] ?? '';
@@ -567,6 +582,17 @@
             event.target.parentElement.classList.add('hidden');
         }
     });
+
+    // Time range selector (reload page with days param)
+    const timeRangeSelect = document.getElementById('timeRangeSelect');
+    if (timeRangeSelect) {
+        timeRangeSelect.addEventListener('change', function(e) {
+            const days = e.target.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('days', days);
+            window.location.href = url.toString();
+        });
+    }
 
     // Resolution Time Chart for modal
     const resolutionTimeEl = document.getElementById('resolutionTimeChart');
