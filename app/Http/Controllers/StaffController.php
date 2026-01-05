@@ -144,6 +144,27 @@ class StaffController extends Controller
     }
 
     /**
+     * Persist staff email notification preference (AJAX endpoint)
+     */
+    public function updateEmailNotifications(Request $request)
+    {
+        $request->validate([
+            'enabled' => 'required|boolean'
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Use a direct update query to avoid model-level save issues (avoids fillable/mutator side-effects)
+        \App\Models\User::where('id', $user->id)->update(['email_notifications' => (bool) $request->input('enabled')]);
+        $fresh = \App\Models\User::find($user->id);
+
+        return response()->json(['saved' => true, 'enabled' => $fresh->getAttribute('email_notifications')]);
+    }
+
+    /**
      * Change Password form
      */
     public function passwordForm()
@@ -492,6 +513,16 @@ class StaffController extends Controller
                 $auth->id,
                 'Forwarded by staff to user: ' . $newStaff->name
             );
+
+            // Email notification to newly forwarded staff (respect their email_notifications flag)
+            try {
+                if (!empty($newStaff->email) && $newStaff->getAttribute('email_notifications')) {
+                    Mail::to($newStaff->email)->send(new \App\Mail\TicketAssignedMail($ticket, 'forwarded'));
+                    Log::info('StaffController: Sent ticket-assigned email to forwarded staff', ['ticket_id' => $ticket->id, 'to' => $newStaff->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('StaffController: Failed to send ticket-assigned email to forwarded staff: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
 
             // Notify ticket creator that ticket was forwarded (include first assignee and new assignee)
             try {

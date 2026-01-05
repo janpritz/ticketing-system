@@ -80,6 +80,7 @@ Route::middleware('auth')->group(function () {
     // Staff profile
     Route::get('/staff/profile', [StaffController::class, 'profile'])->name('staff.profile');
     Route::post('/staff/profile', [StaffController::class, 'updateProfile'])->name('staff.profile.update');
+    Route::post('/staff/profile/email-notifications', [StaffController::class, 'updateEmailNotifications'])->name('staff.profile.email_notifications');
 
     // Push subscription (web push) - handled by '/staff/push' prefixed routes defined below
 

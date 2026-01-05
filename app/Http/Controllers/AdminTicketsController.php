@@ -345,6 +345,16 @@ class AdminTicketsController extends Controller
                 'Forwarded by admin to user: ' . $user->name
             );
 
+            // Send email notification to the new assignee if they allow email notifications
+            try {
+                if (!empty($user->email) && $user->getAttribute('email_notifications')) {
+                    Mail::to($user->email)->send(new \App\Mail\TicketAssignedMail($ticket, 'forwarded'));
+                    Log::info('AdminTicketsController: Sent ticket-assigned email to forwarded staff', ['ticket_id' => $ticket->id, 'to' => $user->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('AdminTicketsController: Failed to send ticket-assigned email to forwarded staff: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
+
             // Notify ticket creator that ticket was forwarded (include first assignee and new assignee)
             try {
                 if (!empty($ticket->email)) {

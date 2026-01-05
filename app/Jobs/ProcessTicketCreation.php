@@ -211,6 +211,16 @@ class ProcessTicketCreation implements ShouldQueue
             } else {
                 Log::info('PushService: subscription file not found for user ' . $ticket->staff_id . '; skipping push for ticket ' . $ticket->id);
             }
+            // Also send an email notification to the assigned staff if they allow email notifications
+            try {
+                $staffUser = User::find($ticket->staff_id);
+                if ($staffUser && !empty($staffUser->email) && $staffUser->getAttribute('email_notifications')) {
+                    Mail::to($staffUser->email)->send(new \App\Mail\TicketAssignedMail($ticket, 'assigned'));
+                    Log::info('ProcessTicketCreation: Sent ticket-assigned email to staff', ['ticket_id' => $ticket->id, 'staff_id' => $staffUser->id, 'email' => $staffUser->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('ProcessTicketCreation: Failed to send ticket-assigned email to staff: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
         }
     }
 }
