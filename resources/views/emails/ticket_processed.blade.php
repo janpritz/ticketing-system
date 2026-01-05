@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ticket Delivered</title>
+    <title>Ticket update</title>
     <style>
         @media only screen and (max-width: 600px) {
             .mobile-full-width { width: 100% !important; }
@@ -22,7 +22,7 @@
                     <!-- Header -->
                     <tr>
                         <td class="mobile-padding" style="padding:20px 24px;background:#ffffff;border-bottom:1px solid #e5e7eb;">
-                            <div style="font-size:16px;font-weight:700;color:#1f2937;">Ticket Delivered: {{ $ticketNo }}</div>
+                            <div style="font-size:16px;font-weight:700;color:#1f2937;">Ticket Update: {{ $ticketNo }}</div>
                         </td>
                     </tr>
 
@@ -30,7 +30,7 @@
                     <tr>
                         <td class="mobile-padding" style="padding:24px;">
                             <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">Hello,</p>
-                            <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">Your ticket has been delivered. Below are the details:</p>
+                            <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">This is an automated notification to let you know that staff have seen or processed your ticket. Here are the details:</p>
 
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                                 <tr>
@@ -39,20 +39,19 @@
                                 </tr>
                                 <tr>
                                     <td style="font-size:14px;color:#111827;padding:8px 0;"><strong>Category:</strong></td>
-                                    <td style="font-size:14px;color:#111827;padding:8px 0;">{{ $categoryName ?? 'Uncategorized' }}</td>
+                                    <td style="font-size:14px;color:#111827;padding:8px 0;">{{ optional($ticket->category)->name ?? ($ticket->getAttribute('category') ?? 'Uncategorized') }}</td>
                                 </tr>
                                 <tr>
-                                    <td style="font-size:14px;color:#111827;padding:8px 0;"><strong>Assigned Staff:</strong></td>
-                                    <td style="font-size:14px;color:#111827;padding:8px 0;">{{ $staffName }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-size:14px;color:#111827;padding:8px 0;"><strong>Date Created:</strong></td>
-                                    <td style="font-size:14px;color:#111827;padding:8px 0;">{{ 
-                                        \Carbon\Carbon::parse($createdAt)->toDayDateTimeString() }}</td>
+                                    <td style="font-size:14px;color:#111827;padding:8px 0;"><strong>Question / Concern:</strong></td>
+                                    <td style="font-size:14px;color:#111827;padding:8px 0;">{{ $ticket->question }}</td>
                                 </tr>
                             </table>
 
-                            <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">You will receive an update via email when your ticket was seen. Thank you for your patience.</p>
+                            <?php if (!empty($forwardHistory)): ?>
+                                <p style="font-size:14px;color:#374151;margin:0 0 12px 0;"><strong>Forward History:</strong> <?php echo htmlspecialchars($forwardHistory, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php else: ?>
+                                <p style="font-size:14px;color:#374151;margin:0 0 12px 0;"><strong>Status:</strong> Seen by - <?php echo !empty($currentAssignee) ? '<strong>' . htmlspecialchars($currentAssignee->name ?? '', ENT_QUOTES, 'UTF-8') . '</strong>' : 'Support Team'; ?></p>
+                            <?php endif; ?>
                         </td>
                     </tr>
 

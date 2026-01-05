@@ -35,7 +35,7 @@ class TicketResponseMail extends Mailable
     {
         $createdAt = $this->ticket->date_created ?: $this->ticket->created_at;
         $year = $createdAt ? date('Y', strtotime($createdAt)) : date('Y');
-        $ticketNo = sprintf('T-%s-%04d', $year, $this->ticket->id);
+        $ticketNo = sprintf('T-%s-%06d', $year, $this->ticket->id);
 
         return $this
             ->subject('Re: Ticket ' . $ticketNo)

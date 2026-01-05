@@ -8,6 +8,7 @@ use App\Models\TicketRoutingHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\TicketProcessedMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\TicketResponseMail;
@@ -164,6 +165,45 @@ class AdminTicketsController extends Controller
                 }
             ])->select('tickets.*')->findOrFail($id);
 
+            // If this is the first time a staff has viewed the ticket, record it and notify the ticket creator.
+            try {
+                if (empty($ticket->first_viewed_at) && optional(request()->user())->id && !empty($ticket->email)) {
+                    // Record first view
+                    $ticket->first_viewed_at = now();
+                    $ticket->first_viewed_by = optional(request()->user())->id;
+                    $ticket->save();
+
+                    // Determine first and current assignees from routing history (ordered asc)
+                    $histories = TicketRoutingHistory::where('ticket_id', $ticket->id)->orderBy('routed_at','asc')->get();
+                    $firstAssignee = null;
+                    $currentAssignee = null;
+                    $isForwarded = false;
+                    if ($histories->count() > 0) {
+                        $firstEntry = $histories->first();
+                        $lastEntry = $histories->last();
+                        $firstAssignee = $firstEntry ? User::select('id','name','role_id')->find($firstEntry->staff_id) : null;
+                        $currentAssignee = $lastEntry ? User::select('id','name','role_id')->find($lastEntry->staff_id) : null;
+                        if ($firstAssignee && $currentAssignee && $firstAssignee->id !== $currentAssignee->id) {
+                            $isForwarded = true;
+                        }
+                    } else {
+                        // No routing history yet: use ticket->staff if present
+                        $currentAssignee = $ticket->staff ?? null;
+                    }
+
+                    // Eager-load roles for assignees if present
+                    if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
+                    if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+
+                    // Send notification to the ticket creator only
+                    Log::info('Sending TicketProcessedMail (admin show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, $isForwarded));
+                    Log::info('TicketProcessedMail sent (admin show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to send ticket-processed notification: ' . $e->getMessage(), ['ticket_id' => $id]);
+            }
+
             // Get list of users with roles (staff) for rerouting
             $users = User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
 
@@ -303,6 +343,21 @@ class AdminTicketsController extends Controller
                 optional(request()->user())->id,
                 'Forwarded by admin to user: ' . $user->name
             );
+
+            // Notify ticket creator that ticket was forwarded (include first assignee and new assignee)
+            try {
+                if (!empty($ticket->email)) {
+                    $firstAssignee = $originalStaffId ? User::select('id','name','role_id')->find($originalStaffId) : null;
+                    $currentAssignee = $user;
+                    if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
+                    if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+                    Log::info('Sending TicketProcessedMail (admin forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, true));
+                    Log::info('TicketProcessedMail sent (admin forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to send ticket-processed notification (admin forward): ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
 
             return response()->json(['message' => 'Ticket forwarded successfully', 'staff' => $user, 'refresh_dashboard' => true]);
         } catch (\Throwable $e) {

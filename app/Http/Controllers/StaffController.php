@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketResponseMail;
+use App\Mail\TicketProcessedMail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
@@ -492,6 +493,21 @@ class StaffController extends Controller
                 'Forwarded by staff to user: ' . $newStaff->name
             );
 
+            // Notify ticket creator that ticket was forwarded (include first assignee and new assignee)
+            try {
+                if (!empty($ticket->email)) {
+                    $firstAssignee = $ticket->staff_id ? User::select('id','name','role_id')->find($ticket->staff_id) : null;
+                    $currentAssignee = $newStaff;
+                    if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
+                    if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+                    Log::info('Sending TicketProcessedMail (staff forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, true));
+                    Log::info('TicketProcessedMail sent (staff forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to send ticket-processed notification (staff forward): ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            }
+
             return response()->json(['message' => 'Ticket forwarded successfully', 'new_staff' => $newStaff, 'refresh_dashboard' => true]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -530,6 +546,42 @@ class StaffController extends Controller
 
         // Load relations needed by the view or JSON response
         $ticket->load(['staff', 'routingHistories.staff']);
+
+        // Record first view and notify ticket creator when a staff opens the ticket page
+        try {
+            $auth = Auth::user();
+            if (!empty($auth) && empty($ticket->first_viewed_at) && !empty($ticket->email)) {
+                $ticket->first_viewed_at = now();
+                $ticket->first_viewed_by = $auth->id;
+                $ticket->save();
+
+                // Analyze routing history to determine forwarded state
+                $histories = $ticket->routingHistories->reverse()->values();
+                $firstAssignee = null;
+                $currentAssignee = null;
+                $isForwarded = false;
+                if ($histories->count() > 0) {
+                    $firstEntry = $histories->first();
+                    $lastEntry = $histories->last();
+                    $firstAssignee = $firstEntry ? User::select('id','name','role_id')->find($firstEntry['staff_id']) : null;
+                    $currentAssignee = $lastEntry ? User::select('id','name','role_id')->find($lastEntry['staff_id']) : null;
+                    if ($firstAssignee && $currentAssignee && $firstAssignee->id !== $currentAssignee->id) {
+                        $isForwarded = true;
+                    }
+                } else {
+                    $currentAssignee = $ticket->staff ?? null;
+                }
+
+                if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
+                if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+
+                    Log::info('Sending TicketProcessedMail (staff show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, $isForwarded));
+                    Log::info('TicketProcessedMail sent (staff show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send ticket-processed notification from StaffController: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+        }
 
         // If it's an AJAX request wanting JSON, return JSON response
         if (request()->ajax() || request()->wantsJson()) {

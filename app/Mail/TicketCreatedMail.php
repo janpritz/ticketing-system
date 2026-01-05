@@ -35,7 +35,7 @@ class TicketCreatedMail extends Mailable
         $categoryName = $this->ticket->category?->name ?: 'Uncategorized';
 
         return $this
-            ->subject('Ticket Created: ' . $ticketNo)
+            ->subject('Ticket Delivered: ' . $ticketNo)
             ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Sangkay Ticketing System'))
             ->view('emails.ticket_created')
             ->with([
