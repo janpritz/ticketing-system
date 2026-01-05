@@ -324,20 +324,131 @@ class ReportsController extends Controller
     private function getTicketsByOrgForPeriod($days)
     {
         $startDate = now()->subDays($days);
-        // Group by recepient_id (user who created the ticket)
-        return Ticket::where('created_at', '>=', $startDate)
-            ->select('recepient_id', DB::raw('COUNT(*) as count'))
-            ->groupBy('recepient_id')
-            ->orderByDesc('count')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                $user = \App\Models\User::find($item->recepient_id);
-                return [
-                    'name' => $user ? $user->name : 'Unknown',
-                    'count' => (int) $item->count,
-                ];
-            })
-            ->toArray();
+
+        // Only consider tickets that currently have status 'Forwarded'
+        $ticketIds = \App\Models\Ticket::where('status', 'Forwarded')->pluck('id')->toArray();
+        if (empty($ticketIds)) return [];
+
+        // Fetch routing history for these tickets and group by ticket_id
+        $histories = \App\Models\TicketRoutingHistory::whereIn('ticket_id', $ticketIds)
+            ->orderBy('ticket_id')
+            ->orderBy('routed_at')
+            ->get();
+
+        $groups = [];
+        foreach ($histories as $h) {
+            $groups[$h->ticket_id][] = $h;
+        }
+
+        $forwardCounts = [];
+        foreach ($groups as $ticketId => $rows) {
+            if (count($rows) < 2) continue;
+            $first = $rows[0];
+            $second = $rows[1];
+            // Only count the forward if the forwarding (second routed_at) occurred within the period
+            if (Carbon::parse($second->routed_at)->lt($startDate)) continue;
+            if ($first->staff_id) {
+                $fid = $first->staff_id;
+                if (!isset($forwardCounts[$fid])) $forwardCounts[$fid] = 0;
+                $forwardCounts[$fid]++;
+            }
+        }
+
+        if (empty($forwardCounts)) return [];
+
+        arsort($forwardCounts);
+        $top = array_slice($forwardCounts, 0, 10, true);
+        $users = \App\Models\User::whereIn('id', array_keys($top))->get()->keyBy('id');
+
+        $rowsOut = [];
+        foreach ($top as $staffId => $count) {
+            $user = $users->get($staffId);
+            $rowsOut[] = [
+                'id' => $staffId,
+                'name' => $user ? $user->name : 'Unknown',
+                'count' => (int)$count,
+            ];
+        }
+        return $rowsOut;
+    }
+
+    public function getForwardsByStaff($staffId, Request $request)
+    {
+        $days = $request->get('days', 30);
+        $startDate = now()->subDays($days);
+
+        // Consider tickets currently marked as Forwarded
+        $ticketIds = \App\Models\Ticket::where('status', 'Forwarded')->pluck('id')->toArray();
+        if (empty($ticketIds)) {
+            return response()->json(['forwarder' => null, 'recipients' => []]);
+        }
+
+        $histories = \App\Models\TicketRoutingHistory::whereIn('ticket_id', $ticketIds)
+            ->orderBy('ticket_id')
+            ->orderBy('routed_at')
+            ->get();
+
+        $groups = [];
+        foreach ($histories as $h) {
+            $groups[$h->ticket_id][] = $h;
+        }
+
+        $recipients = [];
+        foreach ($groups as $ticketId => $rows) {
+            if (count($rows) < 2) continue;
+            $first = $rows[0];
+            $second = $rows[1];
+            // only consider forwards where the second routed_at is in period
+            if (Carbon::parse($second->routed_at)->lt($startDate)) continue;
+            if ($first->staff_id == $staffId) {
+                $rid = $second->staff_id;
+                if (!isset($recipients[$rid])) {
+                    $recipients[$rid] = [
+                        'count' => 0,
+                        'tickets' => [],
+                    ];
+                }
+                $recipients[$rid]['count']++;
+                $recipients[$rid]['tickets'][] = $ticketId;
+            }
+        }
+
+        if (empty($recipients)) {
+            return response()->json(['forwarder' => null, 'recipients' => []]);
+        }
+
+        $recipientIds = array_keys($recipients);
+        $users = \App\Models\User::whereIn('id', $recipientIds)->get()->keyBy('id');
+
+        // Fetch ticket questions for all forwarded tickets so the UI can show questions
+        $allTicketIds = [];
+        foreach ($recipients as $meta) {
+            foreach ($meta['tickets'] as $tid) $allTicketIds[] = $tid;
+        }
+        $allTicketIds = array_values(array_unique($allTicketIds));
+        $ticketMap = [];
+        if (!empty($allTicketIds)) {
+            $ticketMap = \App\Models\Ticket::whereIn('id', $allTicketIds)->get(['id', 'question'])->keyBy('id');
+        }
+
+        $rows = [];
+        foreach ($recipients as $rid => $meta) {
+            $user = $users->get($rid);
+            $ticketList = [];
+            foreach ($meta['tickets'] as $tid) {
+                $tq = $ticketMap->has($tid) ? ($ticketMap->get($tid)->question ?? '') : '';
+                $ticketList[] = ['id' => $tid, 'question' => $tq];
+            }
+            $rows[] = [
+                'id' => $rid,
+                'name' => $user ? $user->name : 'Unknown',
+                'count' => (int)$meta['count'],
+                'tickets' => $ticketList,
+            ];
+        }
+
+        $forwarder = \App\Models\User::find($staffId);
+
+        return response()->json(['forwarder' => $forwarder ? $forwarder->name : 'Unknown', 'recipients' => $rows]);
     }
 }
