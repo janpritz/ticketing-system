@@ -48,7 +48,7 @@
                             </table>
 
                             <?php if (!empty($forwardHistory)): ?>
-                                <p style="font-size:14px;color:#374151;margin:0 0 12px 0;"><strong>Forward History:</strong> <?php echo htmlspecialchars($forwardHistory, ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p style="font-size:14px;color:#374151;margin:0 0 12px 0;"><strong>Status:</strong> <?php echo htmlspecialchars($forwardHistory, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php else: ?>
                                 <p style="font-size:14px;color:#374151;margin:0 0 12px 0;"><strong>Status:</strong> Seen by - <?php echo !empty($currentAssignee) ? '<strong>' . htmlspecialchars($currentAssignee->name ?? '', ENT_QUOTES, 'UTF-8') . '</strong>' : 'Support Team'; ?></p>
                             <?php endif; ?>

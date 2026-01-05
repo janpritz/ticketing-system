@@ -576,7 +576,8 @@ class StaffController extends Controller
                 if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
 
                     Log::info('Sending TicketProcessedMail (staff show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
-                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, $isForwarded));
+                    // Always send a "seen" notification from the show path (do not send forwarded notification here)
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, false));
                     Log::info('TicketProcessedMail sent (staff show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
             }
         } catch (\Throwable $e) {

@@ -197,7 +197,8 @@ class AdminTicketsController extends Controller
 
                     // Send notification to the ticket creator only
                     Log::info('Sending TicketProcessedMail (admin show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
-                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, $isForwarded));
+                    // For the "show" view path we only send a "seen" notification even if routing history exists.
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, false));
                     Log::info('TicketProcessedMail sent (admin show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
                 }
             } catch (\Throwable $e) {

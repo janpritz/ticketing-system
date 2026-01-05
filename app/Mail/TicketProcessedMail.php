@@ -57,7 +57,8 @@ class TicketProcessedMail extends Mailable
                         ->filter()
                         ->toArray();
 
-            if (!empty($rows)) {
+            // Treat as a forward only when there are at least 2 routing entries
+            if (count($rows) > 1) {
                 $names = [];
                 $users = \App\Models\User::whereIn('id', $rows)->get()->keyBy('id');
                 foreach ($rows as $sid) {
