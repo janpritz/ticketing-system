@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Models\DocumentChange;
+use App\Models\UploadLog;
+use App\Models\Document;
 use App\Services\RasaServerService;
 
 class StaffKnowledgebaseController extends Controller
@@ -18,7 +20,7 @@ class StaffKnowledgebaseController extends Controller
     public function index(Request $request)
     {
         $isDeleted = (bool) $request->query('include_deleted', false);
-        $listUrl = $isDeleted ? route('staff.faqs.deleted.list') : route('staff.faqs.index');
+        $listUrl = $isDeleted ? route('staff.document_management.index', ['include_deleted' => 'true']) : route('staff.document_management.index');
         return view('dashboards.staff.faqs.index', [
             'listUrl' => $listUrl,
             'isDeletedView' => $isDeleted,
@@ -570,162 +572,164 @@ class StaffKnowledgebaseController extends Controller
             'file_type' => 'required|string|max:10',
         ]);
 
-        // Check if Rasa server is online
-        if (RasaServerService::isServerOnline()) {
-            // Direct upload to Rasa server
-            try {
-                $uploadResult = RasaServerService::uploadDocument(
-                    $validated['file_name'],
-                    $validated['file_content'],
-                    $validated['file_type']
-                );
-
-                if (!$uploadResult['ok']) {
-                    throw new \Exception($uploadResult['error'] ?? 'Upload failed');
-                }
-
-                // Log document change for training
-                try {
-                    DocumentChange::create([
-                        'file_name' => $validated['file_name'],
-                        'action' => 'created',
-                        'user_id' => Auth::id(),
-                        'user_name' => Auth::user()->name ?? null,
-                        'training_required' => true,
-                        'training_completed' => false,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to log document upload change: ' . $e->getMessage());
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Document uploaded successfully'
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Failed to upload document: ' . $e->getMessage());
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to upload document: ' . $e->getMessage()
-                ], 500);
-            }
-        } else {
-            // Server offline, save to filesystem for later upload
-            $filename = $validated['file_name'] . '_' . uniqid() . '.txt';
-            $filePath = storage_path('app/queued_documents/' . $filename);
-            
-            // Ensure directory exists
-            $directory = storage_path('app/queued_documents');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-            
-            // Save file with metadata
-            $fileData = [
-                'file_name' => $validated['file_name'],
-                'file_content' => $validated['file_content'],
-                'file_type' => $validated['file_type'],
-                'uploaded_by' => Auth::id(),
-                'uploaded_at' => now()->toDateTimeString(),
-                'status' => 'pending'
-            ];
-            
-            file_put_contents($filePath, json_encode($fileData));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Document queued for upload (server offline)',
-                'queued' => true
-            ]);
-        }
-    }
-
-    /**
-     * Get queued documents from filesystem (AJAX)
-     */
-    public function getQueuedDocuments(Request $request)
-    {
-        $queuedDocuments = [];
-        $storagePath = storage_path('app/queued_documents');
-
-        if (file_exists($storagePath)) {
-            $files = glob($storagePath . '/*.txt');
-
-            foreach ($files as $file) {
-                $filename = basename($file);
-                $createdAt = filemtime($file);
-
-                // Extract original filename from the stored filename
-                // Format: original_filename_timestamp.txt
-                $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $filename);
-
-                $queuedDocuments[] = [
-                    'id' => md5($filename), // Generate ID from filename
-                    'file_name' => $originalFilename,
-                    'file_path' => 'queued_documents/' . $filename,
-                    'file_type' => 'txt',
-                    'status' => 'pending',
-                    'uploaded_by' => Auth::id(),
-                    'created_at' => date('Y-m-d H:i:s', $createdAt),
-                    'updated_at' => date('Y-m-d H:i:s', $createdAt)
-                ];
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'queued_documents' => $queuedDocuments
-        ]);
-    }
-
-    /**
-     * Cancel a queued document (AJAX)
-     */
-    public function cancelQueuedDocument($filename)
-    {
+        // Always attempt direct upload to Rasa (no offline queuing for staff)
         try {
-            // Find the file by filename
-            $storagePath = storage_path('app/queued_documents');
-            $files = glob($storagePath . '/*.txt');
+            // Prepare to fetch existing file (to compute old/new hashes and determine action)
+            $rasaUrl = config('services.faq_list_docs.url');
+            $secret = config('services.faq_list_docs.secret');
+            $oldContent = null;
+            $oldHash = null;
+            $action = 'created';
+            if ($rasaUrl) {
+                try {
+                    $downloadUrl = str_replace('/list-docs', '/download/' . rawurlencode($validated['file_name']), $rasaUrl);
+                    $downloadResponse = Http::withHeaders([
+                        'X-FAQ-UPDATER-TOKEN' => $secret,
+                        'X-Requested-With' => 'XMLHttpRequest'
+                    ])->get($downloadUrl);
 
-            $fileFound = false;
-            foreach ($files as $file) {
-                $storedFilename = basename($file);
-
-                // Extract original filename from the stored filename
-                // Format: original_filename_timestamp.txt
-                $originalFilename = preg_replace('/_[a-f0-9]{13}\.txt$/', '', $storedFilename);
-
-                if ($originalFilename === $filename) {
-                    // Delete the file
-                    if (unlink($file)) {
-                        $fileFound = true;
-                        break;
+                    if ($downloadResponse->successful()) {
+                        $oldContent = $downloadResponse->body();
+                        $oldHash = md5($oldContent);
+                        $action = 'updated';
                     }
+                } catch (\Exception $ex) {
+                    Log::warning('Failed to fetch existing document for hash comparison: ' . $ex->getMessage());
                 }
             }
 
-            if (!$fileFound) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Queued document not found'
-                ], 404);
+            $newHash = md5($validated['file_content']);
+
+            $uploadResult = RasaServerService::uploadDocument(
+                $validated['file_name'],
+                $validated['file_content'],
+                $validated['file_type']
+            );
+
+            if (!$uploadResult['ok']) {
+                throw new \Exception($uploadResult['error'] ?? 'Upload failed');
+            }
+
+            // Determine if training is required (changed content)
+            $trainingRequired = ($oldHash !== null) ? ($oldHash !== $newHash) : true;
+
+            // Log document change for training with hashes
+            try {
+                DocumentChange::create([
+                    'file_name' => $validated['file_name'],
+                    'action' => $action,
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'old_content_hash' => $oldHash,
+                    'new_content_hash' => $newHash,
+                    'change_timestamp' => now(),
+                    'training_required' => (bool) $trainingRequired,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to log document upload change: ' . $e->getMessage());
+            }
+
+            // Persist upload log for staff
+            try {
+                $log = UploadLog::create([
+                    'staff_id' => Auth::id(),
+                    'file_name' => $validated['file_name'],
+                    'file_size' => isset($validated['file_size']) ? $validated['file_size'] : null,
+                    'upload_date' => now(),
+                    'server_recieved_date' => now(),
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to create UploadLog: ' . $e->getMessage());
+            }
+
+            // Create or update local Document ownership record
+            try {
+                Document::updateOrCreate(
+                    ['staff_id' => Auth::id(), 'file_name' => $validated['file_name']],
+                    [
+                        'file_type' => $validated['file_type'],
+                        'file_size' => isset($validated['file_size']) ? $validated['file_size'] : null,
+                        'content_hash' => $newHash,
+                        'rasa_doc_id' => $uploadResult['doc_id'] ?? null,
+                    ]
+                );
+            } catch (\Exception $e) {
+                Log::warning('Failed to update/create Document record: ' . $e->getMessage());
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Queued document canceled successfully'
+                'message' => 'Document uploaded successfully',
+                'queued' => false,
+                'upload_log' => isset($log) ? $log : null
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to cancel queued document: ' . $e->getMessage());
+            Log::error('Failed to upload document (direct upload enforced): ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to cancel queued document'
+                'message' => 'Failed to upload document: ' . $e->getMessage()
             ], 500);
         }
     }
+
+    /**
+     * List files from Rasa and return only files owned by the authenticated staff user.
+     * Also returns a small diagnostics object indicating whether duplicate file names exist on the Rasa side.
+     */
+    public function filesList(Request $request)
+    {
+        $auth = Auth::user();
+        if (!$auth) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $rasaUrl = config('services.faq_list_docs.url');
+            if (!$rasaUrl) throw new \Exception('Rasa list-docs URL not configured');
+            $secret = config('services.faq_list_docs.secret');
+
+            $res = Http::withHeaders([
+                'X-FAQ-UPDATER-TOKEN' => $secret,
+                'X-Requested-With' => 'XMLHttpRequest'
+            ])->get($rasaUrl);
+
+            if (!$res->successful()) {
+                throw new \Exception('Failed to fetch Rasa file list: ' . $res->status());
+            }
+
+            $data = $res->json();
+            $files = $data['files'] ?? [];
+
+            // Diagnose duplicates on Rasa side
+            $nameCounts = [];
+            foreach ($files as $f) {
+                $name = $f['name'] ?? ($f['file_name'] ?? null);
+                if ($name) $nameCounts[$name] = ($nameCounts[$name] ?? 0) + 1;
+            }
+            $duplicates = array_filter($nameCounts, fn($c) => $c > 1);
+
+            // Filter by local ownership
+            $ownedNames = Document::where('staff_id', $auth->id)->pluck('file_name')->toArray();
+            $filtered = array_values(array_filter($files, function ($f) use ($ownedNames) {
+                $name = $f['name'] ?? ($f['file_name'] ?? null);
+                return $name && in_array($name, $ownedNames);
+            }));
+
+            return response()->json([
+                'ok' => true,
+                'files' => $filtered,
+                'diagnostics' => [
+                    'total_on_rasa' => count($files),
+                    'duplicate_names' => array_keys($duplicates),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('filesList error: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
 }

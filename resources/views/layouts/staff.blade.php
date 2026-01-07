@@ -52,10 +52,20 @@
         </button>
         <ul id="dropdown-faq" class="hidden py-2 space-y-2">
           <li>
-            <a href="{{ route('staff.faqs.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">FAQs</a>
+            <a href="{{ route('staff.document_management.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.document_management.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+              <svg class="w-4 h-4 {{ request()->routeIs('staff.document_management.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="m17.418 3.623-.018-.008a6.713 6.713 0 0 0-2.4-.569V2h1a1 1 0 1 0 0-2h-2a1 1 0 0 0-1 1v2H9.89A6.977 6.977 0 0 1 12 8v5h-2V8A5 5 0 1 0 0 8v6a1 1 0 0 0 1 1h8v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h6a1 1 0 0 0 1-1V8a5 5 0 0 0-2.582-4.377Z"/>
+              </svg>
+              <span class="ms-3">Document Management</span>
+            </a>
           </li>
           <li>
-            <a href="{{ route('staff.announcements.index') }}" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 {{ request()->routeIs('staff.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">Announcements</a>
+            <a href="{{ route('staff.announcements.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('staff.announcements.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 {{ request()->routeIs('staff.announcements.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M13 2.5a1.5 1.5 0 0 1 3 0v11a1.5 1.5 0 0 1-3 0zm-1 .724c-2.067.95-4.539 1.481-7 1.656v6.237a25 25 0 0 1 1.088.085c2.053.204 4.038.668 5.912 1.56zm-8 7.841V4.934c-.68.027-1.399.043-2.008.053A2.02 2.02 0 0 0 0 7v2c0 1.106.896 1.996 1.994 2.009l.496.008a64 64 0 0 1 1.51.048m1.39 1.081q.428.032.85.078l.253 1.69a1 1 0 0 1-.983 1.187h-.548a1 1 0 0 1-.916-.599l-1.314-2.48a66 66 0 0 1 1.692.064q.491.026.966.06"/>
+              </svg>
+              <span class="ms-3">Announcements</span>
+            </a>
           </li>
         </ul>
       </li>

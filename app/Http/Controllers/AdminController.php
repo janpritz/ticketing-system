@@ -13,7 +13,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\DocumentChange;
-use App\Models\QueuedDocument;
 use App\Services\RasaServerService;
 
 class AdminController extends Controller
@@ -787,22 +786,12 @@ class AdminController extends Controller
                 ], 500);
             }
         } else {
-            // Server offline, queue immediately
-            QueuedDocument::create([
-                'file_name' => 'Announcements.txt',
-                'file_content' => $validated['content'],
-                'file_type' => 'txt',
-                'uploaded_by' => Auth::id(),
-                'assigned_roles' => [Auth::user()->role_id], // Auto-assign uploader's role
-                'operation_type' => 'create',
-                'document_id' => null,
-            ]);
-
+            // Server offline: return an error (queued uploads removed)
             return response()->json([
-                'success' => true,
-                'message' => 'Announcement queued for upload (server offline)',
-                'queued' => true
-            ]);
+                'success' => false,
+                'message' => 'Rasa server is currently offline. Queued uploads have been removed from the codebase.',
+                'server_offline' => true
+            ], 503);
         }
     }
 

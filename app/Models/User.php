@@ -139,6 +139,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\Ticket::class, 'staff_id');
     }
+
+    /**
+     * Documents uploaded by this user (staff-owned documents).
+     *
+     * @return HasMany
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\Document::class, 'staff_id');
+    }
  
     /**
      * Helper to check if the user is the Primary Administrator.

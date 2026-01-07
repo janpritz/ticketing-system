@@ -1,12 +1,12 @@
 @extends('layouts.staff')
 
-@section('title', 'FAQ Test')
+@section('title', 'Document Test')
 
 @section('staff-content')
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">FAQ Test - Rasa Server Integration</h1>
-            <p class="mt-1 text-sm text-gray-600">Test fetching FAQs from the Rasa server</p>
+            <h1 class="text-2xl font-bold text-gray-900">Document Test - Rasa Server Integration</h1>
+            <p class="mt-1 text-sm text-gray-600">Test fetching documents from the Rasa server</p>
         </div>
 
         <div class="bg-white rounded-lg shadow-sm ring-1 ring-slate-900/5 mb-6">
@@ -69,7 +69,7 @@
 
     <!-- Hidden state with URLs -->
     <div id="faqs-state" class="hidden"
-         data-fetch-url="{{ route('staff.faqs.fetch') }}"></div>
+         data-fetch-url="{{ route('staff.document_management.fetch') }}"></div>
 @endsection
 
 @section('staff-scripts')

@@ -52,7 +52,7 @@ class StaffController extends Controller
         $recentTickets = Ticket::where('staff_id', $user->id)
             ->whereNotIn('status', ['Closed'])
             ->orderByDesc('date_created')
-            ->with(['staff', 'routingHistories.staff'])
+            ->with(['staff', 'routingHistories.staff', 'category'])
             ->get();
 
         return view('dashboards.staff.index', [
@@ -272,7 +272,7 @@ class StaffController extends Controller
         $query = Ticket::where('staff_id', $user->id)
             ->whereIn('status', ['Open', 'Forwarded'])
             ->orderByDesc('date_created')
-            ->with(['staff', 'routingHistories.staff']);
+            ->with(['staff', 'routingHistories.staff', 'category']);
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -385,7 +385,7 @@ class StaffController extends Controller
 
         // Build the base query
         $query = Ticket::where('staff_id', $user->id)
-            ->with(['staff', 'routingHistories.staff']);
+            ->with(['staff', 'routingHistories.staff', 'category']);
 
         // Debug: Check the base query
         Log::info('Base query SQL:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
@@ -576,7 +576,7 @@ class StaffController extends Controller
         }
 
         // Load relations needed by the view or JSON response
-        $ticket->load(['staff', 'routingHistories.staff']);
+        $ticket->load(['staff', 'routingHistories.staff', 'category']);
 
         // Record first view and notify ticket creator when a staff opens the ticket page
         try {
@@ -665,7 +665,7 @@ class StaffController extends Controller
                 'notes' => 'Closed via email response',
             ]);
 
-            $ticket->load(['staff', 'routingHistories.staff']);
+            $ticket->load(['staff', 'routingHistories.staff', 'category']);
 
             return response()->json([
                 'message' => 'Response email sent, ticket closed',
@@ -701,7 +701,7 @@ class StaffController extends Controller
 
         $query = Ticket::where('staff_id', $auth->id)
             ->orderByDesc('date_created')
-            ->with(['staff', 'routingHistories.staff']);
+            ->with(['staff', 'routingHistories.staff', 'category']);
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {

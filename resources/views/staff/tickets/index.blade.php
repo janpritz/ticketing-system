@@ -74,17 +74,12 @@
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <button class="group inline-flex items-center gap-1" data-sort="id">
                                 ID
-                                <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 sort-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M5 12a1 1 0 102 0V6.414l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L5 6.414V12zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z"/>
-                                </svg>
+                                
                             </button>
                         </th>
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <button class="group inline-flex items-center gap-1" data-sort="question">
-                                Subject
-                                <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 sort-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M5 12a1 1 0 102 0V6.414l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L5 6.414V12zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z"/>
-                                </svg>
+                                Concern
                             </button>
                         </th>
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -93,9 +88,6 @@
                         <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <button class="group inline-flex items-center gap-1" data-sort="date_created">
                                 Created Date
-                                <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 sort-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M5 12a1 1 0 102 0V6.414l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L5 6.414V12zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z"/>
-                                </svg>
                             </button>
                         </th>
                     </tr>
@@ -524,16 +516,13 @@ function renderTickets(tickets) {
                     <div class="text-sm font-medium text-indigo-600">#${ticket.id}</div>
                 </td>
                 <td class="px-4 py-4">
-                    <div class="text-sm text-gray-900 max-w-xs truncate" title="${ticket.question || ''}">${ticket.question || 'No subject'}</div>
+                    <div class="text-sm text-gray-900 max-w-xs truncate" title="${ticket.question || ''}">${ticket.question || 'No Concern'}</div>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">${ticket.category || 'Uncategorized'}</span>
+                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">${(ticket.category && typeof ticket.category === 'object') ? (ticket.category.name ?? 'Uncategorized') : (ticket.category || 'Uncategorized')}</span>
                     </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                     <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${statusClass}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="12" r="5"></circle>
-                        </svg>
                         ${ticket.status}
                     </span>
                 </td>
@@ -781,7 +770,7 @@ function openTicket(id) {
             const ticketNo = String(t.id);
             const createdAt = fmtDate(t.date_created || t.created_at);
             const updatedAt = fmtDate(t.updated_at);
-            const category = t.category ?? '';
+            const category = (t.category && typeof t.category === 'object') ? (t.category.name ?? '') : (t.category ?? '');
             const question = t.question ?? '';
             const email = t.email ?? '';
             const recepient = t.recepient_id ?? '';

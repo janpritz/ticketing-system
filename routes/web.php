@@ -286,29 +286,30 @@ Route::middleware('auth')->group(function () {
         ->name('logout');
 
 
-    // Staff FAQs from Rasa server
-    Route::get('/staff/faqs/fetch', [StaffController::class, 'fetchFaqs'])->name('staff.faqs.fetch');
-    Route::get('/staff/faqs/test', function () {
-        return view('staff.faqs.test');
-    })->name('staff.faqs.test');
+    // Staff Document Management from Rasa server
+    Route::get('/staff/document-management/fetch', [StaffController::class, 'fetchFaqs'])->name('staff.document_management.fetch');
+    Route::get('/staff/document-management/test', function () {
+        return view('staff.documents.test');
+    })->name('staff.document_management.test');
 
     // Staff reports
     Route::prefix('staff/reports')->name('staff.reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\StaffReportsController::class, 'index'])->name('index');
     });
 
-    // Staff FAQ management
-    Route::prefix('staff/faqs')->name('staff.faqs.')->group(function () {
+    // Staff Document Management
+    Route::prefix('staff/document-management')->name('staff.document_management.')->group(function () {
         Route::get('/', [StaffKnowledgebaseController::class, 'index'])->name('index');
+        Route::get('/files', [StaffKnowledgebaseController::class, 'filesList'])->name('files');
         Route::post('/', [StaffKnowledgebaseController::class, 'store'])->middleware('throttle:20,1')->name('store');
         Route::put('/{faq}', [StaffKnowledgebaseController::class, 'update'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
         Route::delete('/{faq}', [StaffKnowledgebaseController::class, 'destroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
     });
 
-    // Staff knowledgebase document upload
-    Route::post('/staff/knowledgebase/upload-document', [StaffKnowledgebaseController::class, 'uploadDocument'])->middleware('throttle:10,1')->name('staff.knowledgebase.upload-document');
-    Route::get('/staff/knowledgebase/queued-documents', [StaffKnowledgebaseController::class, 'getQueuedDocuments'])->name('staff.knowledgebase.queued-documents');
-    Route::delete('/staff/knowledgebase/queued-documents/{id}', [StaffKnowledgebaseController::class, 'cancelQueuedDocument'])->name('staff.knowledgebase.cancel-queued-document');
+    // Upload logs endpoints (staff-facing)
+    Route::get('/staff/upload-logs', [\App\Http\Controllers\StaffUploadLogsController::class, 'index'])->name('staff.upload-logs.index');
+    Route::post('/staff/upload-logs', [\App\Http\Controllers\StaffUploadLogsController::class, 'store'])->middleware('throttle:20,1')->name('staff.upload-logs.store');
+    Route::get('/staff/upload-logs/download-zip', [\App\Http\Controllers\StaffUploadLogsController::class, 'downloadZip'])->name('staff.upload-logs.download-zip');
 
     // Staff announcements
     Route::prefix('staff/announcements')->name('staff.announcements.')->group(function () {

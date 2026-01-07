@@ -19,9 +19,9 @@
                         <a href="{{ route('staff.reports.index') }}"
                             class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-white/5 hover:text-gray-900"
                             style="color: #111827;">Reports</a>
-                        <a href="{{ route('staff.faqs.index') }}"
+                        <a href="{{ route('staff.document_management.index') }}"
                             class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-white/5 hover:text-gray-900"
-                            style="color: #111827;">FAQs</a>
+                            style="color: #111827;">Document Management</a>
                         <a href="{{ route('staff.announcements.index') }}"
                             class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-white/5 hover:text-gray-900"
                             style="color: #111827;">Announcements</a>
@@ -179,7 +179,7 @@
                                     <thead class="bg-gray-50 text-gray-600">
                                         <tr>
                                             <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
-                                            <th class="px-3 py-3 text-left font-medium">Subject</th>
+                                            <th class="px-3 py-3 text-left font-medium">Concern</th>
                                             <th class="px-3 py-3 text-left font-medium">Status</th>
                                             <th class="px-3 py-3 text-left font-medium">Assignee</th>
                                         </tr>
@@ -320,7 +320,7 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
-                                                <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Issue</span>
+                                                <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Concern</span>
                                             </div>
                                             <div id="tmQuestion" class="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed"></div>
                                         </div>
@@ -630,7 +630,7 @@
                             const updatedAt = fmtDate(t.updated_at);
                             const createdAt = fmtDate(t.date_created || t.created_at);
                             const assignee = (t.staff && t.staff.name) ? t.staff.name : '-';
-                            const category = t.category ?? '';
+                            const category = (t.category && typeof t.category === 'object') ? (t.category.name ?? '') : (t.category ?? '');
 
                             const subject = (t.question ?? '').length > 80 ? (t.question ?? '').slice(0, 77) + '...' : (
                                 t.question ?? '');
@@ -977,7 +977,7 @@
                         const ticketNo = String(ticket.id);
                         const createdAt = fmtDate(ticket.date_created || ticket.created_at);
                         const updatedAt = fmtDate(ticket.updated_at);
-                        const category = ticket.category ?? '';
+                        const category = (ticket.category && typeof ticket.category === 'object') ? (ticket.category.name ?? '') : (ticket.category ?? '');
                         const subject = category ? `${category} - ${(ticket.question ?? '').slice(0, 80)}` : ((ticket
                             .question ?? '').slice(0, 80));
                         const question = ticket.question ?? '';

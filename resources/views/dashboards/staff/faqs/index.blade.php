@@ -6,14 +6,15 @@
     <div class="sm:px-2">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">FAQ Management</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Document Management</h1>
             </div>
             @if (!empty($isDeletedView))
                 <div class="flex sm:hidden items-center gap-2">
-                    <a href="{{ route('staff.faqs.index') }}"
+                    <a href="{{ route('staff.document_management.index') }}"
                         class="p-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:bg-gray-50"
                         aria-label="Back to FAQ Management (mobile)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-700" viewBox="0 0 24 24"
+                            fill="currentColor">
                             <path d="M15 6l-6 6 6 6" />
                         </svg>
                     </a>
@@ -23,9 +24,9 @@
             <!-- Desktop actions -->
             @if (!empty($isDeletedView))
                 <div class="hidden sm:flex items-center gap-2">
-                    <a href="{{ route('staff.faqs.index') }}"
+                    <a href="{{ route('staff.document_management.index') }}"
                         class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2">
-                        ← Back to FAQ Management
+                        ← Back to Document Management
                     </a>
                 </div>
             @else
@@ -35,17 +36,36 @@
                         class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2"
                         aria-label="Upload File">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <span class="hidden lg:inline">Upload Files</span>
                         <span class="lg:hidden">Upload</span>
                     </button>
+
+                    <!-- History Button (previously Upload Logs) -->
+                    <button id="uploadLogsBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="History">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16"
+                            fill="currentColor" viewBox="0 0 16 16">
+                            <path
+                                d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" />
+                            <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z" />
+                            <path
+                                d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5" />
+                        </svg>
+                        <span class="hidden lg:inline">History</span>
+                        <span class="lg:hidden">History</span>
+                    </button>
+
                     <!-- Refresh Documents Button -->
                     <button id="refreshDocsBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
                         aria-label="Refresh Documents">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         <span>Refresh</span>
                     </button>
@@ -59,7 +79,8 @@
             <!-- Mobile hamburger menu aligned with text -->
             <div class="sm:hidden absolute top-0 right-0">
                 <button id="mobileActionsToggle" type="button"
-                        class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4" aria-label="Open actions drawer">
+                    class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-slate-700 ml-4"
+                    aria-label="Open actions drawer">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
                     </svg>
@@ -73,7 +94,9 @@
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clip-rule="evenodd" />
                         </svg>
                     </div>
                     <div class="ml-3">
@@ -84,14 +107,18 @@
                 </div>
                 <div class="ml-4">
                     <button id="trainRasaBtn"
-                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
+                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
                         <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         <span id="trainBtnText">Train Rasa</span>
                         <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
                     </button>
                 </div>
@@ -108,29 +135,33 @@
     </div>
 
     <!-- Mobile Bottom Drawer -->
-    <div id="mobileDrawer" class="fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 ease-in-out sm:hidden">
+    <div id="mobileDrawer"
+        class="fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 ease-in-out sm:hidden">
         <div class="bg-white border-t border-gray-200 shadow-lg">
             <div class="p-4">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-medium text-gray-900">Actions</h3>
                     <button id="mobileDrawerClose" type="button" class="text-gray-400 hover:text-gray-600">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
                 <div class="space-y-3">
                     <button id="mobileRefreshDocsBtn" type="button"
-                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         Refresh Documents
                     </button>
                     <button id="mobileUploadFileBtn" type="button"
-                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         Upload Files
                     </button>
@@ -186,7 +217,7 @@
                         <label class="block text-sm font-medium text-slate-700">Assign to Roles</label>
                         <select name="assigned_roles[]" id="create_assigned_roles" multiple
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            @foreach(\App\Models\Role::all() as $role)
+                            @foreach (\App\Models\Role::all() as $role)
                                 <option value="{{ $role->id }}">{{ $role->name }}</option>
                             @endforeach
                         </select>
@@ -216,8 +247,10 @@
                     <div class="text-sm font-semibold text-slate-800">Upload FAQ File</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="upload"
                         aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 18 18 6M6 6l12 12" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-x" viewBox="0 0 16 16">
+                            <path
+                                d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
                         </svg>
                     </button>
                 </div>
@@ -234,7 +267,8 @@
                             class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
                             data-close="upload">Cancel</button>
                         <button id="uploadFileSubmit" type="button"
-                            class="rounded-md bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">Upload & Sync</button>
+                            class="rounded-md bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2">Upload
+                            & Sync</button>
                     </div>
                 </form>
             </div>
@@ -243,9 +277,9 @@
 
     <!-- View/Edit FAQ Modal -->
     <div id="viewFaqModal" class="fixed inset-0 z-50 hidden"
-        data-update-template="{{ route('staff.faqs.update', ['faq' => '__ID__']) }}"
-        data-show-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-destroy-template="{{ route('staff.faqs.destroy', ['faq' => '__ID__']) }}">
+        data-update-template="{{ route('staff.document_management.update', ['faq' => '__ID__']) }}"
+        data-show-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-destroy-template="{{ route('staff.document_management.destroy', ['faq' => '__ID__']) }}">
         <div class="absolute inset-0 bg-black/40" data-close="view"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
             <div
@@ -309,7 +343,7 @@
                         </div>
                         <p id="view_description_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
-    
+
                     <!-- Previous revision collapsible (populated dynamically) -->
                     <div id="previousRevisionWrapper" class="mt-3 hidden">
                         <button type="button" id="togglePrevRevisionBtn"
@@ -325,7 +359,7 @@
                             </div>
                         </div>
                     </div>
-    
+
                     <!-- Response -->
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Response</label>
@@ -339,7 +373,7 @@
                         <label class="block text-sm font-medium text-slate-700">Assign to Roles</label>
                         <select name="assigned_roles[]" id="view_assigned_roles" multiple
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            @foreach(\App\Models\Role::all() as $role)
+                            @foreach (\App\Models\Role::all() as $role)
                                 <option value="{{ $role->id }}">{{ $role->name }}</option>
                             @endforeach
                         </select>
@@ -367,11 +401,12 @@
     <div id="editDocumentModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-black/40" data-close="edit-doc"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
+            <div
+                class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Edit Document</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
-                            aria-label="Close">
+                        aria-label="Close">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M6 18 18 6M6 6l12 12" />
                         </svg>
@@ -381,25 +416,29 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700">File Name</label>
                         <input type="text" id="edit_doc_filename" readonly
-                               class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 text-gray-600" />
+                            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-50 text-gray-600" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Content</label>
                         <textarea id="edit_doc_content" rows="20" required
-                                  class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                                  placeholder="Enter document content here..."></textarea>
+                            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            placeholder="Enter document content here..."></textarea>
                         <p class="mt-1 text-xs text-slate-500">Supports plain text and markdown formatting</p>
                         <p id="edit_doc_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
                         <button type="button"
-                                class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
-                                data-close="edit-doc">Cancel</button>
+                            class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
+                            data-close="edit-doc">Cancel</button>
                         <button id="editDocumentSubmit" type="button"
-                                class="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
-                            <svg class="animate-spin h-4 w-4 mr-2 hidden" id="editDocSpinner" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            class="rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2">
+                            <svg class="animate-spin h-4 w-4 mr-2 hidden" id="editDocSpinner" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
                             </svg>
                             <span id="editDocBtnText">Save Changes</span>
                         </button>
@@ -410,15 +449,16 @@
     </div>
 
     <!-- Hidden state with URLs -->
-    <div id="staff-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('staff.faqs.index') }}"
-        data-store-url="{{ route('staff.faqs.store') }}"
-        data-show-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-update-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-destroy-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-revisions-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-restore-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-enable-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"
-        data-disable-url-template="{{ route('staff.faqs.index', ['faq' => '__ID__']) }}"></div>
+    <div id="staff-documents-state" class="hidden"
+        data-list-url="{{ $listUrl ?? route('staff.document_management.index') }}"
+        data-store-url="{{ route('staff.document_management.store') }}"
+        data-show-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-update-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-destroy-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-revisions-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-restore-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-enable-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"
+        data-disable-url-template="{{ route('staff.document_management.index', ['faq' => '__ID__']) }}"></div>
 
 @endsection
 
@@ -441,16 +481,17 @@
     <script>
         console.log('[TEST] FAQ JavaScript loaded and executing');
         (function() {
-            const stateEl = document.getElementById('staff-faqs-state');
-            const LIST_URL = stateEl.getAttribute('data-list-url');
-            const STORE_URL = stateEl.getAttribute('data-store-url');
-            const SHOW_TEMPLATE = stateEl.getAttribute('data-show-url-template');
-            const UPDATE_TEMPLATE = stateEl.getAttribute('data-update-url-template');
-            const DESTROY_TEMPLATE = stateEl.getAttribute('data-destroy-url-template');
-            const RESTORE_TEMPLATE = stateEl.getAttribute('data-restore-url-template');
-            const ENABLE_TEMPLATE = stateEl.getAttribute('data-enable-url-template');
-            const DISABLE_TEMPLATE = stateEl.getAttribute('data-disable-url-template');
-            const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const stateEl = document.getElementById('staff-documents-state');
+            const LIST_URL = stateEl ? stateEl.getAttribute('data-list-url') : '';
+            const STORE_URL = stateEl ? stateEl.getAttribute('data-store-url') : '';
+            const SHOW_TEMPLATE = stateEl ? stateEl.getAttribute('data-show-url-template') : '';
+            const UPDATE_TEMPLATE = stateEl ? stateEl.getAttribute('data-update-url-template') : '';
+            const DESTROY_TEMPLATE = stateEl ? stateEl.getAttribute('data-destroy-url-template') : '';
+            const RESTORE_TEMPLATE = stateEl ? stateEl.getAttribute('data-revisions-url-template') : '';
+            const ENABLE_TEMPLATE = stateEl ? stateEl.getAttribute('data-enable-url-template') : '';
+            const DISABLE_TEMPLATE = stateEl ? stateEl.getAttribute('data-disable-url-template') : '';
+            const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute ? document
+                .querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
 
             const $ = (sel, root = document) => root.querySelector(sel);
             const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -520,7 +561,9 @@
             if (moreRevisionsBtn) {
                 moreRevisionsBtn.addEventListener('click', () => {
                     const id = viewFaqId.value;
-                    const url = stateEl.getAttribute('data-revisions-url-template').replace('__ID__', id);
+                    const urlTemplate = stateEl ? stateEl.getAttribute('data-revisions-url-template') || '' :
+                        '';
+                    const url = urlTemplate.replace('__ID__', id);
                     window.location.href = url;
                 });
             }
@@ -580,7 +623,9 @@
                         // Use server-provided confirmation message when available
                         showToast('success', json.message || 'Previous response restored');
                         closeModal(viewModal);
-                        try { localStorage.setItem('ts_tickets_changed', String(Date.now())); } catch (e) {}
+                        try {
+                            localStorage.setItem('ts_tickets_changed', String(Date.now()));
+                        } catch (e) {}
                         fetchList(currentPage);
                     } catch (err) {
                         showToast('error', err.message || 'Error');
@@ -610,22 +655,17 @@
                     docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
                     console.log('[DEBUG] Set loading message');
 
-                    // Debug: Log the URL and configuration being used
-                    const rasaUrl = '{{ config("services.faq_list_docs.url") }}';
-                    const secret = '{{ config("services.faq_list_docs.secret") }}';
-                    console.log('[DEBUG] fetchDocs - URL:', rasaUrl);
-                    console.log('[DEBUG] fetchDocs - Secret length:', secret.length);
-                    console.log('[DEBUG] fetchDocs - Secret (first 5 chars):', secret.substring(0, 5) + '...');
+                    // Fetch the server-side filtered file list (avoids exposing Rasa secret to the browser)
+                    const listUrl = '{{ route('staff.document_management.files') }}';
+                    console.log('[DEBUG] fetchDocs - Requesting server file list at:', listUrl);
 
-                    const res = await fetch(rasaUrl, {
+                    const res = await fetch(listUrl, {
                         headers: {
-                            'X-FAQ-UPDATER-TOKEN': secret,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
 
                     console.log('[DEBUG] fetchDocs - Response status:', res.status);
-                    console.log('[DEBUG] fetchDocs - Response headers:', [...res.headers.entries()]);
 
                     if (!res.ok) {
                         const errorText = await res.text();
@@ -634,26 +674,28 @@
                     }
 
                     const json = await res.json();
-                    console.log('[DEBUG] fetchDocs - Response JSON:', json);
-
+                    console.log('[DEBUG] fetchDocs - Server response JSON:', json);
+                    // If diagnostics are present, log duplicate information
+                    if (json.diagnostics && json.diagnostics.duplicate_names && json.diagnostics.duplicate_names.length) {
+                        console.warn('[DEBUG] Rasa reported duplicate file names:', json.diagnostics.duplicate_names);
+                    }
                     if (!json.ok) {
                         console.error('[DEBUG] fetchDocs - API error:', json.error);
                         throw new Error(json.error || 'Failed to load docs');
                     }
 
                     renderDocsList(json.files || []);
-                    // Also fetch queued documents when server is online
-                    fetchQueuedDocuments();
                 } catch (err) {
                     console.error('[DEBUG] fetchDocs - Exception:', err);
                     // Check if it's a network error (server offline)
                     if (err.message.includes('Failed to fetch') || err.message.includes('fetch')) {
-                        docsListEl.innerHTML = `<div class="text-center text-sm text-red-600 mb-4">Error loading FAQs Documents: Rasa server is offline.</div>`;
+                        docsListEl.innerHTML =
+                            `<div class="text-center text-sm text-red-600 mb-4">Error loading FAQs Documents: Rasa server is offline.</div>`;
                     } else {
-                        docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: ${err.message}</div>`;
+                        docsListEl.innerHTML =
+                            `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: ${err.message}</div>`;
                     }
-                    // Always fetch and display queued documents (whether server is online or offline)
-                    fetchQueuedDocuments();
+                    // queued documents functionality removed
                 }
             }
 
@@ -685,9 +727,10 @@
                 if (!filename) return;
 
                 // Open download link in new tab with authentication token
-                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
-                const secret = '{{ config("services.faq_list_docs.secret") }}';
-                const downloadUrl = `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`;
+                const rasaBaseUrl = '{{ config('services.faq_list_docs.url') }}'.replace('/list-docs', '');
+                const secret = '{{ config('services.faq_list_docs.secret') }}';
+                const downloadUrl =
+                    `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`;
                 window.open(downloadUrl, '_blank');
             }
 
@@ -721,16 +764,19 @@
                     contentTextarea.disabled = true;
 
                     // Fetch document content
-                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
-                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+                    const rasaBaseUrl = '{{ config('services.faq_list_docs.url') }}'.replace('/list-docs', '');
+                    const secret = '{{ config('services.faq_list_docs.secret') }}';
 
-                    console.log('[DEBUG] loadDocumentContent - URL:', `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`);
+                    console.log('[DEBUG] loadDocumentContent - URL:',
+                        `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`
+                    );
 
-                    const res = await fetch(`${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
+                    const res = await fetch(
+                        `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
 
                     if (!res.ok) {
                         throw new Error(`Failed to load document: ${res.status}`);
@@ -758,7 +804,7 @@
             async function logDocumentChange(filename, action) {
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route("admin.document-changes.log") }}', {
+                    const res = await fetch('{{ route('admin.document-changes.log') }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrf,
@@ -783,7 +829,7 @@
 
             async function checkTrainingStatus() {
                 try {
-                    const res = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                    const res = await fetch('{{ route('admin.document-changes.training-status') }}', {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
@@ -829,8 +875,8 @@
                 btnText.textContent = 'Saving...';
 
                 try {
-                    const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
-                    const secret = '{{ config("services.faq_list_docs.secret") }}';
+                    const rasaBaseUrl = '{{ config('services.faq_list_docs.url') }}'.replace('/list-docs', '');
+                    const secret = '{{ config('services.faq_list_docs.secret') }}';
 
                     console.log('[DEBUG] saveDocumentContent - URL:', `${rasaBaseUrl}/update-document`);
                     console.log('[DEBUG] saveDocumentContent - Secret length:', secret.length);
@@ -845,7 +891,8 @@
                         body: JSON.stringify({
                             file_name: filename,
                             file_content: content,
-                            file_type: filename.toLowerCase().endsWith('.md') ? 'text/markdown' : 'text/plain'
+                            file_type: filename.toLowerCase().endsWith('.md') ? 'text/markdown' :
+                                'text/plain'
                         })
                     });
 
@@ -891,8 +938,8 @@
                     return;
                 }
 
-                const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
-                const secret = '{{ config("services.faq_list_docs.secret") }}';
+                const rasaBaseUrl = '{{ config('services.faq_list_docs.url') }}'.replace('/list-docs', '');
+                const secret = '{{ config('services.faq_list_docs.secret') }}';
                 docsListEl.innerHTML = files.map(file => `
                     <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                         <div class="flex items-center gap-3">
@@ -929,75 +976,8 @@
                 $$('.editDocBtn').forEach(btn => btn.addEventListener('click', onEditDocClick));
             }
 
-            async function fetchQueuedDocuments() {
-                try {
-                    const res = await fetch('{{ route("staff.knowledgebase.queued-documents") }}', {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    if (!res.ok) {
-                        throw new Error('Failed to fetch queued documents');
-                    }
-
-                    const data = await res.json();
-
-                    if (data.success) {
-                        renderQueuedDocuments(data.queued_documents);
-                    }
-                } catch (err) {
-                    console.error('[DEBUG] Error fetching queued documents:', err);
-                }
-            }
 
 
-            function renderQueuedDocuments(queuedDocuments) {
-                const docsListEl = $('#docsList');
-
-                if (!queuedDocuments || queuedDocuments.length === 0) {
-                    docsListEl.innerHTML += '<div class="text-center text-sm text-gray-500 mt-4">No queued documents.</div>';
-                    return;
-                }
-
-                const queuedHtml = `
-                    <div class="mt-6">
-                        <h3 class="text-sm font-medium text-gray-900 mb-3">Pending Uploads</h3>
-                        <div class="space-y-3">
-                            ${queuedDocuments.map(doc => `
-                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex-shrink-0">
-                                            <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">${escapeHtml(doc.file_name)}</div>
-                                            <div class="text-xs text-gray-500">Queued ${formatDate(doc.created_at)}</div>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            Pending Upload
-                                        </span>
-                                        <button onclick="cancelQueuedDocument('${escapeHtml(doc.file_name)}')"
-                                                class="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 text-sm font-medium px-3 py-1.5 text-red-700 transition-colors"
-                                                title="Cancel upload">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            <span>Cancel</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-
-                docsListEl.innerHTML += queuedHtml;
-            }
 
             function renderPagination(meta) {
                 if (!meta || !meta.total) {
@@ -1100,7 +1080,8 @@
                 // Handle previous revision display
                 if (faq.latest_revision && prevWrapper) {
                     prevWrapper.classList.remove('hidden');
-                    if (prevMeta) prevMeta.textContent = `${faq.latest_revision.action || 'update'} at ${faq.latest_revision.created_at || ''}`;
+                    if (prevMeta) prevMeta.textContent =
+                        `${faq.latest_revision.action || 'update'} at ${faq.latest_revision.created_at || ''}`;
                     if (prevContent) prevContent.textContent = faq.latest_revision.response || '';
                     if (restorePrevBtn && faq.undo_url) {
                         restorePrevBtn.dataset.url = faq.undo_url;
@@ -1140,7 +1121,7 @@
             const qMobile = $('#q_mobile');
             const mobileSearchBtn = $('#mobileSearchBtn');
             const perPageMobile = $('#per_page_mobile');
-            
+
             if (mobileSearchBtn && qMobile) {
                 mobileSearchBtn.addEventListener('click', () => {
                     if (qInput) qInput.value = qMobile.value;
@@ -1227,7 +1208,7 @@
 
                     try {
                         // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("staff.faqs.index") }}', {
+                        const faqRes = await fetch('{{ route('staff.document_management.index') }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
@@ -1246,17 +1227,19 @@
 
                         // Handle empty FAQ table - sync with empty FAQ array to clear Rasa FAQ file
                         if (faqs.length === 0) {
-                            console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
+                            console.log(
+                                '[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file'
+                            );
                         }
 
                         // Log the document change for tracking
                         await logDocumentChange('faqs.json', 'updated');
 
                         // Send all FAQs (or empty array) to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
+                        const rasaRes = await fetch('{{ config('services.faq_sync.url') }}', {
                             method: 'POST',
                             headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                'X-FAQ-UPDATER-TOKEN': '{{ config('services.faq_sync.secret') }}',
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
@@ -1271,7 +1254,8 @@
                         } else {
                             // Handle HTML error response
                             const errorText = await rasaRes.text();
-                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
+                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:',
+                                errorText);
                             throw new Error('Rasa server returned an error instead of JSON response');
                         }
 
@@ -1297,12 +1281,14 @@
                         } catch (e) {
                             // localStorage not available
                         }
-                        
+
                         // Show appropriate success message
                         if (faqs.length === 0) {
                             showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
                         } else {
-                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                            showToast('success',
+                                `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`
+                            );
                         }
 
                     } catch (err) {
@@ -1442,7 +1428,11 @@
                                 'Content-Type': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest'
                             },
-                            body: JSON.stringify({ intent, description, response })
+                            body: JSON.stringify({
+                                intent,
+                                description,
+                                response
+                            })
                         });
                         const json = await res.json();
                         if (!res.ok) {
@@ -1467,15 +1457,15 @@
             // Helper function to check Rasa server status
             async function checkRasaServerStatus() {
                 try {
-                    const rasaUrl = '{{ config("services.faq_sync.url") }}';
+                    const rasaUrl = '{{ config('services.faq_sync.url') }}';
                     if (!rasaUrl) return false;
-                    
+
                     // Remove /sync-faqs from the end to get base URL
                     const baseUrl = rasaUrl.replace('/sync-faqs', '');
                     const healthUrl = baseUrl + '/health';
-                    
+
                     console.log('[DEBUG] Checking Rasa server status at:', healthUrl);
-                    
+
                     const response = await fetch(healthUrl, {
                         method: 'GET',
                         headers: {
@@ -1483,7 +1473,7 @@
                         },
                         timeout: 5000
                     });
-                    
+
                     const isOnline = response.ok;
                     console.log('[DEBUG] Rasa server status:', isOnline ? 'ONLINE' : 'OFFLINE');
                     return isOnline;
@@ -1493,7 +1483,7 @@
                 }
             }
 
-            // Upload file submit handler
+            // Upload file submit handler (direct upload to Rasa + record log)
             if (uploadSubmit) {
                 uploadSubmit.addEventListener('click', async () => {
                     const file = faqFileInput.files[0];
@@ -1513,10 +1503,6 @@
 
                     $('#upload_file_error').classList.add('hidden');
 
-                    // Check Rasa server status for better user feedback
-                    const isRasaOnline = await checkRasaServerStatus();
-                    console.log('[File Upload] Rasa server status:', isRasaOnline ? 'ONLINE' : 'OFFLINE');
-
                     // Store original content and show loading spinner
                     const originalHTML = uploadSubmit.innerHTML;
                     uploadSubmit.disabled = true;
@@ -1532,13 +1518,13 @@
                         const fileContent = await file.text();
                         console.log('[File Upload] File content length:', fileContent.length);
 
-                        // Send file content to Laravel upload endpoint
-                        const res = await fetch('{{ route("staff.knowledgebase.upload-document") }}', {
+                        // Send file content directly to Rasa upload endpoint (admin-style)
+                        const baseUrl = '{{ config('services.faq_sync.url') }}'.replace('/sync-faqs', '');
+                        const rasaRes = await fetch(`${baseUrl}/upload-file`, {
                             method: 'POST',
                             headers: {
-                                'X-CSRF-TOKEN': csrf,
+                                'X-FAQ-UPDATER-TOKEN': '{{ config('services.faq_sync.secret') }}',
                                 'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
                             },
                             body: JSON.stringify({
                                 file_content: fileContent,
@@ -1547,36 +1533,51 @@
                             })
                         });
 
-                        const result = await res.json();
+                        const result = await (rasaRes.ok ? rasaRes.json() : rasaRes.text().then(t => ({
+                            ok: false,
+                            error: t
+                        })));
 
-                        console.log('[File Upload] Laravel response:', result);
+                        console.log('[File Upload] Rasa response:', result);
 
-                        if (!res.ok || !result.success) {
-                            console.error('[File Upload] Upload failed:', result.message || 'Unknown error');
-                            throw new Error(result.message || 'File upload failed');
+                        if (!rasaRes.ok || !result.ok) {
+                            console.error('[File Upload] Upload failed:', result.error || 'Unknown error');
+                            throw new Error(result.error || 'File upload failed');
                         }
 
-                        console.log('[File Upload] Success! File uploaded:', result);
+                        // Record upload log on server
+                        try {
+                            const logRes = await fetch('{{ route('staff.upload-logs.store') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    file_name: file.name,
+                                    file_size: file.size || null,
+                                    upload_date: new Date().toISOString(),
+                                    server_recieved_date: new Date().toISOString()
+                                })
+                            });
 
-                        // Show appropriate success message with server status info
-                        let message = '';
-                        if (result.queued) {
-                            message = 'Document queued for upload (server offline)';
-                        } else {
-                            message = 'Document uploaded successfully';
+                            if (!logRes.ok) {
+                                console.warn('[File Upload] Failed to save upload log:', await logRes
+                                    .text());
+                            } else {
+                                console.log('[File Upload] Upload log saved');
+                            }
+                        } catch (logErr) {
+                            console.error('[File Upload] Error saving upload log:', logErr);
                         }
-                        
-                        // Add server status info for debugging
-                        if (isRasaOnline && result.queued) {
-                            message += ' [DEBUG: Server was detected as online but file was queued]';
-                        }
-                        
-                        showToast('success', message);
+
+                        showToast('success', 'File uploaded and synced successfully');
 
                         closeModal(uploadModal);
                         uploadForm.reset();
 
-                        // Auto-refresh document list on successful upload (both queued and direct)
+                        // Auto-refresh document list
                         fetchDocs();
 
                     } catch (err) {
@@ -1615,7 +1616,11 @@
                                 'Content-Type': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest'
                             },
-                            body: JSON.stringify({ intent, description, response })
+                            body: JSON.stringify({
+                                intent,
+                                description,
+                                response
+                            })
                         });
                         const json = await res.json();
                         if (!res.ok) {
@@ -1726,7 +1731,7 @@
 
                     try {
                         // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("staff.faqs.index") }}', {
+                        const faqRes = await fetch('{{ route('staff.document_management.index') }}', {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
@@ -1745,14 +1750,16 @@
 
                         // Handle empty FAQ table - sync with empty FAQ array to clear Rasa FAQ file
                         if (faqs.length === 0) {
-                            console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
+                            console.log(
+                                '[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file'
+                            );
                         }
 
                         // Send all FAQs (or empty array) to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
+                        const rasaRes = await fetch('{{ config('services.faq_sync.url') }}', {
                             method: 'POST',
                             headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                'X-FAQ-UPDATER-TOKEN': '{{ config('services.faq_sync.secret') }}',
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
@@ -1767,7 +1774,8 @@
                         } else {
                             // Handle HTML error response
                             const errorText = await rasaRes.text();
-                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
+                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:',
+                                errorText);
                             throw new Error('Rasa server returned an error instead of JSON response');
                         }
 
@@ -1793,12 +1801,14 @@
                         } catch (e) {
                             // localStorage not available
                         }
-                        
+
                         // Show appropriate success message
                         if (faqs.length === 0) {
                             showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
                         } else {
-                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
+                            showToast('success',
+                                `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`
+                            );
                         }
 
                     } catch (err) {
@@ -1850,7 +1860,7 @@
 
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
+                    const res = await fetch('{{ route('admin.document-changes.train-rasa') }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrf,
@@ -1890,7 +1900,7 @@
             async function checkApiServerAlert() {
                 try {
                     // Check if there's been a recent training (within last 60 minutes)
-                    const res = await fetch('{{ route("admin.document-changes.check-recent-training") }}', {
+                    const res = await fetch('{{ route('admin.document-changes.check-recent-training') }}', {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
@@ -1937,7 +1947,7 @@
 
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                    const res = await fetch('{{ route('admin.document-changes.start-rasa-api') }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrf,
@@ -1982,72 +1992,154 @@
             checkTrainingStatus();
 
         })();
+    </script>
 
-        // Global function for canceling queued documents (accessible from onclick attributes)
-        async function cancelQueuedDocument(docId) {
-            const confirmResult = await Swal.fire({
-                title: 'Cancel Upload?',
-                text: 'Are you sure you want to cancel this queued document? This will delete the stored file.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, cancel it!',
-                cancelButtonText: 'No, keep it'
-            });
+    <!-- History Modal (modernized layout similar to ticket modal) -->
+    <div id="uploadLogsModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+        <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+            <button type="button" class="absolute top-3 right-3 text-slate-700 hover:text-slate-900 z-50"
+                data-close="upload-logs" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-x" viewBox="0 0 16 16">
+                    <path
+                        d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+            </button>
+            <div
+                class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+                <!-- Header -->
+                <div class="px-4 sm:px-6 py-3 border-b flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-800">Document Upload History</div>
+                    <div class="flex items-center gap-2">
+                        <!-- header controls (kept for spacing) -->
+                    </div>
+                </div>
+                <!-- Body -->
+                <div class="p-4 overflow-auto flex-1">
+                    <div id="uploadLogsTableWrapper" class="overflow-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        File Name</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Size</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Upload Date</th>
+                                    <th
+                                        class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Server Received</th>
+                                </tr>
+                            </thead>
+                            <tbody id="uploadLogsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Footer (pagination) -->
+                <div class="px-4 py-3 border-t bg-gray-50 text-sm">
+                    <div id="uploadLogsPagination" class="flex items-center justify-end"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            if (!confirmResult.isConfirmed) {
-                return;
+    <script>
+        // Upload Logs modal handlers
+        (function() {
+            const uploadLogsBtn = document.getElementById('uploadLogsBtn');
+            const uploadLogsModal = document.getElementById('uploadLogsModal');
+            const uploadLogsTableBody = document.getElementById('uploadLogsTableBody');
+            const uploadLogsPagination = document.getElementById('uploadLogsPagination');
+            const closeEls = document.querySelectorAll('[data-close="upload-logs"]');
+
+            function openModal(el) {
+                if (el) el.classList.remove('hidden');
             }
 
-            try {
-                const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const res = await fetch(`{{ route("staff.knowledgebase.cancel-queued-document", ":id") }}`.replace(':id', docId), {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+            function closeModal(el) {
+                if (el) el.classList.add('hidden');
+            }
 
-                const result = await res.json();
+            if (uploadLogsBtn) uploadLogsBtn.addEventListener('click', () => {
+                fetchUploadLogs(1);
+                openModal(uploadLogsModal);
+            });
+            closeEls.forEach(el => el.addEventListener('click', () => closeModal(uploadLogsModal)));
 
-                if (!res.ok || !result.success) {
-                    throw new Error(result.message || 'Failed to cancel document');
+            async function fetchUploadLogs(page = 1) {
+                try {
+                    const per_page = 10;
+                    const res = await fetch(
+                        `{{ route('staff.upload-logs.index') }}?page=${page}&per_page=${per_page}`, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                    if (!res.ok) throw new Error('Failed to fetch upload logs');
+                    const data = await res.json();
+
+                    renderUploadLogsTable(data.data || []);
+                    renderUploadLogsPagination(data);
+                } catch (err) {
+                    console.error('Failed to fetch upload logs', err);
+                    uploadLogsTableBody.innerHTML =
+                        `<tr><td colspan="4" class="px-4 py-4 text-sm text-red-600">Failed to load upload logs</td></tr>`;
+                    uploadLogsPagination.innerHTML = '';
+                }
+            }
+
+            function renderUploadLogsTable(rows) {
+                if (!rows || rows.length === 0) {
+                    uploadLogsTableBody.innerHTML =
+                        `<tr><td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">No logs found</td></tr>`;
+                    return;
                 }
 
-                showToast('success', 'Queued document canceled successfully');
-
-                // Auto-refresh the document lists with a small delay for UI consistency
-                setTimeout(() => {
-                    // Refresh the main docs list to update the queued documents section
-                    try {
-                        // Try to access fetchDocs from the main scope
-                        if (typeof fetchDocs === 'function') {
-                            fetchDocs();
-                        } else {
-                            // Fallback: try to find and call the function from the main scope
-                            const mainScope = window;
-                            if (mainScope && typeof mainScope.fetchDocs === 'function') {
-                                mainScope.fetchDocs();
-                            } else {
-                                // Final fallback: reload the page to show updated state
-                                location.reload();
-                            }
-                        }
-                    } catch (refreshErr) {
-                        console.error('[DEBUG] Error refreshing after cancel:', refreshErr);
-                        // Final fallback: reload the page
-                        location.reload();
-                    }
-                }, 500);
-
-            } catch (err) {
-                console.error('[DEBUG] Error canceling queued document:', err);
-                showToast('error', err.message || 'Failed to cancel queued document');
+                uploadLogsTableBody.innerHTML = rows.map(r => {
+                    const size = r.file_size ? formatFileSize(r.file_size) : '-';
+                    const uploadDate = r.upload_date ? new Date(r.upload_date).toLocaleString() : '-';
+                    const serverDate = r.server_recieved_date ? new Date(r.server_recieved_date)
+                        .toLocaleString() : '-';
+                    return `<tr><td class="px-4 py-3 text-sm text-gray-900">${escapeHtml(r.file_name)}</td><td class="px-4 py-3 text-sm text-gray-700">${size}</td><td class="px-4 py-3 text-sm text-gray-700">${uploadDate}</td><td class="px-4 py-3 text-sm text-gray-700">${serverDate}</td></tr>`;
+                }).join('');
             }
-        }
 
+            function renderUploadLogsPagination(meta) {
+                if (!meta || !meta.total) {
+                    uploadLogsPagination.innerHTML = '';
+                    return;
+                }
+                const current = meta.current_page || 1;
+                const last = meta.last_page || 1;
+                let html = '';
+                if (current > 1) html +=
+                    `<button class="px-3 py-1 border rounded mr-2" data-page="${current-1}">Prev</button>`;
+                html += `<span class="text-sm text-gray-700 mr-2">Page ${current} of ${last}</span>`;
+                if (current < last) html +=
+                    `<button class="px-3 py-1 border rounded" data-page="${current+1}">Next</button>`;
+                uploadLogsPagination.innerHTML = html;
+                uploadLogsPagination.querySelectorAll('button').forEach(b => b.addEventListener('click', () =>
+                    fetchUploadLogs(parseInt(b.getAttribute('data-page')))));
+            }
+
+            function escapeHtml(s) {
+                if (s == null) return '';
+                return String(s).replaceAll('&', '&').replaceAll('<', '<').replaceAll('>', '>').replaceAll('"', '"')
+                    .replaceAll("'", "&#039;");
+            }
+
+            function formatFileSize(bytes) {
+                if (!bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+            }
+        })();
     </script>
 
 @endsection
