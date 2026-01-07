@@ -40,6 +40,20 @@
                         <span class="hidden lg:inline">Upload Files</span>
                         <span class="lg:hidden">Upload</span>
                     </button>
+
+                    <!-- History Button (global Document Management History modal) -->
+                    <button id="uploadLogsBtn" type="button"
+                        class="inline-flex items-center gap-2 rounded-lg bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-3 py-2"
+                        aria-label="History">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z" />
+                            <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z" />
+                            <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5" />
+                        </svg>
+                        <span class="hidden lg:inline">History</span>
+                        <span class="lg:hidden">History</span>
+                    </button>
+
                     <!-- Refresh Documents Button -->
                     <button id="refreshDocsBtn" type="button"
                         class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2"
@@ -133,6 +147,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         Upload Files
+                    </button>
+                    <button id="mobileHistoryBtn" type="button"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-4 py-2">
+                        <svg class="h-4 w-4 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h4l2-3 4 6 3-4 3 5" />
+                        </svg>
+                        History
                     </button>
                 </div>
             </div>
@@ -262,9 +283,7 @@
                 <div id="moreActionsMenu"
                     class="absolute top-10 right-3 hidden bg-white border border-gray-200 rounded shadow-md z-50 w-44">
                     <div class="py-1">
-                        <button id="more_revisions_btn" type="button"
-                            class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">View
-                            Revisions</button>
+                        <!-- Removed per-document history button -->
                         <button id="more_restore_btn" type="button"
                             class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hidden">Restore
                             Document</button>
@@ -384,6 +403,47 @@
         </div>
     </div>
 
+    <!-- Document Management History Modal -->
+    <div id="uploadLogsModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" data-modal-backdrop></div>
+        <div class="relative mx-auto my-0 sm:my-8 w-full h-full sm:h-auto sm:w-[95%] max-w-2xl flex items-center">
+            <button type="button" class="absolute top-3 right-3 text-slate-700 hover:text-slate-900 z-50" data-close="upload-logs" aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x" viewBox="0 0 16 16">
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                </svg>
+            </button>
+            <div class="bg-white shadow-2xl w-full h-full sm:h-auto sm:max-h-[95vh] sm:max-w-2xl overflow-hidden sm:rounded-2xl flex flex-col">
+                <!-- Header -->
+                <div class="px-4 sm:px-6 py-3 border-b flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-800">Document Upload History</div>
+                    <div class="flex items-center gap-2">
+                        <!-- header controls (kept for spacing) -->
+                    </div>
+                </div>
+                <!-- Body -->
+                <div class="p-4 overflow-auto flex-1">
+                    <div id="uploadLogsTableWrapper" class="overflow-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Upload Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Server Received</th>
+                                </tr>
+                            </thead>
+                            <tbody id="uploadLogsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Footer (pagination) -->
+                <div class="px-4 py-3 border-t bg-gray-50 text-sm">
+                    <div id="uploadLogsPagination" class="flex items-center justify-end"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden state with URLs -->
     <div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.knowledgebase.list') }}"
         data-store-url="{{ route('admin.knowledgebase.store') }}"
@@ -393,7 +453,10 @@
         data-revisions-url-template="{{ route('admin.knowledgebase.revisions', ['faq' => '__ID__']) }}"
         data-restore-url-template="{{ route('admin.knowledgebase.restore', ['faq' => '__ID__']) }}"
         data-enable-url-template="{{ route('admin.knowledgebase.enable', ['faq' => '__ID__']) }}"
-        data-disable-url-template="{{ route('admin.knowledgebase.disable', ['faq' => '__ID__']) }}"></div>
+        data-disable-url-template="{{ route('admin.knowledgebase.disable', ['faq' => '__ID__']) }}"
+        data-local-documents='@json($localDocuments ?? [])'
+        data-history-url=""
+        ></div>
 
 @endsection
 
@@ -425,6 +488,7 @@
             const RESTORE_TEMPLATE = stateEl.getAttribute('data-restore-url-template');
             const ENABLE_TEMPLATE = stateEl.getAttribute('data-enable-url-template');
             const DISABLE_TEMPLATE = stateEl.getAttribute('data-disable-url-template');
+            const HISTORY_URL = stateEl.getAttribute('data-history-url');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             const $ = (sel, root = document) => root.querySelector(sel);
@@ -473,8 +537,6 @@
             // More actions elements (modal "..." menu)
             const moreBtn = $('#moreActionsBtn');
             const moreMenu = $('#moreActionsMenu');
-            const moreRestoreBtn = $('#more_restore_btn');
-            const moreRevisionsBtn = $('#more_revisions_btn');
 
             // More actions button toggle
             if (moreBtn) {
@@ -491,15 +553,6 @@
                 }
             });
 
-            // More revisions button handler
-            if (moreRevisionsBtn) {
-                moreRevisionsBtn.addEventListener('click', () => {
-                    const id = viewFaqId.value;
-                    const url = stateEl.getAttribute('data-revisions-url-template').replace('__ID__', id);
-                    window.location.href = url;
-                });
-            }
-
             // Previous revision elements (collapsible)
             const prevWrapper = $('#previousRevisionWrapper');
             const togglePrevBtn = $('#togglePrevRevisionBtn');
@@ -507,8 +560,6 @@
             const prevMeta = $('#prevRevisionMeta');
             const prevContent = $('#prevRevisionContent');
             const restorePrevBtn = $('#restorePrevBtn');
-
-
 
             // Toggle previous revision block
             if (togglePrevBtn) {
@@ -566,8 +617,6 @@
                 });
             }
 
-
-
             function openModal(modal) {
                 if (modal) modal.classList.remove('hidden');
             }
@@ -583,14 +632,9 @@
                 console.log('[DEBUG] docsListEl found:', docsListEl);
                 try {
                     docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
-                    console.log('[DEBUG] Set loading message');
 
-                    // Debug: Log the URL and configuration being used
                     const rasaUrl = '{{ config("services.faq_list_docs.url") }}';
                     const secret = '{{ config("services.faq_list_docs.secret") }}';
-                    console.log('[DEBUG] fetchDocs - URL:', rasaUrl);
-                    console.log('[DEBUG] fetchDocs - Secret length:', secret.length);
-                    console.log('[DEBUG] fetchDocs - Secret (first 5 chars):', secret.substring(0, 5) + '...');
 
                     const res = await fetch(rasaUrl, {
                         headers: {
@@ -599,26 +643,19 @@
                         }
                     });
 
-                    console.log('[DEBUG] fetchDocs - Response status:', res.status);
-                    console.log('[DEBUG] fetchDocs - Response headers:', [...res.headers.entries()]);
-
                     if (!res.ok) {
                         const errorText = await res.text();
-                        console.error('[DEBUG] fetchDocs - Error response:', errorText);
                         throw new Error(`Failed to load docs: ${res.status} - ${errorText}`);
                     }
 
                     const json = await res.json();
-                    console.log('[DEBUG] fetchDocs - Response JSON:', json);
 
                     if (!json.ok) {
-                        console.error('[DEBUG] fetchDocs - API error:', json.error);
                         throw new Error(json.error || 'Failed to load docs');
                     }
 
                     renderDocsList(json.files || []);
                 } catch (err) {
-                    console.error('[DEBUG] fetchDocs - Exception:', err);
                     docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: Rasa server is offline.</div>`;
                 }
             }
@@ -650,7 +687,6 @@
                 const filename = e.currentTarget.getAttribute('data-filename');
                 if (!filename) return;
 
-                // Open download link in new tab with authentication token
                 const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
                 const secret = '{{ config("services.faq_list_docs.secret") }}';
                 const downloadUrl = `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`;
@@ -661,36 +697,24 @@
                 const filename = e.currentTarget.getAttribute('data-filename');
                 if (!filename) return;
 
-                console.log('[DEBUG] onEditDocClick called for:', filename);
-
-                // Set filename in modal
                 $('#edit_doc_filename').value = filename;
-
-                // Load document content
                 loadDocumentContent(filename);
             }
 
             async function loadDocumentContent(filename) {
-                console.log('[DEBUG] loadDocumentContent called for:', filename);
-
                 const contentTextarea = $('#edit_doc_content');
                 const errorEl = $('#edit_doc_error');
 
-                // Clear previous content and errors
                 contentTextarea.value = '';
                 errorEl.classList.add('hidden');
                 errorEl.textContent = '';
 
                 try {
-                    // Show loading in textarea
                     contentTextarea.value = 'Loading document content...';
                     contentTextarea.disabled = true;
 
-                    // Fetch document content
                     const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
                     const secret = '{{ config("services.faq_list_docs.secret") }}';
-
-                    console.log('[DEBUG] loadDocumentContent - URL:', `${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`);
 
                     const res = await fetch(`${rasaBaseUrl}/download/${encodeURIComponent(filename)}?token=${encodeURIComponent(secret)}`, {
                         headers: {
@@ -703,17 +727,13 @@
                     }
 
                     const content = await res.text();
-                    console.log('[DEBUG] Document content loaded, length:', content.length);
 
-                    // Populate textarea
                     contentTextarea.value = content;
                     contentTextarea.disabled = false;
 
-                    // Open modal
                     openModal(editDocumentModal);
 
                 } catch (err) {
-                    console.error('[DEBUG] Error loading document content:', err);
                     errorEl.textContent = `Error loading document: ${err.message}`;
                     errorEl.classList.remove('hidden');
                     contentTextarea.disabled = false;
@@ -738,12 +758,10 @@
                     });
 
                     if (!res.ok) {
-                        console.error('[DEBUG] Failed to log document change:', await res.text());
-                    } else {
-                        console.log('[DEBUG] Document change logged successfully');
+                        console.error('Failed to log document change:', await res.text());
                     }
                 } catch (err) {
-                    console.error('[DEBUG] Error logging document change:', err);
+                    console.error('Error logging document change:', err);
                 }
             }
 
@@ -760,15 +778,13 @@
                         const alertEl = $('#trainingAlert');
 
                         if (data.requires_training) {
-                            // Show training alert
                             alertEl.classList.remove('hidden');
                         } else {
-                            // Hide training alert
                             alertEl.classList.add('hidden');
                         }
                     }
                 } catch (err) {
-                    console.error('[DEBUG] Error checking training status:', err);
+                    console.error('Error checking training status:', err);
                 }
             }
 
@@ -785,11 +801,9 @@
                     return;
                 }
 
-                // Clear previous errors
                 errorEl.classList.add('hidden');
                 errorEl.textContent = '';
 
-                // Show loading state
                 submitBtn.disabled = true;
                 spinner.classList.remove('hidden');
                 btnText.textContent = 'Saving...';
@@ -797,9 +811,6 @@
                 try {
                     const rasaBaseUrl = '{{ config("services.faq_list_docs.url") }}'.replace('/list-docs', '');
                     const secret = '{{ config("services.faq_list_docs.secret") }}';
-
-                    console.log('[DEBUG] saveDocumentContent - URL:', `${rasaBaseUrl}/update-document`);
-                    console.log('[DEBUG] saveDocumentContent - Secret length:', secret.length);
 
                     const res = await fetch(`${rasaBaseUrl}/update-document`, {
                         method: 'POST',
@@ -821,29 +832,20 @@
                         throw new Error(json.error || 'Failed to save document');
                     }
 
-                    console.log('[DEBUG] Document saved successfully:', json);
-
-                    // Log the document change
                     await logDocumentChange(filename, 'updated');
 
-                    // Show success message
                     showToast('success', `Document "${filename}" updated successfully`);
 
-                    // Close modal
                     closeModal(editDocumentModal);
 
-                    // Refresh document list to show updated timestamp
                     fetchDocs();
 
-                    // Check if training alert should be shown
                     checkTrainingStatus();
 
                 } catch (err) {
-                    console.error('[DEBUG] Error saving document:', err);
                     errorEl.textContent = `Error saving document: ${err.message}`;
                     errorEl.classList.remove('hidden');
                 } finally {
-                    // Reset loading state
                     submitBtn.disabled = false;
                     spinner.classList.add('hidden');
                     btnText.textContent = 'Save Changes';
@@ -890,7 +892,6 @@
                     </div>
                 `).join('');
 
-                // Attach view and edit handlers
                 $$('.viewDocBtn').forEach(btn => btn.addEventListener('click', onViewDocClick));
                 $$('.editDocBtn').forEach(btn => btn.addEventListener('click', onEditDocClick));
             }
@@ -905,7 +906,6 @@
                 const current = meta.current_page || currentPage;
                 const last = meta.last_page || 1;
 
-                // simple pagination: prev, pages window, next
                 const pages = [];
                 const delta = 2;
                 const left = Math.max(1, current - delta);
@@ -935,10 +935,10 @@
             function escapeHtml(s) {
                 if (s === null || s === undefined) return '';
                 return String(s)
-                    .replaceAll('&', '&amp;')
-                    .replaceAll('<', '&lt;')
-                    .replaceAll('>', '&gt;')
-                    .replaceAll('"', '&quot;')
+                    .replaceAll('&', '&')
+                    .replaceAll('<', '<')
+                    .replaceAll('>', '>')
+                    .replaceAll('"', '"')
                     .replaceAll("'", '&#039;');
             }
 
@@ -977,23 +977,12 @@
                 viewResponse.value = faq.response || '';
                 viewTimestamps.textContent = `Created: ${faq.created_at || ''} | Updated: ${faq.updated_at || ''}`;
 
-                // Show more actions button
                 if (moreBtn) moreBtn.classList.remove('hidden');
 
-                // Show/hide more actions menu items
-                if (moreRevisionsBtn) {
-                    if (faq.latest_revision) {
-                        moreRevisionsBtn.classList.remove('hidden');
-                    } else {
-                        moreRevisionsBtn.classList.add('hidden');
-                    }
-                }
                 if (moreRestoreBtn) {
-                    // Hide restore button for active FAQs (only show in deleted view if needed)
                     moreRestoreBtn.classList.add('hidden');
                 }
 
-                // Handle previous revision display
                 if (faq.latest_revision && prevWrapper) {
                     prevWrapper.classList.remove('hidden');
                     if (prevMeta) prevMeta.textContent = `${faq.latest_revision.action || 'update'} at ${faq.latest_revision.created_at || ''}`;
@@ -1059,8 +1048,6 @@
                 });
             }
 
-
-
             // Mobile drawer handlers
             const mobileActionsToggle = $('#mobileActionsToggle');
             const mobileDrawer = $('#mobileDrawer');
@@ -1090,6 +1077,7 @@
             // Mobile drawer action buttons
             const mobileRefreshDocsBtn = $('#mobileRefreshDocsBtn');
             const mobileUploadFileBtn = $('#mobileUploadFileBtn');
+            const mobileHistoryBtn = $('#mobileHistoryBtn');
 
             if (mobileRefreshDocsBtn) {
                 mobileRefreshDocsBtn.addEventListener('click', () => {
@@ -1105,736 +1093,179 @@
                 });
             }
 
-            // Mobile sync cache button
-            const mobileSyncBtn = $('#mobileSyncFaqCacheBtn');
-            const mobileSyncIcon = $('#mobileSyncIcon');
-            const mobileSyncText = $('#mobileSyncText');
-
-            if (mobileSyncBtn) {
-                mobileSyncBtn.addEventListener('click', async () => {
-                    if (mobileSyncBtn.disabled) return;
-
-                    closeDrawer(); // Close the drawer first
-
-                    // Show loading state
-                    mobileSyncBtn.disabled = true;
-                    mobileSyncIcon.classList.add('animate-spin');
-                    mobileSyncText.textContent = 'Syncing...';
-
-                    try {
-                        // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("admin.knowledgebase.all-json") }}', {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from server');
-                        }
-
-                        const faqData = await faqRes.json();
-                        const faqs = faqData.faqs || [];
-
-                        console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
-
-                        let result;
-
-                        // Handle empty FAQ table - sync with empty FAQ array to clear Rasa FAQ file
-                        if (faqs.length === 0) {
-                            console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
-                        }
-
-                        // Log the document change for tracking
-                        await logDocumentChange('faqs.json', 'updated');
-
-                        // Send all FAQs (or empty array) to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                faqs: faqs
-                            })
-                        });
-
-                        // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
-                        if (contentType && contentType.includes('application/json')) {
-                            result = await rasaRes.json();
-                        } else {
-                            // Handle HTML error response
-                            const errorText = await rasaRes.text();
-                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
-                            throw new Error('Rasa server returned an error instead of JSON response');
-                        }
-
-                        if (faqs.length === 0) {
-                            console.log('[FAQ Sync] Successfully cleared FAQ file on Rasa server');
-                        }
-
-                        console.log('[FAQ Sync] Rasa response:', result);
-
-                        // Check if the operation was successful
-                        if (!result.ok) {
-                            console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
-                            throw new Error(result.error || 'Rasa sync failed');
-                        }
-
-                        console.log('[FAQ Sync] Success! Synced FAQs:', result.summary || result);
-
-                        // Clear pending changes on successful sync
-                        setPendingChanges(false);
-                        // Set synced pending training flag
-                        try {
-                            localStorage.setItem('faq_synced_pending_training', 'true');
-                        } catch (e) {
-                            // localStorage not available
-                        }
-                        
-                        // Show appropriate success message
-                        if (faqs.length === 0) {
-                            showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
-                        } else {
-                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
-                        }
-
-                    } catch (err) {
-                        console.error('Sync error:', err);
-                        showToast('error', err.message || 'Failed to sync FAQ cache');
-                    } finally {
-                        // Reset button state
-                        mobileSyncIcon.classList.remove('animate-spin');
-                        mobileSyncText.textContent = 'Sync to Rasa';
-                        updateSyncButtonState();
-                    }
-                });
-            }
-
-            // Mobile upload file button (legacy - can be removed if not used elsewhere)
-            const mobileUploadBtn = $('#mobileUploadFileBtn');
-
-            if (mobileUploadBtn) {
-                mobileUploadBtn.addEventListener('click', () => {
-                    closeDrawer(); // Close the drawer first
-                    openModal(uploadModal);
-                });
-            }
-
-            // Mobile action buttons
-            const mobileActionAdd = $('#mobileActionAdd');
-            const mobileActionTrash = $('#mobileActionTrash');
-
-            if (mobileActionAdd) {
-                mobileActionAdd.addEventListener('click', () => {
+            if (mobileHistoryBtn) {
+                mobileHistoryBtn.addEventListener('click', () => {
                     closeDrawer();
-                    openModal(createModal);
-                });
-            }
-            if (mobileActionTrash) {
-                mobileActionTrash.addEventListener('click', () => {
-                    const url = mobileActionTrash.dataset.deletedUrl;
-                    if (url) window.location.href = url;
+                    openModal(historyModal);
+                    loadHistory();
                 });
             }
 
-            // Create modal handlers
-            if (createOpenBtn) {
-                createOpenBtn.addEventListener('click', () => openModal(createModal));
-            }
-            createCloseEls.forEach(el => el.addEventListener('click', () => closeModal(createModal)));
+            // History modal and button
+            const openHistoryBtn = $('#openHistoryBtn');
+            const historyModal = $('#historyModal');
+            const historyLoading = $('#historyLoading');
+            const historyError = $('#historyError');
+            const historyNoRecords = $('#historyNoRecords');
+            const historyTableBody = $('#historyTableBody');
 
-            // Upload modal handlers
-            if (uploadOpenBtn) {
-                uploadOpenBtn.addEventListener('click', () => openModal(uploadModal));
-            }
-            uploadCloseEls.forEach(el => el.addEventListener('click', () => closeModal(uploadModal)));
-
-            // Edit document modal handlers
-            editDocumentCloseEls.forEach(el => el.addEventListener('click', () => closeModal(editDocumentModal)));
-            if (editDocumentSubmit) {
-                editDocumentSubmit.addEventListener('click', saveDocumentContent);
-            }
-
-            // Template button handlers
-            const createTemplateBtn = $('#createTemplateBtn');
-            const createDescription = $('#create_description');
-            const createIntent = $('#create_intent');
-            if (createTemplateBtn && createDescription && createIntent) {
-                // Hide button if description is not empty
-                const toggleCreateTemplateBtn = () => {
-                    const isEmpty = createDescription.value.trim() === '';
-                    createTemplateBtn.classList.toggle('hidden', !isEmpty);
-                };
-                createDescription.addEventListener('input', toggleCreateTemplateBtn);
-                // Initial check
-                toggleCreateTemplateBtn();
-
-                createTemplateBtn.addEventListener('click', () => {
-                    const intent = createIntent.value.trim();
-                    if (intent) {
-                        createDescription.value = `This handles question about ${intent}.`;
-                    } else {
-                        createDescription.value = 'This handles question about ';
-                    }
-                    toggleCreateTemplateBtn();
+            if (openHistoryBtn) {
+                openHistoryBtn.addEventListener('click', () => {
+                    openModal(historyModal);
+                    loadHistory();
                 });
             }
 
-            const viewTemplateBtn = $('#viewTemplateBtn');
-            const viewDescription = $('#view_description');
-            const viewIntent = $('#view_intent');
-            if (viewTemplateBtn && viewDescription && viewIntent) {
-                // Hide button if description is not empty
-                const toggleViewTemplateBtn = () => {
-                    const isEmpty = viewDescription.value.trim() === '';
-                    viewTemplateBtn.classList.toggle('hidden', !isEmpty);
-                };
-                viewDescription.addEventListener('input', toggleViewTemplateBtn);
-                // Initial check
-                toggleViewTemplateBtn();
+            // Close history modal buttons
+            const historyCloseButtons = $$('[data-close="history"]', historyModal || document);
+            historyCloseButtons.forEach(btn => btn.addEventListener('click', () => closeModal(historyModal)));
 
-                viewTemplateBtn.addEventListener('click', () => {
-                    const intent = viewIntent.value.trim();
-                    if (intent) {
-                        viewDescription.value = `This FAQ provides information about ${intent}.`;
-                    } else {
-                        viewDescription.value = 'This FAQ provides information about [topic].';
-                    }
-                    toggleViewTemplateBtn();
-                });
-            }
+            async function loadHistory() {
+                if (!historyModal) return;
+                historyLoading.classList.remove('hidden');
+                historyError.classList.add('hidden');
+                historyNoRecords.classList.add('hidden');
+                historyTableBody.innerHTML = '';
 
-            if (createSubmit) {
-                createSubmit.addEventListener('click', async () => {
-                    const intent = createIntent.value.trim();
-                    const description = createDescription.value.trim();
-                    const responseEl = $('#create_response');
-                    const response = responseEl ? responseEl.value.trim() : '';
-
-                    if (!intent || !description || !response) {
-                        showToast('error', 'All fields are required');
-                        return;
-                    }
-
-                    // Store original content and show loading spinner
-                    const originalHTML = createSubmit.innerHTML;
-                    createSubmit.disabled = true;
-                    createSubmit.innerHTML = `
-                        <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="ml-2">Creating...</span>
-                    `;
-
-                    try {
-                        const res = await fetch(STORE_URL, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({ intent, description, response })
-                        });
-                        const json = await res.json();
-                        if (!res.ok) {
-                            throw new Error(json.message || 'Failed to create FAQ');
-                        }
-                        setPendingChanges(true);
-                        showToast('success', 'FAQ created successfully');
-                        closeModal(createModal);
-                        createForm.reset();
-                        fetchList(currentPage);
-                    } catch (err) {
-                        showToast('error', err.message || 'Error creating FAQ');
-                        console.error(err);
-                    } finally {
-                        // Restore original content
-                        createSubmit.innerHTML = originalHTML;
-                        createSubmit.disabled = false;
-                    }
-                });
-            }
-
-            // Upload file submit handler
-            if (uploadSubmit) {
-                uploadSubmit.addEventListener('click', async () => {
-                    const file = faqFileInput.files[0];
-                    if (!file) {
-                        $('#upload_file_error').textContent = 'Please select a file';
-                        $('#upload_file_error').classList.remove('hidden');
-                        return;
-                    }
-
-                    // Validate file type
-                    const allowedTypes = ['text/plain'];
-                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.txt$/i)) {
-                        $('#upload_file_error').textContent = 'Only .txt files are allowed';
-                        $('#upload_file_error').classList.remove('hidden');
-                        return;
-                    }
-
-                    // Check for duplicate filename
-                    const existingFiles = Array.from(document.querySelectorAll('.editDocBtn')).map(btn => btn.getAttribute('data-filename'));
-                    if (existingFiles.includes(file.name)) {
-                        $('#upload_file_error').textContent = `A file named "${file.name}" already exists. Please choose a different name or edit the existing file.`;
-                        $('#upload_file_error').classList.remove('hidden');
-                        return;
-                    }
-
-                    $('#upload_file_error').classList.add('hidden');
-
-                    // Store original content and show loading spinner
-                    const originalHTML = uploadSubmit.innerHTML;
-                    uploadSubmit.disabled = true;
-                    uploadSubmit.innerHTML = `
-                        <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="ml-2">Uploading...</span>
-                    `;
-
-                    try {
-                        const fileContent = await file.text();
-                        console.log('[File Upload] File content length:', fileContent.length);
-
-                        // Send file content to Rasa upload endpoint
-                        const baseUrl = '{{ config("services.faq_sync.url") }}'.replace('/sync-faqs', '');
-                        const rasaRes = await fetch(`${baseUrl}/upload-file`, {
-                            method: 'POST',
-                            headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                file_content: fileContent,
-                                file_name: file.name,
-                                file_type: file.type
-                            })
-                        });
-
-                        const result = await rasaRes.json();
-
-                        console.log('[File Upload] Rasa response:', result);
-
-                        if (!rasaRes.ok || !result.ok) {
-                            console.error('[File Upload] Upload failed:', result.error || 'Unknown error');
-                            throw new Error(result.error || 'File upload failed');
-                        }
-
-                        console.log('[File Upload] Success! File uploaded:', result);
-
-                        showToast('success', `File uploaded and synced successfully`);
-
-                        closeModal(uploadModal);
-                        uploadForm.reset();
-
-                    } catch (err) {
-                        console.error('Upload error:', err);
-                        showToast('error', err.message || 'Failed to upload file');
-                    } finally {
-                        // Restore original content
-                        uploadSubmit.innerHTML = originalHTML;
-                        uploadSubmit.disabled = false;
-                    }
-                });
-            }
-
-            // View modal handlers
-            viewCloseEls.forEach(el => el.addEventListener('click', () => closeModal(viewModal)));
-
-            if (updateSubmit) {
-                updateSubmit.addEventListener('click', async () => {
-                    const id = viewFaqId.value;
-                    const intent = viewTopic.value.trim();
-                    const description = $('#view_description').value.trim();
-                    const response = viewResponse.value.trim();
-
-                    if (!intent || !description || !response) {
-                        showToast('error', 'All fields are required');
-                        return;
-                    }
-
-                    const url = UPDATE_TEMPLATE.replace('__ID__', id);
-                    try {
-                        updateSubmit.disabled = true;
-                        const res = await fetch(url, {
-                            method: 'PUT',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({ intent, description, response })
-                        });
-                        const json = await res.json();
-                        if (!res.ok) {
-                            throw new Error(json.message || 'Failed to update FAQ');
-                        }
-                        setPendingChanges(true);
-                        showToast('success', 'FAQ updated successfully');
-                        closeModal(viewModal);
-                        fetchList(currentPage);
-                    } catch (err) {
-                        showToast('error', err.message || 'Error updating FAQ');
-                        console.error(err);
-                    } finally {
-                        updateSubmit.disabled = false;
-                    }
-                });
-            }
-
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', async () => {
-                    const id = viewFaqId.value;
-                    const confirmResult = await Swal.fire({
-                        title: 'Delete FAQ?',
-                        text: 'This will move the FAQ to trash',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Yes, delete',
-                        cancelButtonText: 'Cancel'
-                    });
-                    if (!confirmResult.isConfirmed) return;
-
-                    const url = DESTROY_TEMPLATE.replace('__ID__', id);
-                    try {
-                        deleteBtn.disabled = true;
-                        const res = await fetch(url, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-                        const json = await res.json();
-                        if (!res.ok) {
-                            throw new Error(json.message || 'Failed to delete FAQ');
-                        }
-                        setPendingChanges(true);
-                        showToast('success', 'FAQ deleted successfully');
-                        closeModal(viewModal);
-                        fetchList(currentPage);
-                    } catch (err) {
-                        showToast('error', err.message || 'Error deleting FAQ');
-                        console.error(err);
-                    } finally {
-                        deleteBtn.disabled = false;
-                    }
-                });
-            }
-
-
-            // FAQ Change Tracking
-            const FAQ_CHANGES_KEY = 'faq_changes_pending';
-
-            function hasPendingChanges() {
-                try {
-                    return localStorage.getItem(FAQ_CHANGES_KEY) === 'true';
-                } catch (e) {
-                    return false;
+                if (!HISTORY_URL) {
+                    historyError.textContent = 'History URL is not configured.';
+                    historyError.classList.remove('hidden');
+                    historyLoading.classList.add('hidden');
+                    return;
                 }
-            }
-
-            function setPendingChanges(hasChanges) {
-                try {
-                    localStorage.setItem(FAQ_CHANGES_KEY, hasChanges ? 'true' : 'false');
-                    updateSyncButtonState();
-                } catch (e) {
-                    // localStorage not available
-                }
-            }
-
-            function updateSyncButtonState() {
-                const hasChanges = hasPendingChanges();
-                if (syncBtn) {
-                    syncBtn.disabled = !hasChanges;
-                    syncBtn.classList.toggle('opacity-50', !hasChanges);
-                }
-                if (mobileSyncBtn) {
-                    mobileSyncBtn.disabled = !hasChanges;
-                    mobileSyncBtn.classList.toggle('opacity-50', !hasChanges);
-                }
-            }
-
-            // Sync FAQ Cache Button
-            const syncBtn = $('#syncFaqCacheBtn');
-            const syncIcon = $('#syncIcon');
-            const syncText = $('#syncText');
-
-            if (syncBtn) {
-                syncBtn.addEventListener('click', async () => {
-                    if (syncBtn.disabled) return;
-
-                    // Show loading state
-                    syncBtn.disabled = true;
-                    syncIcon.classList.add('animate-spin');
-                    syncText.textContent = 'Syncing...';
-
-                    try {
-                        // First, fetch all FAQs from the new all-json endpoint
-                        const faqRes = await fetch('{{ route("admin.knowledgebase.all-json") }}', {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        if (!faqRes.ok) {
-                            throw new Error('Failed to fetch FAQs from server');
-                        }
-
-                        const faqData = await faqRes.json();
-                        const faqs = faqData.faqs || [];
-
-                        console.log('[FAQ Sync] Fetched FAQs from server:', faqs.length);
-
-                        let result;
-
-                        // Handle empty FAQ table - sync with empty FAQ array to clear Rasa FAQ file
-                        if (faqs.length === 0) {
-                            console.log('[FAQ Sync] No FAQs found - syncing with empty array to clear Rasa FAQ file');
-                        }
-
-                        // Send all FAQs (or empty array) to Rasa sync endpoint
-                        const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                faqs: faqs
-                            })
-                        });
-
-                        // Check if response is JSON before parsing
-                        const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
-                        if (contentType && contentType.includes('application/json')) {
-                            result = await rasaRes.json();
-                        } else {
-                            // Handle HTML error response
-                            const errorText = await rasaRes.text();
-                            console.error('[FAQ Sync] Sync failed - received HTML instead of JSON:', errorText);
-                            throw new Error('Rasa server returned an error instead of JSON response');
-                        }
-
-                        if (faqs.length === 0) {
-                            console.log('[FAQ Sync] Successfully cleared FAQ file on Rasa server');
-                        }
-
-                        console.log('[FAQ Sync] Rasa response:', result);
-
-                        // Check if the operation was successful
-                        if (!result.ok) {
-                            console.error('[FAQ Sync] Sync failed:', result.error || 'Unknown error');
-                            throw new Error(result.error || 'Rasa sync failed');
-                        }
-
-                        console.log('[FAQ Sync] Success! Synced FAQs:', result.summary || result);
-
-                        // Clear pending changes on successful sync
-                        setPendingChanges(false);
-                        // Set synced pending training flag
-                        try {
-                            localStorage.setItem('faq_synced_pending_training', 'true');
-                        } catch (e) {
-                            // localStorage not available
-                        }
-                        
-                        // Show appropriate success message
-                        if (faqs.length === 0) {
-                            showToast('success', 'FAQ cache cleared successfully - no FAQs to sync');
-                        } else {
-                            showToast('success', `FAQ cache synced successfully (${result.summary?.successful || result.count || faqs.length} FAQs)`);
-                        }
-
-                    } catch (err) {
-                        console.error('Sync error:', err);
-                        showToast('error', err.message || 'Failed to sync FAQ cache');
-                    } finally {
-                        // Reset button state
-                        syncIcon.classList.remove('animate-spin');
-                        syncText.textContent = 'Sync to Rasa';
-                        updateSyncButtonState();
-                    }
-                });
-            }
-
-            // Function to check if sync is needed (optional - call after CRUD operations)
-            function checkSyncNeeded() {
-                // You could implement logic here to check if there are pending changes
-                // For now, always enable the button
-                if (syncBtn) {
-                    syncBtn.disabled = false;
-                }
-            }
-
-            // Initialize sync button state
-            updateSyncButtonState();
-
-            // Refresh button handler
-            const refreshDocsBtn = $('#refreshDocsBtn');
-            console.log('[DEBUG] Refresh button element:', refreshDocsBtn);
-            if (refreshDocsBtn) {
-                console.log('[DEBUG] Attaching event listener to refresh button');
-                refreshDocsBtn.addEventListener('click', () => {
-                    console.log('[DEBUG] Refresh button clicked - calling fetchDocs()');
-                    fetchDocs();
-                });
-            } else {
-                console.log('[DEBUG] Refresh button not found - might be on mobile view or deleted FAQs view');
-            }
-
-            async function trainRasa() {
-                const btn = $('#trainRasaBtn');
-                const spinner = $('#trainSpinner');
-                const btnText = $('#trainBtnText');
-
-                // Show loading state
-                btn.disabled = true;
-                spinner.classList.remove('hidden');
-                btnText.textContent = 'Training...';
 
                 try {
-                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
-                        method: 'POST',
+                    const res = await fetch(HISTORY_URL, {
                         headers: {
-                            'X-CSRF-TOKEN': csrf,
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
 
-                    const data = await res.json();
-
-                    if (!res.ok || !data.success) {
-                        throw new Error(data.message || 'Training failed');
+                    if (!res.ok) {
+                        throw new Error(`Failed to load history: ${res.status}`);
                     }
 
-                    // Show success message
-                    showToast('success', 'Rasa training completed successfully!');
+                    const data = await res.json();
 
-                    // Hide the training alert
-                    $('#trainingAlert').classList.add('hidden');
+                    if (!Array.isArray(data) || data.length === 0) {
+                        historyNoRecords.classList.remove('hidden');
+                        return;
+                    }
 
-                    // Refresh document list
-                    fetchDocs();
+                    data.forEach(record => {
+                        const action = record.action || '';
+                        const fileName = record.file_name || record.filename || '';
+                        const user = record.user_name || record.user || record.performed_by || record.uploaded_by || '';
+                        const timestamp = record.timestamp || record.created_at || record.uploaded_at || record.updated_at || '';
 
-                    // Check if we should show the API server alert
-                    checkApiServerAlert();
-
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-3 py-2">${escapeHtml(action)}</td>
+                            <td class="px-3 py-2">${escapeHtml(fileName)}</td>
+                            <td class="px-3 py-2">${escapeHtml(user)}</td>
+                            <td class="px-3 py-2">${formatDate(timestamp)}</td>
+                        `;
+                        historyTableBody.appendChild(tr);
+                    });
                 } catch (err) {
-                    console.error('[DEBUG] Training error:', err);
-                    showToast('error', `Training failed: ${err.message}`);
+                    historyError.textContent = err.message || 'Error loading history';
+                    historyError.classList.remove('hidden');
                 } finally {
-                    // Reset button state
-                    btn.disabled = false;
-                    spinner.classList.add('hidden');
-                    btnText.textContent = 'Train Rasa';
+                    historyLoading.classList.add('hidden');
                 }
-            }
-
-            async function checkApiServerAlert() {
-                try {
-                    // Check if there's been a recent training (within last 60 minutes)
-                    const res = await fetch('{{ route("admin.document-changes.check-recent-training") }}', {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.has_recent_training) {
-                            // Show second alert for starting Rasa API server
-                            setTimeout(() => {
-                                Swal.fire({
-                                    title: 'Start Rasa API Server',
-                                    text: 'Training completed! Now start the Rasa API server to enable chatbot functionality?',
-                                    icon: 'question',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Yes, start API server',
-                                    cancelButtonText: 'Not now',
-                                    confirmButtonColor: '#10B981'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        startRasaApiServer();
-                                    }
-                                });
-                            }, 1000); // Small delay to let the first toast disappear
-                        }
-                    }
-                } catch (err) {
-                    console.error('[DEBUG] Error checking recent training:', err);
-                }
-            }
-
-            async function startRasaApiServer() {
-                // Show loading state
-                Swal.fire({
-                    title: 'Starting Rasa API Server',
-                    text: 'Please wait while the Rasa API server starts...',
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    showConfirmButton: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                try {
-                    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrf,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    const data = await res.json();
-
-                    if (!res.ok || !data.success) {
-                        throw new Error(data.message || 'Failed to start Rasa API server');
-                    }
-
-                    // Show success message
-                    Swal.fire({
-                        title: 'Success!',
-                        text: 'Rasa API server started successfully on port 5005',
-                        icon: 'success',
-                        confirmButtonText: 'OK',
-                        confirmButtonColor: '#10B981'
-                    });
-
-                } catch (err) {
-                    console.error('[DEBUG] API server start error:', err);
-                    Swal.fire({
-                        title: 'Error',
-                        text: `Failed to start Rasa API server: ${err.message}`,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            }
-
-            // Add event listener for train button
-            const trainBtn = $('#trainRasaBtn');
-            if (trainBtn) {
-                trainBtn.addEventListener('click', trainRasa);
             }
 
             // Initialize: fetch docs on page load
             fetchDocs();
             checkTrainingStatus();
-
         })();
-
     </script>
+    <script>
+        (function() {
+            const uploadLogsBtn = document.getElementById('uploadLogsBtn');
+            const uploadLogsModal = document.getElementById('uploadLogsModal');
+            const uploadLogsTableBody = document.getElementById('uploadLogsTableBody');
+            const uploadLogsPagination = document.getElementById('uploadLogsPagination');
+            const closeEls = document.querySelectorAll('[data-close="upload-logs"]');
 
+            function openModal(el) {
+                if (el) el.classList.remove('hidden');
+            }
+
+            function closeModal(el) {
+                if (el) el.classList.add('hidden');
+            }
+
+            if (uploadLogsBtn) uploadLogsBtn.addEventListener('click', () => {
+                fetchUploadLogs(1);
+                openModal(uploadLogsModal);
+            });
+            closeEls.forEach(el => el.addEventListener('click', () => closeModal(uploadLogsModal)));
+
+            async function fetchUploadLogs(page = 1) {
+                try {
+                    const per_page = 10;
+                    const res = await fetch(`{{ route('staff.upload-logs.index') }}?page=${page}&per_page=${per_page}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    if (!res.ok) throw new Error('Failed to fetch upload logs');
+                    const data = await res.json();
+
+                    renderUploadLogsTable(data.data || []);
+                    renderUploadLogsPagination(data);
+                } catch (err) {
+                    console.error('Failed to fetch upload logs', err);
+                    if (uploadLogsTableBody) uploadLogsTableBody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-sm text-red-600">Failed to load upload logs</td></tr>`;
+                    if (uploadLogsPagination) uploadLogsPagination.innerHTML = '';
+                }
+            }
+
+            function renderUploadLogsTable(rows) {
+                if (!uploadLogsTableBody) return;
+                if (!rows || rows.length === 0) {
+                    uploadLogsTableBody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">No logs found</td></tr>`;
+                    return;
+                }
+
+                uploadLogsTableBody.innerHTML = rows.map(r => {
+                    const size = r.file_size ? formatFileSize(r.file_size) : '-';
+                    const uploadDate = r.upload_date ? new Date(r.upload_date).toLocaleString() : '-';
+                    const serverDate = r.server_recieved_date ? new Date(r.server_recieved_date).toLocaleString() : '-';
+                    return `<tr><td class="px-4 py-3 text-sm text-gray-900">${escapeHtml(r.file_name)}</td><td class="px-4 py-3 text-sm text-gray-700">${size}</td><td class="px-4 py-3 text-sm text-gray-700">${uploadDate}</td><td class="px-4 py-3 text-sm text-gray-700">${serverDate}</td></tr>`;
+                }).join('');
+            }
+
+            function renderUploadLogsPagination(meta) {
+                if (!uploadLogsPagination) return;
+                if (!meta || !meta.total) {
+                    uploadLogsPagination.innerHTML = '';
+                    return;
+                }
+                const current = meta.current_page || 1;
+                const last = meta.last_page || 1;
+                let html = '';
+                if (current > 1) html += `<button class="px-3 py-1 border rounded mr-2" data-page="${current-1}">Prev</button>`;
+                html += `<span class="text-sm text-gray-700 mr-2">Page ${current} of ${last}</span>`;
+                if (current < last) html += `<button class="px-3 py-1 border rounded" data-page="${current+1}">Next</button>`;
+                uploadLogsPagination.innerHTML = html;
+                uploadLogsPagination.querySelectorAll('button').forEach(b => b.addEventListener('click', () =>
+                    fetchUploadLogs(parseInt(b.getAttribute('data-page')))));
+            }
+
+            function escapeHtml(s) {
+                if (s == null) return '';
+                return String(s).replaceAll('&', '&').replaceAll('<', '<').replaceAll('>', '>').replaceAll('"', '"').replaceAll("'", '&#039;');
+            }
+
+            function formatFileSize(bytes) {
+                if (!bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+            }
+        })();
+    </script>
 @endsection
