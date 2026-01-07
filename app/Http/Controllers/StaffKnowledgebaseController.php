@@ -10,18 +10,41 @@ use Illuminate\Support\Facades\Http;
 use App\Models\DocumentChange;
 use App\Models\UploadLog;
 use App\Models\Document;
+use App\Models\Announcement;
 use App\Services\RasaServerService;
 
 class StaffKnowledgebaseController extends Controller
 {
     /**
-     * FAQ Management - page (blade)
+     * Backwards-compatibility helper.
+     * Some older Announcements.txt entries may include a leading "roles:" line.
+     * We do not store that in the file anymore (role scoping is handled in DB),
+     * so strip it out when reconstructing.
+     */
+    private function stripLeadingRolesLine(string $content): string
+    {
+        $content = ltrim($content, "\r\n");
+        $lines = preg_split("/\r\n|\n|\r/", $content);
+        if (!$lines || count($lines) === 0) {
+            return $content;
+        }
+
+        if (preg_match('/^roles\s*:/i', (string) $lines[0])) {
+            array_shift($lines);
+            return ltrim(implode("\n", $lines), "\r\n");
+        }
+
+        return $content;
+    }
+
+    /**
+     * Knowledgebase Management - page (blade)
      */
     public function index(Request $request)
     {
         $isDeleted = (bool) $request->query('include_deleted', false);
         $listUrl = $isDeleted ? route('staff.document_management.index', ['include_deleted' => 'true']) : route('staff.document_management.index');
-        return view('dashboards.staff.faqs.index', [
+        return view('dashboards.staff.knowledgebase.index', [
             'listUrl' => $listUrl,
             'isDeletedView' => $isDeleted,
         ]);
@@ -124,120 +147,73 @@ class StaffKnowledgebaseController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:10000',
-            'assigned_roles' => 'nullable|array',
-            'assigned_roles.*' => 'exists:roles,id',
         ]);
 
-        // Check if server is online
-        if (RasaServerService::isServerOnline()) {
-            // Direct upload (existing logic)
-            try {
-                // Upload to Rasa server
-                $rasaUrl = config('services.faq_list_docs.url');
-                if (!$rasaUrl) {
-                    throw new \Exception('Rasa server URL not configured');
-                }
+        // Strict duplicate-title check (case-insensitive trimmed)
+        $titleNorm = trim(strtolower($validated['title']));
+        $exists = Announcement::whereRaw('LOWER(TRIM(title)) = ?', [$titleNorm])->exists();
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Duplicate title not allowed'], 400);
+        }
 
-                // Replace /list-docs with /update-document
+        try {
+            // Save announcement to database
+            $ann = Announcement::create([
+                'title' => $validated['title'],
+                'content' => $validated['content'],
+                'role_id' => (int) (Auth::user()->role_id ?? 0) ?: null,
+                'created_by' => Auth::id(),
+                'pinned' => false,
+            ]);
+
+            // Rebuild Announcements.txt content from DB and push to Rasa
+            $all = Announcement::orderByDesc('pinned')->orderByDesc('id')->get();
+            $content = '';
+            foreach ($all as $a) {
+                $content .= "id: {$a->id}\ntitle: {$a->title}\n{$a->content}\n---------\n";
+            }
+
+            // Upload to Rasa
+            $rasaUrl = config('services.faq_list_docs.url');
+            $secret = config('services.faq_list_docs.secret');
+            if ($rasaUrl && $secret) {
                 $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-                $secret = config('services.faq_list_docs.secret');
-
-                // First, fetch current announcements to get next ID
-                $listUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-                $listResponse = Http::withHeaders([
-                    'X-FAQ-UPDATER-TOKEN' => $secret,
-                    'X-Requested-With' => 'XMLHttpRequest'
-                ])->get($listUrl);
-
-                $nextId = 1;
-                if ($listResponse->successful()) {
-                    $listData = $listResponse->json();
-                    if ($listData['ok'] && !empty($listData['announcements'])) {
-                        $maxId = max(array_column($listData['announcements'], 'id'));
-                        $nextId = $maxId + 1;
-                    }
-                }
-
-                // Format the announcement with role assignments
-                $assignedRoles = $validated['assigned_roles'] ?? [];
-                $rolesText = empty($assignedRoles) ? 'all' : implode(',', $assignedRoles);
-                $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\nroles: {$rolesText}\n{$validated['content']}\n---------\n";
-
-                // If there are existing announcements, append to the content
-                if ($listResponse->successful() && !empty($listData['announcements'])) {
-                    // We need to get the full file content and append
-                    // Since update-document replaces the file, we need to get current content first
-                    $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
-                    $downloadResponse = Http::withHeaders([
-                        'X-FAQ-UPDATER-TOKEN' => $secret,
-                        'X-Requested-With' => 'XMLHttpRequest'
-                    ])->get($downloadUrl);
-
-                    if ($downloadResponse->successful()) {
-                        $currentContent = $downloadResponse->body();
-                        $announcementText = $currentContent . $announcementText;
-                    }
-                }
-
-                // Upload the updated content
                 $response = Http::withHeaders([
                     'X-FAQ-UPDATER-TOKEN' => $secret,
                     'X-Requested-With' => 'XMLHttpRequest'
                 ])->post($uploadUrl, [
                     'file_name' => 'Announcements.txt',
-                    'file_content' => $announcementText,
+                    'file_content' => $content,
                     'file_type' => 'txt'
                 ]);
 
                 if (!$response->successful()) {
-                    throw new \Exception('Failed to upload announcement to Rasa server: ' . $response->status());
+                    Log::error('Failed to upload announcements to Rasa: HTTP ' . $response->status());
                 }
-
-                $uploadData = $response->json();
-                if (!$uploadData['ok']) {
-                    throw new \Exception($uploadData['error'] ?? 'Failed to upload announcement');
-                }
-
-                // Log the document change for tracking
-                try {
-                    \App\Models\DocumentChange::create([
-                        'file_name' => 'Announcements.txt',
-                        'action' => 'created',
-                        'user_id' => Auth::id(),
-                        'user_name' => Auth::user()->name ?? null,
-                        'training_required' => true,
-                        'training_completed' => false,
-                    ]);
-                } catch (\Exception $e) {
-                    // Log error but don't fail the announcement creation
-                    \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Announcement added successfully',
-                    'announcement' => [
-                        'id' => $nextId,
-                        'title' => $validated['title'],
-                        'content' => $validated['content']
-                    ]
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Failed to store announcement: ' . $e->getMessage());
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to add announcement: ' . $e->getMessage()
-                ], 500);
             }
-        } else {
-            // Server offline, return error message
+
+            // Log change for training
+            try {
+                \App\Models\DocumentChange::create([
+                    'file_name' => 'Announcements.txt',
+                    'action' => 'created',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to log announcement change: ' . $e->getMessage());
+            }
+
             return response()->json([
-                'success' => false,
-                'message' => 'Rasa server is currently offline. Please try again later.',
-                'server_offline' => true
-            ], 503);
+                'success' => true,
+                'message' => 'Announcement added successfully',
+                'announcement' => $ann
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to store announcement in DB: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to add announcement: ' . $e->getMessage()], 500);
         }
     }
 
@@ -247,74 +223,69 @@ class StaffKnowledgebaseController extends Controller
     public function announcementsList(Request $request)
     {
         try {
-            // Fetch announcements from Rasa server
-            $rasaUrl = config('services.faq_list_docs.url');
-            if (!$rasaUrl) {
-                throw new \Exception('Rasa server URL not configured');
-            }
+            // Read announcements from the database (DB-backed announcements)
+            $dbAnnouncements = Announcement::orderByDesc('pinned')->orderByDesc('id')->get();
 
-            // Replace /list-docs with /download-announcements
-            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-            $secret = config('services.faq_list_docs.secret');
+            // Prepare assigned_roles from pivot table if present, otherwise fallback to announcement.role_id
+            $announcementIds = $dbAnnouncements->pluck('id')->toArray();
+            $roleMap = [];
+            try {
+                if (!empty($announcementIds)) {
+                    $rows = DB::table('announcement_roles')
+                        ->whereIn('announcement_id', $announcementIds)
+                        ->get(['announcement_id', 'role_id']);
 
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($announcementsUrl);
-
-            if (!$response->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server: ' . $response->status());
-            }
-
-            $data = $response->json();
-
-            if (!$data['ok']) {
-                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
-            }
-
-            $announcements = $data['announcements'] ?? [];
-
-            // Filter announcements based on user role (unless admin)
-            $user = Auth::user();
-            if (strtolower($user->role ?? '') !== 'primary administrator') {
-                $userRoleId = $user->role_id;
-                $filteredAnnouncements = [];
-                foreach ($announcements as $ann) {
-                    $roles = $ann['roles'] ?? 'all';
-                    if ($roles === 'all' || in_array($userRoleId, explode(',', $roles))) {
-                        $filteredAnnouncements[] = $ann;
+                    foreach ($rows as $row) {
+                        $aid = (int) $row->announcement_id;
+                        $rid = (int) $row->role_id;
+                        $roleMap[$aid] = $roleMap[$aid] ?? [];
+                        $roleMap[$aid][] = $rid;
                     }
                 }
-                $announcements = $filteredAnnouncements;
+            } catch (\Throwable $e) {
+                // ignore if table missing
+                $roleMap = [];
             }
 
-            // Get pinned announcement IDs
-            $pinnedIds = DB::table('pinned_announcements')->pluck('announcement_id')->toArray();
+            $announcements = [];
+            foreach ($dbAnnouncements as $a) {
+                $assigned = [];
+                if (isset($roleMap[$a->id]) && is_array($roleMap[$a->id]) && count($roleMap[$a->id]) > 0) {
+                    $assigned = array_values(array_unique(array_map('intval', $roleMap[$a->id])));
+                } elseif (!empty($a->role_id)) {
+                    $assigned = [(int) $a->role_id];
+                }
 
-            // Add pinned flag
-            foreach ($announcements as &$ann) {
-                $ann['pinned'] = in_array($ann['id'], $pinnedIds);
+                $announcements[] = [
+                    'id' => (int) $a->id,
+                    'title' => (string) $a->title,
+                    'content' => (string) $a->content,
+                    'pinned' => (bool) $a->pinned,
+                    'assigned_roles' => $assigned,
+                    'created_by' => $a->created_by,
+                    'created_at' => $a->created_at ? $a->created_at->toDateTimeString() : null,
+                    'updated_at' => $a->updated_at ? $a->updated_at->toDateTimeString() : null,
+                ];
             }
 
-            // Sort: pinned first, then by ID descending
-            usort($announcements, function ($a, $b) {
-                if ($a['pinned'] && !$b['pinned']) return -1;
-                if (!$a['pinned'] && $b['pinned']) return 1;
-                return $b['id'] <=> $a['id'];
-            });
+            // Role-based filtering: staff only see announcements mapped to their role (or role_id)
+            $user = Auth::user();
+            $isAdmin = (int) ($user->role_id ?? 0) === 1 || strtolower((string) ($user->role ?? '')) === 'primary administrator';
 
-            return response()->json([
-                'success' => true,
-                'announcements' => $announcements
-            ]);
+            if (!$isAdmin) {
+                $userRoleId = (int) ($user->role_id ?? 0);
+                $announcements = array_values(array_filter($announcements, function ($ann) use ($userRoleId) {
+                    $assigned = $ann['assigned_roles'] ?? [];
+                    if (empty($assigned)) return false; // not mapped => do not show to staff
+                    return in_array($userRoleId, $assigned);
+                }));
+            }
+
+            return response()->json(['success' => true, 'announcements' => $announcements]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Rasa server is offline.'
-            ]);
+            Log::error('Failed to fetch announcements from DB: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to fetch announcements']);
         }
     }
 
@@ -326,79 +297,43 @@ class StaffKnowledgebaseController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:10000',
-            'assigned_roles' => 'nullable|array',
-            'assigned_roles.*' => 'exists:roles,id',
         ]);
 
         try {
-            // Fetch current announcements
-            $rasaUrl = config('services.faq_list_docs.url');
-            if (!$rasaUrl) {
-                throw new \Exception('Rasa server URL not configured');
+            // Update DB record
+            $ann = Announcement::find($id);
+            if (!$ann) {
+                return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
             }
 
-            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-            $secret = config('services.faq_list_docs.secret');
+            $ann->title = $validated['title'];
+            $ann->content = $validated['content'];
+            $ann->save();
 
-            $listResponse = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($announcementsUrl);
-
-            if (!$listResponse->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server');
-            }
-
-            $data = $listResponse->json();
-
-            if (!$data['ok']) {
-                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
-            }
-
-            $announcements = $data['announcements'];
-
-            // Find and update
-            $found = false;
-            foreach ($announcements as &$ann) {
-                if ($ann['id'] == $id) {
-                    $ann['title'] = $validated['title'];
-                    $ann['content'] = $validated['content'];
-                    $assignedRoles = $validated['assigned_roles'] ?? [];
-                    $ann['roles'] = empty($assignedRoles) ? 'all' : implode(',', $assignedRoles);
-                    $found = true;
-                    break;
-                }
-            }
-
-            if (!$found) {
-                throw new \Exception('Announcement not found');
-            }
-
-            // Reconstruct content
+            // Rebuild Announcements.txt content from DB and push to Rasa
+            $all = Announcement::orderByDesc('pinned')->orderByDesc('id')->get();
             $content = '';
-            foreach ($announcements as $ann) {
-                $rolesText = $ann['roles'] ?? 'all';
-                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\nroles: {$rolesText}\n{$ann['content']}\n---------\n";
+            foreach ($all as $a) {
+                $clean = $this->stripLeadingRolesLine((string) $a->content);
+                $content .= "id: {$a->id}\ntitle: {$a->title}\n{$clean}\n---------\n";
             }
 
-            // Upload updated content
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $content,
-                'file_type' => 'txt'
-            ]);
+            $rasaUrl = config('services.faq_list_docs.url');
+            $secret = config('services.faq_list_docs.secret');
+            if ($rasaUrl && $secret) {
+                $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+                $response = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->post($uploadUrl, [
+                    'file_name' => 'Announcements.txt',
+                    'file_content' => $content,
+                    'file_type' => 'txt'
+                ]);
 
-            if (!$response->successful()) {
-                throw new \Exception('Failed to upload updated announcements');
-            }
-
-            $uploadData = $response->json();
-            if (!$uploadData['ok']) {
-                throw new \Exception($uploadData['error'] ?? 'Failed to update announcement');
+                if (!$response->successful()) {
+                    Log::error('Failed to upload announcements to Rasa: HTTP ' . $response->status());
+                }
             }
 
             // Log the document change for training alert
@@ -413,6 +348,23 @@ class StaffKnowledgebaseController extends Controller
                 ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to log announcement update change: ' . $e->getMessage());
+            }
+
+            // Ensure mapping exists for the current staff role.
+            try {
+                $roleId = (int) (Auth::user()->role_id ?? 0);
+                if ($roleId > 0) {
+                    DB::table('announcement_roles')->insertOrIgnore([
+                        'announcement_id' => (int) $id,
+                        'role_id' => $roleId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to ensure announcement_roles mapping (update): ' . $e->getMessage(), [
+                    'announcement_id' => (int) $id,
+                ]);
             }
 
             return response()->json([
@@ -436,62 +388,45 @@ class StaffKnowledgebaseController extends Controller
     public function announcementsDestroy($id)
     {
         try {
-            // Fetch current announcements
-            $rasaUrl = config('services.faq_list_docs.url');
-            if (!$rasaUrl) {
-                throw new \Exception('Rasa server URL not configured');
+            // Delete from DB
+            $ann = Announcement::find($id);
+            if ($ann) {
+                $ann->delete();
             }
 
-            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-            $secret = config('services.faq_list_docs.secret');
-
-            $listResponse = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($announcementsUrl);
-
-            if (!$listResponse->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server');
+            // Remove DB mapping rows for this announcement
+            try {
+                DB::table('announcement_roles')->where('announcement_id', (int) $id)->delete();
+            } catch (\Throwable $e) {
+                Log::warning('Failed to delete announcement_roles mapping (destroy): ' . $e->getMessage(), [
+                    'announcement_id' => (int) $id,
+                ]);
             }
 
-            $data = $listResponse->json();
-
-            if (!$data['ok']) {
-                throw new \Exception($data['error'] ?? 'Failed to fetch announcements');
-            }
-
-            $announcements = $data['announcements'];
-
-            // Find and remove
-            $announcements = array_filter($announcements, function ($ann) use ($id) {
-                return $ann['id'] != $id;
-            });
-
-            // Reconstruct content
+            // Rebuild Announcements.txt content from DB and push to Rasa
+            $all = Announcement::orderByDesc('pinned')->orderByDesc('id')->get();
             $content = '';
-            foreach ($announcements as $ann) {
-                $rolesText = $ann['roles'] ?? 'all';
-                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\nroles: {$rolesText}\n{$ann['content']}\n---------\n";
+            foreach ($all as $a) {
+                $clean = $this->stripLeadingRolesLine((string) $a->content);
+                $content .= "id: {$a->id}\ntitle: {$a->title}\n{$clean}\n---------\n";
             }
 
-            // Upload updated content
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $content,
-                'file_type' => 'txt'
-            ]);
+            $rasaUrl = config('services.faq_list_docs.url');
+            $secret = config('services.faq_list_docs.secret');
+            if ($rasaUrl && $secret) {
+                $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
+                $response = Http::withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])->post($uploadUrl, [
+                    'file_name' => 'Announcements.txt',
+                    'file_content' => $content,
+                    'file_type' => 'txt'
+                ]);
 
-            if (!$response->successful()) {
-                throw new \Exception('Failed to upload updated announcements');
-            }
-
-            $uploadData = $response->json();
-            if (!$uploadData['ok']) {
-                throw new \Exception($uploadData['error'] ?? 'Failed to delete announcement');
+                if (!$response->successful()) {
+                    Log::error('Failed to upload announcements to Rasa: HTTP ' . $response->status());
+                }
             }
 
             // Log the document change for training alert
@@ -572,46 +507,70 @@ class StaffKnowledgebaseController extends Controller
             'file_type' => 'required|string|max:10',
         ]);
 
-        // Always attempt direct upload to Rasa (no offline queuing for staff)
-        try {
-            // Prepare to fetch existing file (to compute old/new hashes and determine action)
-            $rasaUrl = config('services.faq_list_docs.url');
-            $secret = config('services.faq_list_docs.secret');
-            $oldContent = null;
-            $oldHash = null;
-            $action = 'created';
-            if ($rasaUrl) {
-                try {
-                    $downloadUrl = str_replace('/list-docs', '/download/' . rawurlencode($validated['file_name']), $rasaUrl);
-                    $downloadResponse = Http::withHeaders([
-                        'X-FAQ-UPDATER-TOKEN' => $secret,
-                        'X-Requested-With' => 'XMLHttpRequest'
-                    ])->get($downloadUrl);
+        // Only allow .txt files
+        if (!preg_match('/\.txt$/i', $validated['file_name'])) {
+            return response()->json(['success' => false, 'message' => 'Only .txt files are allowed'], 403);
+        }
 
-                    if ($downloadResponse->successful()) {
-                        $oldContent = $downloadResponse->body();
-                        $oldHash = md5($oldContent);
-                        $action = 'updated';
-                    }
-                } catch (\Exception $ex) {
-                    Log::warning('Failed to fetch existing document for hash comparison: ' . $ex->getMessage());
-                }
+        // Prevent duplicate file names globally
+        if (Document::where('file_name', $validated['file_name'])->exists()) {
+            return response()->json(['success' => false, 'message' => 'Duplicate file name not allowed'], 409);
+        }
+
+        try {
+            // Save document record in DB first
+            $doc = null;
+            try {
+                $doc = Document::create([
+                    'file_name' => $validated['file_name'],
+                    'role_id' => (int) (Auth::user()->role_id ?? 0) ?: null,
+                    'created_by' => Auth::id(),
+                    'content' => $validated['file_content'],
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create Document record: ' . $e->getMessage());
+                return response()->json(['success' => false, 'message' => 'Failed to save document metadata'], 500);
             }
 
+            // Compute hashes for change detection
+            $oldHash = null;
+            try {
+                $existing = Document::where('file_name', $validated['file_name'])->where('id', '!=', $doc->id)->orderByDesc('id')->first();
+                if ($existing) $oldHash = md5((string) $existing->content);
+            } catch (\Exception $e) {
+                Log::warning('Failed to compute old hash: ' . $e->getMessage());
+            }
             $newHash = md5($validated['file_content']);
+            $action = $oldHash ? 'updated' : 'created';
 
+            // Sync Rasa from the database (DB is the source of truth)
+            // Upload a per-document file using the DB record (file name comes from DB).
+            // Include the DB id in the file content so entries are separated/traceable by id.
             $uploadResult = RasaServerService::uploadDocument(
-                $validated['file_name'],
-                $validated['file_content'],
-                $validated['file_type']
+                $doc->file_name,
+                $doc->toTxtBlock(),
+                'txt'
             );
 
             if (!$uploadResult['ok']) {
-                throw new \Exception($uploadResult['error'] ?? 'Upload failed');
+                Log::error('Rasa upload failed after DB save: ' . ($uploadResult['error'] ?? 'unknown'));
+                // We keep DB record but inform caller of failure
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Document saved locally but failed to upload to Rasa',
+                    'error' => $uploadResult['error'] ?? null
+                ], 502);
             }
 
-            // Determine if training is required (changed content)
-            $trainingRequired = ($oldHash !== null) ? ($oldHash !== $newHash) : true;
+            // Update DB record with rasa id if provided
+            try {
+                if (isset($uploadResult['doc_id'])) {
+                    $doc->rasa_doc_id = $uploadResult['doc_id'];
+                    $doc->save();
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to update Document with rasa id: ' . $e->getMessage());
+            }
 
             // Log document change for training with hashes
             try {
@@ -623,11 +582,11 @@ class StaffKnowledgebaseController extends Controller
                     'old_content_hash' => $oldHash,
                     'new_content_hash' => $newHash,
                     'change_timestamp' => now(),
-                    'training_required' => (bool) $trainingRequired,
+                    'training_required' => ($oldHash !== null) ? ($oldHash !== $newHash) : true,
                     'training_completed' => false,
                 ]);
             } catch (\Exception $e) {
-                Log::error('Failed to log document upload change: ' . $e->getMessage());
+                Log::error('Failed to log document change: ' . $e->getMessage());
             }
 
             // Persist upload log for staff
@@ -643,35 +602,94 @@ class StaffKnowledgebaseController extends Controller
                 Log::warning('Failed to create UploadLog: ' . $e->getMessage());
             }
 
-            // Create or update local Document ownership record
-            try {
-                Document::updateOrCreate(
-                    ['staff_id' => Auth::id(), 'file_name' => $validated['file_name']],
-                    [
-                        'file_type' => $validated['file_type'],
-                        'file_size' => isset($validated['file_size']) ? $validated['file_size'] : null,
-                        'content_hash' => $newHash,
-                        'rasa_doc_id' => $uploadResult['doc_id'] ?? null,
-                    ]
-                );
-            } catch (\Exception $e) {
-                Log::warning('Failed to update/create Document record: ' . $e->getMessage());
-            }
-
             return response()->json([
                 'success' => true,
-                'message' => 'Document uploaded successfully',
-                'queued' => false,
+                'message' => 'Document saved and uploaded successfully',
+                'document' => $doc,
                 'upload_log' => isset($log) ? $log : null
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to upload document (direct upload enforced): ' . $e->getMessage());
+            Log::error('Unexpected error in uploadDocument: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to upload document'], 500);
+        }
+    }
+    /**
+     * Delete a Document by file_name (DB-first) and sync DB -> Rasa by rebuilding documents text and uploading it.
+     * Expects JSON: { "file_name": "Example.txt" }
+     */
+    public function destroyDocumentByName(Request $request)
+    {
+        $validated = $request->validate([
+            'file_name' => 'required|string|max:255'
+        ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload document: ' . $e->getMessage()
-            ], 500);
+        $fileName = $validated['file_name'];
+        $user = Auth::user();
+
+        try {
+            $doc = Document::where('file_name', $fileName)->first();
+            if (!$doc) {
+                // Try fallbacks: url-decoded, trimmed lower-case match
+                try {
+                    $decoded = urldecode($fileName);
+                    $doc = Document::where('file_name', $decoded)->first();
+                } catch (\Exception $e) {
+                    $doc = null;
+                }
+            }
+            if (!$doc) {
+                $doc = Document::whereRaw('LOWER(TRIM(file_name)) = ?', [strtolower(trim($fileName))])->first();
+            }
+            if (!$doc) {
+                // Try replacing plus with space (common URL-encoded space)
+                $alt = str_replace('+', ' ', $fileName);
+                $doc = Document::where('file_name', $alt)->first();
+            }
+
+            if (!$doc) {
+                return response()->json(['success' => false, 'message' => 'Document not found'], 404);
+            }
+
+            // Permission: allow if owner or admin
+            // (support both role_id=1 and legacy Primary Administrator role string)
+            $isAdmin = ((int) ($user->role_id ?? 0) === 1) || (strtolower((string) ($user->role ?? '')) === 'primary administrator');
+            if (!$isAdmin && $doc->created_by !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+            }
+
+            // Delete DB record
+            $doc->delete();
+
+            // Delete the corresponding file on Rasa so the server mirrors DB state
+            try {
+                $del = RasaServerService::deleteFile($fileName);
+                if (!($del['ok'] ?? false)) {
+                    Log::error('Rasa delete-file failed after DB delete: ' . ($del['error'] ?? 'unknown'));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to delete file on Rasa after DB delete: ' . $e->getMessage());
+            }
+
+            // Log document change for training/administration
+            try {
+                DocumentChange::create([
+                    'file_name' => $fileName,
+                    'action' => 'deleted',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? null,
+                    'training_required' => true,
+                    'training_completed' => false,
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to log document delete change: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Document deleted and DB synced (Rasa upload attempted)']);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete document: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete document'], 500);
         }
     }
 
@@ -711,8 +729,8 @@ class StaffKnowledgebaseController extends Controller
             }
             $duplicates = array_filter($nameCounts, fn($c) => $c > 1);
 
-            // Filter by local ownership
-            $ownedNames = Document::where('staff_id', $auth->id)->pluck('file_name')->toArray();
+            // Filter by local ownership (use created_by as the user id column)
+            $ownedNames = Document::where('created_by', $auth->id)->pluck('file_name')->toArray();
             $filtered = array_values(array_filter($files, function ($f) use ($ownedNames) {
                 $name = $f['name'] ?? ($f['file_name'] ?? null);
                 return $name && in_array($name, $ownedNames);

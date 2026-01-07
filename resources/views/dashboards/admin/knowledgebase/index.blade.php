@@ -364,12 +364,19 @@
             <div class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Edit Document</div>
-                    <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
-                            aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button id="deleteDocBtn" type="button" class="text-red-600 hover:text-red-800" aria-label="Delete document">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 3v1H4v2h16V4h-5V3H9zm2 5v9h2V8h-2zm-4 0v9h2V8H7zm8 0v9h2V8h-2z" />
+                            </svg>
+                        </button>
+                        <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
+                                aria-label="Close">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <form id="editDocumentForm" class="p-4 space-y-4">
                     <div>
@@ -519,10 +526,149 @@
             const uploadSubmit = $('#uploadFileSubmit');
             const faqFileInput = $('#faqFile');
 
+            // Open upload modal when Upload button is clicked (DB-first flow uses staff.upload endpoint)
+            if (uploadOpenBtn) {
+                uploadOpenBtn.addEventListener('click', () => openModal(uploadModal));
+            }
+
+            // Upload file submit handler (DB-first; reuses staff upload endpoint to persist then forward to Rasa)
+            if (uploadSubmit) {
+                uploadSubmit.addEventListener('click', async () => {
+                    const file = faqFileInput.files[0];
+                    if (!file) {
+                        $('#upload_file_error').textContent = 'Please select a file';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    // Validate file type
+                    const allowedTypes = ['text/plain'];
+                    if (!allowedTypes.includes(file.type) && !file.name.match(/\.txt$/i)) {
+                        $('#upload_file_error').textContent = 'Only .txt files are allowed';
+                        $('#upload_file_error').classList.remove('hidden');
+                        return;
+                    }
+
+                    $('#upload_file_error').classList.add('hidden');
+
+                    // Store original content and show loading spinner
+                    const originalHTML = uploadSubmit.innerHTML;
+                    uploadSubmit.disabled = true;
+                    uploadSubmit.innerHTML = `\
+                        <svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">\
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>\
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>\
+                        </svg>\
+                        <span class="ml-2">Uploading...</span>`;
+
+                    try {
+                        const fileContent = await file.text();
+
+                        // Send file content to the application first (DB-first)
+                        const uploadUrl = '{{ route('staff.document_management.upload') }}';
+                        const res = await fetch(uploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                file_name: file.name,
+                                file_type: 'txt',
+                                file_content: fileContent,
+                                file_size: file.size || null
+                            })
+                        });
+
+                        const result = await (res.ok ? res.json() : { success: false, error: await res.text() });
+
+                        if (!res.ok || !result.success) {
+                            console.error('[Admin File Upload] Upload failed:', result.error || 'Unknown error');
+                            throw new Error(result.error || 'File upload failed');
+                        }
+
+                        showToast('success', 'File saved locally and uploaded to Rasa successfully');
+
+                        closeModal(uploadModal);
+                        uploadForm.reset();
+
+                        // Auto-refresh document list
+                        fetchDocs();
+
+                    } catch (err) {
+                        console.error('[Admin Upload] Upload error:', err);
+                        showToast('error', err.message || 'Failed to upload file');
+                    } finally {
+                        // Restore original content
+                        uploadSubmit.innerHTML = originalHTML;
+                        uploadSubmit.disabled = false;
+                    }
+                });
+            }
+
             const editDocumentModal = $('#editDocumentModal');
             const editDocumentCloseEls = $$('[data-close="edit-doc"]', editDocumentModal || document);
             const editDocumentForm = $('#editDocumentForm');
             const editDocumentSubmit = $('#editDocumentSubmit');
+
+            // Close buttons and submit for Edit Document modal
+            editDocumentCloseEls.forEach(el => el.addEventListener('click', () => closeModal(editDocumentModal)));
+            if (editDocumentSubmit) {
+                editDocumentSubmit.addEventListener('click', saveDocumentContent);
+            }
+
+            // Delete button in Edit Document modal (DB-first: delete Document record, then sync DB -> Rasa)
+            const deleteDocBtn = $('#deleteDocBtn');
+            if (deleteDocBtn) {
+                deleteDocBtn.addEventListener('click', async () => {
+                    const filename = $('#edit_doc_filename').value;
+                    if (!filename) {
+                        showToast('error', 'Filename is missing');
+                        return;
+                    }
+
+                    const confirmResult = await Swal.fire({
+                        title: 'Delete document?',
+                        text: `Delete "${filename}" from the database and sync to Rasa?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete',
+                        cancelButtonText: 'Cancel'
+                    });
+                    if (!confirmResult.isConfirmed) return;
+
+                    try {
+                        deleteDocBtn.disabled = true;
+                        const res = await fetch('{{ route('staff.document_management.document.destroy') }}', {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ file_name: filename })
+                        });
+
+                        const json = await (res.ok ? res.json() : { success: false, error: await res.text() });
+
+                        if (!res.ok || !json.success) {
+                            console.error('[Delete] response status:', res.status, 'body:', json);
+                            throw new Error(json.message || json.error || 'Failed to delete document');
+                        }
+
+                        showToast('success', `Document "${filename}" deleted and DB synced to Rasa`);
+                        closeModal(editDocumentModal);
+                        fetchDocs();
+
+                    } catch (err) {
+                        console.error('Delete doc error:', err);
+                        showToast('error', err.message || 'Failed to delete document');
+                    } finally {
+                        deleteDocBtn.disabled = false;
+                    }
+                });
+            }
 
             const viewModal = $('#viewFaqModal');
             const viewCloseEls = $$('[data-close="view"]', viewModal || document);
@@ -533,6 +679,90 @@
             const viewTimestamps = $('#view_timestamps');
             const updateSubmit = $('#updateFaqSubmit');
             const deleteBtn = $('#deleteFaqBtn');
+
+            // Delete handler for admin (delete from DB first, then sync Rasa storage with DB)
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    const id = viewFaqId.value;
+                    const confirmResult = await Swal.fire({
+                        title: 'Delete Document?',
+                        text: 'This will delete the document from the database',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete',
+                        cancelButtonText: 'Cancel'
+                    });
+                    if (!confirmResult.isConfirmed) return;
+
+                    const url = DESTROY_TEMPLATE.replace('__ID__', id);
+                    try {
+                        deleteBtn.disabled = true;
+                        const res = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const json = await res.json();
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Failed to delete document');
+                        }
+
+                        // Record deletion in document changes log
+                        await logDocumentChange(viewTopic.value || `faq:${id}`, 'deleted');
+
+                        // Sync the entire FAQ set from DB to Rasa so local storage matches DB
+                        try {
+                            const faqsRes = await fetch('{{ route('admin.knowledgebase.all-json') }}', {
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                            });
+                            if (!faqsRes.ok) throw new Error('Failed to fetch FAQs for sync');
+                            const faqData = await faqsRes.json();
+                            const faqs = faqData.faqs || [];
+
+                            const rasaRes = await fetch('{{ config("services.faq_sync.url") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-FAQ-UPDATER-TOKEN': '{{ config("services.faq_sync.secret") }}',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ faqs })
+                            });
+
+                            const contentType = rasaRes.headers ? rasaRes.headers.get('content-type') : null;
+                            let result;
+                            if (contentType && contentType.includes('application/json')) {
+                                result = await rasaRes.json();
+                            } else {
+                                const errorText = await rasaRes.text();
+                                throw new Error('Rasa sync failed: ' + errorText);
+                            }
+
+                            if (!result.ok) {
+                                throw new Error(result.error || 'Rasa sync failed');
+                            }
+
+                        } catch (syncErr) {
+                            console.error('Rasa sync failed after delete:', syncErr);
+                            // Still proceed, but inform the admin
+                            showToast('error', 'Deleted locally but failed to sync to Rasa');
+                            closeModal(viewModal);
+                            fetchList(currentPage);
+                            return;
+                        }
+
+                        showToast('success', 'Document deleted and Rasa synced successfully');
+                        closeModal(viewModal);
+                        fetchList(currentPage);
+                    } catch (err) {
+                        showToast('error', err.message || 'Error deleting document');
+                        console.error(err);
+                    } finally {
+                        deleteBtn.disabled = false;
+                    }
+                });
+            }
 
             // More actions elements (modal "..." menu)
             const moreBtn = $('#moreActionsBtn');
@@ -633,14 +863,10 @@
                 try {
                     docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
 
-                    const rasaUrl = '{{ config("services.faq_list_docs.url") }}';
-                    const secret = '{{ config("services.faq_list_docs.secret") }}';
-
-                    const res = await fetch(rasaUrl, {
-                        headers: {
-                            'X-FAQ-UPDATER-TOKEN': secret,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
+                    // Admin should list documents from the database first (authoritative source).
+                    // The controller returns { ok: true, files: [...] }.
+                    const res = await fetch(LIST_URL, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
 
                     if (!res.ok) {
@@ -649,14 +875,11 @@
                     }
 
                     const json = await res.json();
-
-                    if (!json.ok) {
-                        throw new Error(json.error || 'Failed to load docs');
-                    }
+                    if (!json.ok) throw new Error(json.error || 'Failed to load docs');
 
                     renderDocsList(json.files || []);
                 } catch (err) {
-                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: Rasa server is offline.</div>`;
+                    docsListEl.innerHTML = `<div class="text-center text-sm text-red-600">Error loading documents.</div>`;
                 }
             }
 

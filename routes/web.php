@@ -302,6 +302,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [StaffKnowledgebaseController::class, 'index'])->name('index');
         Route::get('/files', [StaffKnowledgebaseController::class, 'filesList'])->name('files');
         Route::post('/', [StaffKnowledgebaseController::class, 'store'])->middleware('throttle:20,1')->name('store');
+        // Upload endpoint: save to DB first then forward to Rasa
+        Route::post('/upload', [StaffKnowledgebaseController::class, 'uploadDocument'])->middleware('throttle:20,1')->name('upload');
+        // Delete a document by file name (DB-first, then sync DB -> Rasa)
+        Route::delete('/document', [StaffKnowledgebaseController::class, 'destroyDocumentByName'])->middleware('throttle:20,1')->name('document.destroy');
         Route::put('/{faq}', [StaffKnowledgebaseController::class, 'update'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
         Route::delete('/{faq}', [StaffKnowledgebaseController::class, 'destroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
     });

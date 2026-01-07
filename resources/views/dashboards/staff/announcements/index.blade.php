@@ -33,6 +33,7 @@
             </div>
         </div>
 
+        @if(Auth::check() && ((int) (Auth::user()->role_id ?? 0) === 1))
         <!-- Document Training Alert -->
         <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4 mt-4">
             <div class="flex items-center justify-between">
@@ -69,6 +70,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Announcements List -->
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -113,17 +115,6 @@
                         <p class="mt-1 text-xs text-slate-500">Announcements are for short-term, constantly changing
                             information like enrollment schedules and document releases.</p>
                         <p id="announcement_error" class="mt-1 text-xs text-red-600 hidden"></p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Assign to Roles</label>
-                        <select id="announcementAssignedRoles" multiple
-                            class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            @foreach (\App\Models\Role::all() as $role)
-                                <option value="{{ $role->id }}">{{ $role->name }}</option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-slate-500">Leave empty to assign to all roles</p>
-                        <p id="announcement_assigned_roles_error" class="mt-1 text-xs text-red-600 hidden"></p>
                     </div>
                     <div class="mt-auto pt-0 flex flex-col sm:flex-row sm:items-center justify-end gap-3">
                         <button type="button"
@@ -620,15 +611,19 @@
                 }
             }
 
+            @if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
             // Add event listener for train button
             const trainBtn = document.getElementById('trainRasaBtn');
             if (trainBtn) {
                 trainBtn.addEventListener('click', trainRasa);
             }
+            @endif
+// Check training status on page load
+@if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
+checkTrainingStatus();
+@endif
+})();
 
-            // Check training status on page load
-            checkTrainingStatus();
-        })();
     </script>
 
 @endsection

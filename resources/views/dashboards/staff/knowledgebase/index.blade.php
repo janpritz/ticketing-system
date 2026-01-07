@@ -88,6 +88,7 @@
             </div>
         </div>
 
+        @if(Auth::check() && ((int) (Auth::user()->role_id ?? 0) === 1))
         <!-- Training Required Alert -->
         <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
             <div class="flex items-center justify-between">
@@ -124,6 +125,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="p-6">
@@ -405,12 +407,19 @@
                 class="w-full max-w-full sm:max-w-4xl bg-white rounded-none sm:rounded-lg shadow border border-gray-200 overflow-auto max-h-[90vh]">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Edit Document</div>
-                    <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
-                        aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button id="deleteDocBtn" type="button" class="text-red-600 hover:text-red-800" aria-label="Delete document">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 3v1H4v2h16V4h-5V3H9zm2 5v9h2V8h-2zm-4 0v9h2V8H7zm8 0v9h2V8h-2z" />
+                            </svg>
+                        </button>
+                        <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
+                            aria-label="Close">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <form id="editDocumentForm" class="p-4 space-y-4">
                     <div>
@@ -1348,6 +1357,58 @@
                 editDocumentSubmit.addEventListener('click', saveDocumentContent);
             }
 
+            // Delete button in Edit Document modal (DB-first: delete Document record, then sync DB -> Rasa)
+            const deleteDocBtn = $('#deleteDocBtn');
+            if (deleteDocBtn) {
+                deleteDocBtn.addEventListener('click', async () => {
+                    const filename = $('#edit_doc_filename').value;
+                    if (!filename) {
+                        showToast('error', 'Filename is missing');
+                        return;
+                    }
+
+                    const confirmResult = await Swal.fire({
+                        title: 'Delete document?',
+                        text: `Delete "${filename}" from the database and sync to Rasa?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete',
+                        cancelButtonText: 'Cancel'
+                    });
+                    if (!confirmResult.isConfirmed) return;
+
+                    try {
+                        deleteDocBtn.disabled = true;
+                        const res = await fetch('{{ route('staff.document_management.document.destroy') }}', {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrf,
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ file_name: filename })
+                        });
+
+                        const json = await (res.ok ? res.json() : { success: false, error: await res.text() });
+
+                        if (!res.ok || !json.success) {
+                            console.error('[Delete] response status:', res.status, 'body:', json);
+                            throw new Error(json.message || json.error || 'Failed to delete document');
+                        }
+
+                        showToast('success', `Document "${filename}" deleted and DB synced to Rasa`);
+                        closeModal(editDocumentModal);
+                        fetchDocs();
+
+                    } catch (err) {
+                        console.error('Delete doc error:', err);
+                        showToast('error', err.message || 'Failed to delete document');
+                    } finally {
+                        deleteDocBtn.disabled = false;
+                    }
+                });
+            }
+
             // Template button handlers
             const createTemplateBtn = $('#createTemplateBtn');
             const createDescription = $('#create_description');
@@ -1518,61 +1579,33 @@
                         const fileContent = await file.text();
                         console.log('[File Upload] File content length:', fileContent.length);
 
-                        // Send file content directly to Rasa upload endpoint (admin-style)
-                        const baseUrl = '{{ config('services.faq_sync.url') }}'.replace('/sync-faqs', '');
-                        const rasaRes = await fetch(`${baseUrl}/upload-file`, {
+                        // Send file content to the application first (DB-first) which will then upload to Rasa
+                        const uploadUrl = '{{ route('staff.document_management.upload') }}';
+                        const res = await fetch(uploadUrl, {
                             method: 'POST',
                             headers: {
-                                'X-FAQ-UPDATER-TOKEN': '{{ config('services.faq_sync.secret') }}',
+                                'X-CSRF-TOKEN': csrf,
                                 'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
                             },
                             body: JSON.stringify({
-                                file_content: fileContent,
                                 file_name: file.name,
-                                file_type: file.type
+                                file_type: 'txt',
+                                file_content: fileContent,
+                                file_size: file.size || null
                             })
                         });
 
-                        const result = await (rasaRes.ok ? rasaRes.json() : rasaRes.text().then(t => ({
-                            ok: false,
-                            error: t
-                        })));
+                        const result = await (res.ok ? res.json() : { success: false, error: await res.text() });
 
-                        console.log('[File Upload] Rasa response:', result);
+                        console.log('[File Upload] App response:', result);
 
-                        if (!rasaRes.ok || !result.ok) {
+                        if (!res.ok || !result.success) {
                             console.error('[File Upload] Upload failed:', result.error || 'Unknown error');
                             throw new Error(result.error || 'File upload failed');
                         }
 
-                        // Record upload log on server
-                        try {
-                            const logRes = await fetch('{{ route('staff.upload-logs.store') }}', {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': csrf,
-                                    'Content-Type': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                },
-                                body: JSON.stringify({
-                                    file_name: file.name,
-                                    file_size: file.size || null,
-                                    upload_date: new Date().toISOString(),
-                                    server_recieved_date: new Date().toISOString()
-                                })
-                            });
-
-                            if (!logRes.ok) {
-                                console.warn('[File Upload] Failed to save upload log:', await logRes
-                                    .text());
-                            } else {
-                                console.log('[File Upload] Upload log saved');
-                            }
-                        } catch (logErr) {
-                            console.error('[File Upload] Error saving upload log:', logErr);
-                        }
-
-                        showToast('success', 'File uploaded and synced successfully');
+                        showToast('success', 'File saved locally and uploaded to Rasa successfully');
 
                         closeModal(uploadModal);
                         uploadForm.reset();
@@ -1666,6 +1699,10 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Failed to delete FAQ');
                         }
+
+                        // Record deletion in document changes log
+                        await logDocumentChange(viewTopic.value || `faq:${id}`, 'deleted');
+
                         setPendingChanges(true);
                         showToast('success', 'FAQ deleted successfully');
                         closeModal(viewModal);
@@ -1981,15 +2018,19 @@
                 }
             }
 
+            @if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
             // Add event listener for train button
             const trainBtn = $('#trainRasaBtn');
             if (trainBtn) {
                 trainBtn.addEventListener('click', trainRasa);
             }
+            @endif
 
             // Initialize: fetch docs on page load
             fetchDocs();
+            @if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
             checkTrainingStatus();
+            @endif
 
         })();
     </script>

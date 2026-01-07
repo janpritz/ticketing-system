@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Guard: if documents table already exists (created by another migration), do nothing
+        if (Schema::hasTable('documents')) {
+            return;
+        }
+
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('staff_id')->index();

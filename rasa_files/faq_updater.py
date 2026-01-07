@@ -108,8 +108,7 @@ def append_action_class(intent_norm: str, intent_raw: str) -> bool:
         action_class_name = f"ActionFaq{intent_norm.title().replace('_', '')}"
         
         # Create action class content
-        action_content = f'''
-class {action_class_name}(Action):
+        action_content = f'''\nclass {action_class_name}(Action):
     def name(self) -> Text:
         return "action_faq_{intent_norm}"
 
@@ -159,8 +158,7 @@ class {action_class_name}(Action):
 def append_flow(intent_norm: str, description: str) -> bool:
     """Append a flow block to the FAQ flows file"""
     try:
-        flow_content = f'''
-  - intent: {intent_norm}
+        flow_content = f'''\n  - intent: {intent_norm}
     description: {description}
     action: action_faq_{intent_norm}
 '''
@@ -324,6 +322,77 @@ def upload_file():
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+@app.route("/delete-file", methods=["POST"])
+def delete_file():
+    """Delete a file from the docs/ directory.
+
+    Expects JSON: { "file_name": "..." }
+    Returns: { "ok": true, "deleted": true, "file_name": "..." }
+    """
+    try:
+        print("[file_delete] /delete-file endpoint called")
+
+        if not verify_secret(request):
+            print("[file_delete] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        file_name = data.get("file_name", "")
+        if not file_name:
+            print("[file_delete] ERROR: file_name is required")
+            return jsonify({"ok": False, "error": "file_name is required"}), 400
+
+        # Only allow deleting txt/md files
+        if not file_name.lower().endswith(('.txt', '.md')):
+            print(f"[file_delete] ERROR: File type not allowed: {file_name}")
+            return jsonify({"ok": False, "error": "File type not allowed"}), 403
+
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / file_name
+
+        # Security check: ensure file is within docs directory
+        if file_path.parent != docs_dir:
+            print(f"[file_delete] ERROR: Invalid file path: {file_name}")
+            return jsonify({"ok": False, "error": "Invalid file path"}), 403
+
+        if not file_path.exists():
+            print(f"[file_delete] File not found: {file_name}")
+            return jsonify({"ok": False, "error": "File not found"}), 404
+
+        # Backup before delete
+        try:
+            backup_dir = PROJECT_ROOT / "backup"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"{file_path.stem}_{timestamp}{file_path.suffix}"
+            backup_path = backup_dir / backup_filename
+            import shutil
+            shutil.copy2(file_path, backup_path)
+            print(f"[file_delete] Created backup: {backup_path}")
+        except Exception as e:
+            print(f"[file_delete] WARNING: Could not create backup: {e}")
+
+        try:
+            file_path.unlink()
+            print(f"[file_delete] Deleted file: {file_path}")
+        except Exception as e:
+            print(f"[file_delete] ERROR deleting file: {e}", file=sys.stderr)
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"Failed to delete file: {str(e)}"}), 500
+
+        return jsonify({
+            "ok": True,
+            "deleted": True,
+            "file_name": file_name,
+        })
+
+    except Exception as e:
+        print(f"[file_delete] Unexpected error in /delete-file: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.route("/list-docs", methods=["GET"])
 def list_docs():
     """
@@ -474,6 +543,159 @@ def download_announcements():
 
     except Exception as e:
         print(f"[download_announcements] Unexpected error: {e}", file=sys.stderr)
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+# New endpoint: update a specific announcement by id without duplicating
+@app.route("/update-announcement", methods=["POST"])
+def update_announcement():
+    """
+    Update a specific announcement in Announcements.txt by id.
+    Expects JSON: { "id": 5, "title": "New title", "content": "The new body" }
+    Returns: { "ok": true, "updated": true, "id": 5 }
+    """
+    try:
+        print("[update_announcement] /update-announcement called")
+
+        if not verify_secret(request):
+            print("[update_announcement] Secret verification failed")
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+        data = request.get_json(force=True)
+        ann_id = data.get("id")
+        title = data.get("title", "")
+        body = data.get("content", "")
+
+        if ann_id is None:
+            print("[update_announcement] ERROR: id is required")
+            return jsonify({"ok": False, "error": "id is required"}), 400
+
+        try:
+            ann_id = int(ann_id)
+        except ValueError:
+            print("[update_announcement] ERROR: id must be an integer")
+            return jsonify({"ok": False, "error": "id must be an integer"}), 400
+
+        docs_dir = PROJECT_ROOT / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / "Announcements.txt"
+
+        if not file_path.exists():
+            print("[update_announcement] Announcements.txt does not exist")
+            return jsonify({"ok": False, "error": "Announcements.txt not found"}), 404
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            print(f"[update_announcement] Error reading file: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Error reading file"}), 500
+
+        # Split into blocks using a robust regex that matches a line of 9 dashes
+        blocks = re.split(r"(?m)^\-{9}\s*$\n?", content.strip())
+
+        # Build a map of existing titles to their ids for duplicate-title validation
+        existing_titles = {}
+        for block in blocks:
+            b = block.strip()
+            if not b:
+                continue
+            lines_b = b.split('\n')
+            id_line_b = lines_b[0] if lines_b else ''
+            id_match_b = re.match(r'^id:\s*(\d+)', id_line_b)
+            try:
+                id_b = int(id_match_b.group(1)) if id_match_b else None
+            except Exception:
+                id_b = None
+            title_b = ''
+            if len(lines_b) >= 2 and lines_b[1].startswith('title:'):
+                tm = re.match(r'^title:\s*(.+)', lines_b[1])
+                title_b = tm.group(1).strip() if tm else ''
+            else:
+                # old format (no explicit title) -> skip for duplicate checks
+                title_b = ''
+            if title_b:
+                existing_titles[id_b] = title_b
+
+        # If a title was provided in the request, ensure it does not duplicate another announcement's title
+        if title:
+            new_title_norm = title.strip().lower()
+            for eid, etitle in existing_titles.items():
+                if eid is not None and eid != ann_id and etitle.strip().lower() == new_title_norm:
+                    print(f"[update_announcement] Duplicate title detected for id {eid}")
+                    return jsonify({"ok": False, "error": "duplicate title not allowed"}), 400
+
+        updated = False
+        new_blocks = []
+        for block in blocks:
+            block_strip = block.strip()
+            if not block_strip:
+                continue
+
+            lines = block_strip.split('\n')
+            id_line = lines[0] if lines else ''
+            id_match = re.match(r'^id:\s*(\d+)', id_line)
+            if id_match:
+                try:
+                    current_id = int(id_match.group(1))
+                except Exception:
+                    current_id = None
+            else:
+                current_id = None
+
+            if current_id == ann_id:
+                # Replace this block with new content
+                if title:
+                    new_block = f"id: {ann_id}\ntitle: {title}\n{body.strip()}"
+                else:
+                    # Preserve old title if present
+                    old_title = ''
+                    if len(lines) >= 2 and lines[1].startswith('title:'):
+                        old_title = lines[1]
+                    if old_title:
+                        new_block = f"id: {ann_id}\n{old_title}\n{body.strip()}"
+                    else:
+                        new_block = f"id: {ann_id}\n{body.strip()}"
+                new_blocks.append(new_block)
+                updated = True
+            else:
+                new_blocks.append(block_strip)
+
+        if not updated:
+            print(f"[update_announcement] Announcement with id {ann_id} not found")
+            return jsonify({"ok": False, "error": "Announcement not found"}), 404
+
+        # Reconstruct file content with separator and ensure trailing separator
+        separator = "---------\n"
+        reconstructed = separator.join(new_blocks)
+        reconstructed = reconstructed + "\n" + separator
+
+        # Backup original file
+        try:
+            backup_dir = PROJECT_ROOT / "backup"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_filename = f"Announcements_{timestamp}.txt"
+            backup_path = backup_dir / backup_filename
+            import shutil
+            shutil.copy2(file_path, backup_path)
+            print(f"[update_announcement] Created backup: {backup_path}")
+        except Exception as e:
+            print(f"[update_announcement] WARNING: Could not create backup: {e}")
+
+        # Write updated content
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(reconstructed)
+            print(f"[update_announcement] Successfully updated announcement id {ann_id}")
+        except Exception as e:
+            print(f"[update_announcement] ERROR writing file: {e}", file=sys.stderr)
+            return jsonify({"ok": False, "error": "Failed to write file"}), 500
+
+        return jsonify({"ok": True, "updated": True, "id": ann_id})
+
+    except Exception as e:
+        print(f"[update_announcement] Unexpected error: {e}", file=sys.stderr)
         traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -1214,6 +1436,7 @@ def update_faq():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/upload-file", methods=["POST", "OPTIONS"])
+@app.route("/delete-file", methods=["POST", "OPTIONS"])
 @app.route("/sync-faqs", methods=["POST", "OPTIONS"])
 @app.route("/update-faq", methods=["POST", "OPTIONS"])
 @app.route("/update-document", methods=["POST", "OPTIONS"])

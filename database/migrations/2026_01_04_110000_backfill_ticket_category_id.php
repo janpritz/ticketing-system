@@ -14,9 +14,20 @@ class BackfillTicketCategoryId extends Migration
         // 1) Ensure there is an 'Others' category to receive unmatched tickets
         $othersId = DB::table('categories')->where('name', 'Others')->value('id');
         if (!$othersId) {
+            // Ensure we have a valid role_id to satisfy the non-null constraint.
+            $defaultRoleId = DB::table('roles')->value('id');
+            if (!$defaultRoleId) {
+                // If no roles exist yet (test/early migration), create a fallback role.
+                $defaultRoleId = DB::table('roles')->insertGetId([
+                    'name' => 'Unassigned',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             $othersId = DB::table('categories')->insertGetId([
                 'name' => 'Others',
-                'role_id' => null,
+                'role_id' => $defaultRoleId,
                 'description' => 'Auto-created category for legacy/unknown tickets',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -30,7 +41,17 @@ class BackfillTicketCategoryId extends Migration
         DB::table('tickets')->whereNull('category_id')->update(['category_id' => $othersId]);
 
         // 4) Assign unmatched tickets (now set to Others) to the Primary Administrator if they have no staff
-        $primaryAdminId = DB::table('users')->whereRaw('LOWER(role) = ?', ['primary administrator'])->value('id');
+        $primaryAdminId = null;
+        try {
+            // Only attempt lookup if the users table has a 'role' column (may not exist yet during migrations)
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'role')) {
+                $primaryAdminId = DB::table('users')->whereRaw('LOWER(role) = ?', ['primary administrator'])->value('id');
+            }
+        } catch (\Throwable $e) {
+            // Ignore if users table/column not present during early migration runs
+            $primaryAdminId = null;
+        }
+
         if ($primaryAdminId) {
             DB::table('tickets')
                 ->where('category_id', $othersId)

@@ -13,10 +13,33 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\DocumentChange;
+use App\Models\Document;
 use App\Services\RasaServerService;
 
 class AdminController extends Controller
 {
+    /**
+     * Backwards-compatibility helper.
+     * Older Announcements.txt entries may include a leading "roles:" line.
+     * We do not store that in the file anymore (role scoping is handled in DB),
+     * so strip it out when reconstructing or displaying.
+     */
+    private function stripLeadingRolesLine(string $content): string
+    {
+        $content = ltrim($content, "\r\n");
+        $lines = preg_split("/\r\n|\n|\r/", $content);
+        if (!$lines || count($lines) === 0) {
+            return $content;
+        }
+
+        if (preg_match('/^roles\s*:/i', (string) $lines[0])) {
+            array_shift($lines);
+            return ltrim(implode("\n", $lines), "\r\n");
+        }
+
+        return $content;
+    }
+
     /**
      * Admin dashboard displaying system-wide metrics, charts and recent tickets.
      */
@@ -580,10 +603,57 @@ class AdminController extends Controller
         $this->ensureAdmin();
         $isDeleted = (bool) $request->query('include_deleted', false);
         $listUrl = $isDeleted ? route('admin.knowledgebase.deleted.list') : route('admin.knowledgebase.list');
+
+        // Provide local documents to the view so the admin UI can prefer DB-backed documents
+        // (Admin document management should show the authoritative DB state first; Rasa is only used for syncing)
+        $localDocuments = [];
+        try {
+            $localDocuments = Document::orderBy('file_name')
+                ->get()
+                ->map(function ($d) {
+                    return [
+                        'name' => $d->file_name,
+                        'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
+                        'modified' => $d->updated_at ? $d->updated_at->toDateTimeString() : null,
+                        'created_by' => $d->created_by,
+                    ];
+                })->values()->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to load local documents for admin view: ' . $e->getMessage());
+            $localDocuments = [];
+        }
+
         return view('dashboards.admin.knowledgebase.index', [
             'listUrl' => $listUrl,
             'isDeletedView' => $isDeleted,
+            'localDocuments' => $localDocuments,
         ]);
+    }
+
+    /**
+     * Admin documents list (AJAX) - return DB-backed documents so the admin UI can show authoritative data
+     */
+    public function knowledgebaseList(Request $request)
+    {
+        $this->ensureAdmin();
+
+        try {
+            $docs = Document::orderBy('file_name')->get();
+            $files = $docs->map(function ($d) {
+                return [
+                    'name' => $d->file_name,
+                    'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
+                    'modified' => $d->updated_at ? $d->updated_at->toDateTimeString() : null,
+                    'created_by' => $d->created_by,
+                    'rasa_doc_id' => $d->rasa_doc_id ?? null,
+                ];
+            })->values()->toArray();
+
+            return response()->json(['ok' => true, 'files' => $files]);
+        } catch (\Exception $e) {
+            Log::error('Failed to list admin documents from DB: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'error' => 'Failed to list documents'], 500);
+        }
     }
     /**
      * Store new Knowledgebase item (AJAX)
@@ -713,7 +783,7 @@ class AdminController extends Controller
                     }
                 }
 
-                // Format the announcement
+                // Format the announcement (role scoping is stored in DB, not in the file)
                 $announcementText = "id: {$nextId}\ntitle: {$validated['title']}\n{$validated['content']}\n---------\n";
 
                 // If there are existing announcements, append to the content
@@ -766,6 +836,28 @@ class AdminController extends Controller
                     \Illuminate\Support\Facades\Log::error('Failed to log announcement change: ' . $e->getMessage());
                 }
 
+                // Persist role mapping in DB (announcement_roles table)
+                // Admin-created announcements are broadcast to ALL roles.
+                try {
+                    $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+                    if (!empty($roleIds)) {
+                        $rows = array_map(function ($roleId) use ($nextId) {
+                            return [
+                                'announcement_id' => (int) $nextId,
+                                'role_id' => (int) $roleId,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }, $roleIds);
+
+                        DB::table('announcement_roles')->insert($rows);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to persist announcement_roles mapping (admin store): ' . $e->getMessage(), [
+                        'announcement_id' => $nextId,
+                    ]);
+                }
+
 
                 return response()->json([
                     'success' => true,
@@ -773,7 +865,7 @@ class AdminController extends Controller
                     'announcement' => [
                         'id' => $nextId,
                         'title' => $validated['title'],
-                        'content' => $validated['content']
+                        'content' => $validated['content'],
                     ]
                 ]);
 
@@ -829,6 +921,39 @@ class AdminController extends Controller
             }
 
             $announcements = $data['announcements'] ?? [];
+
+            // Attach assigned_roles from DB for UI editing and strip any legacy roles line
+            $announcementIds = array_values(array_filter(array_map(function ($a) {
+                return isset($a['id']) ? (int) $a['id'] : null;
+            }, $announcements)));
+
+            $roleMap = [];
+            if (!empty($announcementIds)) {
+                try {
+                    $rows = DB::table('announcement_roles')
+                        ->whereIn('announcement_id', $announcementIds)
+                        ->get(['announcement_id', 'role_id']);
+
+                    foreach ($rows as $row) {
+                        $aid = (int) $row->announcement_id;
+                        $rid = (int) $row->role_id;
+                        $roleMap[$aid] = $roleMap[$aid] ?? [];
+                        $roleMap[$aid][] = $rid;
+                    }
+                } catch (\Throwable $e) {
+                    // Table may not exist yet; ignore.
+                }
+            }
+
+            foreach ($announcements as &$ann) {
+                $aid = isset($ann['id']) ? (int) $ann['id'] : null;
+                $assigned = $aid !== null ? ($roleMap[$aid] ?? []) : [];
+                $ann['assigned_roles'] = array_values(array_unique(array_map('intval', $assigned)));
+                if (isset($ann['content']) && is_string($ann['content'])) {
+                    $ann['content'] = $this->stripLeadingRolesLine($ann['content']);
+                }
+            }
+            unset($ann);
 
             // Get pinned announcement IDs
             $pinnedIds = DB::table('pinned_announcements')->pluck('announcement_id')->toArray();
@@ -917,7 +1042,8 @@ class AdminController extends Controller
             // Reconstruct content
             $content = '';
             foreach ($announcements as $ann) {
-                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$ann['content']}\n---------\n";
+                $cleanContent = isset($ann['content']) ? $this->stripLeadingRolesLine((string) $ann['content']) : '';
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$cleanContent}\n---------\n";
             }
 
             // Upload updated content
@@ -952,6 +1078,32 @@ class AdminController extends Controller
                 ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to log announcement update change: ' . $e->getMessage());
+            }
+
+            // Sync DB mapping for ALL roles
+            try {
+                $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+
+                DB::transaction(function () use ($id, $roleIds) {
+                    DB::table('announcement_roles')->where('announcement_id', (int) $id)->delete();
+
+                    if (!empty($roleIds)) {
+                        $rows = array_map(function ($roleId) use ($id) {
+                            return [
+                                'announcement_id' => (int) $id,
+                                'role_id' => (int) $roleId,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }, $roleIds);
+
+                        DB::table('announcement_roles')->insert($rows);
+                    }
+                });
+            } catch (\Throwable $e) {
+                Log::warning('Failed to sync announcement_roles mapping (admin update all roles): ' . $e->getMessage(), [
+                    'announcement_id' => (int) $id,
+                ]);
             }
 
             return response()->json([
@@ -1011,7 +1163,8 @@ class AdminController extends Controller
             // Reconstruct content
             $content = '';
             foreach ($announcements as $ann) {
-                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$ann['content']}\n---------\n";
+                $cleanContent = isset($ann['content']) ? $this->stripLeadingRolesLine((string) $ann['content']) : '';
+                $content .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$cleanContent}\n---------\n";
             }
 
             // Upload updated content
@@ -1046,6 +1199,15 @@ class AdminController extends Controller
                 ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to log announcement delete change: ' . $e->getMessage());
+            }
+
+            // Remove DB mapping rows for this announcement
+            try {
+                DB::table('announcement_roles')->where('announcement_id', (int) $id)->delete();
+            } catch (\Throwable $e) {
+                Log::warning('Failed to delete announcement_roles mapping (admin destroy): ' . $e->getMessage(), [
+                    'announcement_id' => (int) $id,
+                ]);
             }
 
             return response()->json([

@@ -75,4 +75,37 @@ class RasaServerService
 
         return $response->json();
     }
+
+    public static function deleteFile(string $fileName): array
+    {
+        $rasaUrl = config('services.faq_sync.url');
+        $baseUrl = rtrim($rasaUrl, '/sync-faqs');
+        $deleteUrl = $baseUrl . '/delete-file';
+        $secret = config('services.faq_sync.secret');
+
+        Log::info('Rasa delete-file attempt', [
+            'delete_url' => $deleteUrl,
+            'file_name' => $fileName,
+        ]);
+
+        $response = Http::withHeaders([
+            'X-FAQ-UPDATER-TOKEN' => $secret,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Content-Type' => 'application/json'
+        ])->post($deleteUrl, [
+            'file_name' => $fileName,
+        ]);
+
+        Log::info('Rasa delete-file response', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+            'successful' => $response->successful(),
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Delete failed with status: ' . $response->status() . ', body: ' . $response->body());
+        }
+
+        return $response->json();
+    }
 }
