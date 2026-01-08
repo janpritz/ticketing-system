@@ -98,7 +98,7 @@
     <!-- Tickets Solved/Closed (Last 30 Days) -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Tickets Solved (30 Days)</h3>
+        <h3 id="ticketsSolvedTitle" class="text-lg font-semibold text-gray-900">Tickets Solved (30 Days)</h3>
         <div class="text-sm text-gray-500">Staff by resolution count</div>
       </div>
       <div class="overflow-x-auto">
@@ -236,8 +236,36 @@
 (function(){
   let backlogTrendChart, workloadDistributionChart, topTicketDriversChart;
 
+  function updateTicketsSolvedTitle(days) {
+    const el = document.getElementById('ticketsSolvedTitle');
+    if (!el) return;
+    const n = parseInt(days, 10);
+    el.textContent = `Tickets Solved (${Number.isFinite(n) ? n : 30} Days)`;
+  }
+
   function number_format(num) {
     return num.toLocaleString();
+  }
+
+  function updateTicketsSolvedTable(items) {
+    const tbody = document.getElementById('ticketsSolvedBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    if (!Array.isArray(items) || items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500">No solved tickets.</td></tr>';
+      return;
+    }
+
+    items.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-gray-50';
+      tr.innerHTML = `
+        <td class="py-2 pl-3 pr-2 align-top text-gray-900">${item.name || 'Unknown'}</td>
+        <td class="px-2 py-2 align-top font-medium text-slate-900">${number_format(item.count || 0)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   function initBacklogTrendChart(data) {
@@ -358,6 +386,7 @@
 
   function initTicketsByOrgTable(data) {
     const tbody = document.getElementById('ticketsByOrgBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
     if (!data || data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500">No data available.</td></tr>';
@@ -464,27 +493,18 @@
     fetch(`{{ route('admin.reports.dynamic-data') }}?days=${days}`)
       .then(response => response.json())
       .then(data => {
-        document.getElementById('avgResolutionTimeValue').textContent = data.avgResolutionTime;
-        document.getElementById('totalTicketsValue').textContent = data.totalTickets;
-        // update tables
+        // Update the Tickets Solved table first so it refreshes even if other widgets error.
+        updateTicketsSolvedTable(data.ticketsSolved);
+
+        const avgEl = document.getElementById('avgResolutionTimeValue');
+        if (avgEl) avgEl.textContent = data.avgResolutionTime;
+
+        const totalEl = document.getElementById('totalTicketsValue');
+        if (totalEl) totalEl.textContent = data.totalTickets;
+
+        // update other widgets
         initTicketsByOrgTable(data.ticketsByOrg);
         initTopTicketDriversChart(data.topTicketDrivers);
-        // for tickets solved table
-        const tbody = document.getElementById('ticketsSolvedBody');
-        tbody.innerHTML = '';
-        if (!data.ticketsSolved || data.ticketsSolved.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="2" class="px-3 py-6 text-center text-sm text-gray-500">No solved tickets.</td></tr>';
-          return;
-        }
-        data.ticketsSolved.forEach(item => {
-          const tr = document.createElement('tr');
-          tr.className = 'hover:bg-gray-50';
-          tr.innerHTML = `
-            <td class="py-2 pl-3 pr-2 align-top text-gray-900">${item.name || 'Unknown'}</td>
-            <td class="px-2 py-2 align-top font-medium text-slate-900">${number_format(item.count || 0)}</td>
-          `;
-          tbody.appendChild(tr);
-        });
       })
       .catch(error => {
         console.error('Error loading dynamic data:', error);
@@ -505,11 +525,15 @@
   const initialTicketsByOrgData = @json($ticketsByOrg ?? []);
   initTicketsByOrgTable(initialTicketsByOrgData);
 
+  // Sync the Tickets Solved title with the current range (default is 30)
+  updateTicketsSolvedTitle(document.getElementById('timeRangeSelect').value || 30);
+
   // Handle time range changes
   document.getElementById('timeRangeSelect').addEventListener('change', function(e) {
     const days = e.target.value;
     loadBacklogTrendData(days);
     loadDynamicData(days);
+    updateTicketsSolvedTitle(days);
   });
 })();
 </script>

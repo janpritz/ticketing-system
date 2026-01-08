@@ -117,13 +117,12 @@
                         <tr>
                             <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                             <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                             <th class="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Changed</th>
                         </tr>
                     </thead>
                     <tbody id="trainingHistoryTable" class="bg-white divide-y divide-gray-200">
                         <tr>
-                            <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">Loading training history...</td>
+                            <td colspan="3" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">Loading training history...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -631,7 +630,7 @@
         if (pageData.length === 0) {
             trainingHistoryTable.innerHTML = `
                 <tr>
-                    <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No training history found.</td>
+                    <td colspan="3" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No training history found.</td>
                 </tr>
             `;
         } else {
@@ -651,7 +650,6 @@
                                 ${training.status.charAt(0).toUpperCase() + training.status.slice(1)}
                             </span>
                         </td>
-                        <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.user}</td>
                         <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.file_name}</td>
                     </tr>
                 `;
@@ -879,8 +877,8 @@
             if (data.success) {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Training Started',
-                    text: 'Rasa model training has been initiated. This may take several minutes.',
+                    title: 'Training Completed',
+                    text: 'Rasa model training has been completed. Rasa Server will restart and may take several minutes to apply update.',
                     timer: 5000,
                     showConfirmButton: false
                 });
