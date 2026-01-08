@@ -16,8 +16,8 @@ class ReportsController extends Controller
         // Get current open tickets count
         $currentOpenTickets = $this->getCurrentOpenTicketsCount();
 
-        // Get backlog trend data for default 30 days
-        $backlogTrendData = $this->getBacklogTrendData(30);
+        // Closed tickets trend data for default 30 days (driven by the time-range filter)
+        $closedTicketsTrendData = $this->getClosedTicketsTrendData(30);
 
         // Staff Performance and Workload Analysis
 
@@ -95,13 +95,21 @@ class ReportsController extends Controller
         // Tickets by org (last 90 days)
         $ticketsByOrg = $this->getTicketsByOrgForPeriod(90);
 
-        return view('dashboards.admin.reports.index', compact('currentOpenTickets', 'backlogTrendData', 'ticketsAssigned', 'ticketsSolved', 'workloadDistribution', 'avgResolutionTime', 'totalTicketsThisMonth', 'overdueTickets', 'topTicketDrivers', 'ticketsByOrg'));
+        return view('dashboards.admin.reports.index', compact('currentOpenTickets', 'closedTicketsTrendData', 'ticketsAssigned', 'ticketsSolved', 'workloadDistribution', 'avgResolutionTime', 'totalTicketsThisMonth', 'overdueTickets', 'topTicketDrivers', 'ticketsByOrg'));
     }
 
     public function getBacklogTrendDataAjax(Request $request)
     {
         $days = $request->get('days', 30);
         $data = $this->getBacklogTrendData($days);
+
+        return response()->json($data);
+    }
+
+    public function getClosedTicketsTrendDataAjax(Request $request)
+    {
+        $days = $request->get('days', 30);
+        $data = $this->getClosedTicketsTrendData($days);
 
         return response()->json($data);
     }
@@ -170,6 +178,43 @@ class ReportsController extends Controller
             $dateStr = $date->toDateString();
             $labels[] = $date->format('M j');
             $data[] = $dailyCounts[$dateStr] ?? 0;
+        }
+
+        return [
+            'labels' => $labels,
+            'data' => $data,
+        ];
+    }
+
+    private function getClosedTicketsTrendData($days)
+    {
+        $days = (int) $days;
+        if ($days <= 0) $days = 30;
+
+        $endDate = Carbon::today();
+        $startDate = $endDate->copy()->subDays($days - 1);
+
+        // Aggregate by the date portion of date_closed.
+        // NOTE: DATE() is supported by MySQL/MariaDB; if you ever switch DB engines,
+        // this may need an adapter.
+        $dailyClosed = Ticket::query()
+            ->whereNotNull('date_closed')
+            ->whereBetween('date_closed', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
+            ->selectRaw('DATE(date_closed) as closed_date, COUNT(*) as closed_count')
+            ->groupBy('closed_date')
+            ->orderBy('closed_date')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                return [(string) $row->closed_date => (int) $row->closed_count];
+            })
+            ->toArray();
+
+        $labels = [];
+        $data = [];
+        for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
+            $dateStr = $date->toDateString();
+            $labels[] = $date->format('M j');
+            $data[] = $dailyClosed[$dateStr] ?? 0;
         }
 
         return [

@@ -84,14 +84,14 @@
 
   <!-- Charts Section -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <!-- Backlog Trend Chart -->
+    <!-- Closed Tickets Trend Chart -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Backlog Trend</h3>
-        <div class="text-sm text-gray-500">Open tickets over time</div>
+        <h3 class="text-lg font-semibold text-gray-900">Closed Tickets Trend</h3>
+        <div class="text-sm text-gray-500">Closed tickets per day</div>
       </div>
       <div class="h-64">
-        <canvas id="backlogTrendChart"></canvas>
+        <canvas id="closedTicketsTrendChart"></canvas>
       </div>
     </div>
 
@@ -234,7 +234,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function(){
-  let backlogTrendChart, workloadDistributionChart, topTicketDriversChart;
+  let closedTicketsTrendChart, workloadDistributionChart, topTicketDriversChart;
 
   function updateTicketsSolvedTitle(days) {
     const el = document.getElementById('ticketsSolvedTitle');
@@ -268,23 +268,23 @@
     });
   }
 
-  function initBacklogTrendChart(data) {
-    const ctx = document.getElementById('backlogTrendChart');
+  function initClosedTicketsTrendChart(data) {
+    const ctx = document.getElementById('closedTicketsTrendChart');
     if (!ctx) return;
 
-    if (backlogTrendChart) {
-      backlogTrendChart.destroy();
+    if (closedTicketsTrendChart) {
+      closedTicketsTrendChart.destroy();
     }
 
-    backlogTrendChart = new Chart(ctx, {
+    closedTicketsTrendChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: data.labels,
         datasets: [{
-          label: 'Open Tickets',
+          label: 'Closed Tickets',
           data: data.data,
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: 'rgb(16, 185, 129)',
+          backgroundColor: 'rgba(16, 185, 129, 0.12)',
           tension: 0.4,
           fill: true
         }]
@@ -478,11 +478,11 @@
     }
   });
 
-  function loadBacklogTrendData(days) {
-    fetch(`{{ route('admin.reports.backlog-trend-data') }}?days=${days}`)
+  function loadClosedTicketsTrendData(days) {
+    fetch(`{{ route('admin.reports.closed-tickets-trend-data') }}?days=${days}`)
       .then(response => response.json())
       .then(data => {
-        initBacklogTrendChart(data);
+        initClosedTicketsTrendChart(data);
       })
       .catch(error => {
         console.error('Error loading chart data:', error);
@@ -512,8 +512,8 @@
   }
 
   // Initialize with default data
-  const initialBacklogData = @json($backlogTrendData);
-  initBacklogTrendChart(initialBacklogData);
+  const initialClosedTicketsTrendData = @json($closedTicketsTrendData);
+  initClosedTicketsTrendChart(initialClosedTicketsTrendData);
 
 
   const initialWorkloadData = @json($workloadDistribution ?? []);
@@ -531,7 +531,7 @@
   // Handle time range changes
   document.getElementById('timeRangeSelect').addEventListener('change', function(e) {
     const days = e.target.value;
-    loadBacklogTrendData(days);
+    loadClosedTicketsTrendData(days);
     loadDynamicData(days);
     updateTicketsSolvedTitle(days);
   });

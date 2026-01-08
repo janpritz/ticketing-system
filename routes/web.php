@@ -242,6 +242,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin/reports')->name('admin.reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ReportsController::class, 'index'])->name('index');
         Route::get('/backlog-trend-data', [\App\Http\Controllers\ReportsController::class, 'getBacklogTrendDataAjax'])->name('backlog-trend-data');
+        Route::get('/closed-tickets-trend-data', [\App\Http\Controllers\ReportsController::class, 'getClosedTicketsTrendDataAjax'])->name('closed-tickets-trend-data');
         Route::get('/dynamic-data', [\App\Http\Controllers\ReportsController::class, 'getDynamicDataAjax'])->name('dynamic-data');
         Route::get('/forwards/{staff}', [\App\Http\Controllers\ReportsController::class, 'getForwardsByStaff'])->name('forwards.by-staff');
     });
