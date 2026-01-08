@@ -405,6 +405,14 @@
             const DESTROY_TEMPLATE = state.getAttribute('data-destroy-url-template');
             const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+            // Attachment URL helper (works even when /public/storage symlink is missing on hosted setups)
+            const ATTACHMENT_BASE = "{{ url('/attachments') }}";
+            function attachmentUrl(p) {
+                if (!p) return '';
+                // Keep slashes but encode each segment (handles spaces, unicode, etc.)
+                return ATTACHMENT_BASE + '/' + String(p).split('/').map(encodeURIComponent).join('/');
+            }
+
             const ticketsTbody = document.getElementById('ticketsTbody');
             const ticketsPagination = document.getElementById('ticketsPagination');
             const ticketModal = document.getElementById('ticketModal');
@@ -823,13 +831,13 @@
                                 attachments = [];
                             }
                             if (attachments.length > 0) {
-                                attachments.forEach((path, index) => {
-                                    const img = document.createElement('img');
-                                    img.src = '/storage/' + path;
-                                    img.alt = 'Attachment ' + (index + 1);
-                                    img.className =
-                                        'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
-                                    img.onclick = () => openLightbox(attachments, index);
+                                    attachments.forEach((path, index) => {
+                                        const img = document.createElement('img');
+                                        img.src = attachmentUrl(path);
+                                        img.alt = 'Attachment ' + (index + 1);
+                                        img.className =
+                                            'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
+                                        img.onclick = () => openLightbox(attachments, index);
                                     attachmentsList.appendChild(img);
                                 });
                                 attachmentsBlock.classList.remove('hidden');
@@ -946,7 +954,7 @@
                 const lightbox = document.getElementById('imageLightbox');
                 const img = document.getElementById('lightboxImage');
                 if (lightbox && img) {
-                    img.src = '/storage/' + images[index];
+                    img.src = attachmentUrl(images[index]);
                     lightbox.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
                     updateLightboxButtons();
@@ -973,7 +981,7 @@
                 if (currentLightboxIndex > 0) {
                     currentLightboxIndex--;
                     const img = document.getElementById('lightboxImage');
-                    if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                    if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
                     updateLightboxButtons();
                 }
             }
@@ -982,7 +990,7 @@
                 if (currentLightboxIndex < currentLightboxImages.length - 1) {
                     currentLightboxIndex++;
                     const img = document.getElementById('lightboxImage');
-                    if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                    if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
                     updateLightboxButtons();
                 }
             }

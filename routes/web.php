@@ -70,6 +70,11 @@ Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
     Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
 
 Route::middleware('auth')->group(function () {
+    // Serve ticket attachments without relying on the public/storage symlink
+    Route::get('/attachments/{path}', [TicketController::class, 'serveAttachment'])
+        ->where('path', '.*')
+        ->name('attachments.serve');
+
     // Staff dashboard
     Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
     // Individual ticket page for staff (view + respond)

@@ -671,6 +671,13 @@ function openTicket(id) {
     const FORWARD_TEMPLATE = state.getAttribute('data-forward-url-template');
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+    // Attachment URL helper (works even when /public/storage symlink is missing on hosted setups)
+    const ATTACHMENT_BASE = "{{ url('/attachments') }}";
+    function attachmentUrl(p) {
+        if (!p) return '';
+        return ATTACHMENT_BASE + '/' + String(p).split('/').map(encodeURIComponent).join('/');
+    }
+
     const ticketModal = document.getElementById('ticketModal');
 
     let currentTicketId = null;
@@ -815,7 +822,7 @@ function openTicket(id) {
                     if (attachments.length > 0) {
                         attachments.forEach((path, index) => {
                             const img = document.createElement('img');
-                            img.src = '/storage/' + path;
+                            img.src = attachmentUrl(path);
                             img.alt = 'Attachment ' + (index + 1);
                             img.className =
                                 'max-w-16 max-h-16 object-cover rounded cursor-pointer border border-gray-300 hover:border-indigo-400';
@@ -909,7 +916,7 @@ function openTicket(id) {
         const lightbox = document.getElementById('imageLightbox');
         const img = document.getElementById('lightboxImage');
         if (lightbox && img) {
-            img.src = '/storage/' + images[index];
+            img.src = attachmentUrl(images[index]);
             lightbox.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
             updateLightboxButtons();
@@ -936,7 +943,7 @@ function openTicket(id) {
         if (currentLightboxIndex > 0) {
             currentLightboxIndex--;
             const img = document.getElementById('lightboxImage');
-            if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+            if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
             updateLightboxButtons();
         }
     }
@@ -945,7 +952,7 @@ function openTicket(id) {
         if (currentLightboxIndex < currentLightboxImages.length - 1) {
             currentLightboxIndex++;
             const img = document.getElementById('lightboxImage');
-            if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+            if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
             updateLightboxButtons();
         }
     }

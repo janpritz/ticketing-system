@@ -12,10 +12,34 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use App\Jobs\ProcessTicketCreation;
 
 class TicketController extends Controller
 {
+    /**
+     * Serve a stored ticket attachment from the public disk.
+     *
+     * This avoids relying on the `/public/storage` symlink (which is often missing
+     * on shared hosting), preventing 404s when viewing attachments.
+     */
+    public function serveAttachment(Request $request, string $path)
+    {
+        // Only allow serving from the attachments directory
+        if (!Str::startsWith($path, 'attachments/')) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (!$disk->exists($path)) {
+            abort(404);
+        }
+
+        // Stream the file from storage without requiring the public/storage symlink.
+        // (Using response()->file() keeps IDEs happy if they don't understand FilesystemAdapter::response())
+        return response()->file($disk->path($path));
+    }
+
     // Show the ticket creation form
     public function showCreateForm(Request $request, $recepient_id = null)
     {
