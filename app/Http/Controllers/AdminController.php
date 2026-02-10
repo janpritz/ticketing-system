@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\SentimentAnalysis;
 use Illuminate\Support\Facades\DB;
 use App\Models\Ticket;
 use App\Models\User;
@@ -157,7 +158,7 @@ class AdminController extends Controller
                 ->get();
 
             $categoryLabels = $categoryRows->pluck('category_name')->toArray();
-            $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->toArray();
+            $categoryData = $categoryRows->pluck('c')->map(fn($v) => (int)$v)->toArray();
 
             // Top senders (frequent ticket creators) - top 10
             $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
@@ -170,7 +171,7 @@ class AdminController extends Controller
             $unassignedTickets = Ticket::with('staff')
                 ->where(function ($query) {
                     $query->whereNull('staff_id')
-                          ->orWhere('staff_id', 1);
+                        ->orWhere('staff_id', 1);
                 })
                 ->where('status', 'Open')
                 ->orderByDesc('updated_at')
@@ -320,7 +321,7 @@ class AdminController extends Controller
 
         $categoryLabels = $categoryRows->pluck('category_name')->values()->toArray();
 
-        $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->values()->toArray();
+        $categoryData = $categoryRows->pluck('c')->map(fn($v) => (int)$v)->values()->toArray();
 
         // Top senders (frequent ticket creators) - top 10
         $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
@@ -340,26 +341,26 @@ class AdminController extends Controller
         $unassignedTicketsArr = Ticket::with('staff')
             ->where(function ($query) {
                 $query->whereNull('staff_id')
-                      ->orWhere('staff_id', 1);
+                    ->orWhere('staff_id', 1);
             })
             ->where('status', 'Open')
             ->orderByDesc('updated_at')
             ->take(6)
             ->get()
             ->map(function ($t) {
-            return [
-                'id'           => (int) $t->id,
-                'status'       => (string) $t->status,
-                'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) (is_object($t->category) ? ($t->category->name ?? '') : ($t->getAttribute('category') ?? '')) ,
-                'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
-                'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
-                'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
-                'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
-            ];
-        })
-        ->values()
-        ->toArray();
+                return [
+                    'id'           => (int) $t->id,
+                    'status'       => (string) $t->status,
+                    'email'        => (string) ($t->email ?? ''),
+                    'category'     => (string) (is_object($t->category) ? ($t->category->name ?? '') : ($t->getAttribute('category') ?? '')),
+                    'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
+                    'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
+                    'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
+                    'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
+                ];
+            })
+            ->values()
+            ->toArray();
 
         // Debug: Log the unassigned tickets for AJAX refresh
         \Illuminate\Support\Facades\Log::info('Unassigned tickets AJAX count: ' . count($unassignedTicketsArr));
@@ -410,16 +411,16 @@ class AdminController extends Controller
         $isDeleted = (bool) $request->query('include_deleted', false);
 
         $usersQuery = User::whereHas('role', function ($qRole) {
-                $qRole->where('name', '!=', 'Primary Administrator');
-            })
+            $qRole->where('name', '!=', 'Primary Administrator');
+        })
             ->when($q !== '', function ($query) use ($q) {
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('name', 'like', $like)
-                       ->orWhere('email', 'like', $like)
-                       ->orWhereHas('role', function ($qr) use ($like) {
-                           $qr->where('name', 'like', $like);
-                       })
+                        ->orWhere('email', 'like', $like)
+                        ->orWhereHas('role', function ($qr) use ($like) {
+                            $qr->where('name', 'like', $like);
+                        })
                         ->orWhereHas('category', function ($qc) use ($like) {
                             $qc->where('name', 'like', $like);
                         });
@@ -459,11 +460,11 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             // Restrict creation to staff accounts (avoid creating another Primary Administrator)
-            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
+            'role' => ['required', 'string', 'max:255', 'not_in:Primary Administrator', 'exists:roles,name'],
             'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'required|string|min:8|confirmed',
         ]);
-    
+
         // Resolve role id from provided role name
         $roleModel = Role::where('name', $validated['role'])->first();
 
@@ -483,7 +484,7 @@ class AdminController extends Controller
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
 
@@ -511,12 +512,12 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'role' => ['required', 'string', 'max:255', 'not_in:Primary Administrator', 'exists:roles,name'],
             'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
-    
+
         // Resolve role id
         $roleModel = Role::where('name', $validated['role'])->first();
 
@@ -537,7 +538,7 @@ class AdminController extends Controller
             $user->password = $validated['password'];
         }
         $user->save();
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff updated.');
     }
 
@@ -548,7 +549,7 @@ class AdminController extends Controller
     {
         $this->ensureAdmin();
         $auth = Auth::user();
-    
+
         if ($user->id === ($auth->id ?? 0)) {
             return back()->withErrors(['delete' => 'You cannot delete your own account.']);
         }
@@ -556,9 +557,9 @@ class AdminController extends Controller
         if (strtolower((string) ($user->role ?? '')) === 'primary administrator') {
             return back()->withErrors(['delete' => 'Cannot delete Primary Administrator.']);
         }
-    
+
         $user->delete();
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');
     }
 
@@ -839,7 +840,7 @@ class AdminController extends Controller
                 // Persist role mapping in DB (announcement_roles table)
                 // Admin-created announcements are broadcast to ALL roles.
                 try {
-                    $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+                    $roleIds = Role::query()->pluck('id')->map(fn($v) => (int) $v)->values()->toArray();
                     if (!empty($roleIds)) {
                         $rows = array_map(function ($roleId) use ($nextId) {
                             return [
@@ -868,7 +869,6 @@ class AdminController extends Controller
                         'content' => $validated['content'],
                     ]
                 ]);
-
             } catch (\Exception $e) {
                 Log::error('Failed to store announcement: ' . $e->getMessage());
 
@@ -974,7 +974,6 @@ class AdminController extends Controller
                 'success' => true,
                 'announcements' => $announcements
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
 
@@ -1082,7 +1081,7 @@ class AdminController extends Controller
 
             // Sync DB mapping for ALL roles
             try {
-                $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+                $roleIds = Role::query()->pluck('id')->map(fn($v) => (int) $v)->values()->toArray();
 
                 DB::transaction(function () use ($id, $roleIds) {
                     DB::table('announcement_roles')->where('announcement_id', (int) $id)->delete();
@@ -1110,7 +1109,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => 'Announcement updated successfully'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to update announcement: ' . $e->getMessage());
 
@@ -1214,7 +1212,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => 'Announcement deleted successfully'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to delete announcement: ' . $e->getMessage());
 
@@ -1254,7 +1251,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => $message
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to pin/unpin announcement: ' . $e->getMessage());
 
@@ -1310,10 +1306,10 @@ class AdminController extends Controller
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('file_name', 'like', $like)
-                       ->orWhere('action', 'like', $like)
-                       ->orWhereHas('user', function ($qu) use ($like) {
-                           $qu->where('name', 'like', $like);
-                       });
+                        ->orWhere('action', 'like', $like)
+                        ->orWhereHas('user', function ($qu) use ($like) {
+                            $qu->where('name', 'like', $like);
+                        });
                 });
             })
             ->orderBy('change_timestamp', 'desc');
@@ -1331,4 +1327,96 @@ class AdminController extends Controller
         return view('dashboards.admin.faqs.index');
     }
 
+    public function analyzeSentiment($ticketId)
+    {
+        $apiKey = env('OPENAI_API_KEY');
+        if (empty($apiKey)) {
+            return response()->json(['error' => 'OPENAI_API_KEY is not set in .env'], 500);
+        }
+
+        // 1. Determine starting point based on last processed ticket
+        $lastProcessed = \App\Models\SentimentAnalysis::orderBy('ticket_id', 'desc')->first();
+        $startTicketId = $lastProcessed ? $lastProcessed->ticket_id + 1 : 1;
+
+        // 2. Fetch a batch of closed tickets that haven't been processed yet
+        $tickets = \App\Models\Ticket::where('id', '>=', $startTicketId)
+            ->where('status', 'closed')
+            ->take(4)
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return response()->json(['message' => 'No new closed tickets to process'], 200);
+        }
+
+        $processedTicketIds = [];
+        $results = [];
+
+        foreach ($tickets as $ticket) {
+            $prompt = "Analyze the sentiment of the following ticket:\n" .
+                "Question: {$ticket->question}\n" .
+                "Response: {$ticket->response}\n\n" .
+                "Return ONLY a JSON object with keys: 'sentiment_score' (0-1), and 'general_topic' (string).";
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json',
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+                'response_format' => ['type' => 'json_object'], // Ensures JSON output
+            ]);
+
+            if ($response->successful()) {
+                $apiResult = $response->json();
+                // IMPORTANT: Parse the string content into an array
+                $content = json_decode($apiResult['choices'][0]['message']['content'], true);
+
+                $sentimentScore = $content['sentiment_score'] ?? null;
+                $generalTopic = $content['general_topic'] ?? 'Uncategorized';
+
+                // 3. Save to Database
+                \App\Models\SentimentAnalysis::updateOrCreate(
+                    ['ticket_id' => $ticket->id],
+                    [
+                        'sentiment_score' => $sentimentScore,
+                        'general_topic'   => $generalTopic,
+                        'analysis_json'   => json_encode($apiResult),
+                        'processed_at'    => now(),
+                    ]
+                );
+
+                $processedTicketIds[] = $ticket->id;
+
+                // 4. Organize into the grouped JSON structure
+                $topicFound = false;
+                foreach ($results as &$resultGroup) {
+                    if ($resultGroup['topic'] === $generalTopic) {
+                        $resultGroup['tickets'][] = [
+                            'ticket_id' => $ticket->id,
+                            'question'  => $ticket->question,
+                            'answer'    => $ticket->response
+                        ];
+                        $topicFound = true;
+                        break;
+                    }
+                }
+
+                if (!$topicFound) {
+                    $results[] = [
+                        'topic' => $generalTopic,
+                        'tickets' => [[
+                            'ticket_id' => $ticket->id,
+                            'question'  => $ticket->question,
+                            'answer'    => $ticket->response
+                        ]]
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'processed_ticket_ids' => $processedTicketIds,
+            'results' => $results
+        ]);
+    }
 }
