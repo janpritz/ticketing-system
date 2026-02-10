@@ -1326,4 +1326,9 @@ class AdminController extends Controller
             'per_page' => $perPage,
         ]);
     }
+    public function faqsIndex()
+    {
+        return view('dashboards.admin.faqs.index');
+    }
+
 }

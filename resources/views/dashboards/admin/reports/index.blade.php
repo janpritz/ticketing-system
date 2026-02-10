@@ -176,7 +176,6 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-900">Top Ticket Drivers</h3>
-        <div class="text-sm text-gray-500">Categories and sub-issues (Last 30 days)</div>
       </div>
       <div class="h-64">
         <canvas id="topTicketDriversChart"></canvas>
@@ -187,7 +186,6 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-900">Forwarded Tickets (by Forwarder)</h3>
-        <div class="text-sm text-gray-500">Top staff who forwarded tickets (Last 90 days)</div>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">

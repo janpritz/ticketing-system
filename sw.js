@@ -1,5 +1,5 @@
 // 1. Cache name - Increment this version (e.g., v2) to force an update
-const CACHE_NAME = 'sangkay-ts-cache-v1';
+const CACHE_NAME = 'sangkay-ts-cache-v2';
 
 // 2. Define the static resources to cache
 const urlsToCache = [

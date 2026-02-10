@@ -134,6 +134,7 @@ Route::middleware('auth')->group(function () {
         return view('login');
     });
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+    Route::get('/admin/faqs', [AdminController::class, 'faqsIndex'])->name('admin.faqs.index');
     // Live data endpoint for admin dashboard auto-refresh
     Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
         ->middleware('throttle:20,1')
