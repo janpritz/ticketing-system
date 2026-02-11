@@ -12,6 +12,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\StaffKnowledgebaseController;
 use App\Http\Controllers\Admin\FAQsController;
+use App\Http\Controllers\PublicFAQsController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -43,8 +44,16 @@ Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('gu
 Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
 Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
+// Public FAQs landing page
+Route::get('/faqs', [PublicFAQsController::class, 'index'])->name('faqs.index');
+Route::get('/api/faqs', [PublicFAQsController::class, 'getApprovedFAQs'])->name('api.faqs');
+
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
 Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->name('tickets.verify');
+Route::get('/tickets/verify-otp/{identifier?}', [TicketController::class, 'showVerifyOtp'])->name('tickets.verify-otp');
+Route::post('/tickets/send-otp', [TicketController::class, 'sendTicketOtp'])->middleware('throttle:5,1')->name('tickets.send-otp');
+Route::post('/tickets/verify-otp', [TicketController::class, 'verifyTicketOtp'])->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
+Route::post('/tickets/resend-otp', [TicketController::class, 'resendTicketOtp'])->middleware('throttle:5,1')->name('tickets.resend-otp');
 
 Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->whereNumber('ticket')

@@ -48,6 +48,35 @@ class TicketController extends Controller
         $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
 
         $email = $request->query('email');
+        
+        // Check if OTP verification is required for ticket creation
+        // If email is provided and there's an active OTP session, allow access
+        // Otherwise, require OTP verification
+        if ($email) {
+            $otpVerificationData = session("otp_verified_{$email}");
+            if (!$otpVerificationData) {
+                // Check if session has expired (30 minutes)
+                if ($otpVerificationData) {
+                    $verificationTime = $otpVerificationData['verified_at'] ?? null;
+                    if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
+                        session()->forget("otp_verified_{$email}");
+                        return redirect()->route('tickets.verify-otp', ['identifier' => $email])
+                            ->with('info', 'Your session has expired. Please verify again.');
+                    }
+                } else {
+                    // No active session, require OTP verification
+                    return redirect()->route('tickets.verify-otp', ['identifier' => $email]);
+                }
+            } else {
+                // Check if session has expired (30 minutes)
+                $verificationTime = $otpVerificationData['verified_at'] ?? null;
+                if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
+                    session()->forget("otp_verified_{$email}");
+                    return redirect()->route('tickets.verify-otp', ['identifier' => $email])
+                        ->with('info', 'Your session has expired. Please verify again.');
+                }
+            }
+        }
 
         return view('tickets.create', compact('recepient_id', 'categories', 'email'));
     }
@@ -301,6 +330,45 @@ class TicketController extends Controller
             return redirect()->route('login')->with('error', 'Invalid access. Please provide a valid identifier.');
         }
 
+        // Check if OTP verification is required (data privacy concern)
+        // Check session for OTP verification status with 30-minute expiration
+        // Try multiple session keys: email, recepient_id, and resolved email
+        $otpVerificationData = session("otp_verified_{$identifier}");
+        
+        // If not found with current identifier, try to resolve and check other keys
+        if (!$otpVerificationData) {
+            $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+            
+            // If identifier is not an email, try to resolve it to email and check that session key
+            if (!$isEmail) {
+                try {
+                    $resolvedEmail = Ticket::where('recepient_id', $identifier)
+                        ->orderBy('date_created', 'desc')
+                        ->value('email');
+                    
+                    if ($resolvedEmail && filter_var($resolvedEmail, FILTER_VALIDATE_EMAIL)) {
+                        $otpVerificationData = session("otp_verified_{$resolvedEmail}");
+                    }
+                } catch (\Throwable $e) {
+                    // Continue without resolved email
+                }
+            }
+        }
+        
+        if (!$otpVerificationData) {
+            // Redirect to OTP verification page
+            return redirect()->route('tickets.verify-otp', ['identifier' => $identifier]);
+        }
+
+        // Check if session has expired (30 minutes)
+        $verificationTime = $otpVerificationData['verified_at'] ?? null;
+        if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
+            // Session expired, clear it and redirect to OTP verification
+            session()->forget("otp_verified_{$identifier}");
+            return redirect()->route('tickets.verify-otp', ['identifier' => $identifier])
+                ->with('info', 'Your session has expired. Please verify again.');
+        }
+
         // Determine if identifier is email or recepient_id
         $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
 
@@ -472,5 +540,253 @@ class TicketController extends Controller
     {
         $email = $request->query('email');
         return view('tickets.verify-email', compact('email'));
+    }
+
+    /**
+     * Show OTP verification page for ticket access
+     */
+    public function showVerifyOtp(Request $request, $identifier = null)
+    {
+        $identifier = $identifier ?? $request->query('identifier');
+        
+        if (!$identifier) {
+            return redirect()->route('login')->with('error', 'Invalid access. Please provide a valid identifier.');
+        }
+
+        return view('tickets.verify-otp', compact('identifier'));
+    }
+
+    /**
+     * Send OTP to email for ticket access verification
+     */
+    public function sendTicketOtp(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+        ]);
+
+        $identifier = $request->input('identifier');
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+
+        // Resolve email from identifier
+        $email = $identifier;
+        if (!$isEmail) {
+            // Try to resolve recepient_id to email
+            $email = Ticket::where('recepient_id', $identifier)
+                ->orderBy('date_created', 'desc')
+                ->value('email');
+            
+            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tickets found for this identifier. Please check and try again.'
+                ], 422);
+            }
+        }
+
+        try {
+            // Generate OTP code (6 digits)
+            $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Delete any existing OTP for this email
+            \App\Models\Otp::where('email', $email)->delete();
+            
+            // Create new OTP record (expires in 15 minutes)
+            \App\Models\Otp::create([
+                'email' => $email,
+                'otp_code' => $otpCode,
+                'expires_at' => now()->addMinutes(15),
+            ]);
+
+            // Send OTP via email
+            Mail::to($email)->send(new \App\Mail\OtpMail($otpCode));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP sent successfully to your email.',
+                'email' => $email,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send ticket OTP', [
+                'identifier' => $identifier,
+                'email' => $email,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send OTP. Please try again later.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Verify OTP for ticket access
+     */
+    public function verifyTicketOtp(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'otp_code' => 'required|string|size:6',
+        ]);
+
+        $identifier = $request->input('identifier');
+        $otpCode = $request->input('otp_code');
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+
+        // Resolve email from identifier
+        $email = $identifier;
+        if (!$isEmail) {
+            $email = Ticket::where('recepient_id', $identifier)
+                ->orderBy('date_created', 'desc')
+                ->value('email');
+            
+            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid identifier.'
+                ], 422);
+            }
+        }
+
+        try {
+            // Find OTP record
+            $otp = \App\Models\Otp::where('email', $email)->latest()->first();
+
+            if (!$otp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No OTP found. Please request a new one.'
+                ], 422);
+            }
+
+            // Check if OTP is expired
+            if (now()->isAfter($otp->expires_at)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'OTP has expired. Please request a new one.'
+                ], 422);
+            }
+
+            // Check if OTP is already verified
+            if ($otp->verified_at) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'OTP has already been used.'
+                ], 422);
+            }
+
+            // Verify OTP code
+            if (!$otp->verify($otpCode)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid OTP code. Please try again.'
+                ], 422);
+            }
+
+            // Mark OTP as verified
+            $otp->update(['verified_at' => now()]);
+
+            // Store verification in session with timestamp (expires in 30 minutes)
+            session(["otp_verified_{$identifier}" => [
+                'verified_at' => now(),
+                'identifier' => $identifier,
+                'email' => $email
+            ]]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP verified successfully!',
+                'redirect_url' => route('tickets.index', ['email' => $email])
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to verify ticket OTP', [
+                'identifier' => $identifier,
+                'email' => $email,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Resend OTP for ticket access (with 1 minute throttle)
+     */
+    public function resendTicketOtp(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+        ]);
+
+        $identifier = $request->input('identifier');
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+
+        // Resolve email from identifier
+        $email = $identifier;
+        if (!$isEmail) {
+            $email = Ticket::where('recepient_id', $identifier)
+                ->orderBy('date_created', 'desc')
+                ->value('email');
+            
+            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tickets found for this identifier.'
+                ], 422);
+            }
+        }
+
+        try {
+            // Check if there's a recent OTP sent within the last minute
+            $recentOtp = \App\Models\Otp::where('email', $email)
+                ->where('created_at', '>', now()->subMinute())
+                ->latest()
+                ->first();
+
+            if ($recentOtp) {
+                $secondsRemaining = now()->diffInSeconds($recentOtp->created_at->addMinute());
+                return response()->json([
+                    'success' => false,
+                    'message' => "Please wait {$secondsRemaining} seconds before requesting a new OTP.",
+                    'retry_after' => $secondsRemaining
+                ], 429);
+            }
+
+            // Generate new OTP code
+            $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Delete any existing OTP for this email
+            \App\Models\Otp::where('email', $email)->delete();
+            
+            // Create new OTP record (expires in 15 minutes)
+            \App\Models\Otp::create([
+                'email' => $email,
+                'otp_code' => $otpCode,
+                'expires_at' => now()->addMinutes(15),
+            ]);
+
+            // Send OTP via email
+            Mail::to($email)->send(new \App\Mail\OtpMail($otpCode));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP resent successfully to your email.'
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to resend ticket OTP', [
+                'identifier' => $identifier,
+                'email' => $email,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resend OTP. Please try again later.'
+            ], 500);
+        }
     }
 }

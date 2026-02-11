@@ -82,9 +82,15 @@
                 @empty
                 <li>
                     <div class="px-4 py-4 text-center sm:px-6">
-                        <p class="text-sm text-gray-500">
-                            No tickets found. <a href="{{ route('tickets.create') }}" class="text-indigo-600 hover:text-indigo-900">Create your first ticket</a>.
+                        <p class="text-sm text-gray-500 mb-4">
+                            No tickets found.
                         </p>
+                        <a href="{{ route('tickets.create', ['email' => $identifier]) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Create your first ticket
+                        </a>
                     </div>
                 </li>
                 @endforelse
