@@ -136,7 +136,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::get('/admin/faqs', [FAQsController::class, 'index'])->name('admin.faqs.index');
-    Route::post('/admin/faqs/approve', [FAQsController::class, 'approve'])->name('admin.faqs.approve');
+    Route::get('/admin/faqs/list', [FAQsController::class, 'list'])->name('admin.faqs.list');
+    Route::post('/admin/faqs/update-status', [FAQsController::class, 'updateStatus'])->name('admin.faqs.update-status');
     Route::post('/admin/faqs/process-analysis', [FAQsController::class, 'processAnalysis'])->name('admin.faqs.process-analysis');
     // Live data endpoint for admin dashboard auto-refresh
     Route::get('/admin/dashboard/data', [AdminController::class, 'data'])

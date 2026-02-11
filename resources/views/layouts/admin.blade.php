@@ -89,12 +89,6 @@
             </svg>
             <span class="ms-3">Announcements</span>
           </a>
-          <a href="{{ route('admin.faqs.index') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
-            <svg class="w-4 h-4 {{ request()->routeIs('admin.faqs.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V6.414A2 2 0 0016.414 5L11 5 9.707 3.707A1 1 0 009 2zM2 6a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V7a1 1 0 00-1-1H2z"/>
-            </svg>
-            <span class="ms-3">FAQs</span>
-          </a>
           <a href="{{ route('admin.logs') }}" class="flex items-center p-2 text-sm rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.logs') ? 'bg-gray-100 text-gray-900' : 'text-gray-700' }}">
             <svg class="w-4 h-4 {{ request()->routeIs('admin.logs') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clip-rule="evenodd" />

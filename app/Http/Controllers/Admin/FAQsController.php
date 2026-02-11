@@ -12,31 +12,55 @@ use Illuminate\Support\Facades\DB;
 class FAQsController extends Controller
 {
     // This controller manages the admin interface for viewing and approving staged FAQs generated from processed tickets. It retrieves pending FAQs, groups them by semantic key, and allows admins to approve them for inclusion in the knowledge base.
-    public function index()
+    public function index(Request $request)
     {
-        $faqs = StagedFaq::where('status', 'pending')
-            ->groupBy('semantic_key')
-            ->selectRaw('semantic_key, MAX(suggested_q) as question, MAX(suggested_a) as answer, COUNT(*) as ticket_count')
-            ->orderBy('ticket_count', 'desc')
-            ->get();
+        $query = StagedFaq::query();
+        
+        // Filter by status
+        $status = $request->input('status', 'pending');
+        if ($status) {
+            $query->where('status', $status);
+        }
+        
+        // Search by general_topic or suggested_q
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('general_topic', 'like', "%{$search}%")
+                  ->orWhere('suggested_q', 'like', "%{$search}%");
+            });
+        }
+        
+        // Pagination
+        $perPage = $request->input('per_page', 10);
+        $faqs = $query->paginate($perPage);
 
         // Count unprocessed tickets (closed tickets not in processed_tickets table)
         $unprocessedTickets = Ticket::where('status', 'closed')
             ->whereDoesntHave('processedTicket')
             ->count();
 
-        return view('admin.faqs.index', compact('faqs', 'unprocessedTickets'));
+        return view('admin.faqs.index', compact('faqs', 'unprocessedTickets', 'status', 'search', 'perPage'));
     }
 
-    public function approve(Request $request)
+    public function updateStatus(Request $request)
     {
-        $semanticKey = $request->input('semantic_key');
+        $faqId = $request->input('id');
+        $status = $request->input('status');
 
-        StagedFaq::where('semantic_key', $semanticKey)
-            ->where('status', 'pending')
-            ->update(['status' => 'approved']);
+        // Validate status
+        if (!in_array($status, ['approved', 'rejected', 'pending'])) {
+            return response()->json(['success' => false, 'message' => 'Invalid status'], 400);
+        }
 
-        return response()->json(['success' => true]);
+        $faq = StagedFaq::find($faqId);
+        if (!$faq) {
+            return response()->json(['success' => false, 'message' => 'FAQ not found'], 404);
+        }
+
+        $faq->update(['status' => $status]);
+
+        return response()->json(['success' => true, 'message' => "FAQ {$status} successfully"]);
     }
 
     public function processAnalysis(Request $request)
@@ -57,5 +81,44 @@ class FAQsController extends Controller
                 'message' => 'Error processing tickets: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function list(Request $request)
+    {
+        $query = StagedFaq::query();
+        
+        // Filter by status
+        $status = $request->input('status', 'pending');
+        if ($status) {
+            $query->where('status', $status);
+        }
+        
+        // Search by general_topic or suggested_q
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('general_topic', 'like', "%{$search}%")
+                  ->orWhere('suggested_q', 'like', "%{$search}%");
+            });
+        }
+        
+        // Pagination
+        $perPage = $request->input('per_page', 25);
+        $page = $request->input('page', 1);
+        
+        $total = $query->count();
+        $faqs = $query->forPage($page, $perPage)->get();
+        
+        $lastPage = ceil($total / $perPage);
+        
+        return response()->json([
+            'items' => $faqs,
+            'meta' => [
+                'total' => $total,
+                'per_page' => (int)$perPage,
+                'current_page' => (int)$page,
+                'last_page' => $lastPage,
+            ]
+        ]);
     }
 }
