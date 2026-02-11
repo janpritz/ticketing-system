@@ -35,4 +35,14 @@ class Ticket extends Model
             ->with('staff')
             ->orderByDesc('routed_at');
     }
+
+    public function processedTicket()
+    {
+        return $this->hasOne(ProcessedTicket::class, 'ticket_id');
+    }
+
+    public function stagedFaqs()
+    {
+        return $this->hasMany(StagedFaq::class, 'ticket_id');
+    }
 }

@@ -71,4 +71,8 @@ return [
         'secret' => env('RASA_SECRET'),
     ],
 
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+    ],
+
 ];

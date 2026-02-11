@@ -104,6 +104,15 @@
         </div>
       </li>
       <li>
+        <a href="{{ route('admin.faqs.index') }}"
+           class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.faqs.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
+          <svg class="w-5 h-5 {{ request()->routeIs('admin.faqs.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 2a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V6.414A2 2 0 0016.414 5L11 5 9.707 3.707A1 1 0 009 2zM2 6a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V7a1 1 0 00-1-1H2z"/>
+          </svg>
+          <span class="ms-3">FAQ Management</span>
+        </a>
+      </li>
+      <li>
         <a href="{{ route('admin.rasa-server.index') }}"
            class="flex items-center p-2 rounded-lg hover:bg-gray-100 group {{ request()->routeIs('admin.rasa-server.*') ? 'bg-gray-100 text-gray-900' : 'text-gray-900' }}">
           <svg class="w-5 h-5 {{ request()->routeIs('admin.rasa-server.*') ? 'text-gray-900' : 'text-gray-500 group-hover:text-gray-900' }}" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">

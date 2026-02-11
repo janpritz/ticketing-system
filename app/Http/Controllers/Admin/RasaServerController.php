@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentChange;
 use App\Models\RasaModel;
+use App\Models\StagedFaq;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -915,17 +916,17 @@ class RasaServerController extends Controller
                     throw new \Exception('Invalid FAQ data format from Rasa server');
                 }
             } else {
-                // If faqs.json is not available, try to get FAQs from the database
-                $faqs = \App\Models\Faq::where('response_disabled', false)
-                    ->select('id', 'intent', 'description', 'response')
-                    ->get();
+                // // If faqs.json is not available, try to get FAQs from the database
+                // $faqs = \App\Models\Faq::where('response_disabled', false)
+                //     ->select('id', 'intent', 'description', 'response')
+                //     ->get();
 
-                return response()->json([
-                    'success' => true,
-                    'faqs' => $faqs,
-                    'count' => $faqs->count(),
-                    'source' => 'database_fallback'
-                ]);
+                // return response()->json([
+                //     'success' => true,
+                //     'faqs' => $faqs,
+                //     'count' => $faqs->count(),
+                //     'source' => 'database_fallback'
+                // ]);
             }
 
         } catch (\Exception $e) {
@@ -935,6 +936,50 @@ class RasaServerController extends Controller
                 'success' => false,
                 'error' => 'Failed to fetch FAQs: ' . $e->getMessage(),
                 'source' => 'error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get training data for chatbot (approved FAQs only).
+     * This is a protected API route that returns approved FAQs as JSON.
+     */
+    public function getTrainingData(Request $request)
+    {
+        // Ensure only authenticated users can access
+        $user = Auth::user();
+        abort_unless($user, 403, 'Unauthorized');
+
+        try {
+            // Get all approved FAQs grouped by semantic_key
+            $approvedFaqs = StagedFaq::where('status', 'approved')
+                ->groupBy('semantic_key')
+                ->selectRaw('semantic_key, MAX(suggested_q) as question, MAX(suggested_a) as answer, COUNT(*) as ticket_count')
+                ->orderBy('semantic_key')
+                ->get();
+
+            // Transform to chatbot-friendly format
+            $trainingData = [
+                'faqs' => $approvedFaqs->map(function ($faq) {
+                    return [
+                        'semantic_key' => $faq->semantic_key,
+                        'question' => $faq->question,
+                        'answer' => $faq->answer,
+                        'ticket_count' => $faq->ticket_count,
+                    ];
+                })->toArray(),
+                'total_faqs' => $approvedFaqs->count(),
+                'generated_at' => now()->toISOString(),
+            ];
+
+            return response()->json($trainingData);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get training data for chatbot', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'error' => 'Failed to retrieve training data',
+                'message' => $e->getMessage()
             ], 500);
         }
     }

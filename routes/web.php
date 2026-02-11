@@ -11,6 +11,7 @@ use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\StaffKnowledgebaseController;
+use App\Http\Controllers\Admin\FAQsController;
 
 Route::get('/', function () {
     // If the user is authenticated, auto-redirect them to the appropriate dashboard
@@ -134,7 +135,9 @@ Route::middleware('auth')->group(function () {
         return view('login');
     });
     Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/faqs', [AdminController::class, 'faqsIndex'])->name('admin.faqs.index');
+    Route::get('/admin/faqs', [FAQsController::class, 'index'])->name('admin.faqs.index');
+    Route::post('/admin/faqs/approve', [FAQsController::class, 'approve'])->name('admin.faqs.approve');
+    Route::post('/admin/faqs/process-analysis', [FAQsController::class, 'processAnalysis'])->name('admin.faqs.process-analysis');
     // Live data endpoint for admin dashboard auto-refresh
     Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
         ->middleware('throttle:20,1')
@@ -330,6 +333,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [StaffKnowledgebaseController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
         Route::delete('/{id}', [StaffKnowledgebaseController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
         Route::post('/pin/{id}', [StaffKnowledgebaseController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
+    });
+
+    // API routes for chatbot training data
+    Route::prefix('api/chatbot')->name('api.chatbot.')->group(function () {
+        Route::get('/training-data', [RasaServerController::class, 'getTrainingData'])->name('training-data');
     });
 
     //Push Notification
