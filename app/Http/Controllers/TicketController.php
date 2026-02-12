@@ -48,7 +48,7 @@ class TicketController extends Controller
         $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
 
         $email = $request->query('email');
-        
+
         // Check if OTP verification is required for ticket creation
         // If email is provided and there's an active OTP session, allow access
         // Otherwise, require OTP verification
@@ -161,7 +161,7 @@ class TicketController extends Controller
         $message = $ticket->staff_id
             ? 'Ticket created and assigned to staff successfully! Please wait for a response, which will be sent to your email.'
             : 'Ticket created successfully! Assignment is being processed and you will receive a response via email shortly.';
-            
+
         // Include the creator email as a query parameter so the tickets index can immediately
         // resolve and display all tickets for that email without waiting for the background job.
         $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($ticket->email);
@@ -172,18 +172,18 @@ class TicketController extends Controller
 
     public function store(Request $request)
     {
-        // Dump and die to inspect request data
-        //dd($request->all());  // This will stop execution and dump the data to the browser
-
+        // Validate subject and message only (email comes from verified session)
         $request->validate([
             'category_id' => 'nullable|integer|exists:categories,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
-            'email' => 'required|email|max:255',
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
             'g-recaptcha-response' => 'required|captcha',
         ]);
+
+        // Get email from verified session (NOT from request)
+        $email = session('verified_email');
 
         // Handle attachments first
         $attachmentsPaths = [];
@@ -199,7 +199,7 @@ class TicketController extends Controller
         $ticket->category_id = $request->input('category_id');
         $ticket->question = $request->question;
         $ticket->recepient_id = $request->recepient_id;
-        $ticket->email = $request->email;
+        $ticket->email = $email;
         $ticket->status = 'Open';
         $ticket->staff_id = null;
         $ticket->date_created = now();
@@ -228,7 +228,7 @@ class TicketController extends Controller
         // For web requests, redirect to tickets page for the recepient id.
         // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
         // Append the email so the tickets page shows the newly created ticket immediately
-        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($ticket->email);
+        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($email);
         return redirect()->to($redirectUrl)
             ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
     }
@@ -322,97 +322,13 @@ class TicketController extends Controller
         // Treat all visitors as guests for the purposes of viewing tickets by recepient/email.
         $isStaff = false;
 
-        // Not staff or not authenticated - use existing logic
-        // Support both recepient_id and email as identifier
-        $identifier = $identifier ?? $request->query('email') ?? $request->recepient_id;
-
-        if (!$identifier) {
-            return redirect()->route('login')->with('error', 'Invalid access. Please provide a valid identifier.');
-        }
-
-        // Check if OTP verification is required (data privacy concern)
-        // Check session for OTP verification status with 30-minute expiration
-        // Try multiple session keys: email, recepient_id, and resolved email
-        $otpVerificationData = session("otp_verified_{$identifier}");
-        
-        // If not found with current identifier, try to resolve and check other keys
-        if (!$otpVerificationData) {
-            $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-            
-            // If identifier is not an email, try to resolve it to email and check that session key
-            if (!$isEmail) {
-                try {
-                    $resolvedEmail = Ticket::where('recepient_id', $identifier)
-                        ->orderBy('date_created', 'desc')
-                        ->value('email');
-                    
-                    if ($resolvedEmail && filter_var($resolvedEmail, FILTER_VALIDATE_EMAIL)) {
-                        $otpVerificationData = session("otp_verified_{$resolvedEmail}");
-                    }
-                } catch (\Throwable $e) {
-                    // Continue without resolved email
-                }
-            }
-        }
-        
-        if (!$otpVerificationData) {
-            // Redirect to OTP verification page
-            return redirect()->route('tickets.verify-otp', ['identifier' => $identifier]);
-        }
-
-        // Check if session has expired (30 minutes)
-        $verificationTime = $otpVerificationData['verified_at'] ?? null;
-        if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
-            // Session expired, clear it and redirect to OTP verification
-            session()->forget("otp_verified_{$identifier}");
-            return redirect()->route('tickets.verify-otp', ['identifier' => $identifier])
-                ->with('info', 'Your session has expired. Please verify again.');
-        }
-
-        // Determine if identifier is email or recepient_id
-        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-
-        // If identifier looks like a recepient id (not an email), attempt to resolve it to an
-        // email address by checking recent tickets created with that recepient_id. Keep the
-        // resolved email separate so we can query BOTH recepient_id and email (if found).
-        $resolvedEmail = null;
-        if (!$isEmail && $identifier) {
-            try {
-                $resolvedEmail = Ticket::where('recepient_id', $identifier)
-                    ->orderBy('date_created', 'desc')
-                    ->value('email');
-                if (!($resolvedEmail && filter_var($resolvedEmail, FILTER_VALIDATE_EMAIL))) {
-                    $resolvedEmail = null;
-                }
-            } catch (\Throwable $e) {
-                // Swallow and continue using the original identifier if lookup fails
-                \Illuminate\Support\Facades\Log::warning('TicketController@index: failed to resolve recepient_id to email', ['recepient_id' => $identifier, 'error' => $e->getMessage()]);
-                $resolvedEmail = null;
-            }
-        }
+        // Get email from session (verified via OTP middleware)
+        $email = session('verified_email');
 
         // For API requests, return JSON
         if ($request->wantsJson()) {
-            // Retrieve all tickets for the specified identifier
-            $query = Ticket::query();
-            // If the incoming identifier is an email, match by email. If it's a recepient id,
-            // match by recepient_id and also include tickets that have the resolved email (if found).
-            if ($isEmail) {
-                // Case-insensitive email match
-                $query->whereRaw('LOWER(email) = ?', [strval(strtolower($identifier))]);
-            } else {
-                if ($resolvedEmail) {
-                    $query->where(function ($q) use ($identifier, $resolvedEmail) {
-                        $q->where('recepient_id', $identifier)
-                          ->orWhereRaw('LOWER(email) = ?', [strval(strtolower($resolvedEmail))]);
-                    });
-                } else {
-                    $query->where('recepient_id', $identifier);
-                }
-            }
-            // Ensure all tickets are returned regardless of status, but sort by priority:
-            // Open first, then Forwarded, then Closed. Within each group sort by newest.
-            $tickets = $query
+            // Retrieve all tickets for the verified email
+            $tickets = Ticket::whereRaw('LOWER(email) = ?', [strval(strtolower($email))])
                 ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
                 ->orderBy('date_created', 'desc')
                 ->get();
@@ -420,25 +336,13 @@ class TicketController extends Controller
         }
 
         // For web requests, return a view with the tickets
-        $query = Ticket::query();
-        if ($isEmail) {
-            $query->whereRaw('LOWER(email) = ?', [strval(strtolower($identifier))]);
-        } else {
-            if ($resolvedEmail) {
-                $query->where(function ($q) use ($identifier, $resolvedEmail) {
-                    $q->where('recepient_id', $identifier)
-                      ->orWhereRaw('LOWER(email) = ?', [strval(strtolower($resolvedEmail))]);
-                });
-            } else {
-                $query->where('recepient_id', $identifier);
-            }
-        }
-        // Return all tickets and sort by status priority (Open, Forwarded, Closed) then newest first
-        $tickets = $query
+        $tickets = Ticket::whereRaw('LOWER(email) = ?', [strval(strtolower($email))])
             ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
             ->orderBy('date_created', 'desc')
             ->get();
         $users = User::orderBy('name')->get(['id', 'name']);
+        $identifier = $email;
+        $isEmail = true;
         return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff', 'users'));
     }
     public function updateStatus(Request $request, $id)
@@ -547,12 +451,6 @@ class TicketController extends Controller
      */
     public function showVerifyOtp(Request $request, $identifier = null)
     {
-        $identifier = $identifier ?? $request->query('identifier');
-        
-        if (!$identifier) {
-            return redirect()->route('login')->with('error', 'Invalid access. Please provide a valid identifier.');
-        }
-
         return view('tickets.verify-otp', compact('identifier'));
     }
 
@@ -575,7 +473,7 @@ class TicketController extends Controller
             $email = Ticket::where('recepient_id', $identifier)
                 ->orderBy('date_created', 'desc')
                 ->value('email');
-            
+
             if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 return response()->json([
                     'success' => false,
@@ -587,10 +485,10 @@ class TicketController extends Controller
         try {
             // Generate OTP code (6 digits)
             $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            
+
             // Delete any existing OTP for this email
             \App\Models\Otp::where('email', $email)->delete();
-            
+
             // Create new OTP record (expires in 15 minutes)
             \App\Models\Otp::create([
                 'email' => $email,
@@ -640,7 +538,7 @@ class TicketController extends Controller
             $email = Ticket::where('recepient_id', $identifier)
                 ->orderBy('date_created', 'desc')
                 ->value('email');
-            
+
             if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 return response()->json([
                     'success' => false,
@@ -684,15 +582,15 @@ class TicketController extends Controller
                 ], 422);
             }
 
-            // Mark OTP as verified
-            $otp->update(['verified_at' => now()]);
+            // OTP validation succeeded - store session and delete OTP record
+            session([
+                'otp_verified' => true,
+                'verified_email' => $email,
+                'otp_verified_at' => now()
+            ]);
 
-            // Store verification in session with timestamp (expires in 30 minutes)
-            session(["otp_verified_{$identifier}" => [
-                'verified_at' => now(),
-                'identifier' => $identifier,
-                'email' => $email
-            ]]);
+            // Delete the OTP record from database
+            $otp->delete();
 
             return response()->json([
                 'success' => true,
@@ -731,7 +629,7 @@ class TicketController extends Controller
             $email = Ticket::where('recepient_id', $identifier)
                 ->orderBy('date_created', 'desc')
                 ->value('email');
-            
+
             if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 return response()->json([
                     'success' => false,
@@ -758,10 +656,10 @@ class TicketController extends Controller
 
             // Generate new OTP code
             $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            
+
             // Delete any existing OTP for this email
             \App\Models\Otp::where('email', $email)->delete();
-            
+
             // Create new OTP record (expires in 15 minutes)
             \App\Models\Otp::create([
                 'email' => $email,

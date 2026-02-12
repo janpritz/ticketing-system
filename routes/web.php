@@ -48,19 +48,34 @@ Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middlew
 Route::get('/faqs', [PublicFAQsController::class, 'index'])->name('faqs.index');
 Route::get('/api/faqs', [PublicFAQsController::class, 'getApprovedFAQs'])->name('api.faqs');
 
-Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
-Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->name('tickets.verify');
-Route::get('/tickets/verify-otp/{identifier?}', [TicketController::class, 'showVerifyOtp'])->name('tickets.verify-otp');
+// About Us page
+Route::view('/about', 'faqs.about')->name('about');
+
+// Contact Us page (placeholder)
+Route::view('/contact', 'contact')->name('contact');
+
+// Specific ticket routes (must come before catch-all {recepient_id?})
+// Middleware: check.verified.email - redirects to /tickets?email={email} if cookie exists
+Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->middleware('check.verified.email')->name('tickets.verify');
+Route::get('/tickets/verify-otp/{identifier?}', [TicketController::class, 'showVerifyOtp'])->middleware('check.verified.email')->name('tickets.verify-otp');
 Route::post('/tickets/send-otp', [TicketController::class, 'sendTicketOtp'])->middleware('throttle:5,1')->name('tickets.send-otp');
 Route::post('/tickets/verify-otp', [TicketController::class, 'verifyTicketOtp'])->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
 Route::post('/tickets/resend-otp', [TicketController::class, 'resendTicketOtp'])->middleware('throttle:5,1')->name('tickets.resend-otp');
+Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->middleware(['check.verified.email', 'otp.verified'])->name('tickets.create');
+Route::post('/tickets', [TicketController::class, 'store'])->middleware(['throttle:10,1', 'otp.verified'])->name('tickets.store');
 
 Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->whereNumber('ticket')
     ->middleware('auth')
     ->name('tickets.show');
-Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->name('tickets.create');
-Route::post('/tickets', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('tickets.store');
+
+// Catch-all route for viewing tickets by recepient_id (must come after specific routes)
+// Constraint: recepient_id cannot be numeric (to avoid matching ticket IDs)
+// Middleware: check.verified.email - redirects to /tickets?email={email} if cookie exists
+Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])
+    ->where('recepient_id', '[^0-9]+')
+    ->middleware(['check.verified.email', 'otp.verified'])
+    ->name('tickets.index');
 
 // Ticket status viewing routes
 Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');

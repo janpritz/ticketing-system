@@ -3,17 +3,40 @@
 @section('title', 'Create Ticket')
 
 @section('content')
+    <script>
+        // Helper function to get cookie value
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                let cookie = cookies[i].trim();
+                if (cookie.indexOf(nameEQ) === 0) {
+                    return decodeURIComponent(cookie.substring(nameEQ.length));
+                }
+            }
+            return null;
+        }
+
+        // Check if OTP session is active before loading the page
+        document.addEventListener('DOMContentLoaded', function() {
+            const verifiedEmail = getCookie('verified_email');
+            if (!verifiedEmail) {
+                // No OTP session, redirect to OTP verification
+                window.location.href = '{{ route('tickets.verify-otp') }}';
+            }
+        });
+    </script>
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div class="md:flex md:items-center md:justify-between">
-            <div class="flex-1 text-center min-w-0 pt-5">
-                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                    Create a Ticket
-                </h2>
-                <p class="mt-1 text-sm text-gray-500">
-                    Please fill out the form below to create your support ticket.
-                </p>
-            </div>
-        </div>
+         <div class="md:flex md:items-center md:justify-between">
+             <div class="flex-1 text-center min-w-0 pt-5">
+                 <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                     Create a Ticket
+                 </h2>
+                 <p class="mt-1 text-sm text-gray-500">
+                     Please fill out the form below to create your support ticket.
+                 </p>
+             </div>
+         </div>
 
         <div class="mt-8">
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">

@@ -85,12 +85,12 @@
                         <p class="text-sm text-gray-500 mb-4">
                             No tickets found.
                         </p>
-                        <a href="{{ route('tickets.create', ['email' => $identifier]) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <button id="createTicketBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
                             Create your first ticket
-                        </a>
+                        </button>
                     </div>
                 </li>
                 @endforelse
@@ -166,7 +166,43 @@
 </rasa-chatbot-widget> --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // Helper function to get cookie value
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim();
+            if (cookie.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(cookie.substring(nameEQ.length));
+            }
+        }
+        return null;
+    }
+
+    // Debug: Log all cookies
+    console.log('All cookies:', document.cookie);
+    console.log('verified_email cookie:', getCookie('verified_email'));
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Create ticket button handler
+        const createTicketBtn = document.getElementById('createTicketBtn');
+        if (createTicketBtn) {
+            createTicketBtn.addEventListener('click', function() {
+                const verifiedEmail = getCookie('verified_email');
+                console.log('Button clicked. Verified email:', verifiedEmail);
+                
+                if (verifiedEmail && verifiedEmail.trim() !== '') {
+                    // OTP session is active, redirect to create ticket page
+                    console.log('Redirecting to create ticket page with email:', verifiedEmail);
+                    window.location.href = `/tickets/create?email=${encodeURIComponent(verifiedEmail)}`;
+                } else {
+                    // No OTP session, redirect to OTP verification page
+                    console.log('No verified email, redirecting to OTP verification');
+                    window.location.href = `{{ route('tickets.verify-otp') }}`;
+                }
+            });
+        }
+
         // Add photo button
         document.getElementById('add-photo-btn').addEventListener('click', function() {
             document.getElementById('edit-attachments').click();

@@ -18,24 +18,29 @@
             <div id="otpRequestForm" class="space-y-6">
                 <div>
                     <label for="identifier" class="block text-sm font-medium text-gray-700 mb-2">
-                        Email or Ticket ID
+                        Email
                     </label>
-                    <input 
-                        type="text" 
-                        id="identifier" 
+                    <input
+                        type="text"
+                        id="identifier"
                         name="identifier"
-                        value="{{ $identifier }}"
-                        readonly
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed focus:outline-none"
+                        placeholder="Please enter your email"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
+                    <!-- Hidden field to store email for OTP verification -->
+                    <input type="hidden" id="verifiedEmailField" name="verified_email" value="">
                 </div>
 
-                <button 
-                    type="button" 
+                <button
+                    type="button"
                     id="sendOtpBtn"
-                    class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center gap-2"
                 >
-                    Send OTP
+                    <span id="sendOtpText">Send OTP</span>
+                    <svg id="sendOtpSpinner" class="hidden w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                 </button>
 
                 <p class="text-xs text-gray-500 text-center">
@@ -63,12 +68,16 @@
                     </p>
                 </div>
 
-                <button 
-                    type="button" 
+                <button
+                    type="button"
                     id="verifyOtpBtn"
-                    class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center gap-2"
                 >
-                    Verify OTP
+                    <span id="verifyOtpText">Verify OTP</span>
+                    <svg id="verifyOtpSpinner" class="hidden w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                 </button>
 
                 <div class="flex items-center justify-between">
@@ -111,17 +120,52 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    const identifier = document.getElementById('identifier').value;
+    let identifier = document.getElementById('identifier').value;
     let otpExpiryTime = null;
     let resendCooldownTime = null;
     let expiryInterval = null;
     let resendInterval = null;
 
+    // Update identifier when input changes
+    document.getElementById('identifier').addEventListener('change', function() {
+        identifier = this.value;
+    });
+
+    // Validate email format
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
     // Send OTP
     document.getElementById('sendOtpBtn').addEventListener('click', async function() {
         const btn = this;
+        const identifierInput = document.getElementById('identifier').value.trim();
+        
+        if (!identifierInput) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Required Field',
+                text: 'Please enter your email.',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+        
+        if (!isValidEmail(identifierInput)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Email',
+                text: 'Please enter a valid email address.',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+        
+        identifier = identifierInput;
         btn.disabled = true;
-        btn.textContent = 'Sending...';
+        document.getElementById('sendOtpText').textContent = 'Sending...';
+        document.getElementById('sendOtpSpinner').classList.remove('hidden');
 
         try {
             const response = await fetch('{{ route("tickets.send-otp") }}', {
@@ -138,6 +182,9 @@
             const data = await response.json();
 
             if (data.success) {
+                // Store email in hidden field for later use in OTP verification
+                document.getElementById('verifiedEmailField').value = identifier;
+                
                 // Show OTP input form
                 document.getElementById('otpRequestForm').classList.add('hidden');
                 document.getElementById('otpInputForm').classList.remove('hidden');
@@ -171,7 +218,8 @@
                     confirmButtonColor: '#3085d6'
                 });
                 btn.disabled = false;
-                btn.textContent = 'Send OTP';
+                document.getElementById('sendOtpText').textContent = 'Send OTP';
+                document.getElementById('sendOtpSpinner').classList.add('hidden');
             }
         } catch (error) {
             console.error('Error:', error);
@@ -182,7 +230,8 @@
                 confirmButtonColor: '#3085d6'
             });
             btn.disabled = false;
-            btn.textContent = 'Send OTP';
+            document.getElementById('sendOtpText').textContent = 'Send OTP';
+            document.getElementById('sendOtpSpinner').classList.add('hidden');
         }
     });
 
@@ -202,7 +251,8 @@
 
         const btn = this;
         btn.disabled = true;
-        btn.textContent = 'Verifying...';
+        document.getElementById('verifyOtpText').textContent = 'Verifying...';
+        document.getElementById('verifyOtpSpinner').classList.remove('hidden');
 
         try {
             const response = await fetch('{{ route("tickets.verify-otp-submit") }}', {
@@ -224,6 +274,15 @@
                 if (expiryInterval) clearInterval(expiryInterval);
                 if (resendInterval) clearInterval(resendInterval);
 
+                // Get email from hidden field
+                const verifiedEmail = document.getElementById('verifiedEmailField').value;
+                
+                // Store verified email in cookie with 30-minute expiration
+                const expirationDate = new Date();
+                expirationDate.setTime(expirationDate.getTime() + (30 * 60 * 1000)); // 30 minutes
+                const expires = "expires=" + expirationDate.toUTCString();
+                document.cookie = "verified_email=" + encodeURIComponent(verifiedEmail) + ";" + expires + ";path=/";
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Verified!',
@@ -241,7 +300,8 @@
                     confirmButtonColor: '#3085d6'
                 });
                 btn.disabled = false;
-                btn.textContent = 'Verify OTP';
+                document.getElementById('verifyOtpText').textContent = 'Verify OTP';
+                document.getElementById('verifyOtpSpinner').classList.add('hidden');
             }
         } catch (error) {
             console.error('Error:', error);
@@ -252,7 +312,8 @@
                 confirmButtonColor: '#3085d6'
             });
             btn.disabled = false;
-            btn.textContent = 'Verify OTP';
+            document.getElementById('verifyOtpText').textContent = 'Verify OTP';
+            document.getElementById('verifyOtpSpinner').classList.add('hidden');
         }
     });
 
