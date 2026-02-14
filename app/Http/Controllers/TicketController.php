@@ -6,7 +6,7 @@ use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Role;
-use App\Models\Category;
+use App\Models\Department;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -43,9 +43,9 @@ class TicketController extends Controller
     // Show the ticket creation form
     public function showCreateForm(Request $request, $recepient_id = null)
     {
-        // Fetch categories from DB at page load (we show categories only; role is resolved from category)
-        // Provide id => name pairs so the dropdown value is the category id
-        $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
+        // Fetch roles from DB at page load
+        // Provide id => name pairs so the dropdown value is the role id
+        $roles = Role::orderBy('name')->pluck('name', 'id')->toArray();
 
         $email = $request->query('email');
 
@@ -78,7 +78,7 @@ class TicketController extends Controller
             }
         }
 
-        return view('tickets.create', compact('recepient_id', 'categories', 'email'));
+        return view('tickets.create', compact('recepient_id', 'roles', 'email'));
     }
 
     /**
@@ -86,10 +86,10 @@ class TicketController extends Controller
      */
     public function showTicketSubmitForm(Request $request, $recepient_id = null, $email)
     {
-        // Fetch categories from DB (id => name) so the form submits category_id correctly
-        $categories = Category::orderBy('name')->pluck('name', 'id')->toArray();
+        // Fetch roles from DB (id => name) so the form submits role_id correctly
+        $roles = Role::orderBy('name')->pluck('name', 'id')->toArray();
 
-        return view('tickets.submit', compact('recepient_id', 'categories', 'email'));
+        return view('tickets.submit', compact('recepient_id', 'roles', 'email'));
     }
 
     /**
@@ -98,7 +98,7 @@ class TicketController extends Controller
     public function submitTicket(Request $request)
     {
         $request->validate([
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'role_id' => 'nullable|integer|exists:roles,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
@@ -117,10 +117,9 @@ class TicketController extends Controller
             }
         }
 
-        // Create ticket instance and set attributes explicitly so we can also persist the legacy
-        // 'category' string for DB compatibility while using category_id as the source of truth.
+        // Create ticket instance with role_id
         $ticket = new Ticket();
-        $ticket->category_id = $request->input('category_id');
+        $ticket->role_id = $request->input('role_id');
         $ticket->question = $request->question;
         $ticket->recepient_id = $request->recepient_id;
         $ticket->email = $request->email;
@@ -130,18 +129,16 @@ class TicketController extends Controller
         $ticket->date_closed = null;
         $ticket->attachments = json_encode($attachmentsPaths);
 
-        // Legacy category string removed: category_id is the single source of truth.
-
         $ticket->save();
 
 
         // Process assignment synchronously so the page can show the ticket immediately
         try {
-            (new ProcessTicketCreation($ticket->id, $request->input('category_id')))->handle();
+            (new ProcessTicketCreation($ticket->id, $request->input('role_id')))->handle();
         } catch (\Throwable $e) {
             // If synchronous processing fails, fall back to queueing the job and log the error
             \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
-            ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+            ProcessTicketCreation::dispatch($ticket->id, $request->input('role_id'));
         }
 
         // For API requests, return JSON
@@ -174,7 +171,7 @@ class TicketController extends Controller
     {
         // Validate subject and message only (email comes from verified session)
         $request->validate([
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'role_id' => 'nullable|integer|exists:roles,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'attachments' => 'nullable|array|max:5',
@@ -196,7 +193,7 @@ class TicketController extends Controller
         }
 
         $ticket = new Ticket();
-        $ticket->category_id = $request->input('category_id');
+        $ticket->role_id = $request->input('role_id');
         $ticket->question = $request->question;
         $ticket->recepient_id = $request->recepient_id;
         $ticket->email = $email;
@@ -206,17 +203,15 @@ class TicketController extends Controller
         $ticket->date_closed = null;
         $ticket->attachments = json_encode($attachmentsPaths);
 
-        // Legacy category string removed: category_id is the single source of truth.
-
         $ticket->save();
 
 
         // Process assignment synchronously so the page can show the ticket immediately
         try {
-            (new ProcessTicketCreation($ticket->id, $request->input('category_id')))->handle();
+            (new ProcessTicketCreation($ticket->id, $request->input('role_id')))->handle();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
-            ProcessTicketCreation::dispatch($ticket->id, $request->input('category_id'));
+            ProcessTicketCreation::dispatch($ticket->id, $request->input('role_id'));
         }
 
         // For API requests, return JSON

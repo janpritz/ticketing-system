@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Ticket extends Model
 {
     protected $fillable = [
-        'category_id',
+        'role_id',
         'question',
         'response',
         'recepient_id',
@@ -25,10 +25,24 @@ class Ticket extends Model
     {
         return $this->belongsTo(User::class, 'staff_id');
     }
+
+    /**
+     * Role that this ticket belongs to.
+     */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Category relationship for backward compatibility.
+     * @deprecated Use role() instead
+     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
+
     public function routingHistories()
     {
         return $this->hasMany(TicketRoutingHistory::class, 'ticket_id')

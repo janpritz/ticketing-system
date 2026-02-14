@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Department;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed roles first
+        // Seed departments first
+        if (class_exists(\Database\Seeders\DepartmentSeeder::class)) {
+            $this->call(\Database\Seeders\DepartmentSeeder::class);
+        }
+
+        // Seed roles
         if (class_exists(\Database\Seeders\RolesSeeder::class)) {
             $this->call(\Database\Seeders\RolesSeeder::class);
         }
@@ -33,6 +39,9 @@ class DatabaseSeeder extends Seeder
             $adminRole = Role::create(['name' => 'Primary Administrator']);
         }
 
+        // Get Primary Administrator department
+        $adminDepartment = Department::where('name', 'Primary Administrator')->first();
+
         // Ensure admin user has id 1
         $adminUser = User::find(1);
         if (!$adminUser) {
@@ -41,7 +50,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Primary Administrator',
                 'email' => 'acc.sangkaychatbot@gmail.com',
                 'password' => Hash::make('ACCSangkay2025'),
-                'role_id' => $adminRole->id,
+                'department_id' => $adminDepartment ? $adminDepartment->id : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -49,8 +58,16 @@ class DatabaseSeeder extends Seeder
             $adminUser->update([
                 'name' => 'Primary Administrator',
                 'password' => Hash::make('ACCSangkay2025'),
-                'role_id' => $adminRole->id,
+                'department_id' => $adminDepartment ? $adminDepartment->id : null,
             ]);
+        }
+
+        // Create user_roles entry for admin
+        if ($adminUser) {
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $adminUser->id, 'role_id' => $adminRole->id],
+                ['primary_role' => true, 'created_at' => now(), 'updated_at' => now()]
+            );
         }
 
         // Create or update sample staff users with different roles
@@ -71,15 +88,26 @@ class DatabaseSeeder extends Seeder
         foreach ($staffData as $roleName => $staffInfo) {
             // Ensure role record exists
             $r = Role::firstOrCreate(['name' => $roleName]);
+            
+            // Get department for this role
+            $department = Department::where('name', $roleName)->first();
 
-            User::updateOrCreate(
+            $user = User::updateOrCreate(
                 ['email' => $staffInfo['email']],
                 [
                     'name' => $staffInfo['name'],
                     'password' => Hash::make('password123'),
-                    'role_id' => $r->id,
+                    'department_id' => $department ? $department->id : null,
                 ]
             );
+
+            // Create user_roles entry
+            if ($user) {
+                DB::table('user_roles')->updateOrInsert(
+                    ['user_id' => $user->id, 'role_id' => $r->id],
+                    ['primary_role' => true, 'created_at' => now(), 'updated_at' => now()]
+                );
+            }
         }
     }
 }

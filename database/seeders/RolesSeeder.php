@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Role;
+use App\Models\Department;
 
 class RolesSeeder extends Seeder
 {
@@ -17,6 +18,20 @@ class RolesSeeder extends Seeder
      */
     public function run()
     {
+        $roleDepartmentMap = [
+            'Primary Administrator' => 'Primary Administrator',
+            'Enrollment' => 'Enrollment',
+            'Finance and Payments' => 'Finance and Payments',
+            'Scholarships' => 'Scholarships',
+            'Academic Concerns' => 'Academic Concerns',
+            'Exams' => 'Exams',
+            'Student Services' => 'Student Services',
+            'Library Services' => 'Library Services',
+            'IT Support' => 'IT Support',
+            'Graduation' => 'Graduation',
+            'Athletics and Sports' => 'Athletics and Sports'
+        ];
+
         $roles = [];
 
         // Only attempt to read legacy `users.role` when the column still exists.
@@ -30,23 +45,24 @@ class RolesSeeder extends Seeder
         }
 
         if (empty($roles)) {
-            $roles = [
-                'Primary Administrator',
-                'Enrollment',
-                'Finance and Payments',
-                'Scholarships',
-                'Academic Concerns',
-                'Exams',
-                'Student Services',
-                'Library Services',
-                'IT Support',
-                'Graduation',
-                'Athletics and Sports'
-            ];
+            $roles = array_keys($roleDepartmentMap);
         }
 
         foreach ($roles as $r) {
-            Role::firstOrCreate(['name' => $r], ['description' => null]);
+            $departmentName = $roleDepartmentMap[$r] ?? null;
+            $departmentId = null;
+            
+            if ($departmentName) {
+                $department = Department::where('name', $departmentName)->first();
+                if ($department) {
+                    $departmentId = $department->id;
+                }
+            }
+
+            Role::firstOrCreate(
+                ['name' => $r], 
+                ['description' => null, 'department_id' => $departmentId]
+            );
         }
     }
 }

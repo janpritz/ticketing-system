@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Role;
-use App\Models\Category;
 use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -21,15 +20,15 @@ class ProcessTicketCreation implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $ticketId;
-    protected $categoryId;
+    protected $roleId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($ticketId, $categoryId)
+    public function __construct($ticketId, $roleId)
     {
         $this->ticketId = $ticketId;
-        $this->categoryId = $categoryId;
+        $this->roleId = $roleId;
     }
 
     /**
@@ -45,38 +44,28 @@ class ProcessTicketCreation implements ShouldQueue
 
         Log::info('ProcessTicketCreation: Starting ticket assignment', [
             'ticket_id' => $this->ticketId,
-            'category_id' => $this->categoryId
+            'role_id' => $this->roleId
         ]);
 
-        // Determine role based on the selected category id
+        // Determine role based on the selected role id
         $roleModel = null;
-        $categoryModel = null;
 
-        if ($this->categoryId) {
-            $categoryModel = Category::with('role')->find($this->categoryId);
+        if ($this->roleId) {
+            $roleModel = Role::find($this->roleId);
         }
 
-        // If category not provided or not found, clear category and staff on ticket and exit
-        if (!$categoryModel) {
-            $ticket->update(['category_id' => null, 'staff_id' => null]);
-            Log::info('ProcessTicketCreation: Category not found or not provided; cleared category and staff', [
-                'ticket_id' => $this->ticketId,
-                'category_id' => $this->categoryId
-            ]);
-            return;
-        }
-
-        // Use the category's role if available
-        $roleModel = $categoryModel->role;
+        // If role not provided or not found, clear role and staff on ticket and exit
         if (!$roleModel) {
-            // Category exists but has no associated role; do not assign staff
-            $ticket->update(['staff_id' => null]);
-            Log::info('ProcessTicketCreation: Category has no role; not assigning staff', [
+            $ticket->update(['role_id' => null, 'staff_id' => null]);
+            Log::info('ProcessTicketCreation: Role not found or not provided; cleared role and staff', [
                 'ticket_id' => $this->ticketId,
-                'category_id' => $categoryModel->id
+                'role_id' => $this->roleId
             ]);
             return;
         }
+
+        // Update ticket with role_id
+        $ticket->update(['role_id' => $roleModel->id]);
 
         // Find staff with the lowest open-ticket load within the selected role
         $staff = null;
@@ -86,7 +75,10 @@ class ProcessTicketCreation implements ShouldQueue
                 'role_name' => $roleModel->name
             ]);
             
-            $candidates = User::where('role_id', $roleModel->id)
+            // Find users who have this role assigned via user_roles table
+            $candidates = User::whereHas('roles', function($q) use ($roleModel) {
+                    $q->where('roles.id', $roleModel->id);
+                })
                 ->withCount(['assignedTickets as open_tickets_count' => function ($q) {
                     $q->where('status', 'Open');
                 }])
@@ -138,7 +130,7 @@ class ProcessTicketCreation implements ShouldQueue
         Log::info('ProcessTicketCreation: Updated ticket assignment', [
             'ticket_id' => $this->ticketId,
             'staff_id' => $staffId,
-            'category_id' => $ticket->category_id
+            'role_id' => $ticket->role_id
         ]);
 
         // Record initial routing history

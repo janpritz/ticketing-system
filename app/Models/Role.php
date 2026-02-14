@@ -4,31 +4,44 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Category;
+use App\Models\Ticket;
+use App\Models\User;
 
 class Role extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'department_id',
         'name',
         'description',
     ];
 
     /**
-     * Users that belong to this role.
+     * Department that this role belongs to.
      */
-    public function users(): HasMany
+    public function department(): BelongsTo
     {
-        return $this->hasMany(User::class);
+        return $this->belongsTo(Department::class);
     }
 
     /**
-     * Categories that belong to this role.
+     * Users that belong to this role.
      */
-    public function categories(): HasMany
+    public function users(): BelongsToMany
     {
-        return $this->hasMany(Category::class);
+        return $this->belongsToMany(User::class, 'user_roles')->withPivot('primary_role');
+    }
+
+    /**
+     * Tickets that belong to this role.
+     */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
     }
 }

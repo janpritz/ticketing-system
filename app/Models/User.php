@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,8 +9,9 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Role;
-use App\Models\Category;
+use App\Models\Department;
 
 class User extends Authenticatable
 {
@@ -30,8 +30,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role_id',
-        'category_id',
+        'department_id',
         'profile_photo',
     ];
 
@@ -60,21 +59,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Eloquent relationship to Role model.
+     * Department that this user belongs to.
      */
-    public function role(): BelongsTo
+    public function department(): BelongsTo
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsTo(Department::class);
     }
 
     /**
-     * Category the user belongs to.
-     *
-     * @return BelongsTo
+     * Roles that this user has.
      */
-    public function category(): BelongsTo
+    public function roles(): BelongsToMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsToMany(Role::class, 'user_roles')->withPivot('primary_role');
+    }
+
+    /**
+     * Primary role for this user.
+     */
+    public function primaryRole()
+    {
+        return $this->roles()->wherePivot('primary_role', true)->first();
     }
 
     /**
@@ -106,6 +111,11 @@ class User extends Authenticatable
             return $role ? $role->name : null;
         }
 
+        // Fallback: try to resolve via primary role
+        if ($this->primaryRole()) {
+            return $this->primaryRole()->name;
+        }
+
         return null;
     }
 
@@ -127,7 +137,7 @@ class User extends Authenticatable
  
         return null;
     }
- 
+
     /**
      * Tickets assigned to this user (as staff).
      *
@@ -149,7 +159,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\Document::class, 'staff_id');
     }
- 
+
     /**
      * Helper to check if the user is the Primary Administrator.
      * Keeps previous behavior checks like ($user->role === 'Primary Administrator') functional.
