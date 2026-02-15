@@ -261,58 +261,36 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Role</label>
+                            <label class="block text-sm font-medium text-slate-700">Department</label>
                             @php
-                                $roles = \App\Models\Role::orderBy('name')->pluck('name')->toArray();
+                                $departments = \App\Models\Department::orderBy('name')->get();
                             @endphp
-                            <select name="role" id="create_role"
+                            <select name="department_id" id="create_department"
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 required>
-                                <option value="" disabled
-                                    {{ old('form_context') === 'create' && old('role') ? '' : 'selected' }}>Select role
-                                </option>
-                                @foreach ($roles as $r)
-                                    <option value="{{ $r }}"
-                                        {{ old('form_context') === 'create' && old('role') === $r ? 'selected' : '' }}>
-                                        {{ $r }}</option>
+                                <option value="" disabled selected>Select department</option>
+                                @foreach ($departments as $dept)
+                                    <option value="{{ $dept->id }}"
+                                        {{ old('form_context') === 'create' && old('department_id') == $dept->id ? 'selected' : '' }}>
+                                        {{ $dept->name }}</option>
                                 @endforeach
                             </select>
-                            <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be created
-                                here.</p>
                             @if (old('form_context') === 'create')
-                                @error('role')
+                                @error('department_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            <select name="category_id" id="create_category"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">— None —</option>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700">Roles</label>
+                            <div id="create_roles_container" class="mt-1 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
+                                <p class="text-sm text-slate-500">Select a department first</p>
+                            </div>
                             @if (old('form_context') === 'create')
-                                @error('category_id')
+                                @error('roles')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Password</label>
-                            <input type="password" name="password" required
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                            @if (old('form_context') === 'create')
-                                @error('password')
-                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                @enderror
-                            @endif
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Confirm Password</label>
-                            <input type="password" name="password_confirmation" required
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                         </div>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -373,53 +351,33 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Role</label>
+                            <label class="block text-sm font-medium text-slate-700">Department</label>
                             @php
-                                // Exclude Primary Administrator visually from the dropdown
-                                $editRoles = \App\Models\Role::orderBy('name')->where('name', '!=', 'Primary Administrator')->get();
+                                $editDepartments = \App\Models\Department::orderBy('name')->get();
                             @endphp
-                            <select name="role" id="edit_role" required
+                            <select name="department_id" id="edit_department" required
                                 class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="" disabled>Select role</option>
-                                @foreach($editRoles as $r)
-                                    <option value="{{ $r->name }}">{{ $r->name }}</option>
+                                <option value="" disabled>Select department</option>
+                                @foreach($editDepartments as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                                 @endforeach
                             </select>
-                            <p class="mt-1 text-[11px] text-slate-500">Note: "Primary Administrator" cannot be set here.</p>
                             @if (old('editing_user_id'))
-                                @error('role')
+                                @error('department_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Category/Department (optional)</label>
-                            <select name="category_id" id="edit_category"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">— None —</option>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700">Roles</label>
+                            <div id="edit_roles_container" class="mt-1 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
+                                <p class="text-sm text-slate-500">Select a department first</p>
+                            </div>
                             @if (old('editing_user_id'))
-                                @error('category_id')
+                                @error('roles')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">New Password (optional)</label>
-                            <input type="password" name="password"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                            @if (old('editing_user_id'))
-                                @error('password')
-                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                @enderror
-                            @endif
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Confirm New Password</label>
-                            <input type="password" name="password_confirmation"
-                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                         </div>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -662,50 +620,57 @@
                 });
             }
 
-            // Conditional dropdowns for role-category
-            function updateCategories(selectElement, roleName, selectedId) {
-                if (!roleName) {
-                    selectElement.innerHTML = '<option value="">— None —</option>';
+            // Conditional dropdowns for department-roles
+            function updateRolesForDepartment(selectElement, departmentId, selectedRoles) {
+                const container = selectElement; // This is the roles container div
+                const isEdit = container.id === 'edit_roles_container';
+                
+                if (!departmentId) {
+                    container.innerHTML = '<p class="text-sm text-slate-500">Select a department first</p>';
                     return;
                 }
-                fetch(`{{ route('admin.categories.by-role') }}?role_name=${encodeURIComponent(roleName)}`)
+                
+                fetch(`/admin/roles/by-department/${departmentId}`)
                     .then(response => response.json())
-                    .then(categories => {
-                        // Expect objects: { id, name }
-                        selectElement.innerHTML = '<option value="">— None —</option>';
-                        categories.forEach(cat => {
-                            const option = document.createElement('option');
-                            if (cat && typeof cat === 'object') {
-                                option.value = String(cat.id || '');
-                                option.textContent = cat.name || '';
-                                if (selectedId && String(cat.id) === String(selectedId)) option.selected = true;
-                            } else {
-                                // Fallback for older responses
-                                option.value = String(cat || '');
-                                option.textContent = String(cat || '');
-                            }
-                            selectElement.appendChild(option);
+                    .then(roles => {
+                        if (roles.length === 0) {
+                            container.innerHTML = '<p class="text-sm text-slate-500">No roles in this department</p>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        roles.forEach(role => {
+                            const isChecked = selectedRoles && selectedRoles.includes(role.id) ? 'checked' : '';
+                            html += `
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" name="roles[]" value="${role.id}" id="${isEdit ? 'edit' : 'create'}_role_${role.id}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isChecked}>
+                                    <label for="${isEdit ? 'edit' : 'create'}_role_${role.id}" class="text-sm text-slate-700">${role.name}</label>
+                                </div>
+                            `;
                         });
+                        container.innerHTML = html;
                     })
                     .catch(error => {
-                        console.error('Error fetching categories:', error);
-                        selectElement.innerHTML = '<option value="">— None —</option>';
+                        console.error('Error fetching roles:', error);
+                        container.innerHTML = '<p class="text-sm text-red-500">Error loading roles</p>';
                     });
             }
 
-            // Create modal role change
-            const createRole = $('#create_role');
-            const createCategory = $('#create_category');
-            if (createRole && createCategory) {
-                createRole.addEventListener('change', () => {
-                    updateCategories(createCategory, createRole.value);
+            // Create modal department change
+            const createDepartment = $('#create_department');
+            const createRolesContainer = $('#create_roles_container');
+            if (createDepartment && createRolesContainer) {
+                createDepartment.addEventListener('change', () => {
+                    updateRolesForDepartment(createRolesContainer, createDepartment.value, null);
                 });
             }
 
-            // Edit modal role change
-            if (editRole && editCategory) {
-                editRole.addEventListener('change', () => {
-                    updateCategories(editCategory, editRole.value, editCategory.value);
+            // Edit modal department change
+            const editDepartment = $('#edit_department');
+            const editRolesContainer = $('#edit_roles_container');
+            if (editDepartment && editRolesContainer) {
+                editDepartment.addEventListener('change', () => {
+                    updateRolesForDepartment(editRolesContainer, editDepartment.value, null);
                 });
             }
 
