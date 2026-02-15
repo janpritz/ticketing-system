@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Department;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -62,10 +63,11 @@ class AdminController extends Controller
             $cutoff = now()->subMinutes(10)->getTimestamp();
             $activeStaffCount = DB::table('sessions')
                 ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->whereNotNull('sessions.user_id')
                 ->where('sessions.last_activity', '>=', $cutoff)
-                // exclude Primary Administrator by role name (supports migrated role_id and legacy null-role rows)
+                // exclude Primary Administrator by role name
                 ->where(function ($qb) {
                     $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
                 })
@@ -75,7 +77,8 @@ class AdminController extends Controller
             // Build initial active staff list (name, email, last_activity)
             $activeStaff = DB::table('sessions')
                 ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->whereNotNull('sessions.user_id')
                 ->where('sessions.last_activity', '>=', $cutoff)
                 ->where(function ($qb) {
@@ -102,7 +105,8 @@ class AdminController extends Controller
                 ->toArray();
 
             // Build full staff contacts with last activity and active flag
-            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            $staffContacts = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where(function ($q) {
                     $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
                 })
@@ -226,7 +230,8 @@ class AdminController extends Controller
         $cutoff = now()->subMinutes(10)->getTimestamp();
         $activeStaffCount = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
             ->where(function ($qb) {
@@ -237,7 +242,8 @@ class AdminController extends Controller
 
         $activeStaffArr = DB::table('sessions')
             ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
             ->whereNotNull('sessions.user_id')
             ->where('sessions.last_activity', '>=', $cutoff)
             ->where(function ($qb) {
@@ -264,7 +270,8 @@ class AdminController extends Controller
             ->toArray();
 
         // Full staff contacts list with active flag
-        $staffContactsArr = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+        $staffContactsArr = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
             ->where(function ($q) {
                 $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
             })
@@ -409,7 +416,7 @@ class AdminController extends Controller
         $q = trim((string) $request->query('q', ''));
         $isDeleted = (bool) $request->query('include_deleted', false);
 
-        $usersQuery = User::whereHas('role', function ($qRole) {
+        $usersQuery = User::whereHas('roles', function ($qRole) {
                 $qRole->where('name', '!=', 'Primary Administrator');
             })
             ->when($q !== '', function ($query) use ($q) {
@@ -417,12 +424,9 @@ class AdminController extends Controller
                 $query->where(function ($qq) use ($like) {
                     $qq->where('name', 'like', $like)
                        ->orWhere('email', 'like', $like)
-                       ->orWhereHas('role', function ($qr) use ($like) {
+                       ->orWhereHas('roles', function ($qr) use ($like) {
                            $qr->where('name', 'like', $like);
-                       })
-                        ->orWhereHas('category', function ($qc) use ($like) {
-                            $qc->where('name', 'like', $like);
-                        });
+                       });
                 });
             });
 
@@ -460,29 +464,28 @@ class AdminController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             // Restrict creation to staff accounts (avoid creating another Primary Administrator)
             'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
-            'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'required|string|min:8|confirmed',
         ]);
     
         // Resolve role id from provided role name
         $roleModel = Role::where('name', $validated['role'])->first();
 
-        // Validate category_id belongs to the role if provided
-        if (!empty($validated['category_id'])) {
-            if (!$roleModel || !$roleModel->categories()->where('id', $validated['category_id'])->exists()) {
-                return back()->withErrors(['category_id' => 'The selected category is not valid for the chosen role.'])->withInput();
-            }
-        }
-
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role_id = $roleModel ? $roleModel->id : null;
-        // Use category_id as single source of truth
-        $user->category_id = $validated['category_id'] ?? null;
         // Will be auto-hashed via casts() => 'password' => 'hashed'
         $user->password = $validated['password'];
         $user->save();
+
+        // Create user_roles entry
+        if ($roleModel) {
+            DB::table('user_roles')->insert([
+                'user_id' => $user->id,
+                'role_id' => $roleModel->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
@@ -513,30 +516,27 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
             'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
-            'category_id' => 'nullable|integer|exists:categories,id',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
     
         // Resolve role id
         $roleModel = Role::where('name', $validated['role'])->first();
 
-        // Validate category_id belongs to the role if provided
-        if (!empty($validated['category_id'])) {
-            if (!$roleModel || !$roleModel->categories()->where('id', $validated['category_id'])->exists()) {
-                return back()->withErrors(['category_id' => 'The selected category is not valid for the chosen role.'])->withInput();
-            }
-        }
-
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->role_id = $roleModel ? $roleModel->id : null;
-        // Use category_id as single source of truth
-        $user->category_id = $validated['category_id'] ?? null;
         if (!empty($validated['password'] ?? '')) {
             // Auto-hashed via casts
             $user->password = $validated['password'];
         }
         $user->save();
+
+        // Update user_roles entry
+        if ($roleModel) {
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->id],
+                ['role_id' => $roleModel->id, 'updated_at' => now()]
+            );
+        }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff updated.');
     }

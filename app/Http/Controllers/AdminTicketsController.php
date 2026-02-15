@@ -206,7 +206,7 @@ class AdminTicketsController extends Controller
             }
 
             // Get list of users with roles (staff) for rerouting
-            $users = User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
+            $users = User::whereHas('roles')->select('id', 'name')->orderBy('name')->get();
 
             // Normalize a bit for the UI
             $ticketArray = $ticket->toArray();

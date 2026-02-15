@@ -8,7 +8,8 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
-use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\StaffKnowledgebaseController;
 use App\Http\Controllers\Admin\FAQsController;
@@ -252,24 +253,34 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
     });
 
-    // Admin category management (CRUD)
-    Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
-        Route::get('/', [CategoriesController::class, 'index'])->name('index');
-        Route::get('/create', [CategoriesController::class, 'create'])->name('create');
-        Route::post('/', [CategoriesController::class, 'store'])->name('store');
-        Route::get('/{category}/edit', [CategoriesController::class, 'edit'])->whereNumber('category')->name('edit');
-        Route::put('/{category}', [CategoriesController::class, 'update'])->whereNumber('category')->name('update');
-        Route::delete('/{category}', [CategoriesController::class, 'destroy'])->whereNumber('category')->name('destroy');
-    });
-
     // Admin role management (CRUD)
     Route::prefix('admin/roles')->name('admin.roles.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\RolesController::class, 'index'])->name('index');
-        Route::get('/create', [\App\Http\Controllers\RolesController::class, 'create'])->name('create');
-        Route::post('/', [\App\Http\Controllers\RolesController::class, 'store'])->name('store');
-        Route::get('/{role}/edit', [\App\Http\Controllers\RolesController::class, 'edit'])->whereNumber('role')->name('edit');
-        Route::put('/{role}', [\App\Http\Controllers\RolesController::class, 'update'])->whereNumber('role')->name('update');
-        Route::delete('/{role}', [\App\Http\Controllers\RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
+        Route::get('/', [RolesController::class, 'index'])->name('index');
+        Route::get('/create', [RolesController::class, 'create'])->name('create');
+        Route::post('/', [RolesController::class, 'store'])->name('store');
+        Route::get('/{role}/edit', [RolesController::class, 'edit'])->whereNumber('role')->name('edit');
+        Route::put('/{role}', [RolesController::class, 'update'])->whereNumber('role')->name('update');
+        Route::delete('/{role}', [RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
+    });
+
+    // Admin department management (CRUD)
+    Route::prefix('admin/departments')->name('admin.departments.')->group(function () {
+        Route::get('/', [DepartmentController::class, 'index'])->name('index');
+        Route::get('/create', [DepartmentController::class, 'create'])->name('create');
+        Route::post('/', [DepartmentController::class, 'store'])->name('store');
+        Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->whereNumber('department')->name('edit');
+        Route::put('/{department}', [DepartmentController::class, 'update'])->whereNumber('department')->name('update');
+        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->whereNumber('department')->name('destroy');
+    });
+
+    // Admin category management (CRUD) - Legacy, redirecting to roles
+    Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('admin.roles.index');
+        })->name('index');
+        Route::get('/create', function () {
+            return redirect()->route('admin.roles.create');
+        })->name('create');
     });
 
     // Admin reports

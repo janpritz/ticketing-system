@@ -71,7 +71,8 @@ class AuthController extends Controller
             $cutoff = now()->subMinutes(10)->getTimestamp();
             $activeStaffCount = DB::table('sessions')
                 ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->whereNotNull('sessions.user_id')
                 ->where('sessions.last_activity', '>=', $cutoff)
                 ->where(function ($qb) {
@@ -81,7 +82,8 @@ class AuthController extends Controller
                 ->count('sessions.user_id');
 
             // Build full staff contacts with active flag
-            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            $staffContacts = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where(function ($q) {
                     $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
                 })
@@ -152,7 +154,8 @@ class AuthController extends Controller
             $cutoff = now()->subMinutes(10)->getTimestamp();
             $activeStaffCount = DB::table('sessions')
                 ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->whereNotNull('sessions.user_id')
                 ->where('sessions.last_activity', '>=', $cutoff)
                 ->where(function ($qb) {
@@ -162,7 +165,8 @@ class AuthController extends Controller
                 ->count('sessions.user_id');
 
             // Build full staff contacts with active flag
-            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            $staffContacts = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where(function ($q) {
                     $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
                 })
@@ -212,7 +216,8 @@ class AuthController extends Controller
             $cutoff = now()->subMinutes(10)->getTimestamp();
             $activeStaffCount = DB::table('sessions')
                 ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
+                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->whereNotNull('sessions.user_id')
                 ->where('sessions.last_activity', '>=', $cutoff)
                 ->where(function ($qb) {
@@ -222,7 +227,8 @@ class AuthController extends Controller
                 ->count('sessions.user_id');
 
             // Build full staff contacts with active flag
-            $staffContacts = User::leftJoin('roles', 'users.role_id', '=', 'roles.id')
+            $staffContacts = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
+                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
                 ->where(function ($q) {
                     $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
                 })

@@ -618,7 +618,7 @@ class StaffController extends Controller
         // If it's an AJAX request wanting JSON, return JSON response
         if (request()->ajax() || request()->wantsJson()) {
             // Get list of users with roles for forwarding functionality
-            $users = \App\Models\User::whereHas('role')->select('id', 'name')->orderBy('name')->get();
+            $users = \App\Models\User::whereHas('roles')->select('id', 'name')->orderBy('name')->get();
             
             // Return ticket data with users for frontend functionality
             return response()->json(array_merge($ticket->toArray(), ['users' => $users]));

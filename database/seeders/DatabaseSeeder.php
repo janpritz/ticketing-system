@@ -27,11 +27,6 @@ class DatabaseSeeder extends Seeder
             $this->call(\Database\Seeders\RolesSeeder::class);
         }
 
-        // Seed categories
-        if (class_exists(\Database\Seeders\CategorySeeder::class)) {
-            $this->call(\Database\Seeders\CategorySeeder::class);
-        }
-
         // Ensure Primary Administrator role exists and Primary Administrator user is present with id 1
         $adminRole = Role::where('name', 'Primary Administrator')->first();
 
@@ -50,7 +45,6 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Primary Administrator',
                 'email' => 'acc.sangkaychatbot@gmail.com',
                 'password' => Hash::make('ACCSangkay2025'),
-                'department_id' => $adminDepartment ? $adminDepartment->id : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -58,7 +52,6 @@ class DatabaseSeeder extends Seeder
             $adminUser->update([
                 'name' => 'Primary Administrator',
                 'password' => Hash::make('ACCSangkay2025'),
-                'department_id' => $adminDepartment ? $adminDepartment->id : null,
             ]);
         }
 
@@ -66,7 +59,7 @@ class DatabaseSeeder extends Seeder
         if ($adminUser) {
             DB::table('user_roles')->updateOrInsert(
                 ['user_id' => $adminUser->id, 'role_id' => $adminRole->id],
-                ['primary_role' => true, 'created_at' => now(), 'updated_at' => now()]
+                ['created_at' => now(), 'updated_at' => now()]
             );
         }
 
@@ -97,7 +90,6 @@ class DatabaseSeeder extends Seeder
                 [
                     'name' => $staffInfo['name'],
                     'password' => Hash::make('password123'),
-                    'department_id' => $department ? $department->id : null,
                 ]
             );
 
@@ -105,7 +97,7 @@ class DatabaseSeeder extends Seeder
             if ($user) {
                 DB::table('user_roles')->updateOrInsert(
                     ['user_id' => $user->id, 'role_id' => $r->id],
-                    ['primary_role' => true, 'created_at' => now(), 'updated_at' => now()]
+                    ['created_at' => now(), 'updated_at' => now()]
                 );
             }
         }

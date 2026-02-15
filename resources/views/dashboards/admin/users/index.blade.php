@@ -1,12 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', 'User Management')
+@section('title', 'Staff Management')
 
 @section('admin-content')
     <div class="sm:px-2">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">{{ $isDeletedView ? 'Deleted Users' : 'User Management' }}</h1>
+                <h1 class="text-2xl font-semibold text-slate-900">{{ $isDeletedView ? 'Deleted Users' : 'Staff Management' }}</h1>
                 <p class="text-sm text-slate-500">{{ $isDeletedView ? 'View and restore deleted staff accounts' : 'Manage staff accounts (excluding Primary Administrator)' }}</p>
             </div>
 

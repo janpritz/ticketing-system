@@ -30,7 +30,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'department_id',
         'profile_photo',
     ];
 
@@ -71,15 +70,16 @@ class User extends Authenticatable
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'user_roles')->withPivot('primary_role');
+        return $this->belongsToMany(Role::class, 'user_roles');
     }
 
     /**
-     * Primary role for this user.
+     * Backwards-compatible singular role() method.
+     * Returns the first role from the user's roles collection.
      */
-    public function primaryRole()
+    public function role()
     {
-        return $this->roles()->wherePivot('primary_role', true)->first();
+        return $this->roles()->first();
     }
 
     /**
@@ -94,26 +94,10 @@ class User extends Authenticatable
      */
     public function getRoleAttribute($value)
     {
-        // If legacy 'role' attribute is present in attributes (pre-migration), return it.
-        if (array_key_exists('role', $this->attributes) && !is_null($this->attributes['role'])) {
-            return $this->attributes['role'];
-        }
-
-        // If relation is loaded, use it.
-        if ($this->relationLoaded('role')) {
-            $r = $this->getRelation('role');
-            return $r ? $r->name : null;
-        }
-
-        // Fallback: try to resolve via role_id
-        if (!empty($this->attributes['role_id'])) {
-            $role = Role::find($this->attributes['role_id']);
-            return $role ? $role->name : null;
-        }
-
-        // Fallback: try to resolve via primary role
-        if ($this->primaryRole()) {
-            return $this->primaryRole()->name;
+        // Try to resolve via first role (from user_roles table)
+        $firstRole = $this->role();
+        if ($firstRole) {
+            return $firstRole->name;
         }
 
         return null;
@@ -127,15 +111,7 @@ class User extends Authenticatable
      */
     public function getRoleModelAttribute()
     {
-        if ($this->relationLoaded('role')) {
-            return $this->getRelation('role');
-        }
- 
-        if (!empty($this->attributes['role_id'])) {
-            return Role::find($this->attributes['role_id']);
-        }
- 
-        return null;
+        return $this->role();
     }
 
     /**

@@ -7,15 +7,10 @@
   <div class="flex items-center justify-between gap-4">
     <div>
       <h1 class="text-2xl font-semibold text-slate-900">Role Management</h1>
-      <p class="text-sm text-slate-500">Manage staff roles and college departments.</p>
+      <p class="text-sm text-slate-500">Manage staff roles and their department assignments.</p>
     </div>
 
     <div class="flex items-center gap-2">
-      <a href="{{ route('admin.categories.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2 text-slate-700" aria-label="Manage Categories">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6zm2 3h14v11H5V9zm2 2v7h10v-7H7z"/></svg>
-        <span class="hidden sm:inline">Manage Categories</span>
-      </a>
-
       <button id="openCreateRoleBtn" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2" aria-label="Add Role">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
         <span class="hidden sm:inline">Add Role</span>
@@ -28,6 +23,7 @@
         <thead class="bg-gray-50 text-gray-600">
           <tr>
             <th class="py-3 pl-5 pr-3 text-left font-medium">Name</th>
+            <th class="px-3 py-3 text-left font-medium">Department</th>
             <th class="px-3 py-3 text-left font-medium">Description</th>
             <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
           </tr>
@@ -39,6 +35,9 @@
                 <div class="text-slate-900 font-medium">{{ $role->name }}</div>
               </td>
               <td class="px-3 py-3 align-top">
+                <div class="text-slate-900">{{ $role->department->name ?? '—' }}</div>
+              </td>
+              <td class="px-3 py-3 align-top">
                 <div class="text-slate-900">{{ $role->description ?? '—' }}</div>
               </td>
               <td class="py-3 pl-3 pr-5 align-top">
@@ -48,6 +47,7 @@
                           data-id="{{ $role->id }}"
                           data-name="{{ $role->name }}"
                           data-description="{{ $role->description }}"
+                          data-department-id="{{ $role->department_id }}"
                           aria-label="Edit role">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
@@ -63,7 +63,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">No roles found.</td>
+              <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No roles found.</td>
             </tr>
           @endforelse
         </tbody>
@@ -95,6 +95,15 @@
       <form id="createRoleForm" method="POST" action="{{ route('admin.roles.store') }}" class="p-4 space-y-4">
         @csrf
         <div>
+          <label class="block text-sm font-medium text-slate-700">Department</label>
+          <select name="department_id" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Select Department</option>
+            @foreach($departments as $department)
+              <option value="{{ $department->id }}">{{ $department->name }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-slate-700">Name</label>
           <input type="text" name="name" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         </div>
@@ -103,26 +112,9 @@
           <textarea name="description" rows="3" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700">Categories <span class="text-xs text-slate-400">(Add at least 2)</span></label>
-          <div id="categoriesContainer" class="mt-2 space-y-2">
-            <div class="flex gap-2">
-              <input type="text" name="categories[]" required placeholder="Category name" class="categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-              <button type="button" class="remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" aria-label="Remove category">Remove</button>
-            </div>
-            <div class="flex gap-2">
-              <input type="text" name="categories[]" required placeholder="Category name" class="categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-              <button type="button" class="remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50" aria-label="Remove category">Remove</button>
-            </div>
-          </div>
-          <div class="pt-2">
-            <button type="button" id="addCategoryBtn" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-3 py-2">Add Category</button>
-          </div>
-        </div>
-
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2" data-close="create-role">Cancel</button>
-          <button type="submit" id="createRoleSubmit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create Role</button>
+          <button type="submit" id="createRoleSubmit" class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Save</button>
         </div>
       </form>
     </div>
@@ -144,6 +136,15 @@
         @csrf
         @method('PUT')
         <input type="hidden" id="edit_role_id" name="role_id" value="" />
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Department</label>
+          <select id="edit_role_department" name="department_id" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Select Department</option>
+            @foreach($departments as $department)
+              <option value="{{ $department->id }}">{{ $department->name }}</option>
+            @endforeach
+          </select>
+        </div>
         <div>
           <label class="block text-sm font-medium text-slate-700">Name</label>
           <input type="text" id="edit_role_name" name="name" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
@@ -182,16 +183,152 @@
   document.querySelectorAll('[data-close="create-role"]').forEach(el => el.addEventListener('click', ()=> closeModal(createModal)));
   document.querySelectorAll('[data-close="edit-role"]').forEach(el => el.addEventListener('click', ()=> closeModal(editModal)));
 
+  // Create form submission with SweetAlert
+  const createForm = document.getElementById('createRoleForm');
+  if (createForm) {
+    createForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('createRoleSubmit');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+
+      try {
+        const formData = new FormData(this);
+        const response = await fetch(this.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          closeModal(createModal);
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: data.message || 'Role created successfully',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          }).then(() => {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: data.message || data.errors?.name?.[0] || 'Failed to create role',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: 'An error occurred',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  // Edit form submission with SweetAlert
+  const editForm = document.getElementById('editRoleForm');
+  if (editForm) {
+    editForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+
+      try {
+        const formData = new FormData(this);
+        formData.append('_method', 'PUT');
+        
+        const response = await fetch(this.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          closeModal(editModal);
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: data.message || 'Role updated successfully',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          }).then(() => {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: data.message || data.errors?.name?.[0] || 'Failed to update role',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'error',
+          title: 'An error occurred',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true
+        });
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
   // Edit buttons
   document.querySelectorAll('.openEditRoleBtn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const name = btn.getAttribute('data-name') || '';
       const description = btn.getAttribute('data-description') || '';
+      const departmentId = btn.getAttribute('data-department-id') || '';
+      
       // populate form
       document.getElementById('edit_role_id').value = id;
       document.getElementById('edit_role_name').value = name;
       document.getElementById('edit_role_description').value = description;
+      document.getElementById('edit_role_department').value = departmentId;
+      
       // set form action
       const form = document.getElementById('editRoleForm');
       form.action = "{{ url('/admin/roles') }}/" + id;
@@ -266,71 +403,6 @@
       }
     });
   });
-
-  // Category management inside Create Role modal
-  const categoriesContainer = document.getElementById('categoriesContainer');
-  const addCategoryBtn = document.getElementById('addCategoryBtn');
-
-  function createCategoryRow(value = '') {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'flex gap-2';
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.name = 'categories[]';
-    input.placeholder = 'Category name';
-    input.className = 'categories-input mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
-    input.value = value;
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'remove-category-btn rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50';
-    removeBtn.setAttribute('aria-label', 'Remove category');
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', function () {
-      // remove this row
-      wrapper.remove();
-      // ensure at least two inputs visually remain (we'll validate at submit)
-    });
-
-    wrapper.appendChild(input);
-    wrapper.appendChild(removeBtn);
-
-    return wrapper;
-  }
-
-  if (addCategoryBtn) {
-    addCategoryBtn.addEventListener('click', () => {
-      categoriesContainer.appendChild(createCategoryRow(''));
-    });
-  }
-
-  // Attach remove handlers to initial buttons
-  document.querySelectorAll('.remove-category-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const row = this.closest('div.flex');
-      if (row) row.remove();
-    });
-  });
-
-  // Validate at submit: require at least 2 non-empty categories
-  const createRoleForm = document.getElementById('createRoleForm');
-  if (createRoleForm) {
-    createRoleForm.addEventListener('submit', function (e) {
-      const inputs = Array.from(document.querySelectorAll('#categoriesContainer input[name="categories[]"]'));
-      const filled = inputs.filter(i => i.value && i.value.trim() !== '');
-      if (filled.length < 2) {
-        e.preventDefault();
-        Swal.fire({
-          icon: 'warning',
-          title: 'Please add at least 2 categories',
-          text: 'A role must have at least two categories before it can be created.',
-        });
-        return false;
-      }
-      // allow submission
-    });
-  }
 
   // Success toasts are now handled by AJAX responses
 
