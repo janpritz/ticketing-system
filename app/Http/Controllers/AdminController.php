@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Role;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\DocumentChange;
 use App\Models\Document;
 use App\Services\RasaServerService;
+use App\Mail\AccountVerificationMail;
 
 class AdminController extends Controller
 {
@@ -419,6 +421,7 @@ class AdminController extends Controller
         $usersQuery = User::whereHas('roles', function ($qRole) {
                 $qRole->where('name', '!=', 'Primary Administrator');
             })
+            ->with(['roles', 'roles.department'])
             ->when($q !== '', function ($query) use ($q) {
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
@@ -435,6 +438,22 @@ class AdminController extends Controller
         } else {
             $users = $usersQuery->orderBy('name')->paginate(10)->appends(['q' => $q]);
         }
+
+        // Process users to add department info from user_roles
+        $users->getCollection()->transform(function ($user) {
+            // Get department from user_roles
+            $userRole = DB::table('user_roles')->where('user_id', $user->id)->first();
+            $departmentId = $userRole ? $userRole->department_id : null;
+            
+            if ($departmentId) {
+                $department = Department::find($departmentId);
+                $user->department = $department ? $department->name : null;
+            } else {
+                $user->department = null;
+            }
+            
+            return $user;
+        });
 
         return view('dashboards.admin.users.index', [
             'users' => $users,
@@ -462,29 +481,59 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            // Restrict creation to staff accounts (avoid creating another Primary Administrator)
-            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
-            'password' => 'required|string|min:8|confirmed',
+            'department_id' => 'required|exists:departments,id',
+            'role_id' => 'required|exists:roles,id',
+            'additional_roles' => 'nullable|array',
+            'additional_roles.*' => 'exists:roles,id',
         ]);
-    
-        // Resolve role id from provided role name
-        $roleModel = Role::where('name', $validated['role'])->first();
 
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        // Will be auto-hashed via casts() => 'password' => 'hashed'
-        $user->password = $validated['password'];
+        
+        // Generate verification token for email verification
+        $verificationToken = bin2hex(random_bytes(32));
+        $user->verification_token = $verificationToken;
+        
         $user->save();
 
-        // Create user_roles entry
-        if ($roleModel) {
-            DB::table('user_roles')->insert([
-                'user_id' => $user->id,
-                'role_id' => $roleModel->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        // Send verification email
+        try {
+            Mail::to($user->email)->send(new AccountVerificationMail($user->name, $verificationToken));
+        } catch (\Throwable $e) {
+            // Log error but don't fail user creation
+            \Illuminate\Support\Facades\Log::error('Failed to send verification email: ' . $e->getMessage());
+        }
+
+        // Collect all role IDs (main role + additional roles)
+        $roleIds = [];
+        
+        // Add main role
+        if (!empty($validated['role_id'])) {
+            $roleIds[] = $validated['role_id'];
+        }
+        
+        // Add additional roles
+        if (!empty($validated['additional_roles'])) {
+            $roleIds = array_merge($roleIds, $validated['additional_roles']);
+        }
+        
+        // Remove duplicates
+        $roleIds = array_unique($roleIds);
+
+        // Create user_roles entries for all selected roles, including department_id
+        if (!empty($roleIds)) {
+            $roleRecords = [];
+            foreach ($roleIds as $roleId) {
+                $roleRecords[] = [
+                    'user_id' => $user->id,
+                    'role_id' => $roleId,
+                    'department_id' => $validated['department_id'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            DB::table('user_roles')->insert($roleRecords);
         }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
@@ -515,13 +564,13 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'role' => ['required','string','max:255','not_in:Primary Administrator','exists:roles,name'],
+            'department_id' => 'required|exists:departments,id',
+            'role_id' => 'required|exists:roles,id',
+            'additional_roles' => 'nullable|array',
+            'additional_roles.*' => 'exists:roles,id',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
     
-        // Resolve role id
-        $roleModel = Role::where('name', $validated['role'])->first();
-
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         if (!empty($validated['password'] ?? '')) {
@@ -530,12 +579,37 @@ class AdminController extends Controller
         }
         $user->save();
 
-        // Update user_roles entry
-        if ($roleModel) {
-            DB::table('user_roles')->updateOrInsert(
-                ['user_id' => $user->id],
-                ['role_id' => $roleModel->id, 'updated_at' => now()]
-            );
+        // Collect all role IDs (main role + additional roles)
+        $roleIds = [];
+        
+        // Add main role
+        if (!empty($validated['role_id'])) {
+            $roleIds[] = $validated['role_id'];
+        }
+        
+        // Add additional roles
+        if (!empty($validated['additional_roles'])) {
+            $roleIds = array_merge($roleIds, $validated['additional_roles']);
+        }
+        
+        // Remove duplicates
+        $roleIds = array_unique($roleIds);
+
+        // Update user_roles entries - sync all selected roles with department_id
+        DB::table('user_roles')->where('user_id', $user->id)->delete();
+        
+        if (!empty($roleIds)) {
+            $roleRecords = [];
+            foreach ($roleIds as $roleId) {
+                $roleRecords[] = [
+                    'user_id' => $user->id,
+                    'role_id' => $roleId,
+                    'department_id' => $validated['department_id'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            DB::table('user_roles')->insert($roleRecords);
         }
     
         return redirect()->route('admin.users.index')->with('status', 'Staff updated.');
@@ -590,6 +664,36 @@ class AdminController extends Controller
         $user->restore();
 
         return redirect()->route('admin.users.index')->with('status', 'User restored.');
+    }
+
+    /**
+     * Get user's current roles (AJAX endpoint for edit modal).
+     */
+    public function usersGetRoles(Request $request, User $user)
+    {
+        $this->ensureAdmin();
+
+        $user->load('roles');
+
+        $roleIds = $user->roles->pluck('id')->toArray();
+
+        // Get department_id from user_roles table
+        $userRole = DB::table('user_roles')->where('user_id', $user->id)->first();
+        $departmentId = $userRole ? $userRole->department_id : null;
+
+        return response()->json([
+            'user_id' => $user->id,
+            'department_id' => $departmentId,
+            'role_ids' => $roleIds,
+            'roles' => $user->roles->map(function ($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'department_id' => $role->department_id,
+                    'department_name' => $role->department ? $role->department->name : null,
+                ];
+            })->toArray(),
+        ]);
     }
 
     /**

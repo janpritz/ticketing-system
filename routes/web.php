@@ -45,6 +45,10 @@ Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('gu
 Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
 Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
 
+// Account verification for new staff (set password)
+Route::get('/verify-account/{token}', [AuthController::class, 'showVerifyAccountForm'])->middleware('guest')->name('staff.verify-account');
+Route::post('/verify-account', [AuthController::class, 'verifyAccount'])->middleware('guest', 'throttle:10,1')->name('staff.verify-account.post');
+
 // Public FAQs landing page
 Route::get('/faqs', [PublicFAQsController::class, 'index'])->name('faqs.index');
 Route::get('/api/faqs', [PublicFAQsController::class, 'getApprovedFAQs'])->name('api.faqs');
@@ -177,6 +181,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
         Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
 
+        // Get user's current roles (for edit modal)
+        Route::get('/{user}/roles', [AdminController::class, 'usersGetRoles'])->whereNumber('user')->name('roles');
+
         // Deleted users view + restore
         Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');
         Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');
@@ -261,6 +268,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/{role}/edit', [RolesController::class, 'edit'])->whereNumber('role')->name('edit');
         Route::put('/{role}', [RolesController::class, 'update'])->whereNumber('role')->name('update');
         Route::delete('/{role}', [RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
+        Route::get('/all', [RolesController::class, 'all'])->name('all');
+        // Get roles by department (for department-roles dropdown)
+        Route::get('/by-department/{departmentId}', [RolesController::class, 'byDepartment'])->name('by-department');
     });
 
     // Admin department management (CRUD)

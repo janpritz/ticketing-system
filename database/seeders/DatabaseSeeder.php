@@ -56,11 +56,21 @@ class DatabaseSeeder extends Seeder
         }
 
         // Create user_roles entry for admin
-        if ($adminUser) {
-            DB::table('user_roles')->updateOrInsert(
-                ['user_id' => $adminUser->id, 'role_id' => $adminRole->id],
-                ['created_at' => now(), 'updated_at' => now()]
-            );
+        if ($adminUser && $adminRole) {
+            // First check if the user already has this role
+            $existingRole = DB::table('user_roles')
+                ->where('user_id', $adminUser->id)
+                ->where('role_id', $adminRole->id)
+                ->first();
+            
+            if (!$existingRole) {
+                DB::table('user_roles')->insert([
+                    'user_id' => $adminUser->id,
+                    'role_id' => $adminRole->id,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
         }
 
         // Create or update sample staff users with different roles

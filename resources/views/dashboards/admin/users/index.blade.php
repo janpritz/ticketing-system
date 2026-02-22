@@ -130,8 +130,8 @@
                         <tr>
                             <th class="py-3 pl-5 pr-3 text-left font-medium">Name</th>
                             <th class="px-3 py-3 text-left font-medium">Email</th>
-                            <th class="px-3 py-3 text-left font-medium">Role</th>
-                            <th class="px-3 py-3 text-left font-medium">Category</th>
+                            <th class="px-3 py-3 text-left font-medium">Department</th>
+                            <th class="px-3 py-3 text-left font-medium">Roles</th>
                             <th class="py-3 pl-3 pr-5 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -148,14 +148,24 @@
                                      <div class="text-slate-900">{{ $u->email }}</div>
                                  </td>
                                  <td class="px-3 py-3 align-top">
-                                     <span
-                                         class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $u->role === 'Primary Administrator' ? 'text-purple-700 bg-purple-50 ring-purple-600/20' : 'text-slate-700 bg-slate-50 ring-slate-600/20' }}">
-                                         {{ $u->role }}
-                                     </span>
+                                     <div class="text-slate-900">{{ $u->department ?? '—' }}</div>
                                  </td>
-                                  <td class="px-3 py-3 align-top">
-                                      <div class="text-slate-900">{{ is_object($u->category) ? ($u->category->name ?? '—') : ($u->category ?? '—') }}</div>
-                                  </td>
+                                 <td class="px-3 py-3 align-top">
+                                     <div class="flex flex-wrap gap-1">
+                                         @php
+                                             $roles = $u->roles;
+                                         @endphp
+                                         @foreach($roles as $index => $role)
+                                             @php
+                                                 $isMain = $index === 0;
+                                                 $bgColor = $role->name === 'Primary Administrator' ? 'bg-purple-50 text-purple-700 ring-purple-600/20' : 'bg-slate-50 text-slate-700 ring-slate-600/20';
+                                             @endphp
+                                             <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $bgColor }} {{ $isMain ? 'ring-2 ring-yellow-400' : '' }}" title="{{ $isMain ? 'Main Role' : 'Additional Role' }}">
+                                                 {{ $role->name }}
+                                             </span>
+                                         @endforeach
+                                     </div>
+                                 </td>
                                  <td class="py-3 pl-3 pr-5 align-top">
                                      <div class="flex items-center gap-2">
                                          @if ($u->trashed())
@@ -224,7 +234,7 @@
     <div id="createStaffModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-black/40" data-close="create"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-lg bg-white rounded-lg shadow border border-gray-200">
+            <div class="w-full max-w-lg max-h-[90vh] bg-white rounded-lg shadow border border-gray-200 overflow-y-auto">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Add Staff</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="create"
@@ -282,15 +292,29 @@
                             @endif
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Roles</label>
-                            <div id="create_roles_container" class="mt-1 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
-                                <p class="text-sm text-slate-500">Select a department first</p>
-                            </div>
+                            <label class="block text-sm font-medium text-slate-700">Role</label>
+                            <select name="role_id" id="create_role"
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                required disabled>
+                                <option value="" disabled selected>Select a department first</option>
+                            </select>
                             @if (old('form_context') === 'create')
-                                @error('roles')
+                                @error('role_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Additional Roles (from any department)</label>
+                        <button type="button" id="toggle_additional_roles_btn" class="mt-1 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
+                            </svg>
+                            Add Additional Roles
+                        </button>
+                        <div id="create_additional_roles_container" class="mt-2 hidden max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
+                            <p class="text-sm text-slate-500">Loading roles...</p>
                         </div>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -298,8 +322,7 @@
                             class="rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-sm px-4 py-2"
                             data-close="create">Cancel</button>
                         <button type="submit"
-                            class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Create
-                            Staff</button>
+                            class="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2">Save</button>
                     </div>
                 </form>
             </div>
@@ -311,7 +334,7 @@
         data-update-template="{{ route('admin.users.update', ['user' => '__ID__']) }}">
         <div class="absolute inset-0 bg-black/40" data-close="edit"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-lg bg-white rounded-lg shadow border border-gray-200">
+            <div class="w-full max-w-lg max-h-[90vh] bg-white rounded-lg shadow border border-gray-200 overflow-y-auto">
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Edit Staff</div>
                     <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit"
@@ -369,15 +392,29 @@
                             @endif
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700">Roles</label>
-                            <div id="edit_roles_container" class="mt-1 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
-                                <p class="text-sm text-slate-500">Select a department first</p>
-                            </div>
+                            <label class="block text-sm font-medium text-slate-700">Role</label>
+                            <select name="role_id" id="edit_role"
+                                class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                required disabled>
+                                <option value="" disabled>Select a department first</option>
+                            </select>
                             @if (old('editing_user_id'))
-                                @error('roles')
+                                @error('role_id')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             @endif
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Additional Roles (from any department)</label>
+                        <button type="button" id="toggle_edit_additional_roles_btn" class="mt-1 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
+                            </svg>
+                            Add Additional Roles
+                        </button>
+                        <div id="edit_additional_roles_container" class="mt-2 hidden max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2 space-y-1">
+                            <p class="text-sm text-slate-500">Loading roles...</p>
                         </div>
                     </div>
                     <div class="pt-2 flex items-center justify-end gap-3">
@@ -511,6 +548,32 @@
             // Open Create
             if (createOpenBtn) {
                 createOpenBtn.addEventListener('click', () => {
+                    // Reset form fields
+                    const createForm = createModal.querySelector('form');
+                    if (createForm) {
+                        createForm.reset();
+                    }
+                    
+                    // Reset department dropdown
+                    if (createDepartment) {
+                        createDepartment.value = '';
+                    }
+                    
+                    // Disable and reset role dropdown
+                    if (createRole) {
+                        createRole.disabled = true;
+                        createRole.innerHTML = '<option value="" disabled selected>Select a department first</option>';
+                    }
+                    
+                    // Hide and reset additional roles
+                    if (createAdditionalRolesContainer) {
+                        createAdditionalRolesContainer.classList.add('hidden');
+                        createAdditionalRolesContainer.innerHTML = '<p class="text-sm text-slate-500">Loading roles...</p>';
+                    }
+                    if (toggleAdditionalRolesBtn) {
+                        toggleAdditionalRolesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" /></svg> Add Additional Roles`;
+                    }
+                    
                     openModal(createModal);
                 });
             }
@@ -519,6 +582,32 @@
             const createOpenMobileBtn = $('#openCreateModalBtnMobile');
             if (createOpenMobileBtn) {
                 createOpenMobileBtn.addEventListener('click', () => {
+                    // Reset form fields
+                    const createForm = createModal.querySelector('form');
+                    if (createForm) {
+                        createForm.reset();
+                    }
+                    
+                    // Reset department dropdown
+                    if (createDepartment) {
+                        createDepartment.value = '';
+                    }
+                    
+                    // Disable and reset role dropdown
+                    if (createRole) {
+                        createRole.disabled = true;
+                        createRole.innerHTML = '<option value="" disabled selected>Select a department first</option>';
+                    }
+                    
+                    // Hide and reset additional roles
+                    if (createAdditionalRolesContainer) {
+                        createAdditionalRolesContainer.classList.add('hidden');
+                        createAdditionalRolesContainer.innerHTML = '<p class="text-sm text-slate-500">Loading roles...</p>';
+                    }
+                    if (toggleAdditionalRolesBtn) {
+                        toggleAdditionalRolesBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" /></svg> Add Additional Roles`;
+                    }
+                    
                     openModal(createModal);
                 });
             }
@@ -620,62 +709,187 @@
                 });
             }
 
-            // Conditional dropdowns for department-roles
-            function updateRolesForDepartment(selectElement, departmentId, selectedRoles) {
-                const container = selectElement; // This is the roles container div
-                const isEdit = container.id === 'edit_roles_container';
+            // Conditional dropdowns for department-role
+            function updateRoleForDepartment(selectElement, departmentId, selectedRoleId) {
+                const select = selectElement; // This is the role select element
                 
                 if (!departmentId) {
-                    container.innerHTML = '<p class="text-sm text-slate-500">Select a department first</p>';
+                    select.innerHTML = '<option value="" disabled selected>Select a department first</option>';
                     return;
                 }
+                
+                // Show loading indicator
+                select.innerHTML = '<option value="" disabled selected>Loading roles...</option>';
                 
                 fetch(`/admin/roles/by-department/${departmentId}`)
                     .then(response => response.json())
                     .then(roles => {
                         if (roles.length === 0) {
-                            container.innerHTML = '<p class="text-sm text-slate-500">No roles in this department</p>';
+                            select.innerHTML = '<option value="">No roles in this department</option>';
+                            return;
+                        }
+                        
+                        let html = '<option value="" disabled selected>Select role</option>';
+                        roles.forEach(role => {
+                            const isSelected = selectedRoleId && selectedRoleId == role.id ? 'selected' : '';
+                            html += `<option value="${role.id}" ${isSelected}>${role.name}</option>`;
+                        });
+                        select.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching roles:', error);
+                        select.innerHTML = '<option value="">Error loading roles</option>';
+                    });
+            }
+
+            // Load all roles for additional roles section
+            function loadAllRoles(containerId, selectedRoles, excludeRoleId) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                const isEdit = containerId === 'edit_additional_roles_container';
+                
+                // Show loading indicator
+                container.innerHTML = '<p class="text-sm text-slate-500">Loading roles...</p>';
+                
+                fetch('/admin/roles/all')
+                    .then(response => response.json())
+                    .then(roles => {
+                        if (roles.length === 0) {
+                            container.innerHTML = '<p class="text-sm text-slate-500">No roles available</p>';
                             return;
                         }
                         
                         let html = '';
                         roles.forEach(role => {
+                            // Skip if this role is the main selected role
+                            if (excludeRoleId && role.id == excludeRoleId) {
+                                return;
+                            }
                             const isChecked = selectedRoles && selectedRoles.includes(role.id) ? 'checked' : '';
+                            const deptName = role.department ? role.department.name : 'No Department';
                             html += `
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" name="roles[]" value="${role.id}" id="${isEdit ? 'edit' : 'create'}_role_${role.id}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isChecked}>
-                                    <label for="${isEdit ? 'edit' : 'create'}_role_${role.id}" class="text-sm text-slate-700">${role.name}</label>
+                                    <input type="checkbox" name="additional_roles[]" value="${role.id}" id="${isEdit ? 'edit' : 'create'}_additional_role_${role.id}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${isChecked}>
+                                    <label for="${isEdit ? 'edit' : 'create'}_additional_role_${role.id}" class="text-sm text-slate-700">${role.name} <span class="text-xs text-slate-500">(${deptName})</span></label>
                                 </div>
                             `;
                         });
-                        container.innerHTML = html;
+                        
+                        if (html === '') {
+                            container.innerHTML = '<p class="text-sm text-slate-500">No additional roles available</p>';
+                        } else {
+                            container.innerHTML = html;
+                        }
                     })
                     .catch(error => {
-                        console.error('Error fetching roles:', error);
+                        console.error('Error fetching all roles:', error);
                         container.innerHTML = '<p class="text-sm text-red-500">Error loading roles</p>';
                     });
             }
 
+            // Initialize additional roles on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                loadAllRoles('create_additional_roles_container', null, null);
+                loadAllRoles('edit_additional_roles_container', null, null);
+            });
+
             // Create modal department change
             const createDepartment = $('#create_department');
-            const createRolesContainer = $('#create_roles_container');
-            if (createDepartment && createRolesContainer) {
+            const createRole = $('#create_role');
+            if (createDepartment && createRole) {
                 createDepartment.addEventListener('change', () => {
-                    updateRolesForDepartment(createRolesContainer, createDepartment.value, null);
+                    // Enable role dropdown when department is selected
+                    createRole.disabled = false;
+                    updateRoleForDepartment(createRole, createDepartment.value, null);
+                    // Reload additional roles, excluding the main selected role
+                    const selectedMainRoleId = createRole.value || null;
+                    // Get currently checked additional roles before reloading
+                    const checkedBoxes = createAdditionalRolesContainer ? createAdditionalRolesContainer.querySelectorAll('input[type="checkbox"]:checked') : [];
+                    const checkedRoleIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                    loadAllRoles('create_additional_roles_container', checkedRoleIds, selectedMainRoleId);
+                });
+                
+                // Also reload additional roles when main role changes
+                createRole.addEventListener('change', () => {
+                    const selectedMainRoleId = createRole.value || null;
+                    // Get currently checked additional roles before reloading
+                    const checkedBoxes = createAdditionalRolesContainer ? createAdditionalRolesContainer.querySelectorAll('input[type="checkbox"]:checked') : [];
+                    const checkedRoleIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                    loadAllRoles('create_additional_roles_container', checkedRoleIds, selectedMainRoleId);
+                });
+            }
+
+            // Toggle additional roles visibility
+            const toggleAdditionalRolesBtn = $('#toggle_additional_roles_btn');
+            const createAdditionalRolesContainer = $('#create_additional_roles_container');
+            if (toggleAdditionalRolesBtn && createAdditionalRolesContainer) {
+                toggleAdditionalRolesBtn.addEventListener('click', () => {
+                    createAdditionalRolesContainer.classList.toggle('hidden');
+                    const isHidden = createAdditionalRolesContainer.classList.contains('hidden');
+                    
+                    // If showing, reload roles excluding the main selected role
+                    if (!isHidden && createRole) {
+                        const selectedMainRoleId = createRole.value || null;
+                        loadAllRoles('create_additional_roles_container', null, selectedMainRoleId);
+                    }
+                    
+                    toggleAdditionalRolesBtn.innerHTML = isHidden ? 
+                        `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" /></svg> Add Additional Roles` :
+                        `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 18 6M6 6l12 12" /></svg> Hide Additional Roles`;
                 });
             }
 
             // Edit modal department change
             const editDepartment = $('#edit_department');
-            const editRolesContainer = $('#edit_roles_container');
-            if (editDepartment && editRolesContainer) {
+            if (editDepartment && editRole) {
                 editDepartment.addEventListener('change', () => {
-                    updateRolesForDepartment(editRolesContainer, editDepartment.value, null);
+                    // Enable role dropdown when department is selected
+                    editRole.disabled = false;
+                    updateRoleForDepartment(editRole, editDepartment.value, null);
+                    // Reload additional roles, excluding the main selected role
+                    const selectedMainRoleId = editRole.value || null;
+                    // Get currently checked additional roles before reloading
+                    const checkedBoxes = editAdditionalRolesContainer ? editAdditionalRolesContainer.querySelectorAll('input[type="checkbox"]:checked') : [];
+                    const checkedRoleIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                    loadAllRoles('edit_additional_roles_container', checkedRoleIds, selectedMainRoleId);
+                });
+                
+                // Also reload additional roles when main role changes
+                editRole.addEventListener('change', () => {
+                    const selectedMainRoleId = editRole.value || null;
+                    // Get currently checked additional roles before reloading
+                    const checkedBoxes = editAdditionalRolesContainer ? editAdditionalRolesContainer.querySelectorAll('input[type="checkbox"]:checked') : [];
+                    const checkedRoleIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                    loadAllRoles('edit_additional_roles_container', checkedRoleIds, selectedMainRoleId);
                 });
             }
 
-            // Load categories for edit modal on open
-            $$('.openEditModalBtn').forEach(btn => {
+            // Toggle edit additional roles visibility
+            const toggleEditAdditionalRolesBtn = $('#toggle_edit_additional_roles_btn');
+            const editAdditionalRolesContainer = $('#edit_additional_roles_container');
+            if (toggleEditAdditionalRolesBtn && editAdditionalRolesContainer) {
+                toggleEditAdditionalRolesBtn.addEventListener('click', () => {
+                    editAdditionalRolesContainer.classList.toggle('hidden');
+                    const isHidden = editAdditionalRolesContainer.classList.contains('hidden');
+                    
+                    // If showing, reload roles excluding the main selected role
+                    if (!isHidden && editRole) {
+                        const selectedMainRoleId = editRole.value || null;
+                        // Get currently checked additional roles
+                        const checkedBoxes = editAdditionalRolesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                        const checkedRoleIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                        loadAllRoles('edit_additional_roles_container', checkedRoleIds, selectedMainRoleId);
+                    }
+                    
+                    toggleEditAdditionalRolesBtn.innerHTML = isHidden ? 
+                        `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" /></svg> Add Additional Roles` :
+                        `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 18 6M6 6l12 12" /></svg> Hide Additional Roles`;
+                });
+            }
+
+            // Open Edit Modal
+            document.querySelectorAll('.openEditModalBtn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = btn.getAttribute('data-id');
                     const name = btn.getAttribute('data-name') || '';
@@ -688,7 +902,6 @@
                     if (editId) editId.value = id || '';
                     if (editName) editName.value = name;
                     if (editEmail) editEmail.value = email;
-                    if (editRole) editRole.value = role;
                     if (editCategory) editCategory.value = categoryId || '';
 
                     // Set profile photo
@@ -703,6 +916,34 @@
 
                     if (editForm && updateTemplate && id) {
                         editForm.setAttribute('action', updateTemplate.replace('__ID__', id));
+                    }
+
+                    // Load user's current roles and department
+                    if (id) {
+                        fetch('/admin/users/' + id + '/roles')
+                            .then(response => response.json())
+                            .then(userData => {
+                                // Set department dropdown
+                                if (editDepartment) {
+                                    editDepartment.value = userData.department_id || '';
+                                }
+                                
+                                const roleIds = userData.role_ids || [];
+                                const mainRoleId = roleIds.length > 0 ? roleIds[0] : null;
+                                
+                                // Load department role (dropdown - single select)
+                                if (editDepartment && userData.department_id) {
+                                    // Enable role dropdown
+                                    editRole.disabled = false;
+                                    updateRoleForDepartment(editRole, userData.department_id, mainRoleId);
+                                }
+                                
+                                // Load all roles for additional roles section (excluding main role)
+                                loadAllRoles('edit_additional_roles_container', roleIds, mainRoleId);
+                            })
+                            .catch(error => {
+                                console.error('Error fetching user roles:', error);
+                            });
                     }
 
                     // Load categories for the role (preserve selected)

@@ -361,4 +361,58 @@ class AuthController extends Controller
 
         return redirect()->route('login')->with('status', 'Password updated. You can now sign in.');
     }
+
+    /**
+     * Show the account verification form (set password).
+     */
+    public function showVerifyAccountForm(Request $request, $token)
+    {
+        // Find user with this verification token
+        $user = User::where('verification_token', $token)->first();
+
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Invalid or expired verification link.');
+        }
+
+        // If user already has a verified email (password already set), redirect to login
+        if ($user->email_verified_at) {
+            return redirect()->route('login')->with('status', 'Account already verified. Please login.');
+        }
+
+        return view('auth.verify-account', ['token' => $token]);
+    }
+
+    /**
+     * Process the account verification (set password).
+     */
+    public function verifyAccount(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $token = $request->input('token');
+        $password = $request->input('password');
+
+        // Find user with this verification token
+        $user = User::where('verification_token', $token)->first();
+
+        if (!$user) {
+            return back()->withErrors(['token' => 'Invalid or expired verification link.'])->withInput();
+        }
+
+        // If user already has a verified email, redirect to login
+        if ($user->email_verified_at) {
+            return redirect()->route('login')->with('status', 'Account already verified. Please login.');
+        }
+
+        // Set the password and mark email as verified
+        $user->password = Hash::make($password);
+        $user->email_verified_at = now();
+        $user->verification_token = null;
+        $user->save();
+
+        return redirect()->route('login')->with('status', 'Account verified successfully! You can now login with your password.');
+    }
 }

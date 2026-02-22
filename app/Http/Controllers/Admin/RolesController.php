@@ -143,4 +143,32 @@ class RolesController extends Controller
         $isAdmin = $u && strtolower((string)($u->role ?? '')) === 'primary administrator';
         abort_unless($isAdmin, 403, 'Unauthorized');
     }
+
+    /**
+     * Get all roles (for additional roles section in staff management).
+     * Returns roles from all departments, not filtered.
+     */
+    public function all()
+    {
+        $this->ensureAdmin();
+        
+        $roles = Role::with('department')->orderBy('department_id')->orderBy('name')->get();
+        
+        return response()->json($roles);
+    }
+
+    /**
+     * Get roles by department (for department-roles dropdown).
+     */
+    public function byDepartment($departmentId)
+    {
+        $this->ensureAdmin();
+        
+        $roles = Role::where('department_id', $departmentId)
+            ->with('department')
+            ->orderBy('name')
+            ->get();
+        
+        return response()->json($roles);
+    }
 }
