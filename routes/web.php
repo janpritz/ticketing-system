@@ -184,6 +184,9 @@ Route::middleware('auth')->group(function () {
         // Get user's current roles (for edit modal)
         Route::get('/{user}/roles', [AdminController::class, 'usersGetRoles'])->whereNumber('user')->name('roles');
 
+        // Check email validity and duplication
+        Route::post('/check-email', [AdminController::class, 'usersCheckEmail'])->name('check-email');
+
         // Deleted users view + restore
         Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');
         Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');

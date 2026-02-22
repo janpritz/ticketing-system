@@ -260,9 +260,10 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Email</label>
-                        <input type="email" name="email"
+                        <input type="email" name="email" id="create_email"
                             value="{{ old('form_context') === 'create' ? old('email') : '' }}" required
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <div id="create_email_feedback" class="mt-1 flex items-center gap-1 text-xs"></div>
                         @if (old('form_context') === 'create')
                             @error('email')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -538,6 +539,11 @@
             function openModal(modal) {
                 if (!modal) return;
                 modal.classList.remove('hidden');
+                
+                // Reset email validation state when opening create modal
+                if (modal === createModal && createEmail && createEmailFeedback) {
+                    createEmailFeedback.innerHTML = '';
+                }
             }
 
             function closeModal(modal) {
@@ -797,6 +803,88 @@
             // Create modal department change
             const createDepartment = $('#create_department');
             const createRole = $('#create_role');
+            const createEmail = $('#create_email');
+            const createEmailFeedback = $('#create_email_feedback');
+            
+            // Email validation function
+            let emailCheckTimeout = null;
+            function validateEmail(email, callback) {
+                if (!email || email.trim() === '') {
+                    callback({ valid: null, message: '', message_type: '' });
+                    return;
+                }
+                
+                // Show loading state
+                callback({ valid: null, message: 'Checking email...', message_type: 'loading' });
+                
+                fetch('{{ route('admin.users.check-email') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email: email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    callback(data);
+                })
+                .catch(error => {
+                    console.error('Email validation error:', error);
+                    callback({ valid: null, message: 'Error checking email', message_type: 'error' });
+                });
+            }
+            
+            // Update email field UI based on validation result
+            function updateEmailUI(result) {
+                if (!createEmail || !createEmailFeedback) return;
+                
+                if (result.valid === null) {
+                    // Loading or empty
+                    if (result.message_type === 'loading') {
+                        createEmailFeedback.innerHTML = `<span class="text-slate-500 flex items-center gap-1"><svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${result.message}</span>`;
+                    } else {
+                        createEmailFeedback.innerHTML = '';
+                    }
+                    return;
+                }
+                
+                if (result.valid === false) {
+                    // Invalid
+                    createEmailFeedback.innerHTML = `<span class="text-red-600 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>${result.message}</span>`;
+                } else {
+                    // Valid
+                    createEmailFeedback.innerHTML = `<span class="text-green-600 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>${result.message}</span>`;
+                }
+            }
+            
+            // Email input event listener with debounce
+            if (createEmail) {
+                createEmail.addEventListener('input', function() {
+                    clearTimeout(emailCheckTimeout);
+                    const email = this.value.trim();
+                    
+                    if (!email) {
+                        updateEmailUI({ valid: null, message: '', message_type: '' });
+                        return;
+                    }
+                    
+                    // Debounce - wait 500ms after typing stops
+                    emailCheckTimeout = setTimeout(() => {
+                        validateEmail(email, updateEmailUI);
+                    }, 500);
+                });
+                
+                // Also validate on blur (when user leaves the field)
+                createEmail.addEventListener('blur', function() {
+                    clearTimeout(emailCheckTimeout);
+                    const email = this.value.trim();
+                    if (email) {
+                        validateEmail(email, updateEmailUI);
+                    }
+                });
+            }
+            
             if (createDepartment && createRole) {
                 createDepartment.addEventListener('change', () => {
                     // Enable role dropdown when department is selected

@@ -697,6 +697,50 @@ class AdminController extends Controller
     }
 
     /**
+     * Check email validity and duplication (AJAX endpoint).
+     */
+    public function usersCheckEmail(Request $request)
+    {
+        $this->ensureAdmin();
+        
+        $email = $request->input('email', '');
+        $excludeUserId = $request->input('exclude_user_id', null);
+        
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Invalid email format',
+                'message_type' => 'error'
+            ]);
+        }
+        
+        // Check for duplicate email
+        $query = User::where('email', strtolower($email));
+        
+        // Exclude current user if editing
+        if ($excludeUserId) {
+            $query->where('id', '!=', $excludeUserId);
+        }
+        
+        $existingUser = $query->first();
+        
+        if ($existingUser) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Email already exists in the system',
+                'message_type' => 'error'
+            ]);
+        }
+        
+        return response()->json([
+            'valid' => true,
+            'message' => 'Email is available',
+            'message_type' => 'success'
+        ]);
+    }
+
+    /**
      * Knowledgebase Management - page (blade)
      *
      * If called with ?include_deleted=1, the page will load its list from the

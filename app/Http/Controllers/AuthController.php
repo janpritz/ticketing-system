@@ -413,6 +413,7 @@ class AuthController extends Controller
         $user->verification_token = null;
         $user->save();
 
-        return redirect()->route('login')->with('status', 'Account verified successfully! You can now login with your password.');
+        // Redirect with success message that triggers SweetAlert
+        return redirect()->route('login')->with('success', 'Account verified successfully! You can now login with your password.');
     }
 }

@@ -73,6 +73,44 @@
 @endsection
 
 @section('scripts')
+<!-- SweetAlert2 for success messages -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// Show success SweetAlert for account verification
+@if(session('success'))
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Account Setup Complete!',
+            text: '{{ session('success') }}',
+            timer: 4000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+                setTimeout(() => {
+                    Swal.hideLoading();
+                }, 500);
+            }
+        });
+    });
+@endif
+
+// Also handle status messages (for other redirect scenarios)
+@if(session('status'))
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: '{{ session('status') }}',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false
+        });
+    });
+@endif
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const pwd = document.querySelector('input[name="password"]');
