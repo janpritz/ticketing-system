@@ -16,17 +16,8 @@ use App\Http\Controllers\Admin\FAQsController;
 use App\Http\Controllers\PublicFAQsController;
 
 Route::get('/', function () {
-    // If the user is authenticated, auto-redirect them to the appropriate dashboard
-    if (Auth::check()) {
-        $user = Auth::user();
-        if ($user->role === 'Primary Administrator') {
-            return redirect()->route('admin.dashboard');
-        }
-        return redirect()->route('staff.dashboard');
-    }
-
-    // Guests still see the public ticket create page
-    return view('login');
+    // Redirect to FAQs landing page by default
+    return redirect()->route('faqs.index');
 });
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
@@ -36,7 +27,7 @@ Route::get('/sw.js', function () {
     ]);
 })->name('sw');
 
-Route::get('/login', [AuthController::class, 'showLoginForm'])->middleware('guest')->name('login');
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
 
 // Password reset via OTP
