@@ -31,13 +31,16 @@ class AdminTicketsController extends Controller
             // Base query with eager staff relation (only load needed staff columns to avoid unnecessary data transfer).
             // Also ensure the query selects tickets.* so joins (used later for sorting) don't pollute the column set.
             $query = Ticket::with([
-                // Load staff minimal columns and the related role model for DB-backed roles
+                // Load staff minimal columns
                 'staff' => function($q) {
-                    $q->select('id', 'name', 'role_id');
+                    $q->select('id', 'name');
                 },
-                // load category relation so the frontend can render category.name without an extra query
-                'category',
-                'staff.role'
+                // Load the role (formerly category) relation - this is the Role that the ticket belongs to
+                'role',
+                // Load staff's primary role through user_roles
+                'staff.userRoles' => function($q) {
+                    $q->where('is_primary_role', true)->with('role');
+                }
             ])->select('tickets.*');
 
             // Keyword search across common fields
@@ -45,9 +48,9 @@ class AdminTicketsController extends Controller
                 $query->where(function ($qBuilder) use ($q) {
                     $qBuilder->where('question', 'like', "%{$q}%")
                         ->orWhere('email', 'like', "%{$q}%")
-                        // category is now a relation (categories.name); search via whereHas to match name
-                        ->orWhereHas('category', function ($catQ) use ($q) {
-                            $catQ->where('name', 'like', "%{$q}%");
+                        // role is now a relation (roles.name); search via whereHas to match name
+                        ->orWhereHas('role', function ($roleQ) use ($q) {
+                            $roleQ->where('name', 'like', "%{$q}%");
                         });
                 });
             }
@@ -66,11 +69,14 @@ class AdminTicketsController extends Controller
                 });
             }
 
-            // Filter by staff role (supports Role as a related model; users no longer have a 'role' string column)
+            // Filter by staff role (supports Role as a related model through user_roles table)
             if ($role = $request->query('role')) {
-                // filter by the related roles.name via the staff->role relation
-                $query->whereHas('staff.role', function ($q) use ($role) {
-                    $q->where('name', $role);
+                // filter by the related roles.name via the staff->userRoles->role relation (primary role only)
+                $query->whereHas('staff.userRoles', function ($q) use ($role) {
+                    $q->where('is_primary_role', true)
+                      ->whereHas('role', function ($roleQ) use ($role) {
+                          $roleQ->where('name', $role);
+                      });
                 });
             }
 
@@ -122,7 +128,7 @@ class AdminTicketsController extends Controller
             $items = array_map(function ($m) {
                 // $m is a Ticket model instance
                 $arr = $m->toArray();
-                $arr['category_name'] = isset($m->category) && is_object($m->category) ? ($m->category->name ?? null) : ($m->getAttribute('category') ?? null);
+                $arr['role_name'] = isset($m->role) && is_object($m->role) ? ($m->role->name ?? null) : ($m->getAttribute('role') ?? null);
                 return $arr;
             }, $paginator->items());
 
@@ -150,15 +156,17 @@ class AdminTicketsController extends Controller
         // Get ticket detail directly without caching
         $data = (function () use ($id) {
             // Eager-load minimal related data to avoid N+1 and reduce payload size.
-            // Load staff (id, name, role_id) and the staff->role relation, plus recent routing histories.
+            // Load staff and the ticket's role (formerly category), plus recent routing histories.
             $ticket = Ticket::with([
                 'staff' => function ($q) {
-                    // select role_id (foreign key) so the relation can resolve the Role model
-                    $q->select('id', 'name', 'role_id');
+                    $q->select('id', 'name');
                 },
-                'staff.role',
-                // ensure category is loaded so the frontend can read category.name
-                'category',
+                // Load staff's primary role through user_roles
+                'staff.userRoles' => function($q) {
+                    $q->where('is_primary_role', true)->with('role');
+                },
+                // ensure role is loaded so the frontend can read role.name (role was formerly category)
+                'role',
                 'routingHistories' => function ($q) {
                     $q->select('id', 'ticket_id', 'staff_id', 'status', 'routed_at', 'notes')
                       ->orderBy('routed_at', 'desc');
@@ -181,8 +189,8 @@ class AdminTicketsController extends Controller
                     if ($histories->count() > 0) {
                         $firstEntry = $histories->first();
                         $lastEntry = $histories->last();
-                        $firstAssignee = $firstEntry ? User::select('id','name','role_id')->find($firstEntry->staff_id) : null;
-                        $currentAssignee = $lastEntry ? User::select('id','name','role_id')->find($lastEntry->staff_id) : null;
+                        $firstAssignee = $firstEntry ? User::select('id','name')->find($firstEntry->staff_id) : null;
+                        $currentAssignee = $lastEntry ? User::select('id','name')->find($lastEntry->staff_id) : null;
                         if ($firstAssignee && $currentAssignee && $firstAssignee->id !== $currentAssignee->id) {
                             $isForwarded = true;
                         }
@@ -191,9 +199,17 @@ class AdminTicketsController extends Controller
                         $currentAssignee = $ticket->staff ?? null;
                     }
 
-                    // Eager-load roles for assignees if present
-                    if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
-                    if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+                    // Eager-load userRoles (primary role) for assignees if present
+                    if ($firstAssignee) { 
+                        $firstAssignee->load(['userRoles' => function($q) { 
+                            $q->where('is_primary_role', true)->with('role'); 
+                        }]);
+                    }
+                    if ($currentAssignee) { 
+                        $currentAssignee->load(['userRoles' => function($q) { 
+                            $q->where('is_primary_role', true)->with('role'); 
+                        }]);
+                    }
 
                     // Send notification to the ticket creator only
                     Log::info('Sending TicketProcessedMail (admin show)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
@@ -210,8 +226,8 @@ class AdminTicketsController extends Controller
 
             // Normalize a bit for the UI
             $ticketArray = $ticket->toArray();
-            // provide a normalized category_name for the frontend modal
-            $ticketArray['category_name'] = isset($ticket->category) && is_object($ticket->category) ? ($ticket->category->name ?? null) : ($ticket->getAttribute('category') ?? null);
+            // provide a normalized role_name for the frontend modal (role was formerly category)
+            $ticketArray['role_name'] = isset($ticket->role) && is_object($ticket->role) ? ($ticket->role->name ?? null) : ($ticket->getAttribute('role') ?? null);
             // Ensure we're working with arrays only
             if (is_array($ticketArray)) {
                 // Convert $users to an array before merging
@@ -358,10 +374,19 @@ class AdminTicketsController extends Controller
             // Notify ticket creator that ticket was forwarded (include first assignee and new assignee)
             try {
                 if (!empty($ticket->email)) {
-                    $firstAssignee = $originalStaffId ? User::select('id','name','role_id')->find($originalStaffId) : null;
+                    $firstAssignee = $originalStaffId ? User::select('id','name')->find($originalStaffId) : null;
                     $currentAssignee = $user;
-                    if ($firstAssignee && method_exists($firstAssignee, 'role')) { $firstAssignee->load('role'); }
-                    if ($currentAssignee && method_exists($currentAssignee, 'role')) { $currentAssignee->load('role'); }
+                    // Eager-load userRoles (primary role) for assignees
+                    if ($firstAssignee) { 
+                        $firstAssignee->load(['userRoles' => function($q) { 
+                            $q->where('is_primary_role', true)->with('role'); 
+                        }]);
+                    }
+                    if ($currentAssignee) { 
+                        $currentAssignee->load(['userRoles' => function($q) { 
+                            $q->where('is_primary_role', true)->with('role'); 
+                        }]);
+                    }
                     Log::info('Sending TicketProcessedMail (admin forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
                     Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, true));
                     Log::info('TicketProcessedMail sent (admin forward)', ['ticket_id' => $ticket->id, 'to' => $ticket->email]);
@@ -382,13 +407,13 @@ class AdminTicketsController extends Controller
     {
         $request->validate([
             'question' => 'sometimes|string',
-            'category_id' => 'sometimes|nullable|integer|exists:categories,id',
+            'role_id' => 'sometimes|nullable|integer|exists:roles,id',
             'status' => 'sometimes|string',
         ]);
 
         $ticket = Ticket::findOrFail($id);
 
-        $data = $request->only(['question', 'category_id', 'status']);
+        $data = $request->only(['question', 'role_id', 'status']);
         if (array_key_exists('status', $data) && $data['status'] === 'Closed' && !$ticket->date_closed) {
             $data['date_closed'] = now();
         }
@@ -437,7 +462,7 @@ class AdminTicketsController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'role_id' => 'nullable|integer|exists:roles,id',
             'question' => 'required|string',
             'recepient_id' => ['required'],
             'email' => 'required|email|max:255',
@@ -456,7 +481,7 @@ class AdminTicketsController extends Controller
         }
 
         $ticket = new Ticket();
-        $ticket->category_id = $request->input('category_id');
+        $ticket->role_id = $request->input('role_id');
         $ticket->question = $request->input('question');
         $ticket->recepient_id = $request->input('recepient_id');
         $ticket->email = $request->input('email');
@@ -469,7 +494,7 @@ class AdminTicketsController extends Controller
 
         // Run the assignment logic synchronously so admin sees immediate assignment
         try {
-            \App\Jobs\ProcessTicketCreation::dispatchSync($ticket->id, $request->input('category_id'));
+            \App\Jobs\ProcessTicketCreation::dispatchSync($ticket->id, $request->input('role_id'));
         } catch (\Throwable $e) {
             // Log and continue; assignment failed but ticket creation succeeded
             \Illuminate\Support\Facades\Log::error('AdminTicketsController::store - assignment failed: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
@@ -477,7 +502,7 @@ class AdminTicketsController extends Controller
 
         if ($request->wantsJson()) {
             // reload fresh ticket with relations
-            $ticket->load('staff', 'category');
+            $ticket->load('staff', 'role');
             return response()->json(['ticket' => $ticket], 201);
         }
 
