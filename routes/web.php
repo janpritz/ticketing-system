@@ -66,10 +66,8 @@ Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
     ->name('tickets.show');
 
 // Catch-all route for viewing tickets by recepient_id (must come after specific routes)
-// Constraint: recepient_id cannot be numeric (to avoid matching ticket IDs)
 // Middleware: check.verified.email - redirects to /tickets?email={email} if cookie exists
 Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])
-    ->where('recepient_id', '[^0-9]+')
     ->middleware(['check.verified.email', 'otp.verified'])
     ->name('tickets.index');
 
