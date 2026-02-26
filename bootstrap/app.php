@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'handle.logout.csrf' => \App\Http\Middleware\HandleLogoutCsrf::class,
             'check.verified.email' => \App\Http\Middleware\CheckVerifiedEmailCookie::class,
             'otp.verified' => \App\Http\Middleware\EnsureOtpVerified::class,
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
