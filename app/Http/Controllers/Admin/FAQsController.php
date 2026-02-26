@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\StagedFaq;
 use App\Models\Ticket;
-use App\Models\ProcessedTicket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,9 +34,9 @@ class FAQsController extends Controller
         $perPage = $request->input('per_page', 10);
         $faqs = $query->paginate($perPage);
 
-        // Count unprocessed tickets (closed tickets not in processed_tickets table)
+        // Count unprocessed tickets (closed tickets not yet analyzed with OpenAI)
         $unprocessedTickets = Ticket::where('status', 'closed')
-            ->whereDoesntHave('processedTicket')
+            ->where('is_processed', false)
             ->count();
 
         return view('admin.faqs.index', compact('faqs', 'unprocessedTickets', 'status', 'search', 'perPage'));

@@ -4,36 +4,11 @@
 
 @section('content')
     <div class="bg-white min-h-screen">
-        <!-- Navigation Bar -->
-        <nav class="fixed top-0 left-0 right-0 z-50 flex-shrink-0" style="background-color: #FF9D00;">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center">
-                            <a href="{{ route('faqs.index') }}" class="flex items-center">
-                                <img src="{{ asset('logo-white.png') }}" alt="Sangkay Logo" class="h-8 w-8">
-                                <span class="text-white font-bold text-sm tracking-wider ml-2">SANGKAY</span>
-                            </a>
-                        </div>
-
-                        <!-- Menu Items -->
-                        <div class="hidden md:flex items-center gap-4 ml-20">
-                            <a href="{{ route('faqs.index') }}" class="text-white text-sm font-medium hover:text-gray-100">Home</a>
-                            <a href="{{ route('about') }}" class="text-white text-sm font-medium hover:text-gray-100">About Us</a>
-                            <a href="{{ route('contact') }}" class="text-white text-sm font-medium hover:text-gray-100">Contact Us</a>
-                        </div>
-                    </div>
-
-                    <!-- Right: Profile -->
-                    <div class="flex items-center gap-4">
-                        <a href="{{ route('tickets.status.form') }}" class="text-white text-sm font-medium hover:text-gray-100">Check Ticket Status</a>
-                    </div>
-                </div>
-            </div>
-        </nav>
+        <!-- Navigation Bar - Using Component -->
+        <x-public-nav active="about" :logo-margin="'mr-4'" :logo-text="'SANGKAY'" />
 
         <!-- Main Content -->
-        <div class="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="pt-8 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <!-- Page Header -->
             <div class="text-center mb-12">
                 <h1 class="text-4xl font-bold text-gray-900 mb-4">About Sangkay</h1>

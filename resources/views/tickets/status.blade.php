@@ -3,6 +3,9 @@
 @section('title', 'Check Ticket Status')
 
 @section('content')
+    <!-- Public Navigation Bar -->
+    <x-public-nav :logo-margin="'mr-4'" :logo-text="'SANGKAY'" />
+    
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div class="mt-8">
             <!-- Tickets Section -->

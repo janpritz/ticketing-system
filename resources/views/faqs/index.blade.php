@@ -4,43 +4,11 @@
 
 @section('content')
     <div class="bg-white flex flex-col min-h-screen lg:h-screen">
-        <!-- Navigation Bar -->
-        <nav class="fixed top-0 left-0 right-0 z-50 flex-shrink-0" style="background-color: #FF9D00;">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
-                    <div class="flex items-center gap-4">
-                        <div class="flex items-center mr-20">
-                            <img src="{{ asset('logo-white.png') }}" alt="Sangkay Logo" class="h-8 w-8">
-                            <span class="text-white font-bold text-sm tracking-wider ml-2">SANGKAY FAQs</span>
-                        </div>
-
-                        <!-- Menu Items -->
-                        <div class="hidden md:flex items-center gap-4">
-                            <a href="{{ route('faqs.index') }}"
-                                class="text-white text-sm font-medium hover:text-gray-100">Home</a>
-                            <a href="{{ route('about') }}" class="text-white text-sm font-medium hover:text-gray-100">About Us</a>
-                            <a href="{{ route('contact') }}" class="text-white text-sm font-medium hover:text-gray-100">Contact Us</a>
-                        </div>
-                    </div>
-
-
-                    <!-- Right: Profile -->
-                    <div class="flex items-center gap-4">
-                        <span id="greetingText" class="text-white text-sm hidden">HELLO, <span id="userEmail"></span></span>
-                        <button id="profileBtn" class="p-2 rounded-full hover:bg-white/20 transition-colors"
-                            title="Profile">
-                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </nav>
+        <!-- Navigation Bar - Using Component -->
+        <x-public-nav active="home" :logo-text="'SANGKAY FAQs'" />
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-visible lg:overflow-hidden mt-16 lg:mt-24">
+        <div class="flex-1 overflow-visible lg:overflow-hidden mt-4 lg:mt-4">
             <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
                     <!-- Left Column: Title and FAQs -->
@@ -124,83 +92,4 @@
         </div>
     </div>
 
-    <script>
-        // Helper function to get cookie value
-        function getCookie(name) {
-            const nameEQ = name + "=";
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                let cookie = cookies[i].trim();
-                if (cookie.indexOf(nameEQ) === 0) {
-                    return decodeURIComponent(cookie.substring(nameEQ.length));
-                }
-            }
-            return null;
-        }
-
-        // Initialize greeting on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const verifiedEmail = getCookie('verified_email');
-            const greetingText = document.getElementById('greetingText');
-            const userEmail = document.getElementById('userEmail');
-
-            if (verifiedEmail) {
-                userEmail.textContent = verifiedEmail;
-                greetingText.classList.remove('hidden');
-            }
-        });
-
-        // FAQ Accordion Toggle
-        document.querySelectorAll('.faq-header').forEach(header => {
-            header.addEventListener('click', function() {
-                const item = this.closest('.faq-item');
-                const body = item.querySelector('.faq-body');
-                const chevron = item.querySelector('.faq-chevron');
-                const isOpen = !body.classList.contains('hidden');
-
-                // Close all other FAQs
-                document.querySelectorAll('.faq-body').forEach(b => {
-                    if (b !== body) {
-                        b.classList.add('hidden');
-                        b.closest('.faq-item').querySelector('.faq-chevron').style.transform =
-                            'rotate(0deg)';
-                    }
-                });
-
-                // Toggle current FAQ
-                body.classList.toggle('hidden');
-                chevron.style.transform = body.classList.contains('hidden') ? 'rotate(0deg)' :
-                    'rotate(180deg)';
-            });
-        });
-
-        // Search functionality
-        const searchInput = document.getElementById('searchInput');
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            document.querySelectorAll('.faq-item').forEach(item => {
-                const question = item.querySelector('.faq-header h3').textContent.toLowerCase();
-                const answer = item.querySelector('.faq-body p').textContent.toLowerCase();
-                const matches = question.includes(searchTerm) || answer.includes(searchTerm);
-                item.style.display = matches ? 'block' : 'none';
-            });
-        });
-
-        // Profile Icon Click Handler
-        const profileBtn = document.getElementById('profileBtn');
-        profileBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-
-            // Check if OTP session is active (check cookie)
-            const verifiedEmail = getCookie('verified_email');
-
-            if (verifiedEmail) {
-                // OTP session is active, directly navigate to ticket history
-                window.location.href = `{{ route('tickets.index') }}?email=${encodeURIComponent(verifiedEmail)}`;
-            } else {
-                // No OTP session, navigate to OTP verification page
-                window.location.href = `{{ route('tickets.verify-otp') }}`;
-            }
-        });
-    </script>
 @endsection

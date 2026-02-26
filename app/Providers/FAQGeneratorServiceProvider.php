@@ -6,7 +6,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Ticket;
-use App\Models\ProcessedTicket;
 use App\Models\StagedFaq;
 
 class FAQGeneratorServiceProvider extends ServiceProvider
@@ -32,7 +31,7 @@ Return as a JSON array of objects with these exact fields.';
 
     public function getUnprocessedTickets()
     {
-        return Ticket::whereDoesntHave('processedTicket')
+        return Ticket::where('is_processed', false)
             ->where('status', 'closed')
             ->take(50)
             ->get(['id', 'question', 'response']);
@@ -195,10 +194,8 @@ Return as a JSON array of objects with these exact fields.';
                     'status' => 'pending',
                 ]);
 
-                // Record in processed_tickets
-                ProcessedTicket::create([
-                    'ticket_id' => (int) $ticketId,
-                ]);
+                // Mark ticket as processed
+                $ticket->update(['is_processed' => true]);
                 
                 Log::info('FAQ saved successfully:', ['ticket_id' => $ticketId]);
                 $faqsCreated++;

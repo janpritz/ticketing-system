@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\UserRole;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,13 +24,13 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        Log::info('Login attempt', [
-            'email' => $request->input('email'),
-            'has_csrf' => $request->has('_token'),
-            'csrf_token' => $request->input('_token'),
-            'session_id' => $request->session()->getId(),
-            'user_agent' => $request->userAgent(),
-        ]);
+        // Log::info('Login attempt', [
+        //     'email' => $request->input('email'),
+        //     'has_csrf' => $request->has('_token'),
+        //     'csrf_token' => $request->input('_token'),
+        //     'session_id' => $request->session()->getId(),
+        //     'user_agent' => $request->userAgent(),
+        // ]);
 
         $request->validate([
             'email'    => 'required|email',
@@ -62,8 +63,11 @@ class AuthController extends Controller
 
             /** @var \App\Models\User|null $authUser */
             $authUser = Auth::user();
-            // Use the model helper directly (User::isPrimaryAdministrator exists on App\Models\User).
-            if ($authUser && $authUser->isPrimaryAdministrator()) {
+            // Check if user has role_id = 1 in user_roles table via UserRole model
+            $isPrimaryAdmin = $authUser && UserRole::where('user_id', $authUser->id)
+                ->where('role_id', 1)
+                ->exists();
+            if ($isPrimaryAdmin) {
                 return redirect()->intended('/admin/dashboard');
             }
 

@@ -18,7 +18,15 @@ class Ticket extends Model
         'date_created',
         'date_closed',
         'attachments',
+        'is_processed',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_processed' => 'boolean',
+        ];
+    }
 
 
     public function staff()
@@ -38,10 +46,6 @@ class Ticket extends Model
      * Category relationship for backward compatibility.
      * @deprecated Use role() instead
      */
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class, 'category_id');
-    }
 
     public function routingHistories()
     {
@@ -50,13 +54,16 @@ class Ticket extends Model
             ->orderByDesc('routed_at');
     }
 
-    public function processedTicket()
-    {
-        return $this->hasOne(ProcessedTicket::class, 'ticket_id');
-    }
-
     public function stagedFaqs()
     {
         return $this->hasMany(StagedFaq::class, 'ticket_id');
+    }
+
+    /**
+     * Check if this ticket has been processed (analyzed with OpenAI).
+     */
+    public function isProcessed(): bool
+    {
+        return $this->is_processed === true;
     }
 }

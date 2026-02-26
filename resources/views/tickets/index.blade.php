@@ -3,6 +3,9 @@
 @section('title', 'Tickets')
 
 @section('content')
+<!-- Public Navigation Bar -->
+<x-public-nav :logo-margin="'mr-4'" :logo-text="'SANGKAY'" />
+
 <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
     <div class="md:flex md:items-center md:justify-between">
         <div class="flex-1 min-w-0">
@@ -85,12 +88,12 @@
                         <p class="text-sm text-gray-500 mb-4">
                             No tickets found.
                         </p>
-                        <button id="createTicketBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        {{-- <button id="createTicketBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
                             Create your first ticket
-                        </button>
+                        </button> --}}
                     </div>
                 </li>
                 @endforelse

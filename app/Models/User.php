@@ -10,8 +10,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
 use App\Models\Role;
 use App\Models\Department;
+use App\Models\UserRole;
 
 class User extends Authenticatable
 {
@@ -73,6 +75,14 @@ class User extends Authenticatable
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    /**
+     * UserRole entries for this user.
+     */
+    public function userRoles(): HasMany
+    {
+        return $this->hasMany(UserRole::class);
     }
 
     /**
@@ -138,14 +148,4 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Document::class, 'staff_id');
     }
 
-    /**
-     * Helper to check if the user is the Primary Administrator.
-     * Keeps previous behavior checks like ($user->role === 'Primary Administrator') functional.
-     *
-     * @return bool
-     */
-    public function isPrimaryAdministrator(): bool
-    {
-        return strtolower((string) ($this->role ?? '')) === 'primary administrator';
-    }
 }

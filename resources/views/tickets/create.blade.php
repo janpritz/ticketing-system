@@ -3,6 +3,9 @@
 @section('title', 'Create Ticket')
 
 @section('content')
+    <!-- Public Navigation Bar -->
+    <x-public-nav :logo-margin="'mr-4'" :logo-text="'SANGKAY'" />
+    
     <script>
         // Helper function to get cookie value
         function getCookie(name) {

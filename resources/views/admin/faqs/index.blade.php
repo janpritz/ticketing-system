@@ -536,10 +536,19 @@
                 // Reset modal state
                 document.getElementById('progress-section').classList.add('hidden');
                 document.getElementById('results-section').classList.add('hidden');
-                document.getElementById('analyze-btn').disabled = false;
                 document.getElementById('analyzeIcon').classList.remove('hidden');
                 document.getElementById('analyzeSpinner').classList.add('hidden');
                 document.getElementById('analyzeText').textContent = 'Start Analysis';
+
+                // Check if there are unprocessed tickets
+                const unprocessedCount = {{ $unprocessedTickets ?? 0 }};
+                const analyzeBtn = document.getElementById('analyze-btn');
+                if (unprocessedCount === 0) {
+                    analyzeBtn.disabled = true;
+                    document.getElementById('analyzeText').textContent = 'No Tickets to Analyze';
+                } else {
+                    analyzeBtn.disabled = false;
+                }
             };
 
             window.closeAnalyzeModal = function() {
