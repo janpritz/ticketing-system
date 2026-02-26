@@ -263,7 +263,7 @@ class AuthController extends Controller
                 broadcast(new ActiveStaffUpdated($activeStaffCount, $staffContacts));
             })->afterResponse();
 
-            return redirect('/login')->with('error', 'Logout completed. Please try again if you experience issues.');
+            return redirect('/login');
         }
     }
 
