@@ -113,73 +113,19 @@
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                             <div class="mt-1">
-                                <input list="category-list" name="category_name" id="category"
+                                <input list="category-list" name="role_name" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required value="{{ old('category') }}">
-                                <input type="hidden" name="category_id" id="category_id_input" value="{{ old('category_id') }}">
+                                    required value="{{ old('role_name') }}">
+                                <input type="hidden" name="role_id" id="role_id_input" value="{{ old('role_id') }}">
                                 <datalist id="category-list">
-                                    @if(isset($categories) && count($categories))
-                                        @foreach($categories as $id => $name)
+                                    @if(isset($roles) && count($roles))
+                                        @foreach($roles as $id => $name)
                                             <option value="{{ $name }}">
                                         @endforeach
                                     @else
                                         <!-- Fallback to the hard-coded list if controller did not provide categories -->
                                         <option value="Course Registration">
-                                        <option value="Add or Drop Classes">
-                                        <option value="Late Enrollment">
-                                        <option value="Shifting to a Different Program">
-                                        <option value="Transferring Between Schools">
-                                        <option value="Schedule Conflicts">
-                                        <option value="Tuition Fee Inquiries">
-                                        <option value="Payment Methods (Online, Bank, etc.)">
-                                        <option value="Scholarships & Financial Aid">
-                                        <option value="Refund Issues">
-                                        <option value="Billing and Invoice Problems">
-                                        <option value="Merit-Based Scholarships">
-                                        <option value="Need-Based Scholarships">
-                                        <option value="Scholarship Application Status">
-                                        <option value="Eligibility and Deadlines for Scholarships">
-                                        <option value="Grades and Transcript Requests">
-                                        <option value="Class Schedules">
-                                        <option value="Academic Probation or Warnings">
-                                        <option value="Course Prerequisites">
-                                        <option value="Graduation Requirements">
-                                        <option value="Thesis/Dissertation Submission">
-                                        <option value="Exam Schedules">
-                                        <option value="Exam Results">
-                                        <option value="Re-scheduling Exams">
-                                        <option value="Special Exam Accommodations">
-                                        <option value="Career Counseling">
-                                        <option value="Student Organizations & Activities">
-                                        <option value="Mental Health Support">
-                                        <option value="Peer Mentoring">
-                                        <option value="Internship Assistance">
-                                        <option value="Book Borrowing">
-                                        <option value="Access to Digital Resources">
-                                        <option value="Study Room Reservations">
-                                        <option value="Library Fees and Fines">
-                                        <option value="Research Assistance">
-                                        <option value="Wi-Fi Issues">
-                                        <option value="Software Installation">
-                                        <option value="Email Issues">
-                                        <option value="Computer Lab Problems">
-                                        <option value="Learning Management System (LMS) Issues">
-                                        <option value="Student Life Events">
-                                        <option value="Student Rights and Responsibilities">
-                                        <option value="Code of Conduct Violations">
-                                        <option value="Disciplinary Actions">
-                                        <option value="Visa Assistance">
-                                        <option value="Scholarships for International Students">
-                                        <option value="Cultural Integration Support">
-                                        <option value="Study Abroad Programs">
-                                        <option value="Graduation Requirements">
-                                        <option value="Commencement Exercises">
-                                        <option value="Diploma Requests">
-                                        <option value="Alumni Services">
-                                        <option value="Sports Club Registration">
-                                        <option value="Physical Education Classes">
-                                        <option value="Sports Event Tickets">
-                                        <option value="Sports Scholarships">
+                                        
                                     @endif
                                 </datalist>
                             </div>
@@ -313,16 +259,16 @@
                                 form.submit();
                             });
 
-                            // Map category name -> id and keep hidden category_id in sync
+                            // Map category name -> id and keep hidden role_id in sync
                             const categoryMapCreate = {};
-                            @if(isset($categories) && count($categories))
-                                @foreach($categories as $id => $name)
+                            @if(isset($roles) && count($roles))
+                                @foreach($roles as $id => $name)
                                     categoryMapCreate["{{ addslashes($name) }}"] = "{{ $id }}";
                                 @endforeach
                             @endif
 
                             const cnameInput = document.getElementById('category');
-                            const cidInput = document.getElementById('category_id_input');
+                            const cidInput = document.getElementById('role_id_input');
                             if (cnameInput) {
                                 cnameInput.addEventListener('input', function () {
                                     const v = this.value.trim();

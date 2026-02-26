@@ -82,13 +82,13 @@
                         <div>
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                             <div class="mt-1">
-                                <input list="category-list" name="category_name" id="category"
+                                <input list="category-list" name="role_name" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                    required value="{{ old('category') }}">
-                                <input type="hidden" name="category_id" id="category_id_input" value="{{ old('category_id') }}">
+                                    required value="{{ old('role_name') }}">
+                                <input type="hidden" name="role_id" id="role_id_input" value="{{ old('role_id') }}">
                                 <datalist id="category-list">
-                                    @if(isset($categories) && count($categories))
-                                        @foreach($categories as $id => $name)
+                                    @if(isset($roles) && count($roles))
+                                        @foreach($roles as $id => $name)
                                             <option value="{{ $name }}">
                                         @endforeach
                                     @else
@@ -281,16 +281,16 @@
                                 form.submit();
                             });
 
-                            // Map category name -> id and keep hidden category_id in sync
+                            // Map category name -> id and keep hidden role_id in sync
                             const categoryMap = {};
-                            @if(isset($categories) && count($categories))
-                                @foreach($categories as $id => $name)
+                            @if(isset($roles) && count($roles))
+                                @foreach($roles as $id => $name)
                                     categoryMap["{{ addslashes($name) }}"] = "{{ $id }}";
                                 @endforeach
                             @endif
 
                             const cnameInput = document.getElementById('category');
-                            const cidInput = document.getElementById('category_id_input');
+                            const cidInput = document.getElementById('role_id_input');
                             if (cnameInput) {
                                 cnameInput.addEventListener('input', function () {
                                     const v = this.value.trim();
