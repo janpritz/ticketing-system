@@ -181,7 +181,7 @@
                                                  class="openEditModalBtn inline-flex items-center justify-center rounded-md border border-gray-200 bg-white w-8 h-8 text-sm text-gray-700 hover:bg-gray-50"
                                                  data-id="{{ $u->id }}" data-name="{{ $u->name }}"
                                                  data-email="{{ $u->email }}" data-role="{{ $u->role }}"
-                                                  data-category="{{ $u->category }}" data-category-id="{{ $u->category_id }}" data-profile-photo="{{ $u->profile_photo }}" aria-label="Edit user">
+                                                  data-category="{{ $u->category }}" data-category-id="{{ $u->category_id }}" data-profile-photo="{{ $u->profile_photo }}" data-email-verified-at="{{ $u->email_verified_at }}" aria-label="Edit user">
                                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
                                                      fill="currentColor">
                                                      <path
@@ -364,7 +364,10 @@
                         @endif
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700">Email</label>
+                        <label class="block text-sm font-medium text-slate-700">
+                            Email
+                            <div class="inline-flex items-center gap-2 ml-2" id="email_verification_status"></div>
+                        </label>
                         <input type="email" name="email" id="edit_email" value="" required
                             class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                         @if (old('editing_user_id'))
@@ -533,6 +536,7 @@
             const editId = $('#edit_user_id');
             const editName = $('#edit_name');
             const editEmail = $('#edit_email');
+            const editEmailFeedback = $('#edit_email_feedback');
             const editRole = $('#edit_role');
             const editCategory = $('#edit_category');
 
@@ -543,6 +547,11 @@
                 // Reset email validation state when opening create modal
                 if (modal === createModal && createEmail && createEmailFeedback) {
                     createEmailFeedback.innerHTML = '';
+                }
+                
+                // Reset email validation state when opening edit modal
+                if (modal === editModal && editEmail && editEmailFeedback) {
+                    editEmailFeedback.innerHTML = '';
                 }
             }
 
@@ -651,6 +660,37 @@
                     if (editEmail) editEmail.value = OLD_EMAIL || '';
                     if (editRole) editRole.value = OLD_ROLE || '';
                     if (editCategory) editCategory.value = OLD_CATEGORY_ID || '';
+
+                    // Set email verification status badge
+                    if (editEmail) {
+                        const emailVerificationStatus = $('#email_verification_status');
+                        const emailVerifiedAt = btn.getAttribute('data-email-verified-at');
+                        
+                        if (emailVerifiedAt === 'null' || !emailVerifiedAt) {
+                            emailVerificationStatus.innerHTML = `
+                                <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                                    </svg>
+                                    Not Verified
+                                </span>
+                                <button type="button" class="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                                    onclick="resendVerificationEmail('${email}')">
+                                   Resend
+                                </button>
+                            `;
+                        } else {
+                            emailVerificationStatus.innerHTML = `
+                                <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                    Verified
+                                </span>
+                            `;
+                        }
+                    }
+                    
                     // Set profile photo
                     const photoEl = $('#edit_profile_photo');
                     if (photoEl) {
@@ -885,6 +925,87 @@
                 });
             }
             
+            // Email validation function for edit modal
+            let editEmailCheckTimeout = null;
+            function validateEditEmail(email, userId, callback) {
+                if (!email || email.trim() === '') {
+                    callback({ valid: null, message: '', message_type: '' });
+                    return;
+                }
+                
+                // Show loading state
+                callback({ valid: null, message: 'Checking email...', message_type: 'loading' });
+                
+                fetch('{{ route('admin.users.check-email') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email: email, exclude_user_id: userId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    callback(data);
+                })
+                .catch(error => {
+                    console.error('Email validation error:', error);
+                    callback({ valid: null, message: 'Error checking email', message_type: 'error' });
+                });
+            }
+            
+            // Update edit email field UI based on validation result
+            function updateEditEmailUI(result) {
+                if (!editEmail || !editEmailFeedback) return;
+                
+                if (result.valid === null) {
+                    // Loading or empty
+                    if (result.message_type === 'loading') {
+                        editEmailFeedback.innerHTML = `<span class="text-slate-500 flex items-center gap-1"><svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${result.message}</span>`;
+                    } else {
+                        editEmailFeedback.innerHTML = '';
+                    }
+                    return;
+                }
+                
+                if (result.valid === false) {
+                    // Invalid
+                    editEmailFeedback.innerHTML = `<span class="text-red-600 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>${result.message}</span>`;
+                } else {
+                    // Valid
+                    editEmailFeedback.innerHTML = `<span class="text-green-600 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>${result.message}</span>`;
+                }
+            }
+            
+            // Edit email input event listener with debounce
+            if (editEmail) {
+                editEmail.addEventListener('input', function() {
+                    clearTimeout(editEmailCheckTimeout);
+                    const email = this.value.trim();
+                    const userId = editId ? editId.value : null;
+                    
+                    if (!email) {
+                        updateEditEmailUI({ valid: null, message: '', message_type: '' });
+                        return;
+                    }
+                    
+                    // Debounce - wait 500ms after typing stops
+                    editEmailCheckTimeout = setTimeout(() => {
+                        validateEditEmail(email, userId, updateEditEmailUI);
+                    }, 500);
+                });
+                
+                // Also validate on blur (when user leaves the field)
+                editEmail.addEventListener('blur', function() {
+                    clearTimeout(editEmailCheckTimeout);
+                    const email = this.value.trim();
+                    const userId = editId ? editId.value : null;
+                    if (email) {
+                        validateEditEmail(email, userId, updateEditEmailUI);
+                    }
+                });
+            }
+            
             if (createDepartment && createRole) {
                 createDepartment.addEventListener('change', () => {
                     // Enable role dropdown when department is selected
@@ -992,6 +1113,37 @@
                     if (editEmail) editEmail.value = email;
                     if (editCategory) editCategory.value = categoryId || '';
 
+
+                    // Set email verification status badge
+                    if (editEmail) {
+                        const emailVerificationStatus = $('#email_verification_status');
+                        const emailVerifiedAt = btn.getAttribute('data-email-verified-at');
+                        
+                        if (emailVerifiedAt === 'null' || !emailVerifiedAt) {
+                            emailVerificationStatus.innerHTML = `
+                                <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                                    </svg>
+                                    Not Verified
+                                </span>
+                                <button type="button" class="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                                    onclick="resendVerificationEmail('${email}')">
+                                    Resend
+                                </button>
+                            `;
+                        } else {
+                            emailVerificationStatus.innerHTML = `
+                                <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                    Verified
+                                </span>
+                            `;
+                        }
+                    }
+                    
                     // Set profile photo
                     const photoEl = $('#edit_profile_photo');
                     if (photoEl) {
@@ -1016,18 +1168,19 @@
                                     editDepartment.value = userData.department_id || '';
                                 }
                                 
-                                const roleIds = userData.role_ids || [];
-                                const mainRoleId = roleIds.length > 0 ? roleIds[0] : null;
+                                // Get primary role and additional roles from API response
+                                const primaryRoleId = userData.primary_role_id;
+                                const additionalRoleIds = userData.additional_role_ids || [];
                                 
                                 // Load department role (dropdown - single select)
                                 if (editDepartment && userData.department_id) {
                                     // Enable role dropdown
                                     editRole.disabled = false;
-                                    updateRoleForDepartment(editRole, userData.department_id, mainRoleId);
+                                    updateRoleForDepartment(editRole, userData.department_id, primaryRoleId);
                                 }
                                 
-                                // Load all roles for additional roles section (excluding main role)
-                                loadAllRoles('edit_additional_roles_container', roleIds, mainRoleId);
+                                // Load all roles for additional roles section (excluding primary role)
+                                loadAllRoles('edit_additional_roles_container', additionalRoleIds, primaryRoleId);
                             })
                             .catch(error => {
                                 console.error('Error fetching user roles:', error);
@@ -1056,6 +1209,106 @@
                 if (!/^\d+$/.test(String(sel.value))) {
                     sel.value = '';
                 }
+            }
+            
+            // Make resendVerificationEmail available in global scope
+            window.resendVerificationEmail = function(email) {
+                if (typeof Swal === 'undefined') {
+                    if (confirm('Resend verification email to ' + email + '?')) {
+                        sendVerificationRequest(email);
+                    }
+                    return;
+                }
+                
+                Swal.fire({
+                    title: 'Resend verification email?',
+                    text: 'This will send a new verification email to ' + email + '.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Yes, resend',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        sendVerificationRequest(email);
+                    }
+                });
+            }
+            
+            function sendVerificationRequest(email) {
+                // Find the resend button and add spinner
+                const allButtons = document.querySelectorAll('button[onclick^="resendVerificationEmail"]');
+                let resendButton = null;
+                allButtons.forEach(btn => {
+                    if (btn.getAttribute('onclick').includes(email)) {
+                        resendButton = btn;
+                    }
+                });
+                
+                const originalHtml = resendButton ? resendButton.innerHTML : '';
+                if (resendButton) {
+                    resendButton.disabled = true;
+                    resendButton.innerHTML = `
+                        <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sending...
+                    `;
+                }
+                
+                fetch('/admin/users/resend-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ email: email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Verification email sent',
+                            text: 'A new verification email has been sent to ' + email + '.',
+                            toast: true,
+                            position: 'top-end',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Failed to send verification email.',
+                            toast: true,
+                            position: 'top-end',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending verification email:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to send verification email. Please try again.',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                })
+                .finally(() => {
+                    // Restore original button state
+                    if (resendButton) {
+                        resendButton.disabled = false;
+                        resendButton.innerHTML = originalHtml;
+                    }
+                });
             }
 
             // Attach sanitizer to create/edit forms

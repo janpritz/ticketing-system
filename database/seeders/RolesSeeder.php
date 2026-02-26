@@ -120,7 +120,7 @@ class RolesSeeder extends Seeder
             ]);
         }
 
-        // Ensure Primary Administrator user (ID 1) has the Primary Administrator role
+        // Ensure Primary Administrator user (ID 1) has the Primary Administrator role (role_id = 1)
         $primaryAdminRole = Role::where('name', 'Primary Administrator')->first();
         if ($primaryAdminRole) {
             // Check if user ID 1 exists
@@ -129,23 +129,27 @@ class RolesSeeder extends Seeder
                 // Check if user_roles entry already exists
                 $existingUserRole = DB::table('user_roles')
                     ->where('user_id', 1)
-                    ->where('role_id', $primaryAdminRole->id)
+                    ->where('role_id', 1)
                     ->first();
                 
                 if (!$existingUserRole) {
                     DB::table('user_roles')->insert([
                         'user_id' => 1,
-                        'role_id' => $primaryAdminRole->id,
+                        'role_id' => 1,
                         'department_id' => $primaryAdminRole->department_id,
+                        'is_primary_role' => true,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
                 } else {
-                    // Update existing entry with department_id
+                    // Update existing entry with department_id and is_primary_role
                     DB::table('user_roles')
                         ->where('user_id', 1)
-                        ->where('role_id', $primaryAdminRole->id)
-                        ->update(['department_id' => $primaryAdminRole->department_id]);
+                        ->where('role_id', 1)
+                        ->update([
+                            'department_id' => $primaryAdminRole->department_id,
+                            'is_primary_role' => true
+                        ]);
                 }
             }
         }

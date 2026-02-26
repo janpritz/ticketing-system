@@ -186,6 +186,9 @@ Route::middleware('auth')->group(function () {
 
         // Check email validity and duplication
         Route::post('/check-email', [AdminController::class, 'usersCheckEmail'])->name('check-email');
+        
+        // Resend verification email
+        Route::post('/resend-verification', [AdminController::class, 'usersResendVerification'])->name('resend-verification');
 
         // Deleted users view + restore
         Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');

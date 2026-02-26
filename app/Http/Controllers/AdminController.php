@@ -508,27 +508,33 @@ class AdminController extends Controller
         // Collect all role IDs (main role + additional roles)
         $roleIds = [];
         
-        // Add main role
+        // Add main role (marked as primary)
         if (!empty($validated['role_id'])) {
-            $roleIds[] = $validated['role_id'];
+            $roleIds[] = [
+                'role_id' => $validated['role_id'],
+                'is_primary_role' => true
+            ];
         }
         
-        // Add additional roles
+        // Add additional roles (not primary)
         if (!empty($validated['additional_roles'])) {
-            $roleIds = array_merge($roleIds, $validated['additional_roles']);
+            foreach ($validated['additional_roles'] as $additionalRoleId) {
+                $roleIds[] = [
+                    'role_id' => $additionalRoleId,
+                    'is_primary_role' => false
+                ];
+            }
         }
-        
-        // Remove duplicates
-        $roleIds = array_unique($roleIds);
 
-        // Create user_roles entries for all selected roles, including department_id
+        // Create user_roles entries for all selected roles, including department_id and is_primary_role
         if (!empty($roleIds)) {
             $roleRecords = [];
-            foreach ($roleIds as $roleId) {
+            foreach ($roleIds as $roleData) {
                 $roleRecords[] = [
                     'user_id' => $user->id,
-                    'role_id' => $roleId,
+                    'role_id' => $roleData['role_id'],
                     'department_id' => $validated['department_id'],
+                    'is_primary_role' => $roleData['is_primary_role'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -582,29 +588,35 @@ class AdminController extends Controller
         // Collect all role IDs (main role + additional roles)
         $roleIds = [];
         
-        // Add main role
+        // Add main role (marked as primary)
         if (!empty($validated['role_id'])) {
-            $roleIds[] = $validated['role_id'];
+            $roleIds[] = [
+                'role_id' => $validated['role_id'],
+                'is_primary_role' => true
+            ];
         }
         
-        // Add additional roles
+        // Add additional roles (not primary)
         if (!empty($validated['additional_roles'])) {
-            $roleIds = array_merge($roleIds, $validated['additional_roles']);
+            foreach ($validated['additional_roles'] as $additionalRoleId) {
+                $roleIds[] = [
+                    'role_id' => $additionalRoleId,
+                    'is_primary_role' => false
+                ];
+            }
         }
-        
-        // Remove duplicates
-        $roleIds = array_unique($roleIds);
 
-        // Update user_roles entries - sync all selected roles with department_id
+        // Update user_roles entries - sync all selected roles with department_id and is_primary_role
         DB::table('user_roles')->where('user_id', $user->id)->delete();
         
         if (!empty($roleIds)) {
             $roleRecords = [];
-            foreach ($roleIds as $roleId) {
+            foreach ($roleIds as $roleData) {
                 $roleRecords[] = [
                     'user_id' => $user->id,
-                    'role_id' => $roleId,
+                    'role_id' => $roleData['role_id'],
                     'department_id' => $validated['department_id'],
+                    'is_primary_role' => $roleData['is_primary_role'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -675,22 +687,37 @@ class AdminController extends Controller
 
         $user->load('roles');
 
-        $roleIds = $user->roles->pluck('id')->toArray();
-
-        // Get department_id from user_roles table
-        $userRole = DB::table('user_roles')->where('user_id', $user->id)->first();
-        $departmentId = $userRole ? $userRole->department_id : null;
+        // Get user_roles entries to determine primary role
+        $userRoles = DB::table('user_roles')->where('user_id', $user->id)->get();
+        
+        $primaryRoleId = null;
+        $additionalRoleIds = [];
+        
+        foreach ($userRoles as $ur) {
+            if ($ur->is_primary_role) {
+                $primaryRoleId = $ur->role_id;
+            } else {
+                $additionalRoleIds[] = $ur->role_id;
+            }
+        }
+        
+        $departmentId = $userRoles->first() ? $userRoles->first()->department_id : null;
 
         return response()->json([
             'user_id' => $user->id,
             'department_id' => $departmentId,
-            'role_ids' => $roleIds,
-            'roles' => $user->roles->map(function ($role) {
+            'primary_role_id' => $primaryRoleId,
+            'additional_role_ids' => $additionalRoleIds,
+            'all_role_ids' => $user->roles->pluck('id')->toArray(),
+            'roles' => $user->roles->map(function ($role) use ($userRoles) {
+                // Find the user_role entry to check is_primary_role
+                $userRole = $userRoles->firstWhere('role_id', $role->id);
                 return [
                     'id' => $role->id,
                     'name' => $role->name,
                     'department_id' => $role->department_id,
                     'department_name' => $role->department ? $role->department->name : null,
+                    'is_primary_role' => $userRole ? $userRole->is_primary_role : false,
                 ];
             })->toArray(),
         ]);
@@ -738,6 +765,67 @@ class AdminController extends Controller
             'message' => 'Email is available',
             'message_type' => 'success'
         ]);
+    }
+
+    /**
+     * Resend verification email (AJAX endpoint).
+     */
+    public function usersResendVerification(Request $request)
+    {
+        $this->ensureAdmin();
+        
+        $email = $request->input('email', '');
+        
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email format'
+            ]);
+        }
+        
+        // Find user by email
+        $user = User::where('email', strtolower($email))->first();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ]);
+        }
+        
+        // Check if user already verified
+        if ($user->email_verified_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User is already verified'
+            ]);
+        }
+        
+        // Check if user has a verification token
+        if (!$user->verification_token) {
+            // Generate new verification token
+            $user->verification_token = bin2hex(random_bytes(32));
+            $user->save();
+        }
+        
+        // Send verification email
+        try {
+            Mail::to($user->email)->send(new AccountVerificationMail($user->name, $user->verification_token));
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Verification email sent'
+            ]);
+        } catch (\Throwable $e) {
+            // Log error but don't fail the request
+            \Illuminate\Support\Facades\Log::error('Failed to send verification email: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send verification email. Please try again.'
+            ]);
+        }
     }
 
     /**

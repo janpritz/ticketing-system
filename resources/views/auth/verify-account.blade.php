@@ -154,7 +154,7 @@
             </div>
         </form>
         
-        // Login Link
+        {{-- Login Link --}}
         <div class="text-center">
             <p class="text-sm text-slate-600">
                 Already verified?
