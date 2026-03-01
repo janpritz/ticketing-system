@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Staff;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +12,7 @@ use App\Models\UploadLog;
 use App\Models\Document;
 use App\Models\Announcement;
 use App\Services\RasaServerService;
+use App\Http\Controllers\Controller;
 
 class StaffKnowledgebaseController extends Controller
 {

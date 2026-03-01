@@ -19,6 +19,7 @@ use App\Models\DocumentChange;
 use App\Models\Document;
 use App\Services\RasaServerService;
 use App\Mail\AccountVerificationMail;
+use App\Services\Admin\{AdminService, DashboardService};
 
 class AdminController extends Controller
 {
@@ -28,379 +29,31 @@ class AdminController extends Controller
      * We do not store that in the file anymore (role scoping is handled in DB),
      * so strip it out when reconstructing or displaying.
      */
-    private function stripLeadingRolesLine(string $content): string
+    private function stripLeadingRolesLine(string $content, AdminService $service): string
     {
-        $content = ltrim($content, "\r\n");
-        $lines = preg_split("/\r\n|\n|\r/", $content);
-        if (!$lines || count($lines) === 0) {
-            return $content;
-        }
-
-        if (preg_match('/^roles\s*:/i', (string) $lines[0])) {
-            array_shift($lines);
-            return ltrim(implode("\n", $lines), "\r\n");
-        }
-
-        return $content;
+        $result = $service->handleStripLeadingRolesLine($content);
+        return $result;
     }
 
     /**
      * Admin dashboard displaying system-wide metrics, charts and recent tickets.
      */
-    public function index(Request $request)
+    public function index(DashboardService $dashboardService)
     {
-        // Get admin dashboard data directly without caching
-        $dashboardData = (function () {
-            // KPI metrics
-            $openTickets = Ticket::where('status', 'Open')->count();
-            $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
-            // FAQ system removed - no longer counting FAQs
-            $userCount = User::count();
+        $data = $dashboardService->getAdminDashboardData();
 
-            // Get last Rasa training timestamp
-            $lastTraining = \App\Models\DocumentChange::getLastTrainingTimestamp();
-            $lastTrainingFormatted = $lastTraining ? $lastTraining->format('M j, Y g:i A') : 'Never';
-
-            // Active staff in the last 10 minutes (based on sessions table)
-            // sessions.last_activity is an epoch seconds integer
-            $cutoff = now()->subMinutes(10)->getTimestamp();
-            $activeStaffCount = DB::table('sessions')
-                ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-                ->whereNotNull('sessions.user_id')
-                ->where('sessions.last_activity', '>=', $cutoff)
-                // exclude Primary Administrator by role name
-                ->where(function ($qb) {
-                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-                })
-                ->distinct('sessions.user_id')
-                ->count('sessions.user_id');
-
-            // Build initial active staff list (name, email, last_activity)
-            $activeStaff = DB::table('sessions')
-                ->join('users', 'sessions.user_id', '=', 'users.id')
-                ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-                ->whereNotNull('sessions.user_id')
-                ->where('sessions.last_activity', '>=', $cutoff)
-                ->where(function ($qb) {
-                    $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-                })
-                ->groupBy('users.id', 'users.name', 'users.email')
-                ->select([
-                    'users.id',
-                    'users.name',
-                    'users.email',
-                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-                ])
-                ->orderByDesc('last_activity_ts')
-                ->get()
-                ->map(function ($row) {
-                    return [
-                        'id' => (int) $row->id,
-                        'name' => (string) ($row->name ?? ''),
-                        'email' => (string) ($row->email ?? ''),
-                        'last_activity_ts' => (int) ($row->last_activity_ts ?? 0),
-                    ];
-                })
-                ->values()
-                ->toArray();
-
-            // Build full staff contacts with last activity and active flag
-            $staffContacts = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-                ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-                ->where(function ($q) {
-                    $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-                })
-                ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
-                ->groupBy('users.id', 'users.name', 'users.email')
-                ->select([
-                    'users.id',
-                    'users.name',
-                    'users.email',
-                    DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-                ])
-                ->orderBy('users.name')
-                ->get()
-                ->map(function ($row) use ($cutoff) {
-                    $ts = (int) ($row->last_activity_ts ?? 0);
-                    return [
-                        'id' => (int) $row->id,
-                        'name' => (string) ($row->name ?? ''),
-                        'email' => (string) ($row->email ?? ''),
-                        'last_activity_ts' => $ts,
-                        'is_active' => $ts >= $cutoff,
-                    ];
-                })
-                ->values()
-                ->toArray();
-
-            // Weekly ticket analytics (current week Mon-Sun)
-            $startOfWeek = Carbon::now()->startOfWeek();
-            $endOfWeek = Carbon::now()->endOfWeek();
-
-            $byDay = Ticket::select(DB::raw('DATE(date_created) as d'), DB::raw('COUNT(*) as c'))
-                ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
-                ->groupBy('d')
-                ->pluck('c', 'd')
-                ->toArray();
-
-            $weekLabels = [];
-            $weekData = [];
-            $cursor = $startOfWeek->copy();
-            for ($i = 0; $i < 7; $i++) {
-                $weekLabels[] = $cursor->format('D'); // Mon, Tue, ...
-                $dateKey = $cursor->toDateString();
-                $weekData[] = (int)($byDay[$dateKey] ?? 0);
-                $cursor->addDay();
-            }
-
-            // Tickets by Category (use category_id relation -> categories.name)
-            $categoryRows = Ticket::leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
-                ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
-                ->groupBy('category_name')
-                ->orderByDesc('c')
-                ->get();
-
-            $categoryLabels = $categoryRows->pluck('category_name')->toArray();
-            $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->toArray();
-
-            // Top senders (frequent ticket creators) - top 10
-            $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
-                ->groupBy('email')
-                ->orderByDesc('c')
-                ->limit(10)
-                ->get();
-
-            // Show unassigned tickets (no staff assigned or assigned to Primary Administrator)
-            $unassignedTickets = Ticket::with('staff')
-                ->where(function ($query) {
-                    $query->whereNull('staff_id')
-                          ->orWhere('staff_id', 1);
-                })
-                ->where('status', 'Open')
-                ->orderByDesc('updated_at')
-                ->take(6)
-                ->get();
-
-            // Debug: Log the unassigned tickets to check for issues
-            \Illuminate\Support\Facades\Log::info('Unassigned tickets count: ' . $unassignedTickets->count());
-            foreach ($unassignedTickets as $ticket) {
-                \Illuminate\Support\Facades\Log::info('Ticket ID: ' . $ticket->id . ', staff_id: ' . ($ticket->staff_id ?? 'null') . ', status: ' . $ticket->status . ', staff name: ' . (optional($ticket->staff)->name ?? 'none'));
-            }
-
-            return [
-                'openTickets'       => $openTickets,
-                'forwardedTickets' => $forwardedTickets,
-                // FAQ system removed - no longer showing FAQ counts
-                'userCount'         => $userCount,
-                'activeStaffCount'  => $activeStaffCount,
-                'lastTraining'      => $lastTrainingFormatted,
-                'weekLabels'        => $weekLabels,
-                'weekData'          => $weekData,
-                'categoryLabels'    => $categoryLabels,
-                'categoryData'      => $categoryData,
-                'topSenders'        => $topSenders,
-                'unassignedTickets'    => $unassignedTickets,
-                'activeStaff'       => $activeStaff,
-                'staffContacts'     => $staffContacts,
-                'faqUpdaterSecret'  => env('RASA_SECRET'),
-                'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
-                'users'             => User::orderBy('name')->get(['id', 'name']),
-            ];
-        })();
-
-        return response()->view('dashboards.admin.index', $dashboardData);
+        return response()->view('dashboards.admin.index', $data);
     }
 
     /**
      * Live data endpoint for admin dashboard auto-refresh.
      */
-    public function data(Request $request)
+    public function data(DashboardService $dashboardService)
     {
-        // KPI metrics
-        $openTickets = Ticket::where('status', 'Open')->count();
-        $forwardedTickets = Ticket::where('status', 'Forwarded')->count();
-        // FAQ system removed - no longer counting FAQs
-        $userCount = User::count();
-
-        // Get last Rasa training timestamp for live updates
-        $lastTrainingLive = \App\Models\DocumentChange::getLastTrainingTimestamp();
-        $lastTrainingLiveFormatted = $lastTrainingLive ? $lastTrainingLive->format('M j, Y g:i A') : 'Never';
-
-        // Active staff in the last 10 minutes
-        $cutoff = now()->subMinutes(10)->getTimestamp();
-        $activeStaffCount = DB::table('sessions')
-            ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-            ->whereNotNull('sessions.user_id')
-            ->where('sessions.last_activity', '>=', $cutoff)
-            ->where(function ($qb) {
-                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->distinct('sessions.user_id')
-            ->count('sessions.user_id');
-
-        $activeStaffArr = DB::table('sessions')
-            ->join('users', 'sessions.user_id', '=', 'users.id')
-            ->leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-            ->whereNotNull('sessions.user_id')
-            ->where('sessions.last_activity', '>=', $cutoff)
-            ->where(function ($qb) {
-                $qb->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->groupBy('users.id', 'users.name', 'users.email')
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-            ])
-            ->orderByDesc('last_activity_ts')
-            ->get()
-            ->map(function ($row) {
-                return [
-                    'id' => (int) $row->id,
-                    'name' => (string) ($row->name ?? ''),
-                    'email' => (string) ($row->email ?? ''),
-                    'last_activity_ts' => (int) ($row->last_activity_ts ?? 0),
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        // Full staff contacts list with active flag
-        $staffContactsArr = User::leftJoin('user_roles', 'users.id', '=', 'user_roles.user_id')
-            ->leftJoin('roles', 'user_roles.role_id', '=', 'roles.id')
-            ->where(function ($q) {
-                $q->whereNull('roles.name')->orWhere('roles.name', '!=', 'Primary Administrator');
-            })
-            ->leftJoin('sessions', 'sessions.user_id', '=', 'users.id')
-            ->groupBy('users.id', 'users.name', 'users.email')
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                DB::raw('MAX(sessions.last_activity) as last_activity_ts')
-            ])
-            ->orderBy('users.name')
-            ->get()
-            ->map(function ($row) use ($cutoff) {
-                $ts = (int) ($row->last_activity_ts ?? 0);
-                return [
-                    'id' => (int) $row->id,
-                    'name' => (string) ($row->name ?? ''),
-                    'email' => (string) ($row->email ?? ''),
-                    'last_activity_ts' => $ts,
-                    'is_active' => $ts >= $cutoff,
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        // Weekly ticket analytics (current week Mon-Sun)
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
-
-        $byDay = Ticket::select(DB::raw('DATE(date_created) as d'), DB::raw('COUNT(*) as c'))
-            ->whereBetween('date_created', [$startOfWeek, $endOfWeek])
-            ->groupBy('d')
-            ->pluck('c', 'd')
-            ->toArray();
-
-        $weekLabels = [];
-        $weekData = [];
-        $cursor = $startOfWeek->copy();
-        for ($i = 0; $i < 7; $i++) {
-            $weekLabels[] = $cursor->format('D'); // Mon, Tue, ...
-            $dateKey = $cursor->toDateString();
-            $weekData[] = (int)($byDay[$dateKey] ?? 0);
-            $cursor->addDay();
-        }
-
-        // Tickets by Category (all) - use category_id relation
-        $categoryRows = Ticket::leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
-            ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
-            ->groupBy('category_name')
-            ->orderByDesc('c')
-            ->get();
-
-        $categoryLabels = $categoryRows->pluck('category_name')->values()->toArray();
-
-        $categoryData = $categoryRows->pluck('c')->map(fn ($v) => (int)$v)->values()->toArray();
-
-        // Top senders (frequent ticket creators) - top 10
-        $topSenders = Ticket::select('email', DB::raw('COUNT(*) as c'))
-            ->groupBy('email')
-            ->orderByDesc('c')
-            ->limit(10)
-            ->get()
-            ->map(function ($row) {
-                return [
-                    'email' => $row->email,
-                    'count' => (int) $row->c,
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        $unassignedTicketsArr = Ticket::with('staff')
-            ->where(function ($query) {
-                $query->whereNull('staff_id')
-                      ->orWhere('staff_id', 1);
-            })
-            ->where('status', 'Open')
-            ->orderByDesc('updated_at')
-            ->take(6)
-            ->get()
-            ->map(function ($t) {
-            return [
-                'id'           => (int) $t->id,
-                'status'       => (string) $t->status,
-                'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) (is_object($t->category) ? ($t->category->name ?? '') : ($t->getAttribute('category') ?? '')) ,
-                'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
-                'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
-                'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
-                'staff'        => $t->staff ? ['name' => (string) $t->staff->name] : null,
-            ];
-        })
-        ->values()
-        ->toArray();
-
-        // Debug: Log the unassigned tickets for AJAX refresh
-        \Illuminate\Support\Facades\Log::info('Unassigned tickets AJAX count: ' . count($unassignedTicketsArr));
-        foreach ($unassignedTicketsArr as $ticket) {
-            \Illuminate\Support\Facades\Log::info('AJAX Ticket ID: ' . $ticket['id'] . ', status: ' . $ticket['status'] . ', staff: ' . ($ticket['staff'] ? $ticket['staff']['name'] : 'none'));
-        }
-
-        return response()->json([
-            'openTickets'       => (int) $openTickets,
-            'forwardedTickets' => (int) $forwardedTickets,
-            // FAQ system removed - no longer showing FAQ counts
-            'userCount'         => (int) $userCount,
-            'activeStaffCount'  => (int) $activeStaffCount,
-            'lastTraining'      => $lastTrainingLiveFormatted,
-            'weekLabels'        => $weekLabels,
-            'weekData'          => $weekData,
-            'categoryLabels'    => $categoryLabels,
-            'categoryData'      => $categoryData,
-            'topSenders'        => $topSenders,
-            'unassignedTickets'    => $unassignedTicketsArr,
-            'activeStaff'       => $activeStaffArr,
-            'staffContacts'     => $staffContactsArr,
-        ]);
+        $data = $dashboardService->getAdminDashboardData();
+        return response()->json($data);
     }
 
-    /**
-     * Ensure only Primary Administrator can access user management.
-     *
-     * Use the backwards-compatible string check to avoid analyzer/runtime issues
-     * during migration (the User model exposes a getRoleAttribute accessor).
-     */
     private function ensureAdmin(): void
     {
         $u = Auth::user();
@@ -412,53 +65,16 @@ class AdminController extends Controller
      *
      * If called with ?include_deleted=1, shows deleted users.
      */
-    public function usersIndex(Request $request)
+    public function usersIndex(Request $request, UserService $userService)
     {
-        $this->ensureAdmin();
-
         $q = trim((string) $request->query('q', ''));
         $isDeleted = (bool) $request->query('include_deleted', false);
 
-        $usersQuery = User::whereHas('roles', function ($qRole) {
-                $qRole->where('name', '!=', 'Primary Administrator');
-            })
-            ->with(['roles', 'roles.department'])
-            ->when($q !== '', function ($query) use ($q) {
-                $like = '%' . $q . '%';
-                $query->where(function ($qq) use ($like) {
-                    $qq->where('name', 'like', $like)
-                       ->orWhere('email', 'like', $like)
-                       ->orWhereHas('roles', function ($qr) use ($like) {
-                           $qr->where('name', 'like', $like);
-                       });
-                });
-            });
-
-        if ($isDeleted) {
-            $users = $usersQuery->onlyTrashed()->orderBy('name')->paginate(10)->appends(['q' => $q, 'include_deleted' => '1']);
-        } else {
-            $users = $usersQuery->orderBy('name')->paginate(10)->appends(['q' => $q]);
-        }
-
-        // Process users to add department info from user_roles
-        $users->getCollection()->transform(function ($user) {
-            // Get department from user_roles
-            $userRole = DB::table('user_roles')->where('user_id', $user->id)->first();
-            $departmentId = $userRole ? $userRole->department_id : null;
-            
-            if ($departmentId) {
-                $department = Department::find($departmentId);
-                $user->department = $department ? $department->name : null;
-            } else {
-                $user->department = null;
-            }
-            
-            return $user;
-        });
+        $users = $userService->getUsersPaginated($q, $isDeleted);
 
         return view('dashboards.admin.users.index', [
-            'users' => $users,
-            'q' => $q,
+            'users'         => $users,
+            'q'             => $q,
             'isDeletedView' => $isDeleted,
         ]);
     }
@@ -491,11 +107,11 @@ class AdminController extends Controller
         $user = new User();
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        
+
         // Generate verification token for email verification
         $verificationToken = bin2hex(random_bytes(32));
         $user->verification_token = $verificationToken;
-        
+
         $user->save();
 
         // Send verification email
@@ -508,7 +124,7 @@ class AdminController extends Controller
 
         // Collect all role IDs (main role + additional roles)
         $roleIds = [];
-        
+
         // Add main role (marked as primary)
         if (!empty($validated['role_id'])) {
             $roleIds[] = [
@@ -516,7 +132,7 @@ class AdminController extends Controller
                 'is_primary_role' => true
             ];
         }
-        
+
         // Add additional roles (not primary)
         if (!empty($validated['additional_roles'])) {
             foreach ($validated['additional_roles'] as $additionalRoleId) {
@@ -542,7 +158,7 @@ class AdminController extends Controller
             }
             DB::table('user_roles')->insert($roleRecords);
         }
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff created.');
     }
 
@@ -570,14 +186,14 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => ['required','string','email','max:255', Rule::unique('users','email')->ignore($user->id)],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'department_id' => 'required|exists:departments,id',
             'role_id' => 'required|exists:roles,id',
             'additional_roles' => 'nullable|array',
             'additional_roles.*' => 'exists:roles,id',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
-    
+
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         if (!empty($validated['password'] ?? '')) {
@@ -588,7 +204,7 @@ class AdminController extends Controller
 
         // Collect all role IDs (main role + additional roles)
         $roleIds = [];
-        
+
         // Add main role (marked as primary)
         if (!empty($validated['role_id'])) {
             $roleIds[] = [
@@ -596,7 +212,7 @@ class AdminController extends Controller
                 'is_primary_role' => true
             ];
         }
-        
+
         // Add additional roles (not primary)
         if (!empty($validated['additional_roles'])) {
             foreach ($validated['additional_roles'] as $additionalRoleId) {
@@ -609,7 +225,7 @@ class AdminController extends Controller
 
         // Update user_roles entries - sync all selected roles with department_id and is_primary_role
         DB::table('user_roles')->where('user_id', $user->id)->delete();
-        
+
         if (!empty($roleIds)) {
             $roleRecords = [];
             foreach ($roleIds as $roleData) {
@@ -624,7 +240,7 @@ class AdminController extends Controller
             }
             DB::table('user_roles')->insert($roleRecords);
         }
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff updated.');
     }
 
@@ -635,7 +251,7 @@ class AdminController extends Controller
     {
         $this->ensureAdmin();
         $auth = Auth::user();
-    
+
         if ($user->id === ($auth->id ?? 0)) {
             return back()->withErrors(['delete' => 'You cannot delete your own account.']);
         }
@@ -643,9 +259,9 @@ class AdminController extends Controller
         if (strtolower((string) ($user->role ?? '')) === 'primary administrator') {
             return back()->withErrors(['delete' => 'Cannot delete Primary Administrator.']);
         }
-    
+
         $user->delete();
-    
+
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');
     }
 
@@ -690,10 +306,10 @@ class AdminController extends Controller
 
         // Get user_roles entries to determine primary role
         $userRoles = DB::table('user_roles')->where('user_id', $user->id)->get();
-        
+
         $primaryRoleId = null;
         $additionalRoleIds = [];
-        
+
         foreach ($userRoles as $ur) {
             if ($ur->is_primary_role) {
                 $primaryRoleId = $ur->role_id;
@@ -701,7 +317,7 @@ class AdminController extends Controller
                 $additionalRoleIds[] = $ur->role_id;
             }
         }
-        
+
         $departmentId = $userRoles->first() ? $userRoles->first()->department_id : null;
 
         return response()->json([
@@ -730,10 +346,10 @@ class AdminController extends Controller
     public function usersCheckEmail(Request $request)
     {
         $this->ensureAdmin();
-        
+
         $email = $request->input('email', '');
         $excludeUserId = $request->input('exclude_user_id', null);
-        
+
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return response()->json([
@@ -742,17 +358,17 @@ class AdminController extends Controller
                 'message_type' => 'error'
             ]);
         }
-        
+
         // Check for duplicate email
         $query = User::where('email', strtolower($email));
-        
+
         // Exclude current user if editing
         if ($excludeUserId) {
             $query->where('id', '!=', $excludeUserId);
         }
-        
+
         $existingUser = $query->first();
-        
+
         if ($existingUser) {
             return response()->json([
                 'valid' => false,
@@ -760,7 +376,7 @@ class AdminController extends Controller
                 'message_type' => 'error'
             ]);
         }
-        
+
         return response()->json([
             'valid' => true,
             'message' => 'Email is available',
@@ -774,9 +390,9 @@ class AdminController extends Controller
     public function usersResendVerification(Request $request)
     {
         $this->ensureAdmin();
-        
+
         $email = $request->input('email', '');
-        
+
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return response()->json([
@@ -784,17 +400,17 @@ class AdminController extends Controller
                 'message' => 'Invalid email format'
             ]);
         }
-        
+
         // Find user by email
         $user = User::where('email', strtolower($email))->first();
-        
+
         if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'User not found'
             ]);
         }
-        
+
         // Check if user already verified
         if ($user->email_verified_at) {
             return response()->json([
@@ -802,18 +418,18 @@ class AdminController extends Controller
                 'message' => 'User is already verified'
             ]);
         }
-        
+
         // Check if user has a verification token
         if (!$user->verification_token) {
             // Generate new verification token
             $user->verification_token = bin2hex(random_bytes(32));
             $user->save();
         }
-        
+
         // Send verification email
         try {
             Mail::to($user->email)->send(new AccountVerificationMail($user->name, $user->verification_token));
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Verification email sent'
@@ -821,7 +437,7 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             // Log error but don't fail the request
             \Illuminate\Support\Facades\Log::error('Failed to send verification email: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send verification email. Please try again.'
@@ -1076,7 +692,7 @@ class AdminController extends Controller
                 // Persist role mapping in DB (announcement_roles table)
                 // Admin-created announcements are broadcast to ALL roles.
                 try {
-                    $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+                    $roleIds = Role::query()->pluck('id')->map(fn($v) => (int) $v)->values()->toArray();
                     if (!empty($roleIds)) {
                         $rows = array_map(function ($roleId) use ($nextId) {
                             return [
@@ -1105,7 +721,6 @@ class AdminController extends Controller
                         'content' => $validated['content'],
                     ]
                 ]);
-
             } catch (\Exception $e) {
                 Log::error('Failed to store announcement: ' . $e->getMessage());
 
@@ -1186,9 +801,9 @@ class AdminController extends Controller
                 $aid = isset($ann['id']) ? (int) $ann['id'] : null;
                 $assigned = $aid !== null ? ($roleMap[$aid] ?? []) : [];
                 $ann['assigned_roles'] = array_values(array_unique(array_map('intval', $assigned)));
-                if (isset($ann['content']) && is_string($ann['content'])) {
-                    $ann['content'] = $this->stripLeadingRolesLine($ann['content']);
-                }
+                // if (isset($ann['content']) && is_string($ann['content'])) {
+                //     $ann['content'] = $this->stripLeadingRolesLine($ann['content']);
+                // }
             }
             unset($ann);
 
@@ -1211,7 +826,6 @@ class AdminController extends Controller
                 'success' => true,
                 'announcements' => $announcements
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to fetch announcements from Rasa server: ' . $e->getMessage());
 
@@ -1319,7 +933,7 @@ class AdminController extends Controller
 
             // Sync DB mapping for ALL roles
             try {
-                $roleIds = Role::query()->pluck('id')->map(fn ($v) => (int) $v)->values()->toArray();
+                $roleIds = Role::query()->pluck('id')->map(fn($v) => (int) $v)->values()->toArray();
 
                 DB::transaction(function () use ($id, $roleIds) {
                     DB::table('announcement_roles')->where('announcement_id', (int) $id)->delete();
@@ -1347,7 +961,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => 'Announcement updated successfully'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to update announcement: ' . $e->getMessage());
 
@@ -1451,7 +1064,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => 'Announcement deleted successfully'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to delete announcement: ' . $e->getMessage());
 
@@ -1491,7 +1103,6 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => $message
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to pin/unpin announcement: ' . $e->getMessage());
 
@@ -1547,10 +1158,10 @@ class AdminController extends Controller
                 $like = '%' . $q . '%';
                 $query->where(function ($qq) use ($like) {
                     $qq->where('file_name', 'like', $like)
-                       ->orWhere('action', 'like', $like)
-                       ->orWhereHas('user', function ($qu) use ($like) {
-                           $qu->where('name', 'like', $like);
-                       });
+                        ->orWhere('action', 'like', $like)
+                        ->orWhereHas('user', function ($qu) use ($like) {
+                            $qu->where('name', 'like', $like);
+                        });
                 });
             })
             ->orderBy('change_timestamp', 'desc');
@@ -1567,5 +1178,4 @@ class AdminController extends Controller
     {
         return view('dashboards.admin.faqs.index');
     }
-
 }

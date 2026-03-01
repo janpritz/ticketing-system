@@ -119,7 +119,7 @@ class TicketController extends Controller
 
         // Create ticket instance with role_id
         $ticket = new Ticket();
-        $ticket->role_id = $request->input('role_id');
+        $ticket->category_id = $request->input('role_id');
         $ticket->question = $request->question;
         $ticket->recepient_id = $request->recepient_id;
         $ticket->email = $request->email;

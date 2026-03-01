@@ -1,24 +1,52 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+/*
+|--------------------------------------------------------------------------
+| Laravel Framework Imports (Facades/Classes)
+|--------------------------------------------------------------------------
+*/
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\StaffController;
-use App\Http\Controllers\TicketController;
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\RasaController;
-use App\Http\Controllers\PushNotificationController;
-use App\Http\Controllers\Admin\RolesController;
-use App\Http\Controllers\Admin\DepartmentController;
-use App\Http\Controllers\Admin\RasaServerController;
-use App\Http\Controllers\StaffKnowledgebaseController;
-use App\Http\Controllers\Admin\FAQsController;
-use App\Http\Controllers\PublicFAQsController;
+use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Custom Controllers - Alphabetical Order
+|--------------------------------------------------------------------------
+*/
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminTicketsController;
+use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DocumentChangesController;
+use App\Http\Controllers\Admin\FAQsController;
+use App\Http\Controllers\Admin\RasaServerController;
+use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PublicFAQsController;
+use App\Http\Controllers\PushNotificationController;
+use App\Http\Controllers\RasaController;
+use App\Http\Controllers\Staff\StaffController;
+use App\Http\Controllers\Staff\StaffKnowledgebaseController;
+use App\Http\Controllers\Staff\StaffReportsController;
+use App\Http\Controllers\Staff\StaffUploadLogsController;
+use App\Http\Controllers\TicketController;
+
+/*
+|--------------------------------------------------------------------------
+| Other Classes (Requests, Services, Models, etc.)
+|--------------------------------------------------------------------------
+*/
+use App\Models\Role;
+use App\Models\User;
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC ROUTES (No Middleware)
+|--------------------------------------------------------------------------
+*/
 Route::get('/', function () {
-    // Redirect to FAQs landing page by default
     return redirect()->route('faqs.index');
-});
+})->name('home');
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
 Route::get('/sw.js', function () {
@@ -27,379 +55,367 @@ Route::get('/sw.js', function () {
     ]);
 })->name('sw');
 
-Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/admin/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
+// Test widget
+Route::get('/test-widget', function () {
+    return view('test-widget');
+})->name('test-widget');
 
-// Password reset via OTP
-Route::get('/password/forgot', [AuthController::class, 'showForgotForm'])->middleware('guest')->name('password.forgot');
-Route::post('/password/otp', [AuthController::class, 'sendOtp'])->middleware('guest', 'throttle:5,1')->name('password.otp');
-Route::get('/password/reset', [AuthController::class, 'showResetForm'])->middleware('guest')->name('password.reset.form');
-Route::post('/password/reset', [AuthController::class, 'resetWithOtp'])->middleware('guest', 'throttle:10,1')->name('password.reset.apply');
+// Public FAQs
+Route::controller(PublicFAQsController::class)->group(function () {
+    Route::get('/faqs', 'index')->name('faqs.index');
+    Route::get('/api/faqs', 'getApprovedFAQs')->name('api.faqs');
+});
 
-// Account verification for new staff (set password)
-Route::get('/verify-account/{token}', [AuthController::class, 'showVerifyAccountForm'])->middleware('guest')->name('staff.verify-account');
-Route::post('/verify-account', [AuthController::class, 'verifyAccount'])->middleware('guest', 'throttle:10,1')->name('staff.verify-account.post');
-
-// Public FAQs landing page
-Route::get('/faqs', [PublicFAQsController::class, 'index'])->name('faqs.index');
-Route::get('/api/faqs', [PublicFAQsController::class, 'getApprovedFAQs'])->name('api.faqs');
-
-// About Us page
+// Static pages
 Route::view('/about', 'faqs.about')->name('about');
-
-// Contact Us page (placeholder)
 Route::view('/contact', 'contact')->name('contact');
 
-// Specific ticket routes (must come before catch-all {recepient_id?})
-// Middleware: check.verified.email - redirects to /tickets?email={email} if cookie exists
-Route::get('/tickets/verify-email', [TicketController::class, 'showVerifyEmail'])->middleware('check.verified.email')->name('tickets.verify');
-Route::get('/tickets/verify-otp/{identifier?}', [TicketController::class, 'showVerifyOtp'])->middleware('check.verified.email')->name('tickets.verify-otp');
-Route::post('/tickets/send-otp', [TicketController::class, 'sendTicketOtp'])->middleware('throttle:5,1')->name('tickets.send-otp');
-Route::post('/tickets/verify-otp', [TicketController::class, 'verifyTicketOtp'])->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
-Route::post('/tickets/resend-otp', [TicketController::class, 'resendTicketOtp'])->middleware('throttle:5,1')->name('tickets.resend-otp');
-Route::get('/tickets/create/{recepient_id?}', [TicketController::class, 'showCreateForm'])->middleware(['check.verified.email', 'otp.verified'])->name('tickets.create');
-Route::post('/tickets', [TicketController::class, 'store'])->middleware(['throttle:10,1', 'otp.verified'])->name('tickets.store');
+// API chatbot
+Route::prefix('api/chatbot')->name('api.chatbot.')->group(function () {
+    Route::get('/training-data', [RasaServerController::class, 'getTrainingData'])->name('training-data');
+});
 
-Route::get('/tickets/{ticket}', [StaffController::class, 'showTicket'])
-    ->whereNumber('ticket')
-    ->middleware('auth')
-    ->name('tickets.show');
+// Push notification test page
+Route::view('/push-notification', 'PushNotification.push-test')->name('push-notification');
 
-// Catch-all route for viewing tickets by recepient_id (must come after specific routes)
-// Middleware: check.verified.email - redirects to /tickets?email={email} if cookie exists
-Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])
-    ->middleware(['check.verified.email', 'otp.verified'])
-    ->name('tickets.index');
+// Rasa chatbot message endpoint
+Route::post('/send-message', [RasaController::class, 'sendMessage'])->name('rasa.send-message');
 
-// Ticket status viewing routes
+/*
+|--------------------------------------------------------------------------
+| GUEST ONLY ROUTES (Middleware: guest)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('guest')->group(function () {
+    // Authentication - Login
+    Route::controller(AuthController::class)->group(function () {
+        Route::get('/admin/login', 'showLoginForm')->name('login');
+        Route::post('/admin/login', 'login')->middleware('throttle:10,1')->name('login.post');
+    });
+
+    // Password Reset - OTP based
+    Route::controller(AuthController::class)->group(function () {
+        Route::get('/password/forgot', 'showForgotForm')->name('password.forgot');
+        Route::post('/password/otp', 'sendOtp')->middleware('throttle:5,1')->name('password.otp');
+        Route::get('/password/reset', 'showResetForm')->name('password.reset.form');
+        Route::post('/password/reset', 'resetWithOtp')->middleware('throttle:10,1')->name('password.reset.apply');
+    });
+
+    // Account Verification (new staff set password)
+    Route::controller(AuthController::class)->group(function () {
+        Route::get('/verify-account/{token}', 'showVerifyAccountForm')->name('staff.verify-account');
+        Route::post('/verify-account', 'verifyAccount')->middleware('throttle:10,1')->name('staff.verify-account.post');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC TICKET ROUTES (Email verification + OTP middleware)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['check.verified.email', 'otp.verified'])->group(function () {
+    // Ticket creation
+    Route::controller(TicketController::class)->group(function () {
+        Route::get('/tickets/create/{recepient_id?}', 'showCreateForm')->name('tickets.create');
+        Route::post('/tickets', 'store')->middleware('throttle:10,1')->name('tickets.store');
+    });
+
+    // Ticket viewing (catch-all)
+    Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
+});
+
+// Ticket status viewing (public)
 Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');
 
+// Ticket email/OTP verification routes
+Route::controller(TicketController::class)->group(function () {
+    Route::get('/tickets/verify-email', 'showVerifyEmail')->name('tickets.verify');
+    Route::get('/tickets/verify-otp/{identifier?}', 'showVerifyOtp')->name('tickets.verify-otp');
+    Route::post('/tickets/send-otp', 'sendTicketOtp')->middleware('throttle:5,1')->name('tickets.send-otp');
+    Route::post('/tickets/verify-otp', 'verifyTicketOtp')->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
+    Route::post('/tickets/resend-otp', 'resendTicketOtp')->middleware('throttle:5,1')->name('tickets.resend-otp');
+});
+
+// Ticket update/destroy (public - needs ticket ownership verification)
 Route::put('/tickets/{ticket}', [TicketController::class, 'update'])
     ->whereNumber('ticket')
     ->middleware('throttle:10,1')
     ->name('tickets.update');
+
 Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])
     ->whereNumber('ticket')
     ->middleware('throttle:10,1')
     ->name('tickets.destroy');
 
-    // Staff tickets data endpoint (outside auth for JSON responses)
-    Route::get('/staff/tickets/data', [StaffController::class, 'ticketsData'])->name('staff.tickets.data');
-    // Live data endpoint for staff dashboard auto-refresh (outside auth for JSON responses)
-    Route::get('/staff/dashboard/data', [StaffController::class, 'data'])->middleware('throttle:20,1')->name('staff.dashboard.data');
-
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED ROUTES (Middleware: auth)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
-    // Serve ticket attachments without relying on the public/storage symlink
-    Route::get('/attachments/{path}', [TicketController::class, 'serveAttachment'])
-        ->where('path', '.*')
-        ->name('attachments.serve');
-
-    // Staff dashboard
-    Route::get('/staff/dashboard', [StaffController::class, 'index'])->name('staff.dashboard');
-    // Individual ticket page for staff (view + respond)
-    Route::get('/staff/tickets/{ticket}', [StaffController::class, 'showTicket'])->whereNumber('ticket')->name('staff.tickets.show');
-    // Staff tickets index page
-    Route::get('/staff/tickets', [StaffController::class, 'tickets'])->name('staff.tickets');
-
-    // Staff profile
-    Route::get('/staff/profile', [StaffController::class, 'profile'])->name('staff.profile');
-    Route::post('/staff/profile', [StaffController::class, 'updateProfile'])->name('staff.profile.update');
-    Route::post('/staff/profile/email-notifications', [StaffController::class, 'updateEmailNotifications'])->name('staff.profile.email_notifications');
-
-    // Push subscription (web push) - handled by '/staff/push' prefixed routes defined below
-
-    // Push test/send endpoints
-    Route::post('/staff/push/test', [PushNotificationController::class, 'sendTest'])
-        ->name('staff.push.test');
-    
-    // Admin push routes - requires admin role
-    Route::middleware('admin')->group(function () {
-        Route::post('/admin/push/user/{userId}', [PushNotificationController::class, 'sendToUser'])
-            ->whereNumber('userId')
-            ->name('admin.push.user');
-        Route::post('/admin/push/all', [PushNotificationController::class, 'sendToAll'])
-            ->name('admin.push.all');
-    });
-
-    // Staff change password (separate flow)
-    Route::get('/staff/profile/password', [StaffController::class, 'passwordForm'])->name('staff.profile.password');
-    Route::post('/staff/profile/password', [StaffController::class, 'passwordUpdate'])
-        ->middleware('throttle:5,1')
-        ->name('staff.profile.password.update');
-
-    // Ticket forward (records history)
-    Route::post('/staff/tickets/{ticket}/forward', [StaffController::class, 'forward'])
-        ->whereNumber('ticket')
-        ->middleware('throttle:30,1')
-        ->name('staff.tickets.forward');
-
-    // Ticket respond (send email)
-    Route::post('/staff/tickets/{ticket}/respond', [StaffController::class, 'respond'])
-        ->whereNumber('ticket')
-        ->middleware('throttle:20,1')
-        ->name('staff.tickets.respond');
-
-    // SMTP test endpoint (sends to the authenticated user's email)
-    Route::get('/staff/mail/test', [StaffController::class, 'mailTest'])->middleware('throttle:5,1')->name('staff.mail.test');
-
-    // Admin routes - requires admin role
-    Route::middleware('admin')->group(function () {
-        // Admin dashboard
-        Route::get('/admin', function () {
-            // If the user is authenticated, auto-redirect them to the appropriate dashboard
-            if (Auth::check()) {
-                $user = Auth::user();
-                if ($user->role === 'Primary Administrator') {
-                    return redirect()->route('admin.dashboard');
-                }
-                return redirect()->route('staff.dashboard');
-            }
-
-            // Guests still see the public ticket create page
-            return view('login');
-        });
-        Route::get('/admin/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
-        Route::get('/admin/faqs', [FAQsController::class, 'index'])->name('admin.faqs.index');
-        Route::get('/admin/faqs/list', [FAQsController::class, 'list'])->name('admin.faqs.list');
-        Route::post('/admin/faqs/update-status', [FAQsController::class, 'updateStatus'])->name('admin.faqs.update-status');
-        Route::post('/admin/faqs/process-analysis', [FAQsController::class, 'processAnalysis'])->name('admin.faqs.process-analysis');
-        // Live data endpoint for admin dashboard auto-refresh
-        Route::get('/admin/dashboard/data', [AdminController::class, 'data'])
-            ->middleware('throttle:20,1')
-            ->name('admin.dashboard.data');
-        // Admin user management (CRUD)
-        Route::prefix('admin/users')->name('admin.users.')->group(function () {
-            Route::get('/', [AdminController::class, 'usersIndex'])->name('index');
-            Route::get('/create', [AdminController::class, 'usersCreate'])->name('create');
-            Route::post('/', [AdminController::class, 'usersStore'])->middleware('throttle:10,1')->name('store');
-            Route::get('/{user}/edit', [AdminController::class, 'usersEdit'])->whereNumber('user')->name('edit');
-            Route::put('/{user}', [AdminController::class, 'usersUpdate'])->whereNumber('user')->name('update');
-            Route::delete('/{user}', [AdminController::class, 'usersDestroy'])->whereNumber('user')->name('destroy');
-
-            // Get user's current roles (for edit modal)
-            Route::get('/{user}/roles', [AdminController::class, 'usersGetRoles'])->whereNumber('user')->name('roles');
-
-            // Check email validity and duplication
-            Route::post('/check-email', [AdminController::class, 'usersCheckEmail'])->name('check-email');
-            
-            // Resend verification email
-            Route::post('/resend-verification', [AdminController::class, 'usersResendVerification'])->name('resend-verification');
-
-            // Deleted users view + restore
-            Route::get('/deleted', [AdminController::class, 'usersDeletedIndex'])->name('deleted');
-            Route::post('/{user}/restore', [AdminController::class, 'usersRestore'])->whereNumber('user')->name('restore');
-        });
-
-        // Admin Knowledgebase management (CRUD via AJAX)
-        Route::prefix('admin/knowledgebase')->name('admin.knowledgebase.')->group(function () {
-            Route::get('/', [AdminController::class, 'knowledgebaseIndex'])->name('index');
-            Route::get('/list', [AdminController::class, 'knowledgebaseList'])->name('list');
-            Route::post('/', [AdminController::class, 'knowledgebaseStore'])->middleware('throttle:20,1')->name('store');
-            Route::get('/{faq}', [AdminController::class, 'knowledgebaseShow'])->whereNumber('faq')->name('show');
-            Route::put('/{faq}', [AdminController::class, 'knowledgebaseUpdate'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
-            Route::delete('/{faq}', [AdminController::class, 'knowledgebaseDestroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
-
-            // Get all FAQs as JSON (for sync)
-            Route::get('/all-json', [AdminController::class, 'knowledgebaseAllJson'])->name('all-json');
-
-            // Deleted FAQs view + AJAX list (trash)
-            Route::get('/deleted', [AdminController::class, 'knowledgebaseDeletedIndex'])->name('deleted');
-            Route::get('/deleted/list', [AdminController::class, 'knowledgebaseDeletedList'])->name('deleted.list');
-
-            // Revisions & revert for FAQ responses (audit / undo)
-            Route::get('/{faq}/revisions', [AdminController::class, 'knowledgebaseRevisions'])->whereNumber('faq')->name('revisions');
-            Route::post('/{faq}/revert/{revision}', [AdminController::class, 'knowledgebaseRevert'])->whereNumber('faq')->whereNumber('revision')->name('revert');
-
-            // Restore soft-deleted FAQ
-            Route::post('/{faq}/restore', [AdminController::class, 'knowledgebaseRestore'])->whereNumber('faq')->name('restore');
-
-            // Undo most recent change for a FAQ
-            Route::post('/{faq}/undo', [AdminController::class, 'knowledgebaseUndo'])->whereNumber('faq')->name('undo');
-
-
-            // Disable / Enable FAQ response (used to temporarily unpublish an answer without deleting)
-            Route::post('/{faq}/disable', [AdminController::class, 'knowledgebaseDisable'])->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
-            Route::post('/{faq}/enable', [AdminController::class, 'knowledgebaseEnable'])->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
-        });
-
-        // Document change tracking and Rasa training
-        Route::prefix('admin/document-changes')->name('admin.document-changes.')->group(function () {
-            Route::post('/log', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'log'])->name('log');
-            Route::get('/training-status', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainingStatus'])->name('training-status');
-            Route::get('/check-recent-training', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'checkRecentTraining'])->name('check-recent-training');
-            Route::post('/train-rasa', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'trainRasa'])->name('train-rasa');
-            Route::post('/start-rasa-api', [\App\Http\Controllers\Admin\DocumentChangesController::class, 'startRasaApi'])->name('start-rasa-api');
-        });
-
-        // Admin Ticket management (CRUD + respond + reroute) for admin UI (AJAX)
-        Route::prefix('admin/tickets')->name('admin.tickets.')->group(function () {
-            // paginated listing (JSON)
-            Route::get('/list', [\App\Http\Controllers\AdminTicketsController::class, 'list'])->name('list');
-            // index page (blade) - renders admin ticket management UI
-            Route::get('/', function () {
-                // When roles are stored in the DB use Role::pluck('name') instead of deriving from users.
-                $users = \App\Models\User::orderBy('name')->get(['id', 'name']);
-                $roles = \App\Models\Role::orderBy('name')->pluck('name');
-                return view('dashboards.admin.tickets.index', compact('users', 'roles'));
-            })->name('index');
-            // create ticket (admin) - store
-            Route::post('/', [\App\Http\Controllers\AdminTicketsController::class, 'store'])->name('store');
-
-            // show single ticket details (JSON)
-            Route::get('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'show'])->whereNumber('ticket')->name('show');
-
-            // respond (send email / close)
-            Route::post('/{ticket}/respond', [\App\Http\Controllers\AdminTicketsController::class, 'respond'])->whereNumber('ticket')->name('respond');
-
-            // forward to user (records history)
-            Route::post('/{ticket}/forward', [\App\Http\Controllers\AdminTicketsController::class, 'forward'])->whereNumber('ticket')->name('forward');
-
-            // update ticket fields (PUT)
-            Route::put('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'update'])->whereNumber('ticket')->name('update');
-
-            // delete ticket
-            Route::delete('/{ticket}', [\App\Http\Controllers\AdminTicketsController::class, 'destroy'])->whereNumber('ticket')->name('destroy');
-        });
-
-        // Admin role management (CRUD)
-        Route::prefix('admin/roles')->name('admin.roles.')->group(function () {
-            Route::get('/', [RolesController::class, 'index'])->name('index');
-            Route::get('/create', [RolesController::class, 'create'])->name('create');
-            Route::post('/', [RolesController::class, 'store'])->name('store');
-            Route::get('/{role}/edit', [RolesController::class, 'edit'])->whereNumber('role')->name('edit');
-            Route::put('/{role}', [RolesController::class, 'update'])->whereNumber('role')->name('update');
-            Route::delete('/{role}', [RolesController::class, 'destroy'])->whereNumber('role')->name('destroy');
-            Route::get('/all', [RolesController::class, 'all'])->name('all');
-            // Get roles by department (for department-roles dropdown)
-            Route::get('/by-department/{departmentId}', [RolesController::class, 'byDepartment'])->name('by-department');
-        });
-
-        // Admin department management (CRUD)
-        Route::prefix('admin/departments')->name('admin.departments.')->group(function () {
-            Route::get('/', [DepartmentController::class, 'index'])->name('index');
-            Route::get('/create', [DepartmentController::class, 'create'])->name('create');
-            Route::post('/', [DepartmentController::class, 'store'])->name('store');
-            Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->whereNumber('department')->name('edit');
-            Route::put('/{department}', [DepartmentController::class, 'update'])->whereNumber('department')->name('update');
-            Route::delete('/{department}', [DepartmentController::class, 'destroy'])->whereNumber('department')->name('destroy');
-        });
-
-        // Admin category management (CRUD) - Legacy, redirecting to roles
-        Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
-            Route::get('/', function () {
-                return redirect()->route('admin.roles.index');
-            })->name('index');
-            Route::get('/create', function () {
-                return redirect()->route('admin.roles.create');
-            })->name('create');
-        });
-
-        // Admin reports
-        Route::prefix('admin/reports')->name('admin.reports.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\ReportsController::class, 'index'])->name('index');
-            Route::get('/backlog-trend-data', [\App\Http\Controllers\ReportsController::class, 'getBacklogTrendDataAjax'])->name('backlog-trend-data');
-            Route::get('/closed-tickets-trend-data', [\App\Http\Controllers\ReportsController::class, 'getClosedTicketsTrendDataAjax'])->name('closed-tickets-trend-data');
-            Route::get('/dynamic-data', [\App\Http\Controllers\ReportsController::class, 'getDynamicDataAjax'])->name('dynamic-data');
-            Route::get('/forwards/{staff}', [\App\Http\Controllers\ReportsController::class, 'getForwardsByStaff'])->name('forwards.by-staff');
-        });
-
-        // Admin announcements
-        Route::prefix('admin/announcements')->name('admin.announcements.')->group(function () {
-            Route::get('/', function () {
-                return view('dashboards.admin.announcements.index');
-            })->name('index');
-            Route::get('/list', [AdminController::class, 'announcementsList'])->name('list');
-            Route::post('/', [AdminController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
-            Route::put('/{id}', [AdminController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
-            Route::delete('/{id}', [AdminController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
-            Route::post('/pin/{id}', [AdminController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
-        });
-
-        // Admin Rasa Server Manager
-        Route::prefix('admin/rasa-server')->name('admin.rasa-server.')->group(function () {
-            Route::get('/', [RasaServerController::class, 'index'])->name('index');
-            Route::get('/status', [RasaServerController::class, 'status'])->name('status');
-            Route::get('/training-history', [RasaServerController::class, 'trainingHistory'])->name('training-history');
-            Route::get('/backup-history', [RasaServerController::class, 'backupHistory'])->name('backup-history');
-            Route::get('/backup-files/{backupId}', [RasaServerController::class, 'backupFiles'])->name('backup-files');
-            Route::get('/backup-file-content/{backupId}/{filename}', [RasaServerController::class, 'backupFileContent'])->name('backup-file-content');
-            Route::get('/models-list', [RasaServerController::class, 'modelsList'])->name('models-list');
-            Route::post('/start-action-server', [RasaServerController::class, 'startActionServer'])->name('start-action-server');
-            Route::post('/create-backup', [RasaServerController::class, 'createBackup'])->name('create-backup');
-            Route::delete('/delete-backup/{backupId}', [RasaServerController::class, 'deleteBackup'])->name('delete-backup');
-            Route::post('/cleanup-models', [RasaServerController::class, 'cleanupModels'])->name('cleanup-models');
-            Route::get('/fetch-faqs', [RasaServerController::class, 'fetchFaqs'])->name('fetch-faqs');
-        });
-
-        // Admin logs
-        Route::get('/admin/logs', [AdminController::class, 'logsIndex'])->name('admin.logs');
-
-        // Admin categories by role (for conditional dropdowns)
-        Route::get('/admin/categories-by-role', [AdminController::class, 'categoriesByRole'])->name('admin.categories.by-role');
-    });
-
-    // Logout (authenticated only)
+    // Logout
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware(['web', 'handle.logout.csrf'])
         ->name('logout');
 
+    // Serve ticket attachments
+    Route::get('/attachments/{path}', [TicketController::class, 'serveAttachment'])
+        ->where('path', '.*')
+        ->name('attachments.serve');
 
-    // Staff Document Management from Rasa server
-    Route::get('/staff/document-management/fetch', [StaffController::class, 'fetchFaqs'])->name('staff.document_management.fetch');
-    Route::get('/staff/document-management/test', function () {
-        return view('staff.documents.test');
-    })->name('staff.document_management.test');
+    /*
+    |--------------------------------------------------------------------------
+    | STAFF ROUTES (Prefix: staff)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('staff')->name('staff.')->group(function () {
+        // Staff Dashboard
+        Route::controller(StaffController::class)->group(function () {
+            Route::get('/dashboard', 'index')->name('dashboard');
+            Route::get('/dashboard/data', 'data')->middleware('throttle:20,1')->name('dashboard.data');
+            Route::get('/profile', 'profile')->name('profile');
+            Route::post('/profile', 'updateProfile')->name('profile.update');
+            Route::post('/profile/email-notifications', 'updateEmailNotifications')->name('profile.email_notifications');
+            Route::get('/profile/password', 'passwordForm')->name('profile.password');
+            Route::post('/profile/password', 'passwordUpdate')->middleware('throttle:5,1')->name('profile.password.update');
+        });
 
-    // Staff reports
-    Route::prefix('staff/reports')->name('staff.reports.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\StaffReportsController::class, 'index'])->name('index');
+        // Staff Tickets
+        Route::controller(StaffController::class)->group(function () {
+            Route::get('/tickets', 'tickets')->name('tickets');
+            Route::get('/tickets/data', 'ticketsData')->name('tickets.data');
+            Route::get('/tickets/{ticket}', 'showTicket')->whereNumber('ticket')->name('tickets.show');
+            Route::post('/tickets/{ticket}/respond', 'respond')->whereNumber('ticket')->middleware('throttle:20,1')->name('tickets.respond');
+            Route::post('/tickets/{ticket}/forward', 'forward')->whereNumber('ticket')->middleware('throttle:30,1')->name('tickets.forward');
+        });
+
+        // Staff Knowledgebase / Document Management
+        Route::controller(StaffKnowledgebaseController::class)->group(function () {
+            Route::get('/document-management', 'index')->name('document_management.index');
+            Route::get('/document-management/files', 'filesList')->name('document_management.files');
+            Route::get('/document-management/fetch', 'fetchFaqs')->name('document_management.fetch');
+            Route::post('/document-management', 'store')->middleware('throttle:20,1')->name('document_management.store');
+            Route::post('/document-management/upload', 'uploadDocument')->middleware('throttle:20,1')->name('document_management.upload');
+            Route::put('/document-management/{faq}', 'update')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.update');
+            Route::delete('/document-management/{faq}', 'destroy')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.destroy');
+            Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
+        });
+
+        // Staff Document Management Test Page
+        Route::get('/document-management/test', function () {
+            return view('staff.documents.test');
+        })->name('document_management.test');
+
+        // Staff Announcements
+        Route::controller(StaffKnowledgebaseController::class)->group(function () {
+            Route::get('/announcements', 'announcementsIndex')->name('announcements.index');
+            Route::get('/announcements/list', 'announcementsList')->name('announcements.list');
+            Route::post('/announcements', 'announcementsStore')->middleware('throttle:10,1')->name('announcements.store');
+            Route::put('/announcements/{id}', 'announcementsUpdate')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.update');
+            Route::delete('/announcements/{id}', 'announcementsDestroy')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.destroy');
+            Route::post('/announcements/pin/{id}', 'announcementsPin')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.pin');
+        });
+
+        // Staff Reports
+        Route::controller(StaffReportsController::class)->group(function () {
+            Route::get('/reports', 'index')->name('reports.index');
+        });
+
+        // Staff Upload Logs
+        Route::controller(StaffUploadLogsController::class)->group(function () {
+            Route::get('/upload-logs', 'index')->name('upload-logs.index');
+            Route::post('/upload-logs', 'store')->middleware('throttle:20,1')->name('upload-logs.store');
+            Route::get('/upload-logs/download-zip', 'downloadZip')->name('upload-logs.download-zip');
+        });
+
+        // Staff Push Notifications
+        Route::controller(PushNotificationController::class)->group(function () {
+            Route::post('/push/subscribe', 'saveSubscription')->name('push.subscribe');
+            Route::post('/push/send', 'sendNotification')->name('push.send');
+            Route::post('/push/test', 'sendTest')->name('push.test');
+        });
+
+        // SMTP Test
+        Route::get('/mail/test', [StaffController::class, 'mailTest'])->middleware('throttle:5,1')->name('mail.test');
     });
 
-    // Staff Document Management
-    Route::prefix('staff/document-management')->name('staff.document_management.')->group(function () {
-        Route::get('/', [StaffKnowledgebaseController::class, 'index'])->name('index');
-        Route::get('/files', [StaffKnowledgebaseController::class, 'filesList'])->name('files');
-        Route::post('/', [StaffKnowledgebaseController::class, 'store'])->middleware('throttle:20,1')->name('store');
-        // Upload endpoint: save to DB first then forward to Rasa
-        Route::post('/upload', [StaffKnowledgebaseController::class, 'uploadDocument'])->middleware('throttle:20,1')->name('upload');
-        // Delete a document by file name (DB-first, then sync DB -> Rasa)
-        Route::delete('/document', [StaffKnowledgebaseController::class, 'destroyDocumentByName'])->middleware('throttle:20,1')->name('document.destroy');
-        Route::put('/{faq}', [StaffKnowledgebaseController::class, 'update'])->whereNumber('faq')->middleware('throttle:20,1')->name('update');
-        Route::delete('/{faq}', [StaffKnowledgebaseController::class, 'destroy'])->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN ROUTES (Middleware: admin)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('admin')->group(function () {
+        Route::prefix('admin')->name('admin.')->group(function () {
+            // Admin Dashboard
+            Route::controller(AdminController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/dashboard', 'index')->name('dashboard');
+                Route::get('/dashboard/data', 'data')->middleware('throttle:20,1')->name('dashboard.data');
+                Route::get('/logs', 'logsIndex')->name('logs');
+                Route::get('/categories-by-role', 'categoriesByRole')->name('categories.by-role');
+            });
 
-    // Upload logs endpoints (staff-facing)
-    Route::get('/staff/upload-logs', [\App\Http\Controllers\StaffUploadLogsController::class, 'index'])->name('staff.upload-logs.index');
-    Route::post('/staff/upload-logs', [\App\Http\Controllers\StaffUploadLogsController::class, 'store'])->middleware('throttle:20,1')->name('staff.upload-logs.store');
-    Route::get('/staff/upload-logs/download-zip', [\App\Http\Controllers\StaffUploadLogsController::class, 'downloadZip'])->name('staff.upload-logs.download-zip');
+            // Admin FAQs
+            Route::controller(FAQsController::class)->group(function () {
+                Route::get('/faqs', 'index')->name('faqs.index');
+                Route::get('/faqs/list', 'list')->name('faqs.list');
+                Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
+                Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
+            });
 
-    // Staff announcements
-    Route::prefix('staff/announcements')->name('staff.announcements.')->group(function () {
-        Route::get('/', [StaffKnowledgebaseController::class, 'announcementsIndex'])->name('index');
-        Route::get('/list', [StaffKnowledgebaseController::class, 'announcementsList'])->name('list');
-        Route::post('/', [StaffKnowledgebaseController::class, 'announcementsStore'])->middleware('throttle:10,1')->name('store');
-        Route::put('/{id}', [StaffKnowledgebaseController::class, 'announcementsUpdate'])->whereNumber('id')->middleware('throttle:10,1')->name('update');
-        Route::delete('/{id}', [StaffKnowledgebaseController::class, 'announcementsDestroy'])->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
-        Route::post('/pin/{id}', [StaffKnowledgebaseController::class, 'announcementsPin'])->whereNumber('id')->middleware('throttle:10,1')->name('pin');
-    });
+            // Admin Users Management
+            Route::controller(AdminController::class)->group(function () {
+                Route::prefix('users')->name('users.')->group(function () {
+                    Route::get('/', 'usersIndex')->name('index');
+                    Route::get('/create', 'usersCreate')->name('create');
+                    Route::post('/', 'usersStore')->middleware('throttle:10,1')->name('store');
+                    Route::get('/{user}/edit', 'usersEdit')->whereNumber('user')->name('edit');
+                    Route::put('/{user}', 'usersUpdate')->whereNumber('user')->name('update');
+                    Route::delete('/{user}', 'usersDestroy')->whereNumber('user')->name('destroy');
+                    Route::get('/{user}/roles', 'usersGetRoles')->whereNumber('user')->name('roles');
+                    Route::post('/check-email', 'usersCheckEmail')->name('check-email');
+                    Route::post('/resend-verification', 'usersResendVerification')->name('resend-verification');
+                    Route::get('/deleted', 'usersDeletedIndex')->name('deleted');
+                    Route::post('/{user}/restore', 'usersRestore')->whereNumber('user')->name('restore');
+                });
+            });
 
-    // API routes for chatbot training data
-    Route::prefix('api/chatbot')->name('api.chatbot.')->group(function () {
-        Route::get('/training-data', [RasaServerController::class, 'getTrainingData'])->name('training-data');
-    });
+            // Admin Knowledgebase Management
+            Route::controller(AdminController::class)->group(function () {
+                Route::prefix('knowledgebase')->name('knowledgebase.')->group(function () {
+                    Route::get('/', 'knowledgebaseIndex')->name('index');
+                    Route::get('/list', 'knowledgebaseList')->name('list');
+                    Route::post('/', 'knowledgebaseStore')->middleware('throttle:20,1')->name('store');
+                    Route::get('/{faq}', 'knowledgebaseShow')->whereNumber('faq')->name('show');
+                    Route::put('/{faq}', 'knowledgebaseUpdate')->whereNumber('faq')->middleware('throttle:20,1')->name('update');
+                    Route::delete('/{faq}', 'knowledgebaseDestroy')->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
+                    Route::get('/all-json', 'knowledgebaseAllJson')->name('all-json');
+                    Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
+                    Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
+                    Route::get('/{faq}/revisions', 'knowledgebaseRevisions')->whereNumber('faq')->name('revisions');
+                    Route::post('/{faq}/revert/{revision}', 'knowledgebaseRevert')->whereNumber('faq')->whereNumber('revision')->name('revert');
+                    Route::post('/{faq}/restore', 'knowledgebaseRestore')->whereNumber('faq')->name('restore');
+                    Route::post('/{faq}/undo', 'knowledgebaseUndo')->whereNumber('faq')->name('undo');
+                    Route::post('/{faq}/disable', 'knowledgebaseDisable')->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
+                    Route::post('/{faq}/enable', 'knowledgebaseEnable')->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
+                });
+            });
 
-    //Push Notification
-    // Start Push Notification==========================================================
-    Route::view('push-notification', 'PushNotification.push-test');
-    Route::prefix('staff/push')->group(function () {
-        Route::post('/subscribe', [PushNotificationController::class, 'saveSubscription'])->name('push.subscribe');
-        Route::post('/send', [PushNotificationController::class, 'sendNotification'])->name('push.send');
+            // Admin Roles Management
+            Route::controller(RolesController::class)->group(function () {
+                Route::prefix('roles')->name('roles.')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/create', 'create')->name('create');
+                    Route::post('/', 'store')->name('store');
+                    Route::get('/{role}/edit', 'edit')->whereNumber('role')->name('edit');
+                    Route::put('/{role}', 'update')->whereNumber('role')->name('update');
+                    Route::delete('/{role}', 'destroy')->whereNumber('role')->name('destroy');
+                    Route::get('/all', 'all')->name('all');
+                    Route::get('/by-department/{departmentId}', 'byDepartment')->name('by-department');
+                });
+            });
+
+            // Admin Departments Management
+            Route::controller(DepartmentController::class)->group(function () {
+                Route::prefix('departments')->name('departments.')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/create', 'create')->name('create');
+                    Route::post('/', 'store')->name('store');
+                    Route::get('/{department}/edit', 'edit')->whereNumber('department')->name('edit');
+                    Route::put('/{department}', 'update')->whereNumber('department')->name('update');
+                    Route::delete('/{department}', 'destroy')->whereNumber('department')->name('destroy');
+                });
+            });
+
+            // Admin Categories (Legacy - redirect to roles)
+            Route::prefix('categories')->name('categories.')->group(function () {
+                Route::get('/', function () {
+                    return redirect()->route('admin.roles.index');
+                })->name('index');
+                Route::get('/create', function () {
+                    return redirect()->route('admin.roles.create');
+                })->name('create');
+            });
+
+            // Admin Tickets Management
+            Route::controller(AdminTicketsController::class)->group(function () {
+                Route::prefix('tickets')->name('tickets.')->group(function () {
+                    Route::get('/', function () {
+                        $users = User::orderBy('name')->get(['id', 'name']);
+                        $roles = Role::orderBy('name')->pluck('name');
+                        return view('dashboards.admin.tickets.index', compact('users', 'roles'));
+                    })->name('index');
+                    Route::get('/list', 'list')->name('list');
+                    Route::post('/', 'store')->name('store');
+                    Route::get('/{ticket}', 'show')->whereNumber('ticket')->name('show');
+                    Route::put('/{ticket}', 'update')->whereNumber('ticket')->name('update');
+                    Route::delete('/{ticket}', 'destroy')->whereNumber('ticket')->name('destroy');
+                    Route::post('/{ticket}/respond', 'respond')->whereNumber('ticket')->name('respond');
+                    Route::post('/{ticket}/forward', 'forward')->whereNumber('ticket')->name('forward');
+                });
+            });
+
+            // Admin Reports
+            Route::controller(ReportsController::class)->group(function () {
+                Route::prefix('reports')->name('reports.')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/backlog-trend-data', 'getBacklogTrendDataAjax')->name('backlog-trend-data');
+                    Route::get('/closed-tickets-trend-data', 'getClosedTicketsTrendDataAjax')->name('closed-tickets-trend-data');
+                    Route::get('/dynamic-data', 'getDynamicDataAjax')->name('dynamic-data');
+                    Route::get('/forwards/{staff}', 'getForwardsByStaff')->name('forwards.by-staff');
+                });
+            });
+
+            // Admin Announcements
+            Route::controller(AdminController::class)->group(function () {
+                Route::prefix('announcements')->name('announcements.')->group(function () {
+                    Route::get('/', function () {
+                        return view('dashboards.admin.announcements.index');
+                    })->name('index');
+                    Route::get('/list', 'announcementsList')->name('list');
+                    Route::post('/', 'announcementsStore')->middleware('throttle:10,1')->name('store');
+                    Route::put('/{id}', 'announcementsUpdate')->whereNumber('id')->middleware('throttle:10,1')->name('update');
+                    Route::delete('/{id}', 'announcementsDestroy')->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
+                    Route::post('/pin/{id}', 'announcementsPin')->whereNumber('id')->middleware('throttle:10,1')->name('pin');
+                });
+            });
+
+            // Admin Rasa Server Manager
+            Route::controller(RasaServerController::class)->group(function () {
+                Route::prefix('rasa-server')->name('rasa-server.')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/status', 'status')->name('status');
+                    Route::get('/training-history', 'trainingHistory')->name('training-history');
+                    Route::get('/backup-history', 'backupHistory')->name('backup-history');
+                    Route::get('/backup-files/{backupId}', 'backupFiles')->name('backup-files');
+                    Route::get('/backup-file-content/{backupId}/{filename}', 'backupFileContent')->name('backup-file-content');
+                    Route::get('/models-list', 'modelsList')->name('models-list');
+                    Route::post('/start-action-server', 'startActionServer')->name('start-action-server');
+                    Route::post('/create-backup', 'createBackup')->name('create-backup');
+                    Route::delete('/delete-backup/{backupId}', 'deleteBackup')->name('delete-backup');
+                    Route::post('/cleanup-models', 'cleanupModels')->name('cleanup-models');
+                    Route::get('/fetch-faqs', 'fetchFaqs')->name('fetch-faqs');
+                });
+            });
+
+            // Admin Document Changes
+            Route::controller(DocumentChangesController::class)->group(function () {
+                Route::prefix('document-changes')->name('document-changes.')->group(function () {
+                    Route::post('/log', 'log')->name('log');
+                    Route::get('/training-status', 'trainingStatus')->name('training-status');
+                    Route::get('/check-recent-training', 'checkRecentTraining')->name('check-recent-training');
+                    Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
+                    Route::post('/start-rasa-api', 'startRasaApi')->name('start-rasa-api');
+                });
+            });
+
+            // Admin Push Notifications
+            Route::controller(PushNotificationController::class)->group(function () {
+                Route::post('/push/user/{userId}', 'sendToUser')
+                    ->whereNumber('userId')
+                    ->name('push.user');
+                Route::post('/push/all', 'sendToAll')->name('push.all');
+            });
+        });
     });
-    // End Push Notification==========================================================
 });
-
-Route::get('/test-widget', function () {
-    return view('test-widget');
-});
-
-Route::post('/send-message', [RasaController::class, 'sendMessage']);

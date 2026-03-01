@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Staff;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +19,7 @@ use App\Models\Category;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\SendPushNotificationJob;
 use App\Jobs\SendTicketForwardJob;
+use App\Http\Controllers\Controller;
 
 class StaffController extends Controller
 {
@@ -812,7 +813,7 @@ class StaffController extends Controller
                 }
             } else {
                 // If faqs.json is not available, try to get FAQs from the database
-                $faqs = \App\Models\Faq::where('response_disabled', false)
+                $faqs = Faq::where('response_disabled', false)
                     ->select('id', 'intent', 'description', 'response')
                     ->get();
 
