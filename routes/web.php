@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminTicketsController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentChangesController;
 use App\Http\Controllers\Admin\FAQsController;
+use App\Http\Controllers\Admin\KnowledgebaseController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\RolesController;
@@ -289,25 +290,47 @@ Route::middleware('auth')->group(function () {
                 Route::post('/check-email', 'usersCheckEmail')->middleware('throttle:50,1')->name('check-email');
             });
 
-            // Admin Knowledgebase Management
-            Route::controller(AdminController::class)->group(function () {
-                Route::prefix('knowledgebase')->name('knowledgebase.')->group(function () {
-                    Route::get('/', 'knowledgebaseIndex')->name('index');
-                    Route::get('/list', 'knowledgebaseList')->name('list');
-                    Route::post('/', 'knowledgebaseStore')->middleware('throttle:20,1')->name('store');
-                    Route::get('/{faq}', 'knowledgebaseShow')->whereNumber('faq')->name('show');
-                    Route::put('/{faq}', 'knowledgebaseUpdate')->whereNumber('faq')->middleware('throttle:20,1')->name('update');
-                    Route::delete('/{faq}', 'knowledgebaseDestroy')->whereNumber('faq')->middleware('throttle:20,1')->name('destroy');
-                    Route::get('/all-json', 'knowledgebaseAllJson')->name('all-json');
-                    Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
-                    Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
-                    Route::get('/{faq}/revisions', 'knowledgebaseRevisions')->whereNumber('faq')->name('revisions');
-                    Route::post('/{faq}/revert/{revision}', 'knowledgebaseRevert')->whereNumber('faq')->whereNumber('revision')->name('revert');
-                    Route::post('/{faq}/restore', 'knowledgebaseRestore')->whereNumber('faq')->name('restore');
-                    Route::post('/{faq}/undo', 'knowledgebaseUndo')->whereNumber('faq')->name('undo');
-                    Route::post('/{faq}/disable', 'knowledgebaseDisable')->whereNumber('faq')->middleware('throttle:20,1')->name('disable');
-                    Route::post('/{faq}/enable', 'knowledgebaseEnable')->whereNumber('faq')->middleware('throttle:20,1')->name('enable');
-                });
+            // Admin Knowledgebase / Document Management
+            Route::controller(KnowledgebaseController::class)
+                ->prefix('knowledgebase')
+                ->name('knowledgebase.')
+                ->group(function () {
+
+                    // --- READ OPERATIONS (Browsing & Fetching) ---
+                    Route::middleware('throttle:60,1')->group(function () {
+                        Route::get('/', 'knowledgebaseIndex')->name('index');
+                        Route::get('/list', 'knowledgebaseList')->name('list');
+                        Route::get('/all-json', 'knowledgebaseAllJson')->name('all-json');
+                        Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
+                        Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
+
+                        Route::prefix('{faq}')->whereNumber('faq')->group(function () {
+                            Route::get('/', 'knowledgebaseShow')->name('show');
+                            Route::get('/revisions', 'knowledgebaseRevisions')->name('revisions');
+                        });
+                    });
+
+                    // --- WRITE OPERATIONS (State Changes) ---
+                    // Applies throttle:20,1 to all routes in this group automatically
+                    Route::middleware('throttle:20,1')->group(function () {
+                        Route::post('/', 'knowledgebaseStore')->name('store');
+
+                        Route::prefix('{faq}')->whereNumber('faq')->group(function () {
+                            Route::put('/', 'knowledgebaseUpdate')->name('update');
+                            Route::delete('/', 'knowledgebaseDestroy')->name('destroy');
+
+                            // Custom Action Routes
+                            Route::post('/restore', 'knowledgebaseRestore')->name('restore');
+                            Route::post('/undo', 'knowledgebaseUndo')->name('undo');
+                            Route::post('/disable', 'knowledgebaseDisable')->name('disable');
+                            Route::post('/enable', 'knowledgebaseEnable')->name('enable');
+
+                            // Nested Parameters
+                            Route::post('/revert/{revision}', 'knowledgebaseRevert')
+                                ->whereNumber('revision')
+                                ->name('revert');
+                        });
+                    });
             });
 
             // Admin Roles Management
