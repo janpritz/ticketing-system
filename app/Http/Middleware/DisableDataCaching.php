@@ -25,7 +25,7 @@ class DisableDataCaching
             str_contains($contentType, 'application/json') ||
             str_contains($contentType, 'text/plain') ||
             $request->is('api/*') ||
-            $request->is('admin/*') ||
+            $request->is('admin*') ||
             $request->is('staff/*')) {
             
             // Disable caching for HTML and data responses

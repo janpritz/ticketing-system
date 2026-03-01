@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TicketController;
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\RasaController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\Admin\RolesController;
@@ -27,8 +27,8 @@ Route::get('/sw.js', function () {
     ]);
 })->name('sw');
 
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
+Route::get('/admin/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/admin/login', [AuthController::class, 'login'])->middleware('guest', 'throttle:10,1');
 
 // Password reset via OTP
 Route::get('/password/forgot', [AuthController::class, 'showForgotForm'])->middleware('guest')->name('password.forgot');
