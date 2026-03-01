@@ -4,8 +4,7 @@ namespace App\Services\Admin;
 
 use App\Models\{User, Department, Role};
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\{DB, Log, Mail};
 use App\Mail\AccountVerificationMail;
 use Illuminate\Support\Facades\Hash;
 
@@ -171,5 +170,118 @@ class UserService
     public function deleteUser(User $user): bool
     {
         return $user->delete();
+    }
+
+    public function restoreUser(int $userId): bool
+    {
+        // Use withTrashed() to find the user even if they are soft-deleted
+        $user = User::withTrashed()->findOrFail($userId);
+
+        if ($user->trashed()) {
+            return $user->restore();
+        }
+
+        return false;
+    }
+
+    public function getUserRolesData(User $user): array
+    {
+        // Load roles and their department relationships efficiently
+        $user->load('roles.department');
+
+        // Fetch pivot table entries for this user
+        $userRoles = DB::table('user_roles')->where('user_id', $user->id)->get();
+
+        // Split roles into Primary and Additional categories
+        $primary = $userRoles->firstWhere('is_primary_role', true);
+        $additionalRoleIds = $userRoles->where('is_primary_role', false)->pluck('role_id')->toArray();
+
+        return [
+            'user_id'             => $user->id,
+            'department_id'       => $primary ? $primary->department_id : null,
+            'primary_role_id'     => $primary ? $primary->role_id : null,
+            'additional_role_ids' => $additionalRoleIds,
+            'all_role_ids'        => $user->roles->pluck('id')->toArray(),
+            'roles'               => $user->roles->map(function ($role) use ($userRoles) {
+                $pivotEntry = $userRoles->firstWhere('role_id', $role->id);
+
+                return [
+                    'id'              => $role->id,
+                    'name'            => $role->name,
+                    'department_id'   => $role->department_id,
+                    'department_name' => $role->department?->name,
+                    'is_primary_role' => $pivotEntry?->is_primary_role ?? false,
+                ];
+            })->toArray(),
+        ];
+    }
+
+    public function validateEmailAvailability(string $email, ?int $excludeUserId = null): array
+    {
+        // 1. Format Validation
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'valid'        => false,
+                'message'      => 'Invalid email format',
+                'message_type' => 'error'
+            ];
+        }
+
+        // 2. Database Check
+        $query = User::where('email', strtolower($email));
+
+        if ($excludeUserId) {
+            $query->where('id', '!=', $excludeUserId);
+        }
+
+        if ($query->exists()) {
+            return [
+                'valid'        => false,
+                'message'      => 'Email already exists in the system',
+                'message_type' => 'error'
+            ];
+        }
+
+        return [
+            'valid'        => true,
+            'message'      => 'Email is available',
+            'message_type' => 'success'
+        ];
+    }
+
+    public function resendVerification(string $email): array
+    {
+        // 1. Format Check
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'message' => 'Invalid email format'];
+        }
+
+        // 2. Existence Check
+        $user = User::where('email', strtolower($email))->first();
+        if (!$user) {
+            return ['success' => false, 'message' => 'User not found'];
+        }
+
+        // 3. Verification Status Check
+        if ($user->email_verified_at) {
+            return ['success' => false, 'message' => 'User is already verified'];
+        }
+
+        // 4. Token Integrity
+        if (!$user->verification_token) {
+            $user->verification_token = bin2hex(random_bytes(32));
+            $user->save();
+        }
+
+        // 5. Dispatch Email
+        try {
+            Mail::to($user->email)->send(
+                new AccountVerificationMail($user->name, $user->verification_token)
+            );
+            return ['success' => true, 'message' => 'Verification email sent'];
+        } catch (\Throwable $e) {
+            Log::error("Failed to resend verification email to {$user->email}: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to send email. Please try again.'];
+        }
     }
 }

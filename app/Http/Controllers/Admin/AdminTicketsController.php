@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
 use App\Models\Ticket;
 use App\Models\User;
@@ -15,6 +15,7 @@ use App\Mail\TicketResponseMail;
 use App\Jobs\SendTicketResponseJob;
 use App\Jobs\SendTicketForwardJob;
 use App\Jobs\SendPushNotificationJob;
+use App\Http\Controllers\Controller;
 
 class AdminTicketsController extends Controller
 {

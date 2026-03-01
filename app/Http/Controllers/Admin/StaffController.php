@@ -85,8 +85,8 @@ class StaffController extends Controller
     {
         // 1. Protection: Check if the user is trying to delete themselves
         if ($user->id === Auth::id()) {
-        return back()->withErrors(['delete' => 'Self-deletion is not permitted.']);
-    }
+            return back()->withErrors(['delete' => 'Self-deletion is not permitted.']);
+        }
 
         // 2. Protection: Check if target is a Primary Administrator
         $isAdmin = $user->roles()->where('roles.name', 'Primary Administrator')->exists();
@@ -98,5 +98,58 @@ class StaffController extends Controller
         $userService->deleteUser($user);
 
         return redirect()->route('admin.users.index')->with('status', 'Staff deleted.');
+    }
+
+    /**
+     * Deleted users page (redirect)
+     *
+     * Redirects to the main users index with a flag so the index will load
+     * the deleted-list view.
+     */
+
+    public function usersDeletedIndex(Request $request)
+    {
+        return redirect()->route('admin.users.index', ['include_deleted' => '1']);
+    }
+
+    public function usersRestore($userId, UserService $userService)
+    {
+        // The service handles finding the trashed user and the restoration logic
+        $userService->restoreUser($userId);
+
+        return redirect()->route('admin.users.index')
+            ->with('status', 'User restored.');
+    }
+
+    /**
+     * Get the roles and department data for a specific user.
+     */
+    public function usersGetRoles(User $user, UserService $userService)
+    {
+        // The service handles the complex mapping and returns the array
+        $data = $userService->getUserRolesData($user);
+
+        return response()->json($data);
+    }
+
+    public function usersCheckEmail(Request $request, UserService $userService)
+    {
+        $email = $request->input('email', '');
+        $excludeUserId = $request->input('exclude_user_id');
+
+        $result = $userService->validateEmailAvailability($email, $excludeUserId);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Resend the account verification email.
+     */
+    public function usersResendVerification(Request $request, UserService $userService)
+    {
+        $email = $request->input('email', '');
+        $result = $userService->resendVerification($email);
+
+        return response()->json($result);
     }
 }

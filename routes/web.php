@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\FAQsController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
 use App\Http\Controllers\PushNotificationController;
@@ -266,7 +267,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Admin Staff Management
-            Route::controller(AdminController::class)->prefix('users')->name('users.')->group(function () {
+            Route::controller(AdminStaffController::class)->prefix('users')->name('users.')->group(function () {
                 Route::middleware('throttle:50,1')->group(function () {
                     Route::get('/', 'usersIndex')->name('index');
                     Route::get('/create', 'usersCreate')->name('create');
