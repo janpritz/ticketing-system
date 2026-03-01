@@ -55,7 +55,7 @@ class StaffController extends Controller
      */
     public function show(string $id)
     {
-        //
+        //No need to display show page for staff, only display edit page
     }
 
     /**

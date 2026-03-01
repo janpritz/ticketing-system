@@ -5,6 +5,7 @@
 | Laravel Framework Imports (Facades/Classes)
 |--------------------------------------------------------------------------
 */
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,7 @@ use App\Models\User;
 | PUBLIC ROUTES (No Middleware)
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     return redirect()->route('faqs.index');
 })->name('home');
@@ -263,21 +265,27 @@ Route::middleware('auth')->group(function () {
                 Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
             });
 
-            // Admin Users Management
-            Route::controller(AdminController::class)->group(function () {
-                Route::prefix('users')->name('users.')->group(function () {
+            // Admin Staff Management
+            Route::controller(AdminController::class)->prefix('users')->name('users.')->group(function () {
+                Route::middleware('throttle:50,1')->group(function () {
                     Route::get('/', 'usersIndex')->name('index');
                     Route::get('/create', 'usersCreate')->name('create');
-                    Route::post('/', 'usersStore')->middleware('throttle:10,1')->name('store');
+                    Route::get('/deleted', 'usersDeletedIndex')->name('deleted');
                     Route::get('/{user}/edit', 'usersEdit')->whereNumber('user')->name('edit');
+                    Route::get('/{user}/roles', 'usersGetRoles')->whereNumber('user')->name('roles');
+                });
+
+                // State-changing routes (Strict throttling to prevent spam/abuse)
+                Route::middleware('throttle:10,1')->group(function () {
+                    Route::post('/', 'usersStore')->name('store');
                     Route::put('/{user}', 'usersUpdate')->whereNumber('user')->name('update');
                     Route::delete('/{user}', 'usersDestroy')->whereNumber('user')->name('destroy');
-                    Route::get('/{user}/roles', 'usersGetRoles')->whereNumber('user')->name('roles');
-                    Route::post('/check-email', 'usersCheckEmail')->name('check-email');
-                    Route::post('/resend-verification', 'usersResendVerification')->name('resend-verification');
-                    Route::get('/deleted', 'usersDeletedIndex')->name('deleted');
                     Route::post('/{user}/restore', 'usersRestore')->whereNumber('user')->name('restore');
+                    Route::post('/resend-verification', 'usersResendVerification')->name('resend-verification');
                 });
+
+                // Internal validation (Moderate throttling)
+                Route::post('/check-email', 'usersCheckEmail')->middleware('throttle:50,1')->name('check-email');
             });
 
             // Admin Knowledgebase Management
