@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\KnowledgebaseController;
 use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
@@ -252,11 +253,13 @@ Route::middleware('auth')->group(function () {
         Route::prefix('admin')->name('admin.')->group(function () {
             // Admin Dashboard
             Route::controller(AdminController::class)->group(function () {
-                Route::get('/', 'index')->name('index');
-                Route::get('/dashboard', 'index')->name('dashboard');
-                Route::get('/dashboard/data', 'data')->middleware('throttle:20,1')->name('dashboard.data');
-                Route::get('/logs', 'logsIndex')->name('logs');
-                Route::get('/categories-by-role', 'categoriesByRole')->name('categories.by-role');
+                Route::middleware('throttle:30,1')->group(function () {
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/dashboard', 'index')->name('dashboard');
+                    Route::get('/dashboard/data', 'data')->name('dashboard.data');
+                    Route::get('/logs', 'logsIndex')->name('logs');
+                    Route::get('/categories-by-role', 'categoriesByRole')->name('categories.by-role');
+                });
             });
 
             // Admin FAQs
@@ -270,8 +273,8 @@ Route::middleware('auth')->group(function () {
             // Admin Staff Management
             Route::controller(AdminStaffController::class)->prefix('users')->name('users.')->group(function () {
                 Route::middleware('throttle:50,1')->group(function () {
-                    Route::get('/', 'usersIndex')->name('index');
-                    Route::get('/create', 'usersCreate')->name('create');
+                    Route::get('/', 'index')->name('index');
+                    Route::get('/create', 'create')->name('create');
                     Route::get('/deleted', 'usersDeletedIndex')->name('deleted');
                     Route::get('/{user}/edit', 'usersEdit')->whereNumber('user')->name('edit');
                     Route::get('/{user}/roles', 'usersGetRoles')->whereNumber('user')->name('roles');
@@ -298,9 +301,9 @@ Route::middleware('auth')->group(function () {
 
                     // --- READ OPERATIONS (Browsing & Fetching) ---
                     Route::middleware('throttle:60,1')->group(function () {
-                        Route::get('/', 'knowledgebaseIndex')->name('index');
-                        Route::get('/list', 'knowledgebaseList')->name('list');
-                        Route::get('/all-json', 'knowledgebaseAllJson')->name('all-json');
+                        Route::get('/', 'index')->name('index');
+                        Route::get('/list', 'list')->name('list');
+                        Route::get('/all-json', 'allJson')->name('all-json');
                         Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
                         Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
 
@@ -313,11 +316,11 @@ Route::middleware('auth')->group(function () {
                     // --- WRITE OPERATIONS (State Changes) ---
                     // Applies throttle:20,1 to all routes in this group automatically
                     Route::middleware('throttle:20,1')->group(function () {
-                        Route::post('/', 'knowledgebaseStore')->name('store');
+                        Route::post('/', 'store')->name('store');
 
                         Route::prefix('{faq}')->whereNumber('faq')->group(function () {
-                            Route::put('/', 'knowledgebaseUpdate')->name('update');
-                            Route::delete('/', 'knowledgebaseDestroy')->name('destroy');
+                            Route::put('/', 'update')->name('update');
+                            Route::delete('/', 'destroy')->name('destroy');
 
                             // Custom Action Routes
                             Route::post('/restore', 'knowledgebaseRestore')->name('restore');
@@ -331,7 +334,7 @@ Route::middleware('auth')->group(function () {
                                 ->name('revert');
                         });
                     });
-            });
+                });
 
             // Admin Roles Management
             Route::controller(RolesController::class)->group(function () {
@@ -398,19 +401,11 @@ Route::middleware('auth')->group(function () {
                 });
             });
 
-            // Admin Announcements
-            Route::controller(AdminController::class)->group(function () {
-                Route::prefix('announcements')->name('announcements.')->group(function () {
-                    Route::get('/', function () {
-                        return view('dashboards.admin.announcements.index');
-                    })->name('index');
-                    Route::get('/list', 'announcementsList')->name('list');
-                    Route::post('/', 'announcementsStore')->middleware('throttle:10,1')->name('store');
-                    Route::put('/{id}', 'announcementsUpdate')->whereNumber('id')->middleware('throttle:10,1')->name('update');
-                    Route::delete('/{id}', 'announcementsDestroy')->whereNumber('id')->middleware('throttle:10,1')->name('destroy');
-                    Route::post('/pin/{id}', 'announcementsPin')->whereNumber('id')->middleware('throttle:10,1')->name('pin');
-                });
-            });
+            // Standard Web Resource
+            Route::resource('announcements', AnnouncementController::class);
+
+            // Custom Action (Needs its own line)
+            Route::post('announcement/{id}/pin', [AnnouncementController::class, 'pin'])->name('announcement.pin');
 
             // Admin Rasa Server Manager
             Route::controller(RasaServerController::class)->group(function () {

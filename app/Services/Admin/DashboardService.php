@@ -210,4 +210,23 @@ class DashboardService
             ];
         })->values()->toArray();
     }
+
+    public function getCategoriesByRoleName(string $roleName): array
+    {
+        $role = \App\Models\Role::where('name', $roleName)->first();
+
+        if (!$role) {
+            return [];
+        }
+
+        return $role->categories()
+            ->orderBy('name')
+            ->get(['categories.id', 'categories.name']) // Specify table to avoid ambiguity
+            ->map(fn($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])
+            ->values()
+            ->toArray();
+    }
 }

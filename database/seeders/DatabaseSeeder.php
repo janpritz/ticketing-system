@@ -5,30 +5,63 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Department;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // Seed departments first
-        if (class_exists(\Database\Seeders\DepartmentSeeder::class)) {
-            $this->call(\Database\Seeders\DepartmentSeeder::class);
+        // 1. Seed departments and roles first
+        if (class_exists(DepartmentSeeder::class)) {
+            $this->call(DepartmentSeeder::class);
         }
 
-        // Seed roles
-        if (class_exists(\Database\Seeders\RolesSeeder::class)) {
-            $this->call(\Database\Seeders\RolesSeeder::class);
+        if (class_exists(RolesSeeder::class)) {
+            $this->call(RolesSeeder::class);
         }
 
-        // Update existing user_roles entries that don't have is_primary_role set
-        // Set the first role for each user as primary
+        // 2. Ensure "Primary Administrator" Department exists
+        // This is the missing piece in many setups
+        $adminDepartment = Department::firstOrCreate(['name' => 'Primary Administrator']);
+
+        // 3. Ensure "Primary Administrator" Role exists
+        $adminRole = Role::firstOrCreate(['name' => 'Primary Administrator']);
+
+        // 4. Create/Update the Primary Administrator User (ID: 1)
+        // Using updateOrInsert to force ID 1 specifically
+        DB::table('users')->updateOrInsert(
+            ['id' => 1],
+            [
+                'name' => 'Primary Administrator',
+                'email' => 'acc.sangkaychatbot@gmail.com',
+                'password' => Hash::make('ACCSangkay2025'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        // 5. Link Admin User to Admin Role & Department
+        DB::table('user_roles')->updateOrInsert(
+            ['user_id' => 1, 'role_id' => $adminRole->id],
+            [
+                'department_id' => $adminDepartment->id,
+                'is_primary_role' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]
+        );
+
+        // 6. Fix legacy primary roles for other users
+        $this->fixPrimaryRoles();
+
+        // 7. Seed Staff Data
+        $this->seedStaffUsers();
+    }
+
+    private function fixPrimaryRoles(): void
+    {
         $userRoleGroups = DB::table('user_roles')
             ->select('user_id', DB::raw('MIN(id) as first_role_id'))
             ->groupBy('user_id')
@@ -40,68 +73,10 @@ class DatabaseSeeder extends Seeder
                 ->where('id', $group->first_role_id)
                 ->update(['is_primary_role' => true]);
         }
+    }
 
-        // Ensure Primary Administrator role exists and Primary Administrator user is present with id 1
-        $adminRole = Role::where('name', 'Primary Administrator')->first();
-
-        if (!$adminRole) {
-            $adminRole = Role::create(['name' => 'Primary Administrator']);
-        }
-
-        // Get Primary Administrator department
-        $adminDepartment = Department::where('name', 'Primary Administrator')->first();
-
-        // Ensure admin user has id 1
-        $adminUser = User::find(1);
-        if (!$adminUser) {
-            DB::table('users')->insert([
-                'id' => 1,
-                'name' => 'Primary Administrator',
-                'email' => 'acc.sangkaychatbot@gmail.com',
-                'password' => Hash::make('ACCSangkay2025'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } else {
-            $adminUser->update([
-                'name' => 'Primary Administrator',
-                'password' => Hash::make('ACCSangkay2025'),
-            ]);
-        }
-
-        // Create user_roles entry for admin with role_id = 1
-        if ($adminUser && $adminRole) {
-            // Get Primary Administrator department ID
-            $adminDeptId = $adminDepartment ? $adminDepartment->id : null;
-            
-            // First check if the user already has role_id = 1
-            $existingRole = DB::table('user_roles')
-                ->where('user_id', $adminUser->id)
-                ->where('role_id', 1)
-                ->first();
-            
-            if (!$existingRole) {
-                DB::table('user_roles')->insert([
-                    'user_id' => $adminUser->id,
-                    'role_id' => 1,
-                    'department_id' => $adminDeptId,
-                    'is_primary_role' => true,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            } else {
-                // Update existing entry to set is_primary_role and department_id
-                DB::table('user_roles')
-                    ->where('user_id', $adminUser->id)
-                    ->where('role_id', 1)
-                    ->update([
-                        'department_id' => $adminDeptId,
-                        'is_primary_role' => true
-                    ]);
-            }
-        }
-
-        // Create or update sample staff users with different roles
+    private function seedStaffUsers(): void
+    {
         $staffData = [
             'Enrollment' => ['name' => 'Maria Santos', 'email' => 'maria.santos@example.com'],
             'Finance and Payments' => ['name' => 'Juan Dela Cruz', 'email' => 'juan.delacruz@example.com'],
@@ -117,11 +92,8 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($staffData as $roleName => $staffInfo) {
-            // Ensure role record exists
-            $r = Role::firstOrCreate(['name' => $roleName]);
-            
-            // Get department for this role
-            $department = Department::where('name', $roleName)->first();
+            $role = Role::firstOrCreate(['name' => $roleName]);
+            $dept = Department::where('name', $roleName)->first();
 
             $user = User::updateOrCreate(
                 ['email' => $staffInfo['email']],
@@ -131,14 +103,13 @@ class DatabaseSeeder extends Seeder
                 ]
             );
 
-            // Create user_roles entry with department_id and is_primary_role
-            if ($user && $r && $department) {
+            if ($dept) {
                 DB::table('user_roles')->updateOrInsert(
-                    ['user_id' => $user->id, 'role_id' => $r->id],
+                    ['user_id' => $user->id, 'role_id' => $role->id],
                     [
-                        'department_id' => $department->id,
+                        'department_id' => $dept->id,
                         'is_primary_role' => true,
-                        'created_at' => now(), 
+                        'created_at' => now(),
                         'updated_at' => now()
                     ]
                 );
