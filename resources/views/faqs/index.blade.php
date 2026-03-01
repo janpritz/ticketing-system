@@ -53,12 +53,12 @@ document.addEventListener('DOMContentLoaded', function() {
         <x-public-nav active="home" :logo-text="'SANGKAY FAQs'" />
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-visible lg:overflow-hidden mt-4 lg:mt-4">
+        <div class="flex-1 overflow-hidden">
             <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
                     <!-- Left Column: Title and FAQs -->
                     <div class="lg:col-span-1 flex flex-col lg:overflow-hidden mt-12 lg:mt-20">
-                        <div class="flex-shrink-0 pt-8 px-0 lg:pt-50 lg:px-0">
+                        <div class="flex-shrink-0 pt-8 px-0 lg:pt-0 lg:px-0">
                             <h1 class="text-4xl font-bold text-gray-900 mb-2 px-8 lg:px-12">Frequently Asked</h1>
                             <h2 class="text-4xl font-bold text-gray-900 mb-8 px-8 lg:px-12">Questions</h2>
 
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
 
                         <!-- FAQ List - Scrollable -->
-                        <div class="flex-1 lg:overflow-y-auto px-0 lg:px-0 pb-8">
+                        <div class="flex-1 overflow-y-auto px-0 lg:px-0 pb-8">
                             <div class="space-y-3 px-8 lg:px-12">
                                 @if ($faqs->isEmpty())
                                     <div class="text-center py-12">
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     max-w-md mx-auto 
                                     h-auto 
                                     lg:w-full lg:h-full 
-                                    object-contain lg:object-cover">
+                                    object-contain lg:object-contain">
                     </div>
 
                 </div>

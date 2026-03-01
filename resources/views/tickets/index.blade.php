@@ -49,7 +49,7 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center">
                                 <p class="text-sm font-medium text-indigo-600 truncate">
-                                    {{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}
+                                    {{ is_object($ticket->role) ? ($ticket->role->name ?? '') : ($ticket->getAttribute('role') ?? '') }}
                                 </p>
                                 <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $ticket->status === 'Open' ? 'bg-green-100 text-green-800' : ($ticket->status === 'Re-routed' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
                                     {{ $ticket->status }}
@@ -67,16 +67,16 @@
                             </p>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 edit-ticket-btn mr-2"
                                 data-id="{{ $ticket->id }}"
-                                data-category-id="{{ $ticket->category_id }}"
-                                data-category="{{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}"
+                                data-role-id="{{ $ticket->role_id }}"
+                                data-role="{{ is_object($ticket->role) ? ($ticket->role->name ?? '') : ($ticket->getAttribute('role') ?? '') }}"
                                 data-question="{{ $ticket->question }}"
                                 data-attachments="{{ $ticket->attachments }}">
                                 Edit
                             </button>
                             <button type="button" class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 delete-ticket-btn"
                                 data-id="{{ $ticket->id }}"
-                                data-category-id="{{ $ticket->category_id }}"
-                                data-category="{{ is_object($ticket->category) ? ($ticket->category->name ?? ($ticket->getAttribute('category') ?? '')) : ($ticket->getAttribute('category') ?? '') }}">
+                                data-role-id="{{ $ticket->role_id }}"
+                                data-role="{{ is_object($ticket->role) ? ($ticket->role->name ?? '') : ($ticket->getAttribute('role') ?? '') }}">
                                 Delete
                             </button>
                         </div>
@@ -292,13 +292,13 @@
         document.querySelectorAll('.edit-ticket-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const ticketId = this.getAttribute('data-id');
-                const category = this.getAttribute('data-category');
+                const role = this.getAttribute('data-role');
                 const question = this.getAttribute('data-question');
                 const attachments = this.getAttribute('data-attachments');
 
                 // Set form values
                 document.getElementById('edit-ticket-id').value = ticketId;
-                document.getElementById('edit-category').value = category;
+                document.getElementById('edit-category').value = role;
                 document.getElementById('edit-question').value = question;
                 document.getElementById('edit-attachments').value = '';
                 document.getElementById('delete-attachments').value = '';
@@ -345,12 +345,12 @@
         document.querySelectorAll('.delete-ticket-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const ticketId = this.getAttribute('data-id');
-                const category = this.getAttribute('data-category');
+                const role = this.getAttribute('data-role');
 
                 if (window.Swal) {
                     Swal.fire({
                         title: 'Delete ticket?',
-                        text: `Are you sure you want to delete the ticket "${category}"? This action cannot be undone.`,
+                        text: `Are you sure you want to delete the ticket "${role}"? This action cannot be undone.`,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
@@ -387,7 +387,7 @@
                     });
                 } else {
                     // Fallback if SweetAlert2 is not available
-                    if (confirm(`Are you sure you want to delete the ticket "${category}"?`)) {
+                    if (confirm(`Are you sure you want to delete the ticket "${role}"?`)) {
                         const form = document.createElement('form');
                         form.method = 'POST';
                         form.action = `/tickets/${ticketId}`;
