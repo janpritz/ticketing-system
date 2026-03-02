@@ -659,7 +659,7 @@
             statusText.textContent = 'Starting...';
 
             try {
-                const res = await fetch('{{ route("admin.document-changes.start-rasa-api") }}', {
+                const res = await fetch('{{ route("admin.rasa-server.start-rasa-api") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -946,7 +946,7 @@
 
             try {
                 const csrf = '{{ csrf_token() }}';
-                const res = await fetch('{{ route("admin.document-changes.train-rasa") }}', {
+                const res = await fetch('{{ route("admin.rasa-server.train-rasa") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrf,

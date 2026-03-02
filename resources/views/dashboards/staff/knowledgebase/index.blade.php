@@ -1897,7 +1897,7 @@
 
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route('admin.document-changes.train-rasa') }}', {
+                    const res = await fetch('{{ route('admin.rasa-server.train-rasa') }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrf,

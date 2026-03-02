@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\Pool;
+use App\Services\Admin\RasaService;
 use Carbon\Carbon;
 
 class RasaServerController extends Controller
@@ -21,6 +22,17 @@ class RasaServerController extends Controller
     public function index()
     {
         return view('dashboards.admin.rasa-server.index');
+    }
+
+    /**
+     * Start the Rasa API server if it is not already running.
+     */
+    public function startRasaApi(RasaService $service)
+    {
+
+        $result = $service->ensureApiIsRunning();
+
+        return response()->json($result, $result['success'] ? 200 : 500);
     }
 
     /**
@@ -151,7 +163,7 @@ class RasaServerController extends Controller
         }
 
         // Sort by date descending
-        usort($backups, function($a, $b) {
+        usort($backups, function ($a, $b) {
             return strtotime($b['date']) - strtotime($a['date']);
         });
 
@@ -329,7 +341,6 @@ class RasaServerController extends Controller
                     'message' => 'Rasa actions server start failed: ' . ($result['error'] ?? 'Unknown error')
                 ], 500);
             }
-
         } catch (\Exception $e) {
             Log::error('Rasa actions server start request failed', ['error' => $e->getMessage()]);
 
@@ -459,7 +470,6 @@ class RasaServerController extends Controller
                 'files_backed_up' => count($backedUpFiles),
                 'total_size' => $totalSize
             ]);
-
         } catch (\Exception $e) {
             Log::error('Backup creation failed', ['error' => $e->getMessage()]);
 
@@ -502,7 +512,6 @@ class RasaServerController extends Controller
                 'success' => true,
                 'message' => 'Backup deleted successfully'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Backup deletion failed', ['error' => $e->getMessage()]);
 
@@ -575,7 +584,6 @@ class RasaServerController extends Controller
                     'message' => 'Model cleanup failed: ' . ($result['error'] ?? 'Unknown error')
                 ], 500);
             }
-
         } catch (\Exception $e) {
             Log::error('Model cleanup request failed', ['error' => $e->getMessage()]);
 
@@ -615,57 +623,57 @@ class RasaServerController extends Controller
 
     /**
      * Check if Rasa server (port 5005) is running.
-      */
-     private function checkServerStatus($port)
-     {
-         try {
-             $url = config('services.faq_updater.url') . '/check-rasa-status';
-             $secret = config('services.faq_updater.secret');
+     */
+    private function checkServerStatus($port)
+    {
+        try {
+            $url = config('services.faq_updater.url') . '/check-rasa-status';
+            $secret = config('services.faq_updater.secret');
 
-             $response = Http::timeout(5)
-                 ->withHeaders([
-                     'X-FAQ-UPDATER-TOKEN' => $secret,
-                     'X-Requested-With' => 'XMLHttpRequest'
-                 ])
-                 ->get($url);
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($url);
 
-             if ($response->successful()) {
-                 $data = $response->json();
-                 return $data['running'] ?? false;
-             }
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['running'] ?? false;
+            }
 
-             return false;
-         } catch (\Exception $e) {
-             return false;
-         }
-     }
+            return false;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
 
     /**
      * Check if Rasa action server (port 5055) is running.
-      */
-     private function checkActionServerStatus($port)
-     {
-         try {
-             $url = config('services.faq_updater.url') . '/check-rasa-actions-status';
-             $secret = config('services.faq_updater.secret');
+     */
+    private function checkActionServerStatus($port)
+    {
+        try {
+            $url = config('services.faq_updater.url') . '/check-rasa-actions-status';
+            $secret = config('services.faq_updater.secret');
 
-             $response = Http::timeout(5)
-                 ->withHeaders([
-                     'X-FAQ-UPDATER-TOKEN' => $secret,
-                     'X-Requested-With' => 'XMLHttpRequest'
-                 ])
-                 ->get($url);
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->get($url);
 
-             if ($response->successful()) {
-                 $data = $response->json();
-                 return $data['running'] ?? false;
-             }
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['running'] ?? false;
+            }
 
-             return false;
-         } catch (\Exception $e) {
-             return false;
-         }
-     }
+            return false;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
 
     /**
      * Get last training information.
@@ -813,7 +821,7 @@ class RasaServerController extends Controller
 
                 if ($data['ok'] && isset($data['models']) && !empty($data['models'])) {
                     // Sort models by name descending (assuming timestamp-based names)
-                    usort($data['models'], function($a, $b) {
+                    usort($data['models'], function ($a, $b) {
                         return strcmp($b['name'], $a['name']);
                     });
 
@@ -928,7 +936,6 @@ class RasaServerController extends Controller
                 //     'source' => 'database_fallback'
                 // ]);
             }
-
         } catch (\Exception $e) {
             Log::error('Failed to fetch FAQs from Rasa server', ['error' => $e->getMessage()]);
 
@@ -973,7 +980,6 @@ class RasaServerController extends Controller
             ];
 
             return response()->json($trainingData);
-
         } catch (\Exception $e) {
             Log::error('Failed to get training data for chatbot', ['error' => $e->getMessage()]);
 

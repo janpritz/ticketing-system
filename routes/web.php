@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\RasaServerController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\RolesController;
 use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\RasaTrainingController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
@@ -416,6 +417,7 @@ Route::middleware('auth')->group(function () {
                     Route::delete('/delete-backup/{backupId}', 'deleteBackup')->name('delete-backup');
                     Route::post('/cleanup-models', 'cleanupModels')->name('cleanup-models');
                     Route::get('/fetch-faqs', 'fetchFaqs')->name('fetch-faqs');
+                    Route::post('/start-rasa-api', 'startRasaApi')->name('start-rasa-api');
                 });
             });
 
@@ -425,9 +427,16 @@ Route::middleware('auth')->group(function () {
                     Route::post('/log', 'log')->name('log');
                     Route::get('/training-status', 'trainingStatus')->name('training-status');
                     Route::get('/check-recent-training', 'checkRecentTraining')->name('check-recent-training');
-                    Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
-                    Route::post('/start-rasa-api', 'startRasaApi')->name('start-rasa-api');
+                    
+                    
                 });
+            });
+
+            Route::controller(RasaTrainingController::class)
+                ->prefix('rasa-server')->name('rasa-server.')
+                ->middleware('throttle:20,1') // Strict throttling to prevent abuse
+                ->group(function () {
+                Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
             });
 
             // Admin Push Notifications
