@@ -3,120 +3,71 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\FAQUpdateRequest;
 use App\Models\StagedFaq;
 use App\Models\Ticket;
+use App\Services\Admin\FAQService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FAQsController extends Controller
 {
     // This controller manages the admin interface for viewing and approving staged FAQs generated from processed tickets. It retrieves pending FAQs, groups them by semantic key, and allows admins to approve them for inclusion in the knowledge base.
-    public function index(Request $request)
+    /**
+     * Display a listing of staged FAQs and unprocessed ticket metrics.
+     */
+    public function index(Request $request, FAQService $service)
     {
-        $query = StagedFaq::query();
-        
-        // Filter by status
-        $status = $request->input('status', 'pending');
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
-        // Search by general_topic or suggested_q
-        $search = $request->input('search');
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('general_topic', 'like', "%{$search}%")
-                  ->orWhere('suggested_q', 'like', "%{$search}%");
-            });
-        }
-        
-        // Pagination
-        $perPage = $request->input('per_page', 10);
-        $faqs = $query->paginate($perPage);
+        // 1. Fetch filtered staged FAQs
+        $faqs = $service->getFilteredStagedFaqs($request->all());
 
-        // Count unprocessed tickets (closed tickets not yet analyzed with OpenAI)
-        $unprocessedTickets = Ticket::where('status', 'closed')
-            ->where('is_processed', false)
-            ->count();
+        // 2. Fetch system metrics for the dashboard header
+        $unprocessedTickets = $service->getUnprocessedTicketCount();
 
-        return view('admin.faqs.index', compact('faqs', 'unprocessedTickets', 'status', 'search', 'perPage'));
+        return view('admin.faqs.index', [
+            'faqs' => $faqs,
+            'unprocessedTickets' => $unprocessedTickets,
+            'status' => $request->input('status', 'pending'),
+            'search' => $request->input('search'),
+            'perPage' => $request->input('per_page', 10)
+        ]);
     }
 
-    public function updateStatus(Request $request)
+    /**
+     * Update the status of a staged FAQ (Approve, Reject, or Pend).
+     */
+    public function updateStatus(FAQUpdateRequest $request, FAQService $service)
     {
-        $faqId = $request->input('id');
-        $status = $request->input('status');
+        $result = $service->updateStagedFaqStatus($request->validated());
 
-        // Validate status
-        if (!in_array($status, ['approved', 'rejected', 'pending'])) {
-            return response()->json(['success' => false, 'message' => 'Invalid status'], 400);
-        }
-
-        $faq = StagedFaq::find($faqId);
-        if (!$faq) {
-            return response()->json(['success' => false, 'message' => 'FAQ not found'], 404);
-        }
-
-        $faq->update(['status' => $status]);
-
-        return response()->json(['success' => true, 'message' => "FAQ {$status} successfully"]);
+        return response()->json($result, $result['success'] ? 200 : 400);
     }
 
-    public function processAnalysis(Request $request)
+    /**
+     * Trigger AI analysis of closed tickets to generate staged FAQs.
+     */
+    public function processAnalysis(FAQService $service)
     {
-        try {
-            $faqGenerator = new \App\Providers\FAQGeneratorServiceProvider(app());
-            $result = $faqGenerator->generateFAQs();
+        $result = $service->generateStagedFaqs();
 
-            return response()->json([
-                'success' => true,
-                'message' => $result['message'],
-                'tickets_processed' => $result['tickets_processed'] ?? 0,
-                'faqs_generated' => $result['faqs_generated'] ?? 0,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error processing tickets: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json($result, $result['success'] ? 200 : 500);
     }
 
-    public function list(Request $request)
+    /**
+     * API list of staged FAQs with standardized meta-data.
+     */
+    public function list(Request $request, FAQService $service)
     {
-        $query = StagedFaq::query();
-        
-        // Filter by status
-        $status = $request->input('status', 'pending');
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
-        // Search by general_topic or suggested_q
-        $search = $request->input('search');
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('general_topic', 'like', "%{$search}%")
-                  ->orWhere('suggested_q', 'like', "%{$search}%");
-            });
-        }
-        
-        // Pagination
-        $perPage = $request->input('per_page', 25);
-        $page = $request->input('page', 1);
-        
-        $total = $query->count();
-        $faqs = $query->forPage($page, $perPage)->get();
-        
-        $lastPage = ceil($total / $perPage);
-        
+        // The service now handles the query and pagination
+        $paginator = $service->getFilteredStagedFaqs($request->all());
+
         return response()->json([
-            'items' => $faqs,
-            'meta' => [
-                'total' => $total,
-                'per_page' => (int)$perPage,
-                'current_page' => (int)$page,
-                'last_page' => $lastPage,
+            'items' => $paginator->items(),
+            'meta'  => [
+                'total'        => $paginator->total(),
+                'per_page'     => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
             ]
         ]);
     }

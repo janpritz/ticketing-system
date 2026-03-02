@@ -265,10 +265,12 @@ Route::middleware('auth')->group(function () {
 
             // Admin FAQs
             Route::controller(FAQsController::class)->group(function () {
-                Route::get('/faqs', 'index')->name('faqs.index');
-                Route::get('/faqs/list', 'list')->name('faqs.list');
-                Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
-                Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
+                Route::middleware('throttle:30,1')->group(function () {
+                    Route::get('/faqs', 'index')->name('faqs.index');
+                    Route::get('/faqs/list', 'list')->name('faqs.list');
+                    Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
+                    Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
+                });
             });
 
             // Admin Staff Management
@@ -427,8 +429,6 @@ Route::middleware('auth')->group(function () {
                     Route::post('/log', 'log')->name('log');
                     Route::get('/training-status', 'trainingStatus')->name('training-status');
                     Route::get('/check-recent-training', 'checkRecentTraining')->name('check-recent-training');
-                    
-                    
                 });
             });
 
@@ -436,8 +436,8 @@ Route::middleware('auth')->group(function () {
                 ->prefix('rasa-server')->name('rasa-server.')
                 ->middleware('throttle:20,1') // Strict throttling to prevent abuse
                 ->group(function () {
-                Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
-            });
+                    Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
+                });
 
             // Admin Push Notifications
             Route::controller(PushNotificationController::class)->group(function () {
