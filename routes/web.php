@@ -351,16 +351,10 @@ Route::middleware('auth')->group(function () {
             });
 
             // Admin Departments Management
-            Route::controller(DepartmentController::class)->group(function () {
-                Route::prefix('departments')->name('departments.')->group(function () {
-                    Route::get('/', 'index')->name('index');
-                    Route::get('/create', 'create')->name('create');
-                    Route::post('/', 'store')->name('store');
-                    Route::get('/{department}/edit', 'edit')->whereNumber('department')->name('edit');
-                    Route::put('/{department}', 'update')->whereNumber('department')->name('update');
-                    Route::delete('/{department}', 'destroy')->whereNumber('department')->name('destroy');
-                });
-            });
+            Route::resource('departments', DepartmentController::class)
+                ->middleware('throttle:30,1')
+                ->names('departments')
+                ->parameters(['departments' => 'department']);
 
             // Admin Categories (Legacy - redirect to roles)
             Route::prefix('categories')->name('categories.')->group(function () {
