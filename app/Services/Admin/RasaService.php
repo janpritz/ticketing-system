@@ -133,7 +133,7 @@ class RasaService
 
                 if ($data['ok'] && isset($data['models']) && !empty($data['models'])) {
                     // Sort models by name descending (assuming timestamp-based names)
-                    usort($data['models'], function($a, $b) {
+                    usort($data['models'], function ($a, $b) {
                         return strcmp($b['name'], $a['name']);
                     });
 
@@ -214,11 +214,34 @@ class RasaService
             }
 
             return ['success' => false, 'error' => 'Failed to manage Rasa server'];
-
         } catch (\Exception $e) {
             Log::error('Failed to restart Rasa server after training', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
+    /**
+     * Communicates with the Rasa REST webhook.
+     */
+    public function talkToBot(string $senderId, string $message): array
+    {
+        try {
+            // Pull the URL from config/services.php
+            $url = config('services.rasa.webhook_url', 'http://localhost:5005/webhooks/rest/webhook');
+
+            $response = Http::timeout(15)->post($url, [
+                'sender'  => $senderId,
+                'message' => $message,
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return ['error' => 'The chatbot is currently unavailable.'];
+        } catch (\Throwable $e) {
+            Log::error("Rasa Communication Error: " . $e->getMessage());
+            return ['error' => 'Communication failure with the AI server.'];
+        }
+    }
 }

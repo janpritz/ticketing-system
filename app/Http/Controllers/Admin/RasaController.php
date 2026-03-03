@@ -2,36 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Admin\RasaService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\{Http, Auth};
 
 class RasaController extends Controller
 {
     // Endpoint to send messages to Rasa
-    public function sendMessage(Request $request)
+    /**
+     * Send a user message to the Rasa chatbot and return the response.
+     */
+    public function sendMessage(Request $request, RasaService $service)
     {
-        // Define the Rasa API URL (change the URL if your Rasa server is hosted elsewhere)
-        $rasaApiUrl = 'http://localhost:5005/webhooks/rest/webhook';
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
 
-        // Get user message from the request
-        $userMessage = $request->input('message');
+        // Use the authenticated user's ID as the 'sender' to maintain conversation context
+        $senderId = Auth::id() ?? 'guest_' . session()->getId();
 
-        // Prepare the request data
-        $data = [
-            'sender' => '6543521234567890', // User ID (can be anything, used to track the conversation)
-            'message' => $userMessage, // The message sent by the user
-        ];
+        $result = $service->talkToBot($senderId, $request->input('message'));
 
-        // Send the message to Rasa API
-        $response = Http::post($rasaApiUrl, $data);
-
-        // Check if the request was successful
-        if ($response->successful()) {
-            // Return the response from Rasa
-            return response()->json($response->json());
-        } else {
-            // Handle failure (e.g., Rasa server is down)
-            return response()->json(['error' => 'Unable to connect to Rasa'], 500);
-        }
+        return response()->json($result, isset($result['error']) ? 500 : 200);
     }
 }
