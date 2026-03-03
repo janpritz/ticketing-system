@@ -61,12 +61,12 @@ class StaffController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(User $user)
+    public function edit()
     {
-        if ($user->role === 'Primary Administrator') {
+        if (Auth::user()->id === 1) {
             abort(403, 'Cannot edit Primary Administrator.');
         }
-        return view('dashboards.admin.users.edit', ['user' => $user]);
+        return view('dashboards.admin.users.edit', ['user' => Auth::user()->name]);
     }
 
     /**

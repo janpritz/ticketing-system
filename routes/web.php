@@ -274,26 +274,38 @@ Route::middleware('auth')->group(function () {
             });
 
             // Admin Staff Management
-            Route::controller(AdminStaffController::class)->prefix('users')->name('users.')->group(function () {
+            Route::prefix('users')->name('users.')->group(function () {
+
+                // 1. Custom Non-Resource GET Routes (Throttle: 50/min)
                 Route::middleware('throttle:50,1')->group(function () {
-                    Route::get('/', 'index')->name('index');
-                    Route::get('/create', 'create')->name('create');
-                    Route::get('/deleted', 'usersDeletedIndex')->name('deleted');
-                    Route::get('/{user}/edit', 'usersEdit')->whereNumber('user')->name('edit');
-                    Route::get('/{user}/roles', 'usersGetRoles')->whereNumber('user')->name('roles');
+                    Route::get('/deleted', [AdminStaffController::class, 'usersDeletedIndex'])->name('deleted');
+                    Route::get('/{user}/roles', [AdminStaffController::class, 'usersGetRoles'])->whereNumber('user')->name('roles');
+                    Route::post('/check-email', [AdminStaffController::class, 'usersCheckEmail'])->name('check-email');
                 });
 
-                // State-changing routes (Strict throttling to prevent spam/abuse)
+                // 2. Custom Non-Resource POST Routes (Throttle: 10/min)
                 Route::middleware('throttle:10,1')->group(function () {
-                    Route::post('/', 'usersStore')->name('store');
-                    Route::put('/{user}', 'usersUpdate')->whereNumber('user')->name('update');
-                    Route::delete('/{user}', 'usersDestroy')->whereNumber('user')->name('destroy');
-                    Route::post('/{user}/restore', 'usersRestore')->whereNumber('user')->name('restore');
-                    Route::post('/resend-verification', 'usersResendVerification')->name('resend-verification');
+                    Route::post('/{user}/restore', [AdminStaffController::class, 'usersRestore'])->whereNumber('user')->name('restore');
+                    Route::post('/resend-verification', [AdminStaffController::class, 'usersResendVerification'])->name('resend-verification');
                 });
 
-                // Internal validation (Moderate throttling)
-                Route::post('/check-email', 'usersCheckEmail')->middleware('throttle:50,1')->name('check-email');
+                // 3. Standard Resource (Tiered Throttling)
+                Route::resource('/', AdminStaffController::class)
+                    ->parameters(['' => 'user'])
+                    ->names([
+                        'index'   => 'index',
+                        'create'  => 'create',
+                        'store'   => 'store',
+                        'edit'    => 'edit',
+                        'update'  => 'update',
+                        'destroy' => 'destroy',
+                    ])
+                    ->except(['show'])
+                    ->whereNumber('user')
+                    ->middleware([
+                        'throttle:50,1' => ['index', 'create', 'edit'],
+                        'throttle:10,1' => ['store', 'update', 'destroy'],
+                    ]);
             });
 
             // Admin Knowledgebase / Document Management
