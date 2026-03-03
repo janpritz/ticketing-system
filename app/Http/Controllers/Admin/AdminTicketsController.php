@@ -3,16 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Ticket;
-use App\Models\User;
-use App\Models\TicketRoutingHistory;
 use Illuminate\Http\Request;
 use App\Http\Requests\Admin\{TicketResponseRequest, UpdateTicketRequest, TicketRequest};
 use Illuminate\Support\Facades\{DB, Log, Mail, Auth};
-use App\Mail\TicketProcessedMail;
-use Illuminate\Support\Facades\Storage;
-use App\Mail\TicketResponseMail;
-use App\Jobs\SendTicketForwardJob;
-use App\Jobs\SendPushNotificationJob;
 use App\Http\Controllers\Controller;
 use App\Services\Admin\TicketService;
 

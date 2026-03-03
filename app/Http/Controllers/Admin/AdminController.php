@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\Admin\{AdminService, DashboardService, UserService};
+use App\Services\Admin\{AdminService, DashboardService};
 
 class AdminController extends Controller
 {

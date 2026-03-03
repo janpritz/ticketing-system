@@ -4,11 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FAQUpdateRequest;
-use App\Models\StagedFaq;
-use App\Models\Ticket;
 use App\Services\Admin\FAQService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class FAQsController extends Controller
 {

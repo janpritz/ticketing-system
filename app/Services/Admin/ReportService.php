@@ -215,7 +215,7 @@ class ReportService
 
         arsort($forwardCounts);
         $top = array_slice($forwardCounts, 0, 10, true);
-        $users = \App\Models\User::whereIn('id', array_keys($top))->get()->keyBy('id');
+        $users = User::whereIn('id', array_keys($top))->get()->keyBy('id');
 
         $rowsOut = [];
         foreach ($top as $staffId => $count) {
@@ -333,7 +333,7 @@ class ReportService
             ->get()
             ->mapWithKeys(function ($row) {
                 // snapshot_date is cast to date on the model, ensure Y-m-d string key
-                $key = $row->snapshot_date instanceof \Carbon\Carbon ? $row->snapshot_date->toDateString() : (string)$row->snapshot_date;
+                $key = $row->snapshot_date instanceof Carbon ? $row->snapshot_date->toDateString() : (string)$row->snapshot_date;
                 return [$key => (int)$row->open_count];
             })
             ->toArray();

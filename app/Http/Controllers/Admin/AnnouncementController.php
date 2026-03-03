@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AnnouncementRequest;
 use App\Services\Admin\AnnouncementService;
-use Illuminate\Http\Request;
 
 class AnnouncementController extends Controller
 {
