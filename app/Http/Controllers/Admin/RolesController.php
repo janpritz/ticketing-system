@@ -3,39 +3,29 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\RoleRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use App\Models\Role;
 use App\Models\Department;
 use App\Models\User;
+use App\Services\Admin\RoleService;
 
 class RolesController extends Controller
 {
     /**
-     * Display a listing of roles.
+     * Display a listing of roles and available departments.
      */
-    public function index(Request $request)
+    public function index(Request $request, RoleService $service)
     {
-        $this->ensureAdmin();
-        
-        $perPage = (int)$request->query('per_page', 25);
-        $roles = Role::with('department')
-            ->orderBy('name')
-            ->paginate($perPage);
-
-        // Also load departments for the form
-        $departments = Department::orderBy('name')->get();
+        $roles = $service->getPaginatedRoles($request->integer('per_page', 25));
+        $departments = $service->getAllDepartments();
 
         return view('dashboards.admin.roles.index', compact('roles', 'departments'));
     }
 
-    /**
-     * Show the form for creating a new role.
-     */
     public function create()
     {
-        $this->ensureAdmin();
         $departments = Department::orderBy('name')->get();
         return view('dashboards.admin.roles.create', compact('departments'));
     }
@@ -43,27 +33,18 @@ class RolesController extends Controller
     /**
      * Store a newly created role in storage.
      */
-    public function store(Request $request)
+    /**
+     * Store a newly created role in storage.
+     */
+    public function store(RoleRequest $request, RoleService $service)
     {
-        $this->ensureAdmin();
-        
-        $validated = $request->validate([
-            'department_id' => ['required', 'exists:departments,id'],
-            'name' => ['required', 'string', 'max:191', Rule::unique('roles', 'name')],
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $role = Role::create([
-            'department_id' => $validated['department_id'],
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        $role = $service->createRole($request->validated());
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Role created successfully.',
-                'data' => $role
+                'data'    => $role->load('department')
             ]);
         }
 
@@ -75,7 +56,6 @@ class RolesController extends Controller
      */
     public function edit(Role $role)
     {
-        $this->ensureAdmin();
         $departments = Department::orderBy('name')->get();
         return view('dashboards.admin.roles.edit', compact('role', 'departments'));
     }
@@ -83,27 +63,18 @@ class RolesController extends Controller
     /**
      * Update the specified role in storage.
      */
-    public function update(Request $request, Role $role)
+    /**
+     * Update the specified role in storage.
+     */
+    public function update(RoleRequest $request, Role $role, RoleService $service)
     {
-        $this->ensureAdmin();
-        
-        $validated = $request->validate([
-            'department_id' => ['required', 'exists:departments,id'],
-            'name' => ['required', 'string', 'max:191', Rule::unique('roles', 'name')->ignore($role->id)],
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $role->update([
-            'department_id' => $validated['department_id'],
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        $updatedRole = $service->updateRole($role, $request->validated());
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Role updated successfully.',
-                'data' => $role
+                'data'    => $updatedRole->load('department')
             ]);
         }
 
@@ -113,47 +84,21 @@ class RolesController extends Controller
     /**
      * Remove the specified role from storage.
      */
-    public function destroy(Role $role)
+    public function destroy(Role $role, RoleService $service)
     {
-        $this->ensureAdmin();
+        $result = $service->deleteRole($role);
 
-        // Check if any users are assigned to this role
-        $userCount = User::whereHas('roles', function ($q) use ($role) {
-            $q->where('roles.id', $role->id);
-        })->count();
-        
-        if ($userCount > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => "Cannot delete role '{$role->name}' because {$userCount} user(s) are assigned to it. Please reassign or remove the users first."
-            ], 422);
-        }
-
-        $role->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Role deleted successfully.'
-        ]);
+        return response()->json(
+            $result,
+            $result['success'] ? 200 : 422
+        );
     }
-
-    private function ensureAdmin(): void
-    {
-        $u = Auth::user();
-        $isAdmin = $u && strtolower((string)($u->role ?? '')) === 'primary administrator';
-        abort_unless($isAdmin, 403, 'Unauthorized');
-    }
-
-    /**
-     * Get all roles (for additional roles section in staff management).
-     * Returns roles from all departments, not filtered.
-     */
     public function all()
     {
-        $this->ensureAdmin();
-        
-        $roles = Role::with('department')->orderBy('department_id')->orderBy('name')->get();
-        
+        $roles = Role::with('department')
+            ->orderBy('department_id')
+            ->orderBy('name')->get();
+
         return response()->json($roles);
     }
 
@@ -162,13 +107,11 @@ class RolesController extends Controller
      */
     public function byDepartment($departmentId)
     {
-        $this->ensureAdmin();
-        
         $roles = Role::where('department_id', $departmentId)
             ->with('department')
             ->orderBy('name')
             ->get();
-        
+
         return response()->json($roles);
     }
 }

@@ -340,17 +340,22 @@ Route::middleware('auth')->group(function () {
                 });
 
             // Admin Roles Management
-            Route::controller(RolesController::class)->group(function () {
-                Route::prefix('roles')->name('roles.')->group(function () {
-                    Route::get('/', 'index')->name('index');
-                    Route::get('/create', 'create')->name('create');
-                    Route::post('/', 'store')->name('store');
-                    Route::get('/{role}/edit', 'edit')->whereNumber('role')->name('edit');
-                    Route::put('/{role}', 'update')->whereNumber('role')->name('update');
-                    Route::delete('/{role}', 'destroy')->whereNumber('role')->name('destroy');
-                    Route::get('/all', 'all')->name('all');
-                    Route::get('/by-department/{departmentId}', 'byDepartment')->name('by-department');
+            Route::prefix('roles')->name('roles.')->group(function () {
+
+                // 1. Utility Routes (Place these ABOVE resource to avoid ID collision)
+                Route::middleware('throttle:60,1')->group(function () {
+                    Route::get('/all', [RolesController::class, 'all'])->name('all');
+                    Route::get('/by-department/{departmentId}', [RolesController::class, 'byDepartment'])
+                        ->name('by-department');
                 });
+
+                // 2. Standard CRUD Resource
+                // Throttling store, update, and destroy specifically for write-safety
+                Route::resource('/', RolesController::class)
+                    ->parameters(['' => 'role']) // Ensures parameter is {role} instead of {/ }
+                    ->except(['show'])
+                    ->whereNumber('role')
+                    ->middleware('throttle:20,1');
             });
 
             // Admin Departments Management
