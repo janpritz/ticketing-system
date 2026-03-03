@@ -11,12 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class StaffController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request, UserService $userService)
     {
-
         // Sanitize search query and cast soft-delete toggle to boolean
         $q = trim((string) $request->query('q', ''));
         $isDeleted = (bool) $request->query('include_deleted', false);

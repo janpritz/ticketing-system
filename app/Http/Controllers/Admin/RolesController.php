@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RoleRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Role;
 use App\Models\Department;
-use App\Models\User;
 use App\Services\Admin\RoleService;
 
 class RolesController extends Controller

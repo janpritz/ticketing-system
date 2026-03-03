@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\SendOTPRequest;
+use App\Http\Requests\Admin\StoreTicketRequest;
+use App\Http\Requests\Admin\SubmitTicketRequest;
+use App\Http\Requests\Admin\UpdateStatusRequest;
+use App\Http\Requests\Admin\UpdateTicketRequest1;
+use App\Http\Requests\Admin\VerifyTicketOTPRequest;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -11,72 +17,47 @@ use App\Models\TicketRoutingHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use App\Services\Admin\TicketService;
+
 use App\Jobs\ProcessTicketCreation;
+use App\Services\Admin\OtpService;
 
 class TicketController extends Controller
 {
+
     /**
-     * Serve a stored ticket attachment from the public disk.
-     *
-     * This avoids relying on the `/public/storage` symlink (which is often missing
-     * on shared hosting), preventing 404s when viewing attachments.
+     * Securely serve ticket attachments.
      */
-    public function serveAttachment(Request $request, string $path)
+    public function serveAttachment(string $path, TicketService $service)
     {
-        // Only allow serving from the attachments directory
-        if (!Str::startsWith($path, 'attachments/')) {
+        // The path is already coming from the route parameter
+        $fileData = $service->resolveAttachmentPath($path);
+
+        if (!$fileData['exists']) {
             abort(404);
         }
 
-        $disk = Storage::disk('public');
-        if (!$disk->exists($path)) {
-            abort(404);
-        }
-
-        // Stream the file from storage without requiring the public/storage symlink.
-        // (Using response()->file() keeps IDEs happy if they don't understand FilesystemAdapter::response())
-        return response()->file($disk->path($path));
+        return response()->file($fileData['full_path']);
     }
 
     // Show the ticket creation form
-    public function showCreateForm(Request $request, $recepient_id = null)
+    public function showCreateForm(Request $request, TicketService $service, $recepient_id = null)
     {
-        // Fetch roles from DB at page load
-        // Provide id => name pairs so the dropdown value is the role id
-        $roles = Role::orderBy('name')->pluck('name', 'id')->toArray();
-
         $email = $request->query('email');
 
-        // Check if OTP verification is required for ticket creation
-        // If email is provided and there's an active OTP session, allow access
-        // Otherwise, require OTP verification
+        // 1. Verify OTP session if email is provided
         if ($email) {
-            $otpVerificationData = session("otp_verified_{$email}");
-            if (!$otpVerificationData) {
-                // Check if session has expired (30 minutes)
-                if ($otpVerificationData) {
-                    $verificationTime = $otpVerificationData['verified_at'] ?? null;
-                    if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
-                        session()->forget("otp_verified_{$email}");
-                        return redirect()->route('tickets.verify-otp', ['identifier' => $email])
-                            ->with('info', 'Your session has expired. Please verify again.');
-                    }
-                } else {
-                    // No active session, require OTP verification
-                    return redirect()->route('tickets.verify-otp', ['identifier' => $email]);
-                }
-            } else {
-                // Check if session has expired (30 minutes)
-                $verificationTime = $otpVerificationData['verified_at'] ?? null;
-                if ($verificationTime && now()->diffInMinutes($verificationTime) > 30) {
-                    session()->forget("otp_verified_{$email}");
-                    return redirect()->route('tickets.verify-otp', ['identifier' => $email])
-                        ->with('info', 'Your session has expired. Please verify again.');
-                }
+            $otpStatus = $service->checkOtpSession($email);
+
+            if (!$otpStatus['valid']) {
+                return redirect()
+                    ->route('tickets.verify-otp', ['identifier' => $email])
+                    ->with($otpStatus['error_type'], $otpStatus['message']);
             }
         }
+
+        // 2. Fetch data for the form
+        $roles = Role::orderBy('name')->pluck('name', 'id')->toArray();
 
         return view('tickets.create', compact('recepient_id', 'roles', 'email'));
     }
@@ -95,317 +76,128 @@ class TicketController extends Controller
     /**
      * Handle ticket submission after OTP verification
      */
-    public function submitTicket(Request $request)
+    /**
+     * Submit and process a new support ticket using a Form Request.
+     */
+    public function submitTicket(SubmitTicketRequest $request, TicketService $service)
     {
-        $request->validate([
-            'role_id' => 'nullable|integer|exists:roles,id',
-            'question' => 'required|string',
-            'recepient_id' => ['required'],
-            'email' => 'required|email|max:255',
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
-            'g-recaptcha-response' => 'required|captcha',
-        ]);
+        // If we are here, validation has already passed.
+        $validated = $request->validated();
 
-        // Handle attachments first
-        $attachmentsPaths = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('attachments', $filename, 'public');
-                $attachmentsPaths[] = $path;
-            }
-        }
+        // Delegate logic to the service
+        $ticket = $service->createAndProcessTicket($validated, $request->file('attachments', []));
 
-        // Create ticket instance with role_id
-        $ticket = new Ticket();
-        $ticket->category_id = $request->input('role_id');
-        $ticket->question = $request->question;
-        $ticket->recepient_id = $request->recepient_id;
-        $ticket->email = $request->email;
-        $ticket->status = 'Open';
-        $ticket->staff_id = null;
-        $ticket->date_created = now();
-        $ticket->date_closed = null;
-        $ticket->attachments = json_encode($attachmentsPaths);
-
-        $ticket->save();
-
-
-        // Process assignment synchronously so the page can show the ticket immediately
-        try {
-            (new ProcessTicketCreation($ticket->id, $request->input('role_id')))->handle();
-        } catch (\Throwable $e) {
-            // If synchronous processing fails, fall back to queueing the job and log the error
-            \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
-            ProcessTicketCreation::dispatch($ticket->id, $request->input('role_id'));
-        }
-
-        // For API requests, return JSON
+        // Handle JSON/API Response
         if ($request->wantsJson()) {
-            // Include assigned staff explicitly for client-side flows (AJAX form)
             return response()->json([
-                'ticket' => $ticket,
+                'ticket'   => $ticket,
                 'staff_id' => $ticket->staff_id,
-                'message' => $ticket->staff_id
-                    ? 'Ticket created and assigned to staff successfully!'
-                    : 'Ticket created but assignment is pending. Staff will be assigned shortly.'
+                'message'  => $ticket->staff_id
+                    ? 'Ticket created and assigned successfully!'
+                    : 'Ticket created; assignment is pending.'
             ], 201);
         }
 
-        // For web requests, redirect to tickets page for the recepient id.
-        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
-        $message = $ticket->staff_id
-            ? 'Ticket created and assigned to staff successfully! Please wait for a response, which will be sent to your email.'
-            : 'Ticket created successfully! Assignment is being processed and you will receive a response via email shortly.';
+        // Handle Web Redirect
+        $statusMessage = $ticket->staff_id
+            ? 'Ticket created and assigned successfully!'
+            : 'Ticket created successfully! Assignment is being processed.';
 
-        // Include the creator email as a query parameter so the tickets index can immediately
-        // resolve and display all tickets for that email without waiting for the background job.
-        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($ticket->email);
-        return redirect()->to($redirectUrl)
-            ->with('success', $message);
+        $redirectUrl = url('/tickets/' . $validated['recepient_id']) . '?email=' . rawurlencode($ticket->email);
+
+        return redirect()->to($redirectUrl)->with('success', $statusMessage);
     }
 
 
-    public function store(Request $request)
+    /**
+     * Store a newly created ticket in storage using verified session email.
+     */
+    public function store(StoreTicketRequest $request, TicketService $service)
     {
-        // Validate subject and message only (email comes from verified session)
-        $request->validate([
-            'role_id' => 'nullable|integer|exists:roles,id',
-            'question' => 'required|string',
-            'recepient_id' => ['required'],
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
-            'g-recaptcha-response' => 'required|captcha',
-        ]);
-
-        // Get email from verified session (NOT from request)
+        // 1. Get verified email from session
         $email = session('verified_email');
 
-        // Handle attachments first
-        $attachmentsPaths = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('attachments', $filename, 'public');
-                $attachmentsPaths[] = $path;
-            }
-        }
+        // 2. Delegate creation to service
+        $ticket = $service->createAndProcessTicket(
+            array_merge($request->validated(), ['email' => $email]),
+            $request->file('attachments', [])
+        );
 
-        $ticket = new Ticket();
-        $ticket->role_id = $request->input('role_id');
-        $ticket->question = $request->question;
-        $ticket->recepient_id = $request->recepient_id;
-        $ticket->email = $email;
-        $ticket->status = 'Open';
-        $ticket->staff_id = null;
-        $ticket->date_created = now();
-        $ticket->date_closed = null;
-        $ticket->attachments = json_encode($attachmentsPaths);
-
-        $ticket->save();
-
-
-        // Process assignment synchronously so the page can show the ticket immediately
-        try {
-            (new ProcessTicketCreation($ticket->id, $request->input('role_id')))->handle();
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Synchronous ticket processing failed; falling back to queued job: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
-            ProcessTicketCreation::dispatch($ticket->id, $request->input('role_id'));
-        }
-
-        // For API requests, return JSON
+        // 3. Handle JSON Response
         if ($request->wantsJson()) {
-            // Include assigned staff explicitly for client-side flows (AJAX form)
-            return response()->json(['ticket' => $ticket, 'staff_id' => $ticket->staff_id], 201);
+            return response()->json([
+                'ticket'   => $ticket,
+                'staff_id' => $ticket->staff_id
+            ], 201);
         }
 
-        // For web requests, redirect to tickets page for the recepient id.
-        // Generate a full URL using the configured app URL so it becomes {APP_URL}/tickets/{recepient_id}
-        // Append the email so the tickets page shows the newly created ticket immediately
+        // 4. Handle Web Redirect
         $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($email);
+
         return redirect()->to($redirectUrl)
-            ->with('success', 'Ticket created successfully! Please wait for a response, which will be sent to your email.');
+            ->with('success', 'Ticket created successfully! Check your email for updates.');
     }
 
-
-    private function getCategoryToRoleMap(): array
+    /**
+     * Display a listing of tickets for the verified guest.
+     */
+    public function index(Request $request, TicketService $service)
     {
-        // Centralised mapping between categories and role names.
-        // Keep this in sync with any admin-managed 'roles' entries.
-        return [
-            // Enrollment-related categories
-            'Course Registration' => 'Enrollment',
-            'Add or Drop Classes' => 'Enrollment',
-            'Late Enrollment' => 'Enrollment',
-            'Shifting to a Different Program' => 'Enrollment',
-            'Transferring Between Schools' => 'Enrollment',
-            'Schedule Conflicts' => 'Enrollment',
-            'Class Schedules' => 'Enrollment',
-            'Course Prerequisites' => 'Enrollment',
+        // 1. Get verified email from session
+        $email = (string) session('verified_email');
 
-            // Finance-related categories
-            'Tuition Fee Inquiries' => 'Finance and Payments',
-            'Payment Methods (Online, Bank, etc.)' => 'Finance and Payments',
-            'Refund Issues' => 'Finance and Payments',
-            'Billing and Invoice Problems' => 'Finance and Payments',
+        // 2. Retrieve tickets and user list from Service
+        $tickets = $service->getTicketsByEmail($email);
 
-            // Scholarship-related categories
-            'Scholarships & Financial Aid' => 'Scholarships',
-            'Merit-Based Scholarships' => 'Scholarships',
-            'Need-Based Scholarships' => 'Scholarships',
-            'Scholarship Application Status' => 'Scholarships',
-            'Eligibility and Deadlines for Scholarships' => 'Scholarships',
-            'Scholarships for International Students' => 'Scholarships',
-            'Sports Scholarships' => 'Scholarships',
-
-            // Academic-related categories
-            'Grades and Transcript Requests' => 'Academic Concerns',
-            'Academic Probation or Warnings' => 'Academic Concerns',
-            'Graduation Requirements' => 'Academic Concerns',
-            'Thesis/Dissertation Submission' => 'Academic Concerns',
-
-            // Exam-related categories
-            'Exam Schedules' => 'Exams',
-            'Exam Results' => 'Exams',
-            'Re-scheduling Exams' => 'Exams',
-            'Special Exam Accommodations' => 'Exams',
-
-            // Student Services-related categories
-            'Career Counseling' => 'Student Services',
-            'Student Organizations & Activities' => 'Student Services',
-            'Mental Health Support' => 'Student Services',
-            'Peer Mentoring' => 'Student Services',
-            'Internship Assistance' => 'Student Services',
-            'Student Life Events' => 'Student Services',
-            'Student Rights and Responsibilities' => 'Student Services',
-            'Code of Conduct Violations' => 'Student Services',
-            'Disciplinary Actions' => 'Student Services',
-            'Visa Assistance' => 'Student Services',
-            'Cultural Integration Support' => 'Student Services',
-            'Study Abroad Programs' => 'Student Services',
-            'Alumni Services' => 'Student Services',
-
-            // Library Services-related categories
-            'Book Borrowing' => 'Library Services',
-            'Access to Digital Resources' => 'Library Services',
-            'Study Room Reservations' => 'Library Services',
-            'Library Fees and Fines' => 'Library Services',
-            'Research Assistance' => 'Library Services',
-
-            // IT Support-related categories
-            'Wi-Fi Issues' => 'IT Support',
-            'Software Installation' => 'IT Support',
-            'Email Issues' => 'IT Support',
-            'Computer Lab Problems' => 'IT Support',
-            'Learning Management System (LMS) Issues' => 'IT Support',
-
-            // Graduation-related categories
-            'Commencement Exercises' => 'Graduation',
-            'Diploma Requests' => 'Graduation',
-
-            // Athletics and Sports-related categories
-            'Sports Club Registration' => 'Athletics and Sports',
-            'Physical Education Classes' => 'Athletics and Sports',
-            'Sports Event Tickets' => 'Athletics and Sports',
-        ];
-    }
-
-    public function index(Request $request, $identifier = null)
-    {
-        // Ticket CRUD is public/guest-facing; do not gate listing by authenticated staff users.
-        // Treat all visitors as guests for the purposes of viewing tickets by recepient/email.
-        $isStaff = false;
-
-        // Get email from session (verified via OTP middleware)
-        $email = session('verified_email');
-
-        // For API requests, return JSON
+        // 3. Handle JSON/API Response
         if ($request->wantsJson()) {
-            // Retrieve all tickets for the verified email
-            $tickets = Ticket::whereRaw('LOWER(email) = ?', [strval(strtolower($email))])
-                ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
-                ->orderBy('date_created', 'desc')
-                ->get();
             return response()->json($tickets);
         }
 
-        // For web requests, return a view with the tickets
-        $tickets = Ticket::whereRaw('LOWER(email) = ?', [strval(strtolower($email))])
-            ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
-            ->orderBy('date_created', 'desc')
-            ->get();
-        $users = User::orderBy('name')->get(['id', 'name']);
-        $identifier = $email;
-        $isEmail = true;
-        return view('tickets.index', compact('tickets', 'identifier', 'isEmail', 'isStaff', 'users'));
+        // 4. Handle Web View
+        return view('tickets.index', [
+            'tickets'    => $tickets,
+            'identifier' => $email,
+            'isEmail'    => true,
+            'isStaff'    => false,
+            'users'      => $service->getSimpleUserList(),
+        ]);
     }
-    public function updateStatus(Request $request, $id)
+    /**
+     * Update the status of a specific ticket.
+     */
+    public function updateStatus(UpdateStatusRequest $request, int $id, TicketService $service)
     {
-        $request->validate([
-            'status' => 'required|in:Open,Closed,Re-Routed'
-        ]);
+        $user = $request->user();
 
-        $user = request()->user();
-        $ticket = Ticket::where('user_id', $user->id)->findOrFail($id);
-
-        $ticket->update(['status' => $request->status]);
-
-        // For API requests, return JSON
-        if ($request->wantsJson()) {
-            return response()->json($ticket);
-        }
-
-        // For web requests, redirect back
-        return redirect()->back()->with('success', 'Ticket status updated successfully!');
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Allow editing of the question and attachments; category must remain unchanged
-        $request->validate([
-            'question' => 'required|string',
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
-            'delete_attachments' => 'nullable|string',
-        ]);
-
-        $ticket = Ticket::findOrFail($id);
-
-        // Handle attachments
-        $currentAttachments = json_decode($ticket->attachments, true) ?? [];
-
-        // Remove deleted attachments
-        if ($request->delete_attachments) {
-            $deleteList = json_decode($request->delete_attachments, true) ?? [];
-            foreach ($deleteList as $path) {
-                if (in_array($path, $currentAttachments)) {
-                    Storage::disk('public')->delete($path);
-                    $currentAttachments = array_diff($currentAttachments, [$path]);
-                }
-            }
-        }
-
-        // Add new attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('attachments', $filename, 'public');
-                $currentAttachments[] = $path;
-            }
-        }
-
-        $ticket->update([
-            'question' => $request->question,
-            'attachments' => json_encode(array_values($currentAttachments)),
-        ]);
-
+        // The service handles finding the ticket and ensuring ownership
+        $ticket = $service->updateTicketStatus($id, $user->id, $request->status);
 
         if ($request->wantsJson()) {
-            return response()->json($ticket);
+            return response()->json([
+                'success' => true,
+                'ticket'  => $ticket,
+                'message' => "Ticket status updated to {$request->status}."
+            ]);
         }
 
-        return redirect()->back()->with('success', 'Ticket updated successfully!');
+        return redirect()->back()->with('success', 'Ticket status updated.');
+    }
+
+    /**
+     * Update the specified ticket in storage.
+     */
+    public function update(UpdateTicketRequest1 $request, Ticket $ticket, TicketService $service)
+    {
+        // Data is already validated and authorized here
+        $service->updateTicket(
+            $ticket,
+            $request->safe()->except('attachments'),
+            $request->file('attachments', []),
+            $request->user() // Passes null if it's a guest
+        );
+
+        return redirect()->back()->with('success', 'Changes saved successfully.');
     }
 
     public function destroy(Request $request, $id)
@@ -452,63 +244,49 @@ class TicketController extends Controller
     /**
      * Send OTP to email for ticket access verification
      */
-    public function sendTicketOtp(Request $request)
+    /**
+     * Handle the request to send an OTP for ticket access.
+     */
+    /**
+     * Handle the request to send an OTP for ticket access.
+     */
+    public function sendTicketOtp(SendOTPRequest $request, OtpService $otpService)
     {
-        $request->validate([
-            'identifier' => 'required|string',
-        ]);
+        try {
+            // 1. Resolve the target email
+            $identifier = $request->validated('identifier');
+            $email = $otpService->resolveEmailFromIdentifier($identifier);
 
-        $identifier = $request->input('identifier');
-        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-
-        // Resolve email from identifier
-        $email = $identifier;
-        if (!$isEmail) {
-            // Try to resolve recepient_id to email
-            $email = Ticket::where('recepient_id', $identifier)
-                ->orderBy('date_created', 'desc')
-                ->value('email');
-
-            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (!$email) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No tickets found for this identifier. Please check and try again.'
+                    'message' => 'No tickets found for this identifier.'
                 ], 422);
             }
-        }
 
-        try {
-            // Generate OTP code (6 digits)
-            $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            // 2. Generate and Send OTP
+            $sent = $otpService->sendOtp($email);
 
-            // Delete any existing OTP for this email
-            \App\Models\Otp::where('email', $email)->delete();
+            if ($sent) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'OTP sent successfully to your email.',
+                    'email'   => $email,
+                ]);
+            }
 
-            // Create new OTP record (expires in 15 minutes)
-            \App\Models\Otp::create([
-                'email' => $email,
-                'otp_code' => $otpCode,
-                'expires_at' => now()->addMinutes(15),
-            ]);
-
-            // Send OTP via email
-            Mail::to($email)->send(new \App\Mail\OtpMail($otpCode));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP sent successfully to your email.',
-                'email' => $email,
-            ]);
+            // If $sent is false but no exception was thrown (logic-level failure)
+            throw new \Exception("The OTP service could not complete the request.");
         } catch (\Throwable $e) {
-            Log::error('Failed to send ticket OTP', [
-                'identifier' => $identifier,
-                'email' => $email,
-                'error' => $e->getMessage()
+            // Log the specific error for debugging
+            Log::error("OTP Generation Error: " . $e->getMessage(), [
+                'identifier' => $request->input('identifier'),
+                'exception'  => get_class($e)
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send OTP. Please try again later.'
+                'message' => 'An unexpected error occurred. Please try again later.'
             ], 500);
         }
     }
@@ -516,170 +294,83 @@ class TicketController extends Controller
     /**
      * Verify OTP for ticket access
      */
-    public function verifyTicketOtp(Request $request)
+    /**
+     * Verify the OTP code and establish a session.
+     */
+    public function verifyTicketOtp(VerifyTicketOTPRequest $request, OtpService $otpService)
     {
-        $request->validate([
-            'identifier' => 'required|string',
-            'otp_code' => 'required|string|size:6',
-        ]);
-
-        $identifier = $request->input('identifier');
-        $otpCode = $request->input('otp_code');
-        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-
-        // Resolve email from identifier
-        $email = $identifier;
-        if (!$isEmail) {
-            $email = Ticket::where('recepient_id', $identifier)
-                ->orderBy('date_created', 'desc')
-                ->value('email');
-
-            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid identifier.'
-                ], 422);
-            }
-        }
-
         try {
-            // Find OTP record
-            $otp = \App\Models\Otp::where('email', $email)->latest()->first();
+            // 1. Resolve Email
+            $email = $otpService->resolveEmailFromIdentifier($$request->validated('identifier'));
+            if (!$email) {
+                return response()->json(['success' => false, 'message' => 'Invalid identifier.'], 422);
+            }
 
-            if (!$otp) {
+            // 2. Verify via Service
+            $verification = $otpService->verifyOtp($email, $request->input('otp_code'));
+
+            if (!$verification['success']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No OTP found. Please request a new one.'
+                    'message' => $verification['message']
                 ], 422);
             }
 
-            // Check if OTP is expired
-            if (now()->isAfter($otp->expires_at)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'OTP has expired. Please request a new one.'
-                ], 422);
-            }
-
-            // Check if OTP is already verified
-            if ($otp->verified_at) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'OTP has already been used.'
-                ], 422);
-            }
-
-            // Verify OTP code
-            if (!$otp->verify($otpCode)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid OTP code. Please try again.'
-                ], 422);
-            }
-
-            // OTP validation succeeded - store session and delete OTP record
+            // 3. Establish Verified Session
             session([
-                'otp_verified' => true,
-                'verified_email' => $email,
+                'otp_verified'    => true,
+                'verified_email'  => $email,
                 'otp_verified_at' => now()
             ]);
 
-            // Delete the OTP record from database
-            $otp->delete();
-
             return response()->json([
-                'success' => true,
-                'message' => 'OTP verified successfully!',
+                'success'      => true,
+                'message'      => 'OTP verified successfully!',
                 'redirect_url' => route('tickets.index', ['email' => $email])
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to verify ticket OTP', [
-                'identifier' => $identifier,
-                'email' => $email,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred. Please try again.'
-            ], 500);
+            Log::error("OTP Verification Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'An error occurred.'], 500);
         }
     }
 
     /**
      * Resend OTP for ticket access (with 1 minute throttle)
      */
-    public function resendTicketOtp(Request $request)
+    /**
+     * Handle the request to resend an OTP code.
+     */
+    public function resendTicketOtp(Request $request, OtpService $otpService)
     {
-        $request->validate([
-            'identifier' => 'required|string',
-        ]);
-
-        $identifier = $request->input('identifier');
-        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-
-        // Resolve email from identifier
-        $email = $identifier;
-        if (!$isEmail) {
-            $email = Ticket::where('recepient_id', $identifier)
-                ->orderBy('date_created', 'desc')
-                ->value('email');
-
-            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tickets found for this identifier.'
-                ], 422);
-            }
-        }
+        $request->validate(['identifier' => 'required|string']);
 
         try {
-            // Check if there's a recent OTP sent within the last minute
-            $recentOtp = \App\Models\Otp::where('email', $email)
-                ->where('created_at', '>', now()->subMinute())
-                ->latest()
-                ->first();
+            $identifier = $request->input('identifier');
+            $email = $otpService->resolveEmailFromIdentifier($identifier);
 
-            if ($recentOtp) {
-                $secondsRemaining = now()->diffInSeconds($recentOtp->created_at->addMinute());
+            if (!$email) {
+                return response()->json(['success' => false, 'message' => 'No tickets found.'], 422);
+            }
+
+            // 1. Check Cooldown (1-minute throttle)
+            $cooldown = $otpService->getResendCooldown($email);
+            if ($cooldown > 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Please wait {$secondsRemaining} seconds before requesting a new OTP.",
-                    'retry_after' => $secondsRemaining
+                    'message' => "Please wait {$cooldown} seconds before requesting a new OTP.",
+                    'retry_after' => $cooldown
                 ], 429);
             }
 
-            // Generate new OTP code
-            $otpCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            // 2. Reuse the sendOtp logic from the service
+            if ($otpService->sendOtp($email)) {
+                return response()->json(['success' => true, 'message' => 'OTP resent successfully!']);
+            }
 
-            // Delete any existing OTP for this email
-            \App\Models\Otp::where('email', $email)->delete();
-
-            // Create new OTP record (expires in 15 minutes)
-            \App\Models\Otp::create([
-                'email' => $email,
-                'otp_code' => $otpCode,
-                'expires_at' => now()->addMinutes(15),
-            ]);
-
-            // Send OTP via email
-            Mail::to($email)->send(new \App\Mail\OtpMail($otpCode));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP resent successfully to your email.'
-            ]);
+            throw new \Exception("The OTP service could not resend the code.");
         } catch (\Throwable $e) {
-            Log::error('Failed to resend ticket OTP', [
-                'identifier' => $identifier,
-                'email' => $email,
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to resend OTP. Please try again later.'
-            ], 500);
+            Log::error("OTP Resend Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to resend OTP.'], 500);
         }
     }
 }

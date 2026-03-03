@@ -2,10 +2,11 @@
 
 namespace App\Services\Admin;
 
-use Illuminate\Support\Facades\{DB, Log, Mail};
+use Illuminate\Support\Facades\{DB, Log, Mail, Storage};
 use App\Models\{Ticket, User, TicketRoutingHistory};
 use App\Mail\TicketProcessedMail;
 use App\Jobs\{SendTicketResponseJob, SendTicketForwardJob, ProcessTicketCreation};
+use Illuminate\Support\{Str, Collection};
 
 class TicketService
 {
@@ -285,37 +286,6 @@ class TicketService
         }
     }
 
-    /**
-     * Updates ticket attributes and records the change in history.
-     */
-    public function updateTicket(Ticket $ticket, array $data, ?User $admin): Ticket
-    {
-        try {
-            return DB::transaction(function () use ($ticket, $data, $admin) {
-                // 1. Handle "Closed" timestamp logic
-                if (isset($data['status']) && $data['status'] === 'Closed' && !$ticket->date_closed) {
-                    $data['date_closed'] = now();
-                }
-
-                // 2. Perform the update
-                $ticket->update($data);
-
-                // 3. Log the administrative change
-                $ticket->routingHistories()->create([
-                    'staff_id'  => $admin?->id,
-                    'status'    => $ticket->status,
-                    'routed_at' => now(),
-                    'notes'     => 'Admin updated ticket metadata/status',
-                ]);
-
-                return $ticket->load('role', 'staff');
-            });
-        } catch (\Throwable $e) {
-            Log::error("Failed to update ticket [ID: {$ticket->id}]: " . $e->getMessage());
-            throw $e; // Re-throw to let the controller handle the error response
-        }
-    }
-
     public function handleDeleteTicket(Ticket $ticket): void
     {
         try {
@@ -369,4 +339,188 @@ class TicketService
 
         return $ticket;
     }
+
+    public function resolveAttachmentPath(string $path): array
+    {
+        // 1. Directory Traversal Protection
+        if (!Str::startsWith($path, 'attachments/')) {
+            return ['exists' => false];
+        }
+
+        $disk = Storage::disk('public');
+
+        // 2. Physical File Check
+        if (!$disk->exists($path)) {
+            return ['exists' => false];
+        }
+
+        return [
+            'exists'    => true,
+            'full_path' => $disk->path($path)
+        ];
+    }
+
+    /**
+     * Validates if an OTP session exists and is still fresh for a given identifier.
+     */
+    public function checkOtpSession(string $email): array
+    {
+        $sessionKey = "otp_verified_{$email}";
+        $otpData = session($sessionKey);
+
+        // No session exists
+        if (!$otpData) {
+            return [
+                'valid' => false,
+                'error_type' => 'info',
+                'message' => 'Please verify your identity via OTP.'
+            ];
+        }
+
+        // Check expiration (30 minutes)
+        $verifiedAt = $otpData['verified_at'] ?? null;
+        if (!$verifiedAt || now()->diffInMinutes($verifiedAt) > 30) {
+            session()->forget($sessionKey);
+            return [
+                'valid' => false,
+                'error_type' => 'info',
+                'message' => 'Your session has expired. Please verify again.'
+            ];
+        }
+
+        return ['valid' => true];
+    }
+
+    /**
+     * Handles file storage, database persistence, and initial job processing.
+     */
+    public function createAndProcessTicket(array $data, array $files): Ticket
+    {
+        // 1. Handle File Uploads
+        $attachmentsPaths = [];
+        foreach ($files as $file) {
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $attachmentsPaths[] = $file->storeAs('attachments', $filename, 'public');
+        }
+
+        // 2. Persist Ticket
+        $ticket = Ticket::create([
+            'category_id'  => $data['role_id'] ?? null,
+            'question'     => $data['question'],
+            'recepient_id' => $data['recepient_id'],
+            'email'        => $data['email'],
+            'status'       => 'Open',
+            'date_created' => now(),
+            'attachments'  => json_encode($attachmentsPaths),
+        ]);
+
+        // 3. Attempt Synchronous Assignment with Async Fallback
+        try {
+            // Instantiate the job and call handle() directly for immediate assignment
+            (new ProcessTicketCreation($ticket->id, $data['role_id'] ?? null))->handle();
+
+            // Refresh ticket to get the staff_id assigned during handle()
+            $ticket->refresh();
+        } catch (\Throwable $e) {
+            Log::warning("Sync ticket processing failed for Ticket #{$ticket->id}, falling back to queue.", [
+                'error' => $e->getMessage()
+            ]);
+
+            ProcessTicketCreation::dispatch($ticket->id, $data['role_id'] ?? null);
+        }
+
+        return $ticket;
+    }
+
+    /**
+     * Retrieve all tickets for a specific email with custom status priority.
+     */
+    public function getTicketsByEmail(string $email): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\Ticket::whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->orderByRaw("FIELD(status, 'Open', 'Forwarded', 'Closed')")
+            ->orderBy('date_created', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get a simple list of users for selection in the view.
+     */
+    public function getSimpleUserList(): Collection
+    {
+        return User::orderBy('name')->get(['id', 'name']);
+    }
+
+    public function updateTicketStatus(int $ticketId, int $userId, string $newStatus): \App\Models\Ticket
+    {
+        $ticket = Ticket::where('user_id', $userId)->findOrFail($ticketId);
+
+        $ticket->update(['status' => $newStatus]);
+
+        // Example of a side effect: 
+        if ($newStatus === 'Closed') {
+            $ticket->update(['date_closed' => now()]);
+        }
+
+        return $ticket;
+    }
+
+    /**
+     * Update ticket content and synchronize attachments.
+     */
+    /**
+     * Unified update method for both Guests and Admins.
+     */
+    public function updateTicket(Ticket $ticket, array $data, array $newFiles = [], ?User $performer = null): Ticket
+    {
+        try {
+            return DB::transaction(function () use ($ticket, $data, $newFiles, $performer) {
+
+                // 1. Handle File Synchronization (If files or deletions are provided)
+                $currentAttachments = json_decode($ticket->attachments, true) ?? [];
+
+                // Remove deleted files
+                if (!empty($data['delete_attachments'])) {
+                    $deleteList = json_decode($data['delete_attachments'], true) ?? [];
+                    foreach ($deleteList as $path) {
+                        if (in_array($path, $currentAttachments)) {
+                            Storage::disk('public')->delete($path);
+                            $currentAttachments = array_diff($currentAttachments, [$path]);
+                        }
+                    }
+                }
+
+                // Store new files
+                foreach ($newFiles as $file) {
+                    $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    $currentAttachments[] = $file->storeAs('attachments', $filename, 'public');
+                }
+
+                // Update the attachments path in the data array
+                $data['attachments'] = json_encode(array_values($currentAttachments));
+
+                // 2. Business Logic: Handle "Closed" timestamp
+                if (isset($data['status']) && $data['status'] === 'Closed' && !$ticket->date_closed) {
+                    $data['date_closed'] = now();
+                }
+
+                // 3. Perform Update
+                $ticket->update($data);
+
+                // 4. Activity Logging (Create history for ALL updates)
+                $ticket->routingHistories()->create([
+                    'staff_id'  => $performer?->id,
+                    'status'    => $ticket->status,
+                    'routed_at' => now(),
+                    'notes'     => $performer ? 'Admin/Staff updated ticket' : 'Guest/User updated ticket content',
+                ]);
+
+                return $ticket->load('role', 'staff');
+            });
+        } catch (\Throwable $e) {
+            Log::error("Failed to update ticket [ID: {$ticket->id}]: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
 }

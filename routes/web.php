@@ -273,39 +273,22 @@ Route::middleware('auth')->group(function () {
                 });
             });
 
-            // Admin Staff Management
+            //Admin Staff Management
             Route::prefix('users')->name('users.')->group(function () {
 
-                // 1. Custom Non-Resource GET Routes (Throttle: 50/min)
+                // Tier 1: Read/View (50/min)
                 Route::middleware('throttle:50,1')->group(function () {
-                    Route::get('/deleted', [AdminStaffController::class, 'usersDeletedIndex'])->name('deleted');
-                    Route::get('/{user}/roles', [AdminStaffController::class, 'usersGetRoles'])->whereNumber('user')->name('roles');
-                    Route::post('/check-email', [AdminStaffController::class, 'usersCheckEmail'])->name('check-email');
+                    Route::get('/', [AdminStaffController::class, 'index'])->name('index');
+                    Route::get('/create', [AdminStaffController::class, 'create'])->name('create');
+                    Route::get('/{user}/edit', [AdminStaffController::class, 'edit'])->name('edit');
                 });
 
-                // 2. Custom Non-Resource POST Routes (Throttle: 10/min)
+                // Tier 2: Write/Actions (10/min)
                 Route::middleware('throttle:10,1')->group(function () {
-                    Route::post('/{user}/restore', [AdminStaffController::class, 'usersRestore'])->whereNumber('user')->name('restore');
-                    Route::post('/resend-verification', [AdminStaffController::class, 'usersResendVerification'])->name('resend-verification');
+                    Route::post('/', [AdminStaffController::class, 'store'])->name('store');
+                    Route::put('/{user}', [AdminStaffController::class, 'update'])->name('update');
+                    Route::delete('/{user}', [AdminStaffController::class, 'destroy'])->name('destroy');
                 });
-
-                // 3. Standard Resource (Tiered Throttling)
-                Route::resource('/', AdminStaffController::class)
-                    ->parameters(['' => 'user'])
-                    ->names([
-                        'index'   => 'index',
-                        'create'  => 'create',
-                        'store'   => 'store',
-                        'edit'    => 'edit',
-                        'update'  => 'update',
-                        'destroy' => 'destroy',
-                    ])
-                    ->except(['show'])
-                    ->whereNumber('user')
-                    ->middleware([
-                        'throttle:50,1' => ['index', 'create', 'edit'],
-                        'throttle:10,1' => ['store', 'update', 'destroy'],
-                    ]);
             });
 
             // Admin Knowledgebase / Document Management
@@ -389,18 +372,27 @@ Route::middleware('auth')->group(function () {
             // Admin Tickets Management
             Route::controller(AdminTicketsController::class)->group(function () {
                 Route::prefix('tickets')->name('tickets.')->group(function () {
-                    Route::get('/', function () {
-                        $users = User::orderBy('name')->get(['id', 'name']);
-                        $roles = Role::orderBy('name')->pluck('name');
-                        return view('dashboards.admin.tickets.index', compact('users', 'roles'));
-                    })->name('index');
-                    Route::get('/list', 'list')->name('list');
-                    Route::post('/', 'store')->name('store');
-                    Route::get('/{ticket}', 'show')->whereNumber('ticket')->name('show');
-                    Route::put('/{ticket}', 'update')->whereNumber('ticket')->name('update');
-                    Route::delete('/{ticket}', 'destroy')->whereNumber('ticket')->name('destroy');
-                    Route::post('/{ticket}/respond', 'respond')->whereNumber('ticket')->name('respond');
-                    Route::post('/{ticket}/forward', 'forward')->whereNumber('ticket')->name('forward');
+
+                    // --- Tier 1: Read-Only Operations (60 requests per minute) ---
+                    Route::middleware('throttle:30,1')->group(function () {
+                        Route::get('/', function () {
+                            $users = User::orderBy('name')->get(['id', 'name']);
+                            $roles = Role::orderBy('name')->pluck('name');
+                            return view('dashboards.admin.tickets.index', compact('users', 'roles'));
+                        })->name('index');
+
+                        Route::get('/list', 'list')->name('list');
+                        Route::get('/{ticket}', 'show')->whereNumber('ticket')->name('show');
+                    });
+
+                    // --- Tier 2: Write/Action Operations (15 requests per minute) ---
+                    Route::middleware('throttle:15,1')->group(function () {
+                        Route::post('/', 'store')->name('store');
+                        Route::put('/{ticket}', 'update')->whereNumber('ticket')->name('update');
+                        Route::delete('/{ticket}', 'destroy')->whereNumber('ticket')->name('destroy');
+                        Route::post('/{ticket}/respond', 'respond')->whereNumber('ticket')->name('respond');
+                        Route::post('/{ticket}/forward', 'forward')->whereNumber('ticket')->name('forward');
+                    });
                 });
             });
 
