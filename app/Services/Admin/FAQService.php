@@ -6,7 +6,7 @@ use App\Http\Requests\Admin\FAQUpdateRequest;
 use App\Models\StagedFaq;
 use App\Models\Ticket;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\{Log, Auth};
+use Illuminate\Support\Facades\{Log, Auth, Http};
 use App\Services\Admin\FAQGeneratorService;
 use DeepCopy\f001\A;
 
@@ -124,5 +124,107 @@ class FAQService
         $perPage = (int)($params['per_page'] ?? 25);
 
         return $query->latest()->paginate($perPage);
+    }
+
+    /**
+     * Retrieve FAQs from the Rasa server's storage.
+     */
+    public function fetchRemoteFaqs(): array
+    {
+        try {
+            $config = config('services.faq_updater');
+            $baseUrl = $config['url'];
+            $secret = $config['secret'];
+
+            if (!$baseUrl || !$secret) {
+                throw new \Exception('FAQ updater service not configured');
+            }
+
+            // 1. Attempt to download the latest faqs.json
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'X-FAQ-UPDATER-TOKEN' => $secret,
+                    'X-Requested-With'    => 'XMLHttpRequest'
+                ])
+                ->get($baseUrl . '/download/faqs.json', [
+                    'token' => $secret
+                ]);
+
+            if ($response->successful()) {
+                $faqsData = $response->json();
+
+                if (isset($faqsData['faqs'])) {
+                    return [
+                        'success' => true,
+                        'faqs'    => $faqsData['faqs'],
+                        'count'   => count($faqsData['faqs']),
+                        'source'  => 'rasa_server'
+                    ];
+                }
+
+                throw new \Exception('Invalid FAQ data format received from server.');
+            }
+
+            // 2. Fallback logic: If the remote server is down, we could return local records
+            // For now, we follow your current pattern of returning a controlled error
+            throw new \Exception('Rasa server responded with status: ' . $response->status());
+        } catch (\Throwable $e) {
+            Log::error('FAQ Fetch Failure: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'error'   => 'Failed to fetch FAQs: ' . $e->getMessage(),
+                'source'  => 'error'
+            ];
+        }
+    }
+
+    /**
+     * Aggregates approved staged FAQs and transforms them for Rasa ingestion.
+     */
+    public function prepareChatbotTrainingData(): array
+    {
+        try {
+            // 1. Fetch and Aggregate
+            // We group by semantic_key to avoid teaching the bot the same intent twice
+            $approvedFaqs = StagedFaq::where('status', 'approved')
+                ->selectRaw('semantic_key, MAX(suggested_q) as question, MAX(suggested_a) as answer, COUNT(*) as ticket_count')
+                ->groupBy('semantic_key')
+                ->orderBy('semantic_key')
+                ->get();
+
+            // 2. Transform into Chatbot-friendly format
+            return [
+                'faqs' => $approvedFaqs->map(function ($faq) {
+                    return [
+                        'semantic_key' => $faq->semantic_key,
+                        'question'     => $faq->question,
+                        'answer'       => $faq->answer,
+                        'ticket_count' => (int) $faq->ticket_count,
+                    ];
+                })->toArray(),
+                'total_faqs'   => $approvedFaqs->count(),
+                'generated_at' => now()->toISOString(),
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Chatbot Training Data Retrieval Failed: ' . $e->getMessage());
+
+            return [
+                'error'   => 'Failed to retrieve training data',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    protected function formatBytes($bytes)
+    {
+        if ($bytes == 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = floor(log($bytes, 1024));
+
+        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
     }
 }
