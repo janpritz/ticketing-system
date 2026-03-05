@@ -29,7 +29,6 @@ use App\Http\Controllers\Staff\AnnouncementController as StaffAnnouncementContro
 use App\Http\Controllers\Staff\DocumentController as StaffDocumentController;
 use App\Http\Controllers\Staff\ReportsController as StaffReportsController;
 use App\Http\Controllers\Staff\StaffController;
-use App\Http\Controllers\Staff\StaffUploadLogsController;
 use App\Http\Controllers\Staff\UploadLogsController;
 /*
 |--------------------------------------------------------------------------
@@ -47,37 +46,37 @@ use App\Models\User;
 
 Route::get('/', function () {
     return redirect()->route('faqs.index');
-})->name('home');
+})->name('home')->middleware('throttle:10,1');
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
 Route::get('/sw.js', function () {
     return response()->file(base_path('sw.js'), [
         'Content-Type' => 'application/javascript',
     ]);
-})->name('sw');
+})->name('sw')->middleware('throttle:10:1');
 
 // Test widget
 Route::get('/test-widget', function () {
     return view('test-widget');
-})->name('test-widget');
+})->name('test-widget')->middleware('throttle:10,1');
 
 // Public FAQs
 Route::controller(PublicFAQsController::class)->group(function () {
     Route::get('/faqs', 'index')->name('faqs.index');
     Route::get('/api/faqs', 'getApprovedFAQs')->name('api.faqs');
-});
+})->middleware('throttle:10,1');
 
 // Static pages
-Route::view('/about', 'faqs.about')->name('about');
-Route::view('/contact', 'contact')->name('contact');
+Route::view('/about', 'faqs.about')->name('about')->middleware('throttle:10,1');
+Route::view('/contact', 'contact')->name('contact')->middleware('throttle:10,1');
 
 // API chatbot
 Route::prefix('api/chatbot')->name('api.chatbot.')->group(function () {
     Route::get('/training-data', [RasaServerController::class, 'getTrainingData'])->name('training-data');
-});
+})->middleware('throttle:20,1');
 
 // Push notification test page
-Route::view('/push-notification', 'PushNotification.push-test')->name('push-notification');
+Route::view('/push-notification', 'PushNotification.push-test')->name('push-notification')->middleware('throttle:10,1');
 
 // Rasa chatbot message endpoint
 Route::post('/send-message', [RasaController::class, 'sendMessage'])->name('rasa.send-message');
@@ -87,24 +86,24 @@ Route::post('/send-message', [RasaController::class, 'sendMessage'])->name('rasa
 | GUEST ONLY ROUTES (Middleware: guest)
 |--------------------------------------------------------------------------
 */
-Route::middleware('guest')->group(function () {
+Route::middleware(['guest'])->group(function () {
     // Authentication - Login
     Route::controller(AuthController::class)->group(function () {
         Route::get('/admin/login', 'showLoginForm')->name('login');
-        Route::post('/admin/login', 'login')->middleware('throttle:10,1')->name('login.post');
-    });
+        Route::post('/admin/login', 'login')->name('login.post');
+    })->middleware('throttle:10,1');
 
     // Password Reset - OTP based
     Route::controller(AuthController::class)->group(function () {
         Route::get('/password/forgot', 'showForgotForm')->name('password.forgot');
-        Route::post('/password/otp', 'sendOtp')->middleware('throttle:5,1')->name('password.otp');
+        Route::post('/password/otp', 'sendOtp')->name('password.otp');
         Route::get('/password/reset', 'showResetForm')->name('password.reset.form');
-        Route::post('/password/reset', 'resetWithOtp')->middleware('throttle:10,1')->name('password.reset.apply');
-    });
+        Route::post('/password/reset', 'resetWithOtp')->name('password.reset.apply');
+    })->middleware('throttle:10,1');
 
     // Account Verification (new staff set password)
     Route::controller(AuthController::class)->group(function () {
-        Route::get('/verify-account/{token}', 'showVerifyAccountForm')->name('staff.verify-account');
+        Route::get('/verify-account/{token}', 'showVerifyAccountForm')->middleware('throttle:10,1')->name('staff.verify-account');
         Route::post('/verify-account', 'verifyAccount')->middleware('throttle:10,1')->name('staff.verify-account.post');
     });
 });
