@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 
-class StaffReportsController extends Controller
+class ReportsController extends Controller
 {
     public function index(Request $request)
     {

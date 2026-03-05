@@ -49,10 +49,29 @@ class Document extends Model
      * <content...>
      * ---------
      */
+    /**
+     * Convert the document content into a clean block of text for the Rasa server.
+     */
     public function toTxtBlock(): string
     {
-        $content = (string) ($this->content ?? '');
-        return "id: {$this->id}\nfile_name: {$this->file_name}\n{$content}\n---------\n";
+        // 1. Get the raw content from the database
+        $content = $this->content ?? '';
+
+        // 2. Remove the metadata header (Roles: ...)
+        $sanitized = $this->stripLeadingRolesLine($content);
+
+        // 3. Add a footer or ID for traceability (optional, but helpful for debugging)
+        return "Ref ID: {$this->id}\n\n" . trim($sanitized);
+    }
+
+    /**
+     * Sanitizer: Removes the first line if it's a roles metadata header.
+     */
+    private function stripLeadingRolesLine(string $content): string
+    {
+        // Using the optimized regex approach to save memory
+        // Looks for "roles:" at the very start of the string
+        return preg_replace('/^\s*roles\s*:.*(\r\n|\n|\r)/i', '', $content, 1);
     }
 
     /**

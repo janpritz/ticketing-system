@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Staff;
 
 use Illuminate\Http\Request;
-use App\Models\{Ticket, Role, User, TicketRoutingHistory};
-use App\Mail\{TicketProcessedMail, TicketResponseMail};
-use Illuminate\Support\Facades\{Storage, Log, DB, Http, Hash, Mail, Auth};
+use App\Models\{Ticket, Role, User};
+use App\Mail\{TicketResponseMail};
+use Illuminate\Support\Facades\{Log, Mail, Auth};
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Staff\TicketResponseRequest;
 use App\Http\Requests\Staff\EmailUpdateNotifRequest;

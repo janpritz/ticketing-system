@@ -30,6 +30,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\RasaController;
+use App\Http\Controllers\Staff\DocumentController;
 use App\Http\Controllers\Staff\StaffController;
 use App\Http\Controllers\Staff\StaffKnowledgebaseController;
 use App\Http\Controllers\Staff\StaffReportsController;
@@ -199,7 +200,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Reports
-            Route::get('/reports', [StaffReportsController::class, 'index'])
+            Route::get('/reports', [ReportsController::class, 'index'])
                 ->name('reports.index');
 
             // Push Notifications
@@ -223,7 +224,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // --- GROUP 3: Knowledgebase & Document Management ---
-        Route::controller(StaffKnowledgebaseController::class)->group(function () {
+        Route::controller(DocumentController::class)->group(function () {
             Route::get('/document-management', 'index')->name('document_management.index');
             Route::get('/document-management/files', 'filesList')->name('document_management.files');
             Route::get('/document-management/fetch', 'fetchFaqs')->name('document_management.fetch');
@@ -234,12 +235,8 @@ Route::middleware('auth')->group(function () {
             Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
 
             // Announcements
-            Route::get('/announcements', 'announcementsIndex')->name('announcements.index');
-            Route::get('/announcements/list', 'announcementsList')->name('announcements.list');
-            Route::post('/announcements', 'announcementsStore')->middleware('throttle:10,1')->name('announcements.store');
-            Route::put('/announcements/{id}', 'announcementsUpdate')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.update');
-            Route::delete('/announcements/{id}', 'announcementsDestroy')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.destroy');
-            Route::post('/announcements/pin/{id}', 'announcementsPin')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.pin');
+            Route::resource('announcements', AnnouncementController::class)
+                ->except(['create']); //there is no create route
         })->middleware(['throttle:20,1']);
 
         // --- GROUP 4: Logs & Testing ---

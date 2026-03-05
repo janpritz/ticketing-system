@@ -1984,7 +1984,7 @@
 
                 try {
                     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                    const res = await fetch('{{ route('admin.document-changes.start-rasa-api') }}', {
+                    const res = await fetch('{{ route('admin.rasa-server.start-rasa-api') }}', {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': csrf,
