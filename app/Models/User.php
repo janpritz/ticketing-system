@@ -148,4 +148,12 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Document::class, 'staff_id');
     }
 
+    /**
+     * Check if the user has the Primary Administrator role.
+     */
+    public function isPrimaryAdmin(): bool
+    {
+        // This checks the pivot table directly without loading all role data
+        return $this->roles()->where('roles.id', 1)->exists();
+    }
 }

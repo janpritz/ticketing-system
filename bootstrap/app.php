@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.verified.email' => \App\Http\Middleware\CheckVerifiedEmailCookie::class,
             'otp.verified' => \App\Http\Middleware\EnsureOtpVerified::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'staff' => \App\Http\Middleware\EnsureIsStaff::class,
+            'can.access.ticket' => \App\Http\Middleware\EnsureStaffCanAccessTicket::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

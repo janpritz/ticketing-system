@@ -175,27 +175,54 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('staff')->name('staff.')->group(function () {
-        // Staff Dashboard
-        Route::controller(StaffController::class)->group(function () {
-            Route::get('/dashboard', 'index')->name('dashboard');
-            Route::get('/dashboard/data', 'data')->middleware('throttle:20,1')->name('dashboard.data');
-            Route::get('/profile', 'profile')->name('profile');
-            Route::post('/profile', 'updateProfile')->name('profile.update');
-            Route::post('/profile/email-notifications', 'updateEmailNotifications')->name('profile.email_notifications');
-            Route::get('/profile/password', 'passwordForm')->name('profile.password');
-            Route::post('/profile/password', 'passwordUpdate')->middleware('throttle:5,1')->name('profile.password.update');
+
+        // --- GROUP 1: General Staff Access ---
+        // These routes require the user to be a staff member but are not tied to a specific ticket ID.
+        Route::middleware(['staff', 'throttle:30,1'])->group(function () {
+
+            Route::controller(StaffController::class)->group(function () {
+                Route::get('/dashboard', 'index')->name('dashboard');
+                Route::get('/dashboard/data', 'data')->middleware('throttle:20,1')->name('dashboard.data');
+                Route::get('/tickets', 'tickets')->name('tickets');
+                Route::get('/tickets/data', 'ticketsData')->name('tickets.data');
+                Route::get('/tickets/recent', 'recentTickets')->name('tickets.recent');
+
+                // Profile & Settings
+                Route::get('/profile', 'profile')->name('profile');
+                Route::post('/profile', 'updateProfile')->name('profile.update');
+                Route::post('/profile/email-notifications', 'updateEmailNotifications')->name('profile.email_notifications');
+                Route::get('/profile/password', 'passwordForm')->name('profile.password');
+                Route::post('/profile/password', 'passwordUpdate')->middleware('throttle:5,1')->name('profile.password.update');
+
+                // Utilities
+                Route::get('/mail/test', 'mailTest')->middleware('throttle:5,1')->name('mail.test');
+            });
+
+            // Reports
+            Route::get('/reports', [StaffReportsController::class, 'index'])
+                ->name('reports.index');
+
+            // Push Notifications
+            Route::controller(PushNotificationController::class)->group(function () {
+                Route::post('/push/subscribe', 'saveSubscription')->name('push.subscribe');
+                Route::post('/push/send', 'sendNotification')->name('push.send');
+                Route::post('/push/test', 'sendTest')->name('push.test');
+            });
         });
 
-        // Staff Tickets
-        Route::controller(StaffController::class)->group(function () {
-            Route::get('/tickets', 'tickets')->name('tickets');
-            Route::get('/tickets/data', 'ticketsData')->name('tickets.data');
-            Route::get('/tickets/{ticket}', 'showTicket')->whereNumber('ticket')->name('tickets.show');
-            Route::post('/tickets/{ticket}/respond', 'respond')->whereNumber('ticket')->middleware('throttle:20,1')->name('tickets.respond');
-            Route::post('/tickets/{ticket}/forward', 'forward')->whereNumber('ticket')->middleware('throttle:30,1')->name('tickets.forward');
+        // --- GROUP 2: Ticket-Specific Security ---
+        // These routes use the 'ticket.access' middleware to ensure the staff is assigned 
+        // to the ticket or is a Primary Administrator.
+        Route::middleware(['staff', 'can.access.ticket', 'throttle:30,1'])->group(function () {
+            Route::controller(StaffController::class)->group(function () {
+                Route::get('/tickets/{ticket}', 'showTicket')->whereNumber('ticket')->name('tickets.show');
+                Route::post('/tickets/{ticket}/respond', 'respond')->whereNumber('ticket')->middleware('throttle:20,1')->name('tickets.respond');
+                Route::post('/tickets/{ticket}/forward', 'forward')->whereNumber('ticket')->middleware('throttle:30,1')->name('tickets.forward');
+                Route::get('/tickets/{ticket}/permissions', 'ticketPermissions')->name('tickets.permissions');
+            });
         });
 
-        // Staff Knowledgebase / Document Management
+        // --- GROUP 3: Knowledgebase & Document Management ---
         Route::controller(StaffKnowledgebaseController::class)->group(function () {
             Route::get('/document-management', 'index')->name('document_management.index');
             Route::get('/document-management/files', 'filesList')->name('document_management.files');
@@ -205,44 +232,26 @@ Route::middleware('auth')->group(function () {
             Route::put('/document-management/{faq}', 'update')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.update');
             Route::delete('/document-management/{faq}', 'destroy')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.destroy');
             Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
-        });
 
-        // Staff Document Management Test Page
-        Route::get('/document-management/test', function () {
-            return view('staff.documents.test');
-        })->name('document_management.test');
-
-        // Staff Announcements
-        Route::controller(StaffKnowledgebaseController::class)->group(function () {
+            // Announcements
             Route::get('/announcements', 'announcementsIndex')->name('announcements.index');
             Route::get('/announcements/list', 'announcementsList')->name('announcements.list');
             Route::post('/announcements', 'announcementsStore')->middleware('throttle:10,1')->name('announcements.store');
             Route::put('/announcements/{id}', 'announcementsUpdate')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.update');
             Route::delete('/announcements/{id}', 'announcementsDestroy')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.destroy');
             Route::post('/announcements/pin/{id}', 'announcementsPin')->whereNumber('id')->middleware('throttle:10,1')->name('announcements.pin');
-        });
+        })->middleware(['throttle:20,1']);
 
-        // Staff Reports
-        Route::controller(StaffReportsController::class)->group(function () {
-            Route::get('/reports', 'index')->name('reports.index');
-        });
+        // --- GROUP 4: Logs & Testing ---
+        Route::get('/document-management/test', function () {
+            return view('staff.documents.test');
+        })->name('document_management.test')->middleware('throttle:10,1');
 
-        // Staff Upload Logs
         Route::controller(StaffUploadLogsController::class)->group(function () {
             Route::get('/upload-logs', 'index')->name('upload-logs.index');
             Route::post('/upload-logs', 'store')->middleware('throttle:20,1')->name('upload-logs.store');
             Route::get('/upload-logs/download-zip', 'downloadZip')->name('upload-logs.download-zip');
-        });
-
-        // Staff Push Notifications
-        Route::controller(PushNotificationController::class)->group(function () {
-            Route::post('/push/subscribe', 'saveSubscription')->name('push.subscribe');
-            Route::post('/push/send', 'sendNotification')->name('push.send');
-            Route::post('/push/test', 'sendTest')->name('push.test');
-        });
-
-        // SMTP Test
-        Route::get('/mail/test', [StaffController::class, 'mailTest'])->middleware('throttle:5,1')->name('mail.test');
+        })->middleware('throttle:20,1');
     });
 
     /*
