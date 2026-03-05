@@ -15,20 +15,29 @@ class CheckVerifiedEmailCookie
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get the verified_email cookie
         $verifiedEmail = $request->cookie('verified_email');
-        
-        // If verified_email cookie exists and no email parameter in URL, redirect with email parameter
-        if ($verifiedEmail && !$request->has('email')) {
-            // For /tickets/verify-otp, redirect to /tickets with email parameter
-            if ($request->path() === 'tickets/verify-otp' || strpos($request->path(), 'tickets/verify-otp/') === 0) {
-                return redirect()->to('/tickets?email=' . urlencode($verifiedEmail));
-            }
-            
-            // For other /tickets routes, append email parameter
-            return redirect()->to($request->path() . '?email=' . urlencode($verifiedEmail));
+
+        // 1. If they enter the URL exactly as /tickets/verify-otp, 
+        // redirect them to include a random 6-digit identifier.
+        if ($request->is('tickets/verify-otp') && !$request->route('identifier')) {
+            $randomId = rand(100000, 999999);
+
+            // Build the new URL with the random ID and keep the email cookie if it exists
+            $query = $verifiedEmail ? ['email' => $verifiedEmail] : [];
+
+            return redirect()->to(url("tickets/verify-otp/{$randomId}", $query));
         }
-        
+
+        // 2. Safe Zone: If it ALREADY has an identifier, let it pass through.
+        if ($request->is('tickets/verify-otp/*')) {
+            return $next($request);
+        }
+
+        // 3. Standard logic for other /tickets routes
+        if ($verifiedEmail && !$request->query('email')) {
+            return redirect()->to($request->fullUrlWithQuery(['email' => $verifiedEmail]));
+        }
+
         return $next($request);
     }
 }

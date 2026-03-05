@@ -16,7 +16,7 @@
         window.APP_AUTHENTICATED = @json(auth()->check());
     </script>
 
-    <title>{{ config('app.name', 'Ticketing System') }} - @yield('title')</title>
+    <title>{{ 'SangkayFAQs' }} - @yield('title')</title>
 
     <!-- Favicons & PWA manifest: use proper icon sizes for add-to-home and modern platforms -->
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icon-192.png') }}">

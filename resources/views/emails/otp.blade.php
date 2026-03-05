@@ -4,15 +4,6 @@
   <meta charset="UTF-8">
   <title>Ticket Viewing Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
-  <![endif]-->
 </head>
 <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#0f172a; margin:0; padding:24px;">
   <!-- Outer wrapper for gradient background -->

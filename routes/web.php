@@ -130,7 +130,7 @@ Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name
 // Ticket email/OTP verification routes
 Route::controller(TicketController::class)->group(function () {
     Route::get('/tickets/verify-email', 'showVerifyEmail')->name('tickets.verify');
-    Route::get('/tickets/verify-otp/{identifier?}', 'showVerifyOtp')->name('tickets.verify-otp');
+    Route::get('/tickets/verify-otp/{identifier?}', 'showVerifyOtp')->name('tickets.verify-otp')->middleware('throttle:10,1');
     Route::post('/tickets/send-otp', 'sendTicketOtp')->middleware('throttle:5,1')->name('tickets.send-otp');
     Route::post('/tickets/verify-otp', 'verifyTicketOtp')->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
     Route::post('/tickets/resend-otp', 'resendTicketOtp')->middleware('throttle:5,1')->name('tickets.resend-otp');
