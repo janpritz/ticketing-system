@@ -38,10 +38,6 @@
                 display: block !important;
             }
 
-            .mobile-header-right {
-                margin-top: 8px !important;
-            }
-
             .mobile-contact-button {
                 display: block !important;
                 width: 100% !important;
@@ -55,117 +51,105 @@
     </style>
 </head>
 
-<body style="margin:0;padding:0;background-color:#ffffff;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:16px 0;">
+<body
+    style="margin:0;padding:0;background-color:#f8fafc;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:16px 0;">
         <tr>
             <td align="center">
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="mobile-full-width"
-                    style="width:600px;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';">
+                    style="width:600px;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 6px 18px rgba(15,23,42,0.06);border:1px solid #e5e7eb;">
 
-                    <!-- Header -->
                     <tr>
-                        <td class="mobile-padding"
-                            style="padding:20px 24px;background:#ffffff;border-bottom:1px solid #e5e7eb;">
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-                                style="border-collapse:collapse;">
-                                <tr>
-                                    <td class="mobile-header-stack">
-                                        <div style="font-size:16px;font-weight:700;color:#1f2937;">
-                                            Ticket ID: {{ $ticketNo }}
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
+                        <td style="padding:20px 24px;background:linear-gradient(90deg,#d97706,#b45309);color:#fff">
+                            <div style="display:flex;align-items:center;justify-content:space-between">
+                                <div>
+                                    <h1 style="margin:0;font-size:18px;font-weight:700;letter-spacing:-0.2px">Ticket
+                                        Response</h1>
+                                    <p style="margin:4px 0 0 0;font-size:13px;opacity:0.95">A staff member has replied
+                                        to your ticket.</p>
+                                </div>
+                                <div style="font-size:12px;opacity:0.95">ID: <strong
+                                        style="display:inline-block;margin-left:6px">{{ $ticketNo }}</strong></div>
+                            </div>
                         </td>
                     </tr>
 
-                    <!-- Content -->
                     <tr>
                         <td class="mobile-padding" style="padding:24px;">
                             <div class="mobile-chat-container" style="max-width:100%;">
 
-                                <!-- User's Question Bubble -->
                                 <div
-                                    style="margin:0 0 8px 0;font-size:12px;color:#4b5563;font-weight:600;text-align:left;">
+                                    style="margin:0 0 8px 0;font-size:12px;color:#64748b;font-weight:600;text-align:left;">
                                     You</div>
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                     style="margin-bottom:24px;">
                                     <tr>
                                         <td align="left" class="mobile-stack">
                                             <div class="mobile-bubble"
-                                                style="font-size:14px;color:#111827;background:#e5e7eb;padding:12px 16px;border-radius:18px 18px 18px 2px;display:inline-block;width:auto;max-width:400px;word-break:break-word;text-align:left;margin:0;text-indent:0;">
-                                                {{ $ticket->question ?? 'Question not available.' }}</div>
+                                                style="font-size:14px;color:#475569;background:#f1f5f9;padding:12px 16px;border-radius:18px 18px 18px 2px;display:inline-block;max-width:400px;word-break:break-word;">
+                                                {{ $ticket->question ?? 'Question not available.' }}
+                                            </div>
                                         </td>
                                     </tr>
                                 </table>
 
-                                <!-- Staff Response Bubble -->
                                 <div
-                                    style="margin:0 0 8px 0;font-size:12px;color:#4b5563;font-weight:600;text-align:right;">
-                                    {{ $responderName ?? 'Support Team' }}</div>
+                                    style="margin:0 0 8px 0;font-size:12px;color:#d97706;font-weight:600;text-align:right;">
+                                    {{ $responderName ?? 'Support Team' }}
+                                </div>
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                     style="margin-bottom:24px;">
                                     <tr>
                                         <td align="right" class="mobile-stack">
                                             <div class="mobile-bubble"
-                                                style="font-size:14px;color:#111827;background:#dbeafe;padding:12px 16px;border-radius:18px 18px 2px 18px;display:inline-block;width:auto;max-width:400px;word-break:break-word;text-align:left;margin:0;text-indent:0;">
-                                                {!! nl2br(e($messageBody ?? 'No response content available.')) !!}</div>
+                                                style="font-size:14px;color:#ffffff;background:#d97706;padding:12px 16px;border-radius:18px 18px 2px 18px;display:inline-block;max-width:400px;word-break:break-word;text-align:left;">
+                                                {!! nl2br(e($messageBody ?? 'No response content available.')) !!}
+                                            </div>
                                         </td>
                                     </tr>
                                 </table>
 
-                                <div style="clear:both;"></div>
-
-                                <!-- Contact Information -->
                                 <div
-                                    style="background:#f0f9ff;border:1px solid #0ea5e9;padding:20px;border-radius:8px;margin:24px 0;">
-                                    <p style="margin:0 0 12px 0;font-size:16px;color:#0c4a6e;font-weight:600;">Need to
+                                    style="background:#fffbeb;border:1px solid #fde68a;padding:20px;border-radius:8px;margin:24px 0;">
+                                    <p style="margin:0 0 12px 0;font-size:16px;color:#92400e;font-weight:600;">Need to
                                         follow up?</p>
-                                    <p style="margin:0 0 16px 0;font-size:14px;color:#0c4a6e;line-height:1.5;">
-                                        If you have any additional questions or need clarification, feel free to contact
-                                        the staff member who handled your ticket:
+                                    <p style="margin:0 0 16px 0;font-size:14px;color:#b45309;line-height:1.5;">
+                                        If you need clarification, you can reach out to the staff member directly:
                                     </p>
                                     <div class="mobile-contact-info"
-                                        style="background:#ffffff;border:1px solid #0ea5e9;border-radius:6px;padding:16px;margin:16px 0;">
-                                        <div class="mobile-contact-info"
-                                            style="font-size:14px;color:#0c4a6e;margin-bottom:8px;">
-                                            <strong>Staff Member:</strong> {{ $staffName }}
-                                        </div>
-                                        <div class="mobile-contact-info"
-                                            style="font-size:14px;color:#0c4a6e;margin-bottom:16px;">
-                                            <strong>Email:</strong> {{ $staffEmail }}
-                                        </div>
-                                        <a href="mailto:{{ $staffEmail }}?subject=Re:%20{{ rawurlencode($ticketNo) }}&body={{ rawurlencode('Reference: ' . $ticketNo . "\n\n" . ($ticket->question ? 'Original Question: ' . $ticket->question . "\n\n" : '') . ($messageBody ? 'Response: ' . $messageBody . "\n\n" : '') . 'I would like to follow up on my ticket.\n\n') }}"
+                                        style="background:#ffffff;border:1px solid #fde68a;border-radius:6px;padding:16px;">
+                                        <div style="font-size:14px;color:#451a03;margin-bottom:4px;">
+                                            <strong>{{ $staffName }}</strong></div>
+                                        <div style="font-size:13px;color:#92400e;margin-bottom:12px;">
+                                            {{ $staffEmail }}</div>
+
+                                        <a href="mailto:{{ $staffEmail }}?subject=Re:%20{{ rawurlencode($ticketNo) }}"
                                             class="mobile-contact-button"
-                                            style="display: block; background: #0ea5e9; color: #ffffff; text-decoration: none; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; box-sizing: border-box;"
-                                            target="_blank">
-                                            Follow up
+                                            style="display: block; background: #d97706; color: #ffffff; text-decoration: none; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center;">
+                                            Send Email Follow-up
                                         </a>
                                     </div>
-                                    <p style="margin:12px 0 0 0;font-size:12px;color:#0c4a6e;opacity:0.8;">
-                                        Click the button above to open your email client with a pre-filled message.
-                                    </p>
                                 </div>
 
-
-                                <!-- Footer -->
-                    <tr>
-                        <td class="mobile-padding"
-                            style="padding:16px 24px;background:#ffffff;color:#9ca3af;font-size:11px;line-height:1.5;border-top:1px solid #e5e7eb;">
-                            <div class="mobile-text-center">
-                                This email was sent from the Sangkay Ticketing System.<br>
-                                Please note that we don't monitor replies to this address. If you need more help, feel
-                                free to reach out using the contact details listed above.
-                                <div style="font-size:11px;color:#d1d5db;margin-top:10px;">
-                                    &copy; {{ date('Y') }} Sangkay Chatbot Integrated Ticketing System
-                                </div>
                             </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td
+                            style="padding:16px 24px;background:#f1f5f9;color:#64748b;font-size:12px;text-align:center;line-height:1.5;">
+                            This is an automated message from Sangkay Ticketing System.<br>
+                            Please do not reply directly to this email.
                         </td>
                     </tr>
                 </table>
             </td>
         </tr>
     </table>
+
+    <div style="text-align:center;font-size:8px;color:#94a3b8;margin-bottom:24px;">
+        Sangkay Integrated Ticketing System &copy; 2026
+    </div>
 </body>
 
 </html>

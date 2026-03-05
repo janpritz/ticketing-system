@@ -53,5 +53,10 @@
         </td>
       </tr>
     </table>
+
+    <div style="text-align:center;font-size:8px;color:#94a3b8;margin-bottom:24px;">
+        Sangkay Integrated Ticketing System &copy; 2026
+    </div>
+
   </body>
 </html>
