@@ -8,34 +8,28 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Custom Controllers - Alphabetical Order
-|--------------------------------------------------------------------------
-*/
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTicketsController;
+use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentChangesController;
 use App\Http\Controllers\Admin\FAQsController;
 use App\Http\Controllers\Admin\KnowledgebaseController;
 use App\Http\Controllers\Admin\RasaServerController;
-use App\Http\Controllers\Admin\ReportsController;
-use App\Http\Controllers\Admin\RolesController;
-use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\RasaTrainingController;
+use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
+use App\Http\Controllers\Admin\RolesController;
 use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\RasaController;
-use App\Http\Controllers\Staff\DocumentController;
-use App\Http\Controllers\Staff\StaffController;
-use App\Http\Controllers\Staff\StaffKnowledgebaseController;
-use App\Http\Controllers\Staff\StaffReportsController;
-use App\Http\Controllers\Staff\StaffUploadLogsController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\Staff\AnnouncementController as StaffAnnouncementController;
+use App\Http\Controllers\Staff\DocumentController as StaffDocumentController;
+use App\Http\Controllers\Staff\ReportsController as StaffReportsController;
+use App\Http\Controllers\Staff\StaffController;
+use App\Http\Controllers\Staff\StaffUploadLogsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -200,7 +194,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Reports
-            Route::get('/reports', [ReportsController::class, 'index'])
+            Route::get('/reports', [StaffReportsController::class, 'index'])
                 ->name('reports.index');
 
             // Push Notifications
@@ -224,7 +218,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // --- GROUP 3: Knowledgebase & Document Management ---
-        Route::controller(DocumentController::class)->group(function () {
+        Route::controller(StaffDocumentController::class)->group(function () {
             Route::get('/document-management', 'index')->name('document_management.index');
             Route::get('/document-management/files', 'filesList')->name('document_management.files');
             Route::get('/document-management/fetch', 'fetchFaqs')->name('document_management.fetch');
@@ -235,8 +229,15 @@ Route::middleware('auth')->group(function () {
             Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
 
             // Announcements
-            Route::resource('announcements', AnnouncementController::class)
-                ->except(['create']); //there is no create route
+            // 1. Custom Action: Pinning (PUT or POST is acceptable, but POST is common for toggles)
+            Route::post('announcements/{id}/pin', [StaffAnnouncementController::class, 'pin'])
+                ->whereNumber('id')
+                ->name('announcements.pin');
+
+            // 2. The Resource: This handles index, store, show, update, and destroy
+            Route::resource('announcements', StaffAnnouncementController::class)
+                ->except(['create', 'edit'])
+                ->middleware('throttle:10,1');
         })->middleware(['throttle:20,1']);
 
         // --- GROUP 4: Logs & Testing ---
@@ -403,7 +404,7 @@ Route::middleware('auth')->group(function () {
             });
 
             // Admin Reports
-            Route::controller(ReportsController::class)->group(function () {
+            Route::controller(AdminReportsController::class)->group(function () {
                 Route::prefix('reports')->name('reports.')->group(function () {
                     Route::get('/', 'index')->name('index');
                     Route::get('/backlog-trend-data', 'getBacklogTrendDataAjax')->name('backlog-trend-data');
@@ -414,10 +415,10 @@ Route::middleware('auth')->group(function () {
             });
 
             // Standard Web Resource
-            Route::resource('announcements', AnnouncementController::class);
+            Route::resource('announcements', AdminAnnouncementController::class);
 
             // Custom Action (Needs its own line)
-            Route::post('announcement/{id}/pin', [AnnouncementController::class, 'pin'])->name('announcement.pin');
+            Route::post('announcement/{id}/pin', [AdminAnnouncementController::class, 'pin'])->name('announcement.pin');
 
             // Admin Rasa Server Manager
             Route::controller(RasaServerController::class)->group(function () {

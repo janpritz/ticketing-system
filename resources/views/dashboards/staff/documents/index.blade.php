@@ -88,43 +88,43 @@
             </div>
         </div>
 
-        @if(Auth::check() && ((int) (Auth::user()->role_id ?? 0) === 1))
-        <!-- Training Required Alert -->
-        <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                clip-rule="evenodd" />
-                        </svg>
+        @if (Auth::check() && (int) (Auth::user()->role_id ?? 0) === 1)
+            <!-- Training Required Alert -->
+            <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-orange-700">
+                                <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
+                            </p>
+                        </div>
                     </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-orange-700">
-                            <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
-                        </p>
+                    <div class="ml-4">
+                        <button id="trainRasaBtn"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
+                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            <span id="trainBtnText">Train Rasa</span>
+                            <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                        </button>
                     </div>
-                </div>
-                <div class="ml-4">
-                    <button id="trainRasaBtn"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200">
-                        <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span id="trainBtnText">Train Rasa</span>
-                        <svg class="ml-2 h-4 w-4 hidden" id="trainSpinner" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                            </path>
-                        </svg>
-                    </button>
                 </div>
             </div>
-        </div>
         @endif
 
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -408,14 +408,17 @@
                 <div class="h-12 flex items-center justify-between px-4 border-b">
                     <div class="text-sm font-semibold text-slate-800">Edit Document</div>
                     <div class="flex items-center gap-3">
-                        <button id="deleteDocBtn" type="button" class="text-red-600 hover:text-red-800" aria-label="Delete document">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <button id="deleteDocBtn" type="button" class="text-red-600 hover:text-red-800"
+                            aria-label="Delete document">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                fill="currentColor">
                                 <path d="M9 3v1H4v2h16V4h-5V3H9zm2 5v9h2V8h-2zm-4 0v9h2V8H7zm8 0v9h2V8h-2z" />
                             </svg>
                         </button>
                         <button type="button" class="text-slate-500 hover:text-slate-700" data-close="edit-doc"
                             aria-label="Close">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                fill="currentColor">
                                 <path d="M6 18 18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -658,53 +661,53 @@
             // Fetch docs list via AJAX
             async function fetchDocs() {
                 console.log('[DEBUG] fetchDocs() function called');
-                const docsListEl = $('#docsList');
-                console.log('[DEBUG] docsListEl found:', docsListEl);
+                const docsListEl = document.getElementById('docsList'); // Using native JS for innerHTML consistency
+
                 try {
                     docsListEl.innerHTML = '<div class="text-center text-sm text-gray-500">Loading docs...</div>';
-                    console.log('[DEBUG] Set loading message');
 
-                    // Fetch the server-side filtered file list (avoids exposing Rasa secret to the browser)
                     const listUrl = '{{ route('staff.document_management.files') }}';
-                    console.log('[DEBUG] fetchDocs - Requesting server file list at:', listUrl);
-
                     const res = await fetch(listUrl, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
                         }
                     });
 
-                    console.log('[DEBUG] fetchDocs - Response status:', res.status);
-
+                    // 1. Handle HTTP errors (404, 500, etc)
                     if (!res.ok) {
-                        const errorText = await res.text();
-                        console.error('[DEBUG] fetchDocs - Error response:', errorText);
-                        throw new Error(`Failed to load docs: ${res.status} - ${errorText}`);
+                        const errorData = await res.json().catch(() => ({})); // Try to parse JSON error
+                        const msg = errorData.error || `Error ${res.status}`;
+                        throw new Error(msg);
                     }
 
                     const json = await res.json();
-                    console.log('[DEBUG] fetchDocs - Server response JSON:', json);
-                    // If diagnostics are present, log duplicate information
-                    if (json.diagnostics && json.diagnostics.duplicate_names && json.diagnostics.duplicate_names.length) {
-                        console.warn('[DEBUG] Rasa reported duplicate file names:', json.diagnostics.duplicate_names);
-                    }
+
+                    // 2. Handle Logic errors returned with 200 OK
                     if (!json.ok) {
-                        console.error('[DEBUG] fetchDocs - API error:', json.error);
                         throw new Error(json.error || 'Failed to load docs');
                     }
 
                     renderDocsList(json.files || []);
+
                 } catch (err) {
                     console.error('[DEBUG] fetchDocs - Exception:', err);
-                    // Check if it's a network error (server offline)
-                    if (err.message.includes('Failed to fetch') || err.message.includes('fetch')) {
-                        docsListEl.innerHTML =
-                            `<div class="text-center text-sm text-red-600 mb-4">Error loading FAQs Documents: Rasa server is offline.</div>`;
-                    } else {
-                        docsListEl.innerHTML =
-                            `<div class="text-center text-sm text-red-600">Error loading FAQs Documents: ${err.message}</div>`;
+
+                    let displayMessage = err.message;
+
+                    // 3. Clean up the message for the user
+                    if (displayMessage.includes('Rasa Server is Offline')) {
+                        displayMessage = "Rasa Server is Offline. Contact the Administrator";
+                    } else if (displayMessage.includes('Failed to fetch')) {
+                        // This catches actual network/DNS failures
+                        displayMessage = "Rasa Server is Offline. Contact the Administrator";
                     }
-                    // queued documents functionality removed
+
+                    docsListEl.innerHTML = `
+            <div class="p-4 bg-red-50 border border-red-200 rounded-md">
+                <p class="text-center text-sm text-red-600 font-medium">
+                    ${displayMessage}
+                </p>
+            </div>`;
                 }
             }
 
@@ -1379,17 +1382,23 @@
 
                     try {
                         deleteDocBtn.disabled = true;
-                        const res = await fetch('{{ route('staff.document_management.document.destroy') }}', {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': csrf,
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({ file_name: filename })
-                        });
+                        const res = await fetch(
+                            '{{ route('staff.document_management.document.destroy') }}', {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    file_name: filename
+                                })
+                            });
 
-                        const json = await (res.ok ? res.json() : { success: false, error: await res.text() });
+                        const json = await (res.ok ? res.json() : {
+                            success: false,
+                            error: await res.text()
+                        });
 
                         if (!res.ok || !json.success) {
                             console.error('[Delete] response status:', res.status, 'body:', json);
@@ -1596,7 +1605,10 @@
                             })
                         });
 
-                        const result = await (res.ok ? res.json() : { success: false, error: await res.text() });
+                        const result = await (res.ok ? res.json() : {
+                            success: false,
+                            error: await res.text()
+                        });
 
                         console.log('[File Upload] App response:', result);
 
@@ -2018,18 +2030,18 @@
                 }
             }
 
-            @if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
-            // Add event listener for train button
-            const trainBtn = $('#trainRasaBtn');
-            if (trainBtn) {
-                trainBtn.addEventListener('click', trainRasa);
-            }
+            @if (Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
+                // Add event listener for train button
+                const trainBtn = $('#trainRasaBtn');
+                if (trainBtn) {
+                    trainBtn.addEventListener('click', trainRasa);
+                }
             @endif
 
             // Initialize: fetch docs on page load
             fetchDocs();
-            @if(Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
-            checkTrainingStatus();
+            @if (Auth::check() && strtolower((string) (Auth::user()->role ?? '')) === 'primary administrator')
+                checkTrainingStatus();
             @endif
 
         })();

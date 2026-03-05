@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Document;
 use App\Http\Controllers\Controller;
 use App\Services\Staff\DocumentService;
+use Illuminate\Http\Client\ConnectionException;
 
 class DocumentController extends Controller
 {
@@ -21,7 +22,7 @@ class DocumentController extends Controller
             'include_deleted' => $includeDeleted ? 'true' : 'false'
         ]);
 
-        return view('dashboards.staff.knowledgebase.index', [
+        return view('dashboards.staff.documents.index', [
             'listUrl'       => $listUrl,
             'isDeletedView' => $includeDeleted,
         ]);
@@ -106,11 +107,16 @@ class DocumentController extends Controller
             $result = $service->getOwnedFilesFromRasa($auth);
 
             return response()->json($result);
-        } catch (\Throwable $e) {
-            Log::error('filesList error: ' . $e->getMessage());
+        } catch (ConnectionException $e) {
+            // Specifically caught when the server cannot be reached
             return response()->json([
                 'ok' => false,
-                'error' => 'Unable to retrieve file list'
+                'error' => 'Rasa Server is Offline'
+            ], 503);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Rasa Server is Offline' // The frontend checks for this exact string
             ], 500);
         }
     }

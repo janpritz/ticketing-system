@@ -10,11 +10,18 @@ use App\Services\Staff\AnnouncementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Http, Log};
 
-class AnnoucenmentController extends Controller
+class AnnouncementController extends Controller
 {
-    public function index()
+    public function index(AnnouncementService $service)
     {
-        return view('dashboards.staff.announcements.index');
+        /** @var \App\Models\User $auth */
+        $auth = Auth::user();
+        // Optional: Pass the count or initial data if needed for the UI
+        $initialData = [
+            'can_pin' => $auth->isPrimaryAdmin(),
+        ];
+
+        return view('dashboards.staff.announcements.index', compact('initialData'));
     }
 
     public function store(AnnouncementStoreRequest $request, AnnouncementService $service)
@@ -135,7 +142,7 @@ class AnnoucenmentController extends Controller
     /**
      * Toggle the pinned status of an announcement and sync with Rasa.
      */
-    public function announcementsPin($id, AnnouncementService $service)
+    public function pin($id, AnnouncementService $service)
     {
         $announcement = Announcement::find($id);
 
