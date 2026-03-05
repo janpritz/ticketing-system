@@ -30,7 +30,7 @@ use App\Http\Controllers\Staff\DocumentController as StaffDocumentController;
 use App\Http\Controllers\Staff\ReportsController as StaffReportsController;
 use App\Http\Controllers\Staff\StaffController;
 use App\Http\Controllers\Staff\StaffUploadLogsController;
-
+use App\Http\Controllers\Staff\UploadLogsController;
 /*
 |--------------------------------------------------------------------------
 | Other Classes (Requests, Services, Models, etc.)
@@ -245,7 +245,7 @@ Route::middleware('auth')->group(function () {
             return view('staff.documents.test');
         })->name('document_management.test')->middleware('throttle:10,1');
 
-        Route::controller(StaffUploadLogsController::class)->group(function () {
+        Route::controller(UploadLogsController::class)->group(function () {
             Route::get('/upload-logs', 'index')->name('upload-logs.index');
             Route::post('/upload-logs', 'store')->middleware('throttle:20,1')->name('upload-logs.store');
             Route::get('/upload-logs/download-zip', 'downloadZip')->name('upload-logs.download-zip');

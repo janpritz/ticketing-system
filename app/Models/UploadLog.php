@@ -27,4 +27,13 @@ class UploadLog extends Model
     {
         return $this->belongsTo(User::class, 'staff_id');
     }
+
+    public function scopeForUser($query, $user)
+    {
+        // Use the ID check for 'Primary Administrator'
+        if ((int) ($user->role_id ?? 0) !== 1) {
+            return $query->where('staff_id', $user->id);
+        }
+        return $query;
+    }
 }
