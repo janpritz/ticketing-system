@@ -33,11 +33,6 @@ class CheckVerifiedEmailCookie
             return $next($request);
         }
 
-        // 3. Standard logic for other /tickets routes
-        if ($verifiedEmail && !$request->query('email')) {
-            return redirect()->to($request->fullUrlWithQuery(['email' => $verifiedEmail]));
-        }
-
         return $next($request);
     }
 }

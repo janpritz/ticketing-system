@@ -217,6 +217,10 @@ class TicketService
      */
     protected function notifyPartiesOfForward(Ticket $ticket, User $newStaff, User $sender): void
     {
+        // Get the original staff ID before the update
+        $originalStaffId = $ticket->staff_id;
+        $isInitialAssignment = $originalStaffId === null;
+
         // Notify New Staff
         if ($newStaff->email && $newStaff->email_notifications) {
             Mail::to($newStaff->email)->queue(new \App\Mail\TicketAssignedMail($ticket, 'forwarded'));
@@ -224,11 +228,17 @@ class TicketService
 
         // Notify Ticket Creator
         if ($ticket->email) {
-            // Load relationships needed for the mailer
-            $newStaff->loadMissing('role');
-            $sender->loadMissing('role');
+            if ($isInitialAssignment) {
+                // Send "Ticket Assigned" email to customer
+                Mail::to($ticket->email)->queue(new \App\Mail\TicketAssignedCustomerMail($ticket, $newStaff));
+            } else {
+                // Send "Ticket Forwarded" email to customer
+                // Load relationships needed for the mailer
+                $newStaff->loadMissing('role');
+                $sender->loadMissing('role');
 
-            Mail::to($ticket->email)->queue(new TicketProcessedMail($ticket, $sender, $newStaff, true));
+                Mail::to($ticket->email)->queue(new TicketProcessedMail($ticket, $sender, $newStaff, true));
+            }
         }
     }
 
@@ -261,7 +271,8 @@ class TicketService
                 $ticket,
                 $firstAssignee,
                 $currentAssignee,
-                false
+                false,
+                $auth
             ));
         } catch (\Throwable $e) {
             Log::error("Notification failed for Ticket #{$ticket->id}: " . $e->getMessage());

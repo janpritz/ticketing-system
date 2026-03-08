@@ -21,6 +21,7 @@ use App\Services\Admin\TicketService;
 
 use App\Jobs\ProcessTicketCreation;
 use App\Services\Admin\OtpService;
+use App\Services\Auth\OTPService as AuthOTPService;
 
 class TicketController extends Controller
 {
@@ -41,25 +42,25 @@ class TicketController extends Controller
     }
 
     // Show the ticket creation form
-    public function showCreateForm(Request $request, TicketService $service, $recepient_id = null)
+    public function showCreateForm(Request $request, AuthOTPService $service, $recepient_id = null)
     {
-        $email = $request->query('email');
+        // Use your service to get the email regardless of what was passed (ID or Email)
+        $email = $service->resolveEmailFromIdentifier($recepient_id ?? '');
+        $roles = Role::pluck('name', 'id');
 
-        // 1. Verify OTP session if email is provided
-        if ($email) {
-            $otpStatus = $service->checkOtpSession($email);
+        // Security: Check the cookie against the URL identifier
+        $cookieEmail = $request->cookie('verified_email');
 
-            if (!$otpStatus['valid']) {
-                return redirect()
-                    ->route('tickets.verify-otp', ['identifier' => $email])
-                    ->with($otpStatus['error_type'], $otpStatus['message']);
-            }
+        // If they have no cookie, or the URL identifier resolves to a different email
+        if (!$cookieEmail || ($email && $cookieEmail !== $email)) {
+            return redirect()->route('tickets.verify-otp')
+                ->with('error', 'Please verify your identity.');
         }
 
-        // 2. Fetch data for the form
-        $roles = Role::orderBy('name')->pluck('name', 'id')->toArray();
-
-        return view('tickets.create', compact('recepient_id', 'roles', 'email'));
+        return view('tickets.create.page', [
+            'recepient_id' => $recepient_id,
+            'email' => $cookieEmail // Always use the verified cookie email for the form
+        ], compact('roles'));
     }
 
     /**
@@ -114,28 +115,19 @@ class TicketController extends Controller
      */
     public function store(StoreTicketRequest $request, TicketService $service)
     {
-        // 1. Get verified email from session
-        $email = session('verified_email');
+        $email = $request->cookie('verified_email');
 
-        // 2. Delegate creation to service
+        // Pass the email explicitly to ensure the service has it
         $ticket = $service->createAndProcessTicket(
-            array_merge($request->validated(), ['email' => $email]),
+            array_merge($request->validated(), [
+                'email' => $email,
+                'recepient_id' => $request->route('recepient_id') // Get from URL if present
+            ]),
             $request->file('attachments', [])
         );
 
-        // 3. Handle JSON Response
-        if ($request->wantsJson()) {
-            return response()->json([
-                'ticket'   => $ticket,
-                'staff_id' => $ticket->staff_id
-            ], 201);
-        }
-
-        // 4. Handle Web Redirect
-        $redirectUrl = url('/tickets/' . $request->recepient_id) . '?email=' . rawurlencode($email);
-
-        return redirect()->to($redirectUrl)
-            ->with('success', 'Ticket created successfully! Check your email for updates.');
+        return redirect()->route('tickets.index', ['recepient_id' => $email])
+            ->with('success', 'Ticket created!');
     }
 
     /**
@@ -143,8 +135,8 @@ class TicketController extends Controller
      */
     public function index(Request $request, TicketService $service)
     {
-        // 1. Get verified email from session
-        $email = (string) session('verified_email');
+        // 1. Get verified email from cookie
+        $email = session('verified_email') ?? $request->cookie('verified_email');
 
         // 2. Retrieve tickets and user list from Service
         $tickets = $service->getTicketsByEmail($email);
@@ -155,7 +147,7 @@ class TicketController extends Controller
         }
 
         // 4. Handle Web View
-        return view('tickets.index', [
+        return view('tickets.index.page', [
             'tickets'    => $tickets,
             'identifier' => $email,
             'isEmail'    => true,
@@ -230,7 +222,7 @@ class TicketController extends Controller
     public function showVerifyEmail(Request $request)
     {
         $email = $request->query('email');
-        return view('tickets.verify-email', compact('email'));
+        return view('tickets.verify-email.page', compact('email'));
     }
 
     /**
@@ -238,7 +230,22 @@ class TicketController extends Controller
      */
     public function showVerifyOtp(Request $request, $identifier = null)
     {
-        return view('tickets.verify-otp', compact('identifier'));
+        // 1. Check if the user is already verified via cookie
+        $verifiedEmail = $request->cookie('verified_email');
+
+        if ($verifiedEmail && $verifiedEmail !== 'deleted') {
+            // If already verified, redirect to tickets with their email
+            return redirect()->route('tickets.index', ['email' => $verifiedEmail]);
+        }
+
+        // 2. If no identifier in the URL, redirect to a version with a random one
+        // This keeps your "tickets/verify-otp/{id}" requirement intact
+        if (!$identifier) {
+            $randomId = rand(100000, 999999);
+            return redirect()->route('tickets.verify-otp', ['identifier' => $randomId]);
+        }
+
+        return view('tickets.verify-otp.page', compact('identifier'));
     }
 
     /**
@@ -300,8 +307,9 @@ class TicketController extends Controller
     public function verifyTicketOtp(VerifyTicketOTPRequest $request, OtpService $otpService)
     {
         try {
-            // 1. Resolve Email
-            $email = $otpService->resolveEmailFromIdentifier($$request->validated('identifier'));
+            // 1. Resolve Email (Fixed the $$ syntax error)
+            $email = $otpService->resolveEmailFromIdentifier($request->validated('identifier'));
+
             if (!$email) {
                 return response()->json(['success' => false, 'message' => 'Invalid identifier.'], 422);
             }
@@ -316,21 +324,34 @@ class TicketController extends Controller
                 ], 422);
             }
 
-            // 3. Establish Verified Session
+            // Use the request instance to ensure the session is bound to this specific call
+            $request->session()->put('otp_verified', true);
+            $request->session()->put('verified_email', $email);
+
+            // Force the session to write to the driver (file/database) immediately
+            $request->session()->save();
+
+            $cookie = cookie('verified_email', $email, 60, '/', null, false, false);
+            // --- NEW: Store in Session for Middleware Security ---
             session([
-                'otp_verified'    => true,
-                'verified_email'  => $email,
-                'otp_verified_at' => now()
+                'otp_verified' => true,
+                'verified_email' => $email,
+                'otp_verified_at' => now(),
             ]);
+
+            $cookie = cookie('verified_email', $email, 60, '/', null, true, false);
 
             return response()->json([
                 'success'      => true,
                 'message'      => 'OTP verified successfully!',
                 'redirect_url' => route('tickets.index', ['email' => $email])
-            ]);
+            ])->withCookie($cookie);
         } catch (\Throwable $e) {
+            // This is where that "Variable variable" error was being caught
             Log::error("OTP Verification Error: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'An error occurred.'], 500);
+
+            // During development, you can return $e->getMessage() here to see errors instantly
+            return response()->json(['success' => false, 'message' => 'An error occurred during verification.'], 500);
         }
     }
 

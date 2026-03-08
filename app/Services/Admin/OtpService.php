@@ -49,7 +49,7 @@ class OtpService
 
     public function verifyOtp(string $email, string $code): array
     {
-        $otp = \App\Models\Otp::where('email', $email)->latest()->first();
+        $otp = Otp::where('email', $email)->latest()->first();
 
         if (!$otp) {
             return ['success' => false, 'message' => 'No OTP found. Please request a new one.'];
@@ -59,16 +59,12 @@ class OtpService
             return ['success' => false, 'message' => 'OTP has expired.'];
         }
 
-        if ($otp->verified_at) {
-            return ['success' => false, 'message' => 'OTP has already been used.'];
-        }
-
-        // Assuming your model has a verify() method to compare hashes or strings
+        // Use hash_equals to prevent timing attacks if you are storing codes as hashes
         if (!$otp->verify($code)) {
             return ['success' => false, 'message' => 'Invalid OTP code.'];
         }
 
-        // Success: Cleanup and Return
+        // Success: Cleanup
         $otp->delete();
 
         return ['success' => true];

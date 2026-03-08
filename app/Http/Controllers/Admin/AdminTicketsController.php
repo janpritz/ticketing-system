@@ -28,14 +28,27 @@ class AdminTicketsController extends Controller
      */
     public function show(Ticket $ticket, TicketService $service)
     {
-        // 1. Process the view (Updates first_viewed_at and sends email if needed)
-        $service->markTicketAsViewed($ticket, Auth::user());
+        try {
+            // 1. Process the view (Updates first_viewed_at and sends email if needed)
+            $service->markTicketAsViewed($ticket, Auth::user());
 
-        // 2. Fetch the enriched data for the UI
-        $data = $service->getTicketDetails($ticket);
+            // 2. Fetch the enriched data for the UI
+            $data = $service->getTicketDetails($ticket);
 
-        return response()->json($data)
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            return response()->json($data)
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        } catch (\Exception $e) {
+            // Log the specific error for debugging
+            Log::error("Error loading Ticket #{$ticket->id}: " . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to load ticket details.',
+                'message' => config('app.debug') ? $e->getMessage() : 'Please contact your administrator.'
+            ], 500);
+        }
     }
 
     /**
@@ -70,7 +83,8 @@ class AdminTicketsController extends Controller
      */
     public function update(UpdateTicketRequest $request, Ticket $ticket, TicketService $service)
     {
-        $updatedTicket = $service->updateTicket($ticket, $request->validated, Auth::user());
+        $user = Auth::user();
+        $updatedTicket = $service->updateTicket($ticket, $request->validated, $user);
 
         return response()->json($updatedTicket);
     }

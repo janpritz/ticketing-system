@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->text('question');
             $table->text('response')->nullable();
-            $table->string('recepient_id');
+            $table->string('recepient_id')->nullable();
             $table->string('email');
             $table->enum('status', ['Open', 'Forwarded', 'Closed'])->default('Open');
             $table->foreignId('staff_id')->nullable()->constrained('users');

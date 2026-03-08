@@ -2,6 +2,11 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
+    <script>
+        window.AppConfig = {
+            verifiedEmail: @json(Cookie::get('verified_email'))
+        };
+    </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -136,9 +141,6 @@
 
     <!-- SweetAlert2 (global) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Scripts -->
-    @yield('scripts')
 </body>
 
 </html>

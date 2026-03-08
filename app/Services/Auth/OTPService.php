@@ -4,13 +4,55 @@ namespace App\Services\Auth;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\{DB, Hash, Mail, Log};
-use App\Mail\PasswordOtpMail;
-use App\Models\User;
+use App\Mail\{PasswordOtpMail};
+use App\Models\{User, Ticket, OTP};
 use Illuminate\Validation\ValidationException;
 
 
 class OTPService
 {
+    public function resolveEmailFromIdentifier(string $identifier): ?string
+    {
+        // 1. If the identifier is already an email, return it
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            return $identifier;
+        }
+
+        // 2. Otherwise, treat it as a recipient_id and look up the latest ticket
+        return Ticket::where('recepient_id', $identifier)
+            ->orderBy('date_created', 'desc')
+            ->value('email');
+    }
+
+    /**
+     * Verifies the 6-digit code against the database.
+     */
+    public function verifyOtp(string $email, string $code): array
+    {
+        $otp = Otp::where('email', $email)
+            ->where('verified_at', null)
+            ->latest()
+            ->first();
+
+        if (!$otp) {
+            return ['success' => false, 'message' => 'No active OTP found.'];
+        }
+
+        if (now()->isAfter($otp->expires_at)) {
+            return ['success' => false, 'message' => 'This code has expired.'];
+        }
+
+        // Use a secure comparison (especially if you hash your OTPs)
+        if (!hash_equals((string)$otp->code, (string)$code)) {
+            return ['success' => false, 'message' => 'The code you entered is incorrect.'];
+        }
+
+        // Mark as used or delete
+        $otp->update(['verified_at' => now()]);
+        // $otp->delete(); // Alternative: delete it immediately
+
+        return ['success' => true];
+    }
     public function sendPasswordOtp(string $email): string
     {
         // 1. Generate OTP

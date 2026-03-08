@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ticket Delivered</title>
+    <title>Ticket Created</title>
     <style>
         @media only screen and (max-width: 600px) {
             .mobile-full-width {
@@ -33,7 +33,7 @@
                     <tr>
                         <td class="mobile-padding"
                             style="padding:20px 24px;background:#ffffff;border-bottom:1px solid #e5e7eb;">
-                            <div style="font-size:16px;font-weight:700;color:#1f2937;">Ticket Delivered:
+                            <div style="font-size:16px;font-weight:700;color:#1f2937;">Ticket Created Successfully:
                                 {{ $ticketNo }}</div>
                         </td>
                     </tr>
@@ -42,7 +42,7 @@
                     <tr>
                         <td class="mobile-padding" style="padding:24px;">
                             <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">Hello,</p>
-                            <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">Your ticket has been delivered.
+                            <p style="font-size:14px;color:#374151;margin:0 0 12px 0;">Your ticket has been created successfully.
                                 Below are the details:</p>
 
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"

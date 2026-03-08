@@ -19,6 +19,8 @@ class Ticket extends Model
         'date_closed',
         'attachments',
         'is_processed',
+        'first_viewed_at',
+        'first_viewed_by',
     ];
 
     protected function casts(): array

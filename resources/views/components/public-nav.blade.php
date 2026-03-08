@@ -51,23 +51,6 @@
         }
         return null;
     }
-
-    // Initialize greeting on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const verifiedEmail = getCookie('verified_email');
-        const greetingText = document.getElementById('greetingText');
-        const userEmail = document.getElementById('userEmail');
-
-        if (verifiedEmail) {
-            // Set the email and show the greeting on md screens and above
-            userEmail.textContent = verifiedEmail;
-            greetingText.textContent = 'Hi, ';
-            greetingText.appendChild(userEmail);
-            greetingText.classList.remove('hidden', 'md:hidden');
-            greetingText.classList.add('md:inline');
-        }
-    });
-
     // Profile Icon Click Handler
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn) {

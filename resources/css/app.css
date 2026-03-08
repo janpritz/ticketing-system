@@ -11,4 +11,6 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-sangkay-orange: #ff9d00;
+    --color-sangkay-hover: #e68a00;
 }

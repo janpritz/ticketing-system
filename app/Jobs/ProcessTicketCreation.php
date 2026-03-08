@@ -145,11 +145,18 @@ class ProcessTicketCreation implements ShouldQueue
         // Send confirmation email to ticket creator
         try {
             if ($ticket->email) {
-                Mail::to($ticket->email)->send(new \App\Mail\TicketCreatedMail($ticket));
-                Log::info('ProcessTicketCreation: Sent ticket created email', ['ticket_id' => $ticket->id, 'email' => $ticket->email]);
+                if ($staff) {
+                    // Ticket created and assigned to staff - send assigned email
+                    Mail::to($ticket->email)->send(new \App\Mail\TicketAssignedCustomerMail($ticket, $staff));
+                    Log::info('ProcessTicketCreation: Sent ticket assigned email to customer', ['ticket_id' => $ticket->id, 'email' => $ticket->email, 'staff_id' => $staff->id]);
+                } else {
+                    // Ticket created but not assigned - send created email
+                    Mail::to($ticket->email)->send(new \App\Mail\TicketCreatedMail($ticket));
+                    Log::info('ProcessTicketCreation: Sent ticket created email', ['ticket_id' => $ticket->id, 'email' => $ticket->email]);
+                }
             }
         } catch (\Throwable $e) {
-            Log::warning('ProcessTicketCreation: Failed to send ticket created email: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            Log::warning('ProcessTicketCreation: Failed to send customer email: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
         }
 
         // Send push notification to the assigned staff

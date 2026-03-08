@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Models\{User, TicketRoutingHistory};
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class TicketProcessedMail extends Mailable
 {
@@ -15,15 +17,18 @@ class TicketProcessedMail extends Mailable
     public $currentAssignee;
     public $isForwarded;
 
+    public $seenByStaff;
+
     /**
      * Create a new message instance.
      */
-    public function __construct($ticket, $firstAssignee = null, $currentAssignee = null, $isForwarded = false)
+    public function __construct($ticket, $firstAssignee = null, $currentAssignee = null, $isForwarded = false, $seenByStaff = null)
     {
         $this->ticket = $ticket;
         $this->firstAssignee = $firstAssignee;
         $this->currentAssignee = $currentAssignee;
         $this->isForwarded = $isForwarded;
+        $this->seenByStaff = $seenByStaff;
     }
 
     /**
@@ -35,9 +40,10 @@ class TicketProcessedMail extends Mailable
         $year = $createdAt ? date('Y', strtotime($createdAt)) : date('Y');
         $ticketNo = sprintf('T-%s-%06d', $year, $this->ticket->id);
         $subject = $this->isForwarded ? 'Ticket Forwarded: ' . $ticketNo : 'Ticket Seen: ' . $ticketNo;
+        $view = $this->isForwarded ? 'emails.ticket_forwarded' : 'emails.ticket_processed';
 
         return $this->subject($subject)
-                    ->view('emails.ticket_processed')
+                    ->view($view)
                     ->with($this->prepareViewData($ticketNo));
     }
 
@@ -51,7 +57,7 @@ class TicketProcessedMail extends Mailable
         // Build forward history (names in routed_at asc order)
         $forwardHistory = null;
         try {
-            $rows = \App\Models\TicketRoutingHistory::where('ticket_id', $ticket->id)
+            $rows = TicketRoutingHistory::where('ticket_id', $ticket->id)
                         ->orderBy('routed_at','asc')
                         ->pluck('staff_id')
                         ->filter()
@@ -60,7 +66,7 @@ class TicketProcessedMail extends Mailable
             // Treat as a forward only when there are at least 2 routing entries
             if (count($rows) > 1) {
                 $names = [];
-                $users = \App\Models\User::whereIn('id', $rows)->get()->keyBy('id');
+                $users = User::whereIn('id', $rows)->get()->keyBy('id');
                 foreach ($rows as $sid) {
                     if (isset($users[$sid])) {
                         $names[] = $users[$sid]->name;
@@ -72,9 +78,13 @@ class TicketProcessedMail extends Mailable
             }
         } catch (\Throwable $e) {
             // If anything goes wrong, log and continue without forward history
-            \Illuminate\Support\Facades\Log::error('Failed to build forward history: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
+            Log::error('Failed to build forward history: ' . $e->getMessage(), ['ticket_id' => $ticket->id]);
             $forwardHistory = null;
         }
+
+        $categoryName = $ticket->role ? $ticket->role->name : 'Uncategorized';
+        $staffName = $this->currentAssignee ? $this->currentAssignee->name : 'Unassigned';
+        $createdAt = $ticket->date_created ?: $ticket->created_at;
 
         return [
             'ticketNo' => $ticketNo,
@@ -83,6 +93,10 @@ class TicketProcessedMail extends Mailable
             'currentAssignee' => $this->currentAssignee,
             'isForwarded' => $this->isForwarded,
             'forwardHistory' => $forwardHistory,
+            'categoryName' => $categoryName,
+            'staffName' => $staffName,
+            'createdAt' => $createdAt,
+            'seenByStaff' => $this->seenByStaff,
         ];
     }
 }

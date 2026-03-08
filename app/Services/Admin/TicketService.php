@@ -2,11 +2,12 @@
 
 namespace App\Services\Admin;
 
-use Illuminate\Support\Facades\{DB, Log, Mail, Storage};
+use Illuminate\Support\Facades\{DB, Log, Mail, Storage, Auth};
 use App\Models\{Ticket, User, TicketRoutingHistory};
 use App\Mail\TicketProcessedMail;
 use App\Jobs\{SendTicketResponseJob, SendTicketForwardJob, ProcessTicketCreation};
 use Illuminate\Support\{Str, Collection};
+use Symfony\Component\HttpFoundation\Request;
 
 class TicketService
 {
@@ -118,21 +119,32 @@ class TicketService
      */
     public function markTicketAsViewed(Ticket $ticket, User $user): void
     {
+        // 1. Guard Clauses
         if (!$user || !empty($ticket->first_viewed_at) || empty($ticket->email)) {
             return;
         }
 
         try {
+            // 2. Database Update (Keep this transaction short and fast)
             DB::transaction(function () use ($ticket, $user) {
                 $ticket->update([
                     'first_viewed_at' => now(),
                     'first_viewed_by' => $user->id
                 ]);
-
-                $this->sendViewedNotification($ticket);
             });
+
+            // 3. Post-Transaction Notification
+            // Moving this OUTSIDE the transaction prevents DB locks during mail delays
+            try {
+                $this->sendViewedNotification($ticket);
+            } catch (\Throwable $mailError) {
+                // Log mail error separately so it doesn't crash the view process
+                Log::warning("Ticket #{$ticket->id} marked viewed, but notification failed: " . $mailError->getMessage());
+            }
         } catch (\Throwable $e) {
-            Log::error('Failed to process ticket view: ' . $e->getMessage());
+            Log::error("Critical failure in markTicketAsViewed for Ticket #{$ticket->id}: " . $e->getMessage());
+            // Optionally re-throw if you want the Controller's catch block to handle it
+            throw $e;
         }
     }
 
@@ -159,22 +171,44 @@ class TicketService
 
     protected function sendViewedNotification(Ticket $ticket): void
     {
-        $histories = $ticket->role()->orderBy('routed_at', 'asc')->get();
+        try {
+            // 1. Fetch histories using the pre-defined relationship
+            $histories = $ticket->routingHistories()
+                ->orderBy('routed_at', 'asc')
+                ->get();
 
-        // Default to the current staff if no history exists
-        $firstAssignee = $ticket->staff;
-        $currentAssignee = $ticket->staff;
+            // 2. Default to the current ticket's assigned staff
+            $firstAssignee = $ticket->staff;
+            $currentAssignee = $ticket->staff;
+            $seenByStaff = Auth::user();
 
-        if ($histories->isNotEmpty()) {
-            $firstAssignee = User::find($histories->first()->staff_id);
-            $currentAssignee = User::find($histories->last()->staff_id);
+            // 3. Extract staff objects directly from history (avoiding extra User::find queries)
+            if ($histories->isNotEmpty()) {
+                $firstAssignee = $histories->first()->staff;
+                $currentAssignee = $histories->last()->staff;
+            }
+
+            // 4. Eager load primary roles for the mail template
+            $roleLoader = fn($q) => $q->where('is_primary_role', true)->with('role');
+
+            $firstAssignee?->loadMissing(['userRoles' => $roleLoader]);
+            $currentAssignee?->loadMissing(['userRoles' => $roleLoader]);
+
+            // 5. Send the Mail
+            // If the mail server fails here, it will trigger the catch block below
+            Mail::to($ticket->email)->send(
+                new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, false, $seenByStaff)
+            );
+        } catch (\Throwable $e) {
+            // Log the error so you can fix it later, but don't stop the user from viewing the ticket
+            Log::error("Failed to send Ticket #{$ticket->id} viewed notification: " . $e->getMessage(), [
+                'ticket_id' => $ticket->id,
+                'email' => $ticket->email,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // We do not re-throw here so the main 'markTicketAsViewed' logic can finish successfully
         }
-
-        // Eager load roles for the mailer
-        $firstAssignee?->load(['userRoles' => fn($q) => $q->where('is_primary_role', true)->with('role')]);
-        $currentAssignee?->load(['userRoles' => fn($q) => $q->where('is_primary_role', true)->with('role')]);
-
-        Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $currentAssignee, false));
     }
 
     /**
@@ -265,21 +299,30 @@ class TicketService
             // A. Push Notification Job
             SendTicketForwardJob::dispatch($ticket->id, $newStaff->id, $admin->id, "Forwarded to {$newStaff->name}");
 
-            // B. Notify the New Assignee
+            // B. Notify the New Assignee (Staff)
             if (!empty($newStaff->email) && $newStaff->email_notifications) {
                 Mail::to($newStaff->email)->send(new \App\Mail\TicketAssignedMail($ticket, 'forwarded'));
             }
 
             // C. Notify the Ticket Creator (Customer)
             if (!empty($ticket->email)) {
-                $firstAssignee = $oldStaffId ? User::find($oldStaffId) : null;
+                // Check if this is an initial assignment (oldStaffId is null) or a forward
+                $isInitialAssignment = $oldStaffId === null;
 
-                // Eager load roles for the mailer
-                $loadRole = fn($q) => $q->where('is_primary_role', true)->with('role');
-                $firstAssignee?->load(['userRoles' => $loadRole]);
-                $newStaff->load(['userRoles' => $loadRole]);
+                if ($isInitialAssignment) {
+                    // Send "Ticket Assigned" email to customer
+                    Mail::to($ticket->email)->send(new \App\Mail\TicketAssignedCustomerMail($ticket, $newStaff));
+                } else {
+                    // Send "Ticket Forwarded" email to customer
+                    $firstAssignee = $oldStaffId ? User::find($oldStaffId) : null;
 
-                Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $newStaff, true));
+                    // Eager load roles for the mailer
+                    $loadRole = fn($q) => $q->where('is_primary_role', true)->with('role');
+                    $firstAssignee?->load(['userRoles' => $loadRole]);
+                    $newStaff->load(['userRoles' => $loadRole]);
+
+                    Mail::to($ticket->email)->send(new TicketProcessedMail($ticket, $firstAssignee, $newStaff, true, $seenByStaff = null));
+                }
             }
         } catch (\Throwable $e) {
             Log::error("Failed to dispatch forwarding notifications for ticket [ID: {$ticket->id}]: " . $e->getMessage());
@@ -361,37 +404,6 @@ class TicketService
     }
 
     /**
-     * Validates if an OTP session exists and is still fresh for a given identifier.
-     */
-    public function checkOtpSession(string $email): array
-    {
-        $sessionKey = "otp_verified_{$email}";
-        $otpData = session($sessionKey);
-
-        // No session exists
-        if (!$otpData) {
-            return [
-                'valid' => false,
-                'error_type' => 'info',
-                'message' => 'Please verify your identity via OTP.'
-            ];
-        }
-
-        // Check expiration (30 minutes)
-        $verifiedAt = $otpData['verified_at'] ?? null;
-        if (!$verifiedAt || now()->diffInMinutes($verifiedAt) > 30) {
-            session()->forget($sessionKey);
-            return [
-                'valid' => false,
-                'error_type' => 'info',
-                'message' => 'Your session has expired. Please verify again.'
-            ];
-        }
-
-        return ['valid' => true];
-    }
-
-    /**
      * Handles file storage, database persistence, and initial job processing.
      */
     public function createAndProcessTicket(array $data, array $files): Ticket
@@ -407,7 +419,7 @@ class TicketService
         $ticket = Ticket::create([
             'category_id'  => $data['role_id'] ?? null,
             'question'     => $data['question'],
-            'recepient_id' => $data['recepient_id'],
+            'recepient_id' => $data['recepient_id'] ?? null,
             'email'        => $data['email'],
             'status'       => 'Open',
             'date_created' => now(),
@@ -471,7 +483,7 @@ class TicketService
     /**
      * Unified update method for both Guests and Admins.
      */
-    public function updateTicket(Ticket $ticket, array $data, array $newFiles = [], ?User $performer = null): Ticket
+    public function updateTicket(Ticket $ticket, array $data, ?User $performer = null, array $newFiles = []): Ticket
     {
         try {
             return DB::transaction(function () use ($ticket, $data, $newFiles, $performer) {
@@ -522,5 +534,4 @@ class TicketService
             throw $e;
         }
     }
-
 }

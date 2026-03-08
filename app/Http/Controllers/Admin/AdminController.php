@@ -27,7 +27,7 @@ class AdminController extends Controller
     {
         $data = $dashboardService->getAdminDashboardData();
 
-        return response()->view('dashboards.admin.index', $data);
+        return response()->view('dashboards.admin.index.page', $data);
     }
 
     /**
