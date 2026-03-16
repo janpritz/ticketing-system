@@ -22,6 +22,7 @@ use App\Services\Admin\TicketService;
 use App\Jobs\ProcessTicketCreation;
 use App\Services\Admin\OtpService;
 use App\Services\Auth\OTPService as AuthOTPService;
+use Illuminate\Support\Facades\Auth;
 
 class TicketController extends Controller
 {
@@ -182,11 +183,13 @@ class TicketController extends Controller
     public function update(UpdateTicketRequest1 $request, Ticket $ticket, TicketService $service)
     {
         // Data is already validated and authorized here
+        $validatedInput = $request->safe();
+
         $service->updateTicket(
             $ticket,
-            $request->safe()->except('attachments'),
-            $request->file('attachments', []),
-            $request->user() // Passes null if it's a guest
+            $validatedInput->except(['attachments']), // Returns array of everything EXCEPT files
+            $request->user(),                         // The logged-in User
+            $request->file('attachments', [])         // The actual file objects
         );
 
         return redirect()->back()->with('success', 'Changes saved successfully.');

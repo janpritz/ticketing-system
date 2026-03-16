@@ -195,7 +195,7 @@ class DashboardService
             ->take(6)
             ->get();
 
-        Log::info('Unassigned tickets count: ' . $tickets->count());
+        //Log::info('Unassigned tickets count: ' . $tickets->count());
 
         return $tickets->map(function ($t) {
             return [

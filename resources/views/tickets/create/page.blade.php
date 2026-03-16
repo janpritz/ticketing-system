@@ -5,18 +5,18 @@
 @section('content')
     <!-- Public Navigation Bar -->
     <x-public-nav :logo-margin="'mr-4'" :logo-text="'SANGKAY'" />
-    
+
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-         <div class="md:flex md:items-center md:justify-between">
-             <div class="flex-1 text-center min-w-0 pt-5">
-                 <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                     Create a Ticket
-                 </h2>
-                 <p class="mt-1 text-sm text-gray-500">
-                     Please fill out the form below to create your support ticket.
-                 </p>
-             </div>
-         </div>
+        <div class="md:flex md:items-center md:justify-between">
+            <div class="flex-1 text-center min-w-0 pt-5">
+                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                    Create a Ticket
+                </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Please fill out the form below to create your support ticket.
+                </p>
+            </div>
+        </div>
 
         <div class="mt-8">
             <div class="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -27,8 +27,8 @@
                         <div class="rounded-md bg-green-50 p-4 mb-6">
                             <div class="flex">
                                 <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                                        fill="currentColor">
+                                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd"
                                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                             clip-rule="evenodd" />
@@ -72,7 +72,8 @@
                     @endif
 
                     <!-- Ticket Creation Form -->
-                    <form action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate enctype="multipart/form-data">
+                    <form action="{{ route('tickets.store') }}" method="POST" class="space-y-6" novalidate
+                        enctype="multipart/form-data">
                         @csrf
 
                         <!-- Hidden fields -->
@@ -88,21 +89,61 @@
                         </div>
 
                         <div>
-                            <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <div
+                                style="display: flex; align-items: center; gap: 8px; position: relative; margin-bottom: 20px; font-family: sans-serif;">
+
+                                <label for="category" style="font-size: 14px; font-weight: 500; color: #374151;">
+                                    Category
+                                </label>
+
+                                <span
+                                    onmouseenter="document.getElementById('tooltip').style.opacity = '1'; document.getElementById('tooltip').style.visibility = 'visible';"
+                                    onmouseleave="document.getElementById('tooltip').style.opacity = '0'; document.getElementById('tooltip').style.visibility = 'hidden';"
+                                    style="cursor: pointer; color: #9ca3af; display: flex; align-items: center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </span>
+
+                                <span id="tooltip"
+                                    style="
+                                        position: absolute; 
+                                        top: 25px; 
+                                        left: 0; 
+                                        width: 250px; 
+                                        background-color: #1f2937; 
+                                        color: white; 
+                                        font-size: 12px; 
+                                        padding: 8px; 
+                                        border-radius: 4px; 
+                                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+                                        z-index: 50; 
+                                        opacity: 0; 
+                                        visibility: hidden; 
+                                        transition: opacity 0.2s ease-in-out;
+                                        pointer-events: none;
+                                    ">
+                                    Select the specific office or department that your ticket corresponds to. This helps
+                                    your ticket to be assigned to proper staff.
+                                </span>
+
+                            </div>
                             <div class="mt-1">
                                 <input list="category-list" name="role_name" id="category"
                                     class="py-2 px-3 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     required value="{{ old('role_name') }}">
                                 <input type="hidden" name="role_id" id="role_id_input" value="{{ old('role_id') }}">
                                 <datalist id="category-list">
-                                    @if(isset($roles) && count($roles))
-                                        @foreach($roles as $id => $name)
+                                    @if (isset($roles) && count($roles))
+                                        @foreach ($roles as $id => $name)
                                             <option value="{{ $name }}">
                                         @endforeach
                                     @else
                                         <!-- Fallback to the hard-coded list if controller did not provide categories -->
                                         <option value="Course Registration">
-                                        
+
                                     @endif
                                 </datalist>
                             </div>
@@ -118,17 +159,24 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per image)</label>
+                            <label class="block text-sm font-medium text-gray-700">Attachments (Screenshots - Max 5MB per
+                                image)</label>
                             <div class="mt-1">
-                                <button type="button" id="add-photo-btn-submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                <button type="button" id="add-photo-btn-submit"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
                                     Add Photo
                                 </button>
-                                <input type="file" name="attachments[]" id="attachments" multiple accept="image/*" class="hidden">
-                                <div id="selected-thumbnails-submit" class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
-                                <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files are allowed.)</p>
+                                <input type="file" name="attachments[]" id="attachments" multiple accept="image/*"
+                                    class="hidden">
+                                <div id="selected-thumbnails-submit"
+                                    class="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                                <p class="mt-1 text-sm text-gray-500">You can upload 5 files only. (Only jpeg,jpg,png files
+                                    are allowed.)</p>
                             </div>
                         </div>
 

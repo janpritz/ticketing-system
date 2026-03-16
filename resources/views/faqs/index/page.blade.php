@@ -93,3 +93,4 @@
     </div>
 @endsection
 @include('faqs.index.scripts')
+@include('components.chatbot-widget')

@@ -154,11 +154,11 @@
                         @method('PUT')
                         <input type="hidden" id="edit-ticket-id" name="id">
                         <div class="space-y-4">
-                            <div>
+                            {{-- <div>
                                 <label for="edit-category" class="block text-sm font-medium text-gray-700">Category</label>
                                 <input type="text" id="edit-category" name="category" readonly aria-readonly="true"
                                     class="mt-1 block w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-md shadow-sm py-2 px-3 cursor-not-allowed focus:outline-none focus:ring-0 focus:border-gray-200 sm:text-sm">
-                            </div>
+                            </div> --}}
                             <div>
                                 <label for="edit-question" class="block text-sm font-medium text-gray-700">Question</label>
                                 <textarea id="edit-question" name="question" rows="3"
@@ -205,5 +205,5 @@
             </div>
         </div>
     </div>
+    @include('tickets.index.scripts')
 @endsection
-@include('tickets.index.scripts')

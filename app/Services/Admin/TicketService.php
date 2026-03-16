@@ -7,7 +7,6 @@ use App\Models\{Ticket, User, TicketRoutingHistory};
 use App\Mail\TicketProcessedMail;
 use App\Jobs\{SendTicketResponseJob, SendTicketForwardJob, ProcessTicketCreation};
 use Illuminate\Support\{Str, Collection};
-use Symfony\Component\HttpFoundation\Request;
 
 class TicketService
 {
@@ -132,15 +131,6 @@ class TicketService
                     'first_viewed_by' => $user->id
                 ]);
             });
-
-            // 3. Post-Transaction Notification
-            // Moving this OUTSIDE the transaction prevents DB locks during mail delays
-            try {
-                $this->sendViewedNotification($ticket);
-            } catch (\Throwable $mailError) {
-                // Log mail error separately so it doesn't crash the view process
-                Log::warning("Ticket #{$ticket->id} marked viewed, but notification failed: " . $mailError->getMessage());
-            }
         } catch (\Throwable $e) {
             Log::error("Critical failure in markTicketAsViewed for Ticket #{$ticket->id}: " . $e->getMessage());
             // Optionally re-throw if you want the Controller's catch block to handle it
@@ -169,11 +159,12 @@ class TicketService
         return $data;
     }
 
-    protected function sendViewedNotification(Ticket $ticket): void
+    public function sendViewedNotification(Ticket $ticket): void
     {
         try {
             // 1. Fetch histories using the pre-defined relationship
             $histories = $ticket->routingHistories()
+                ->with('staff')
                 ->orderBy('routed_at', 'asc')
                 ->get();
 

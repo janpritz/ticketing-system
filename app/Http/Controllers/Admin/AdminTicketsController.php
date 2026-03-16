@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\Ticket;
-use Illuminate\Http\Request;
-use App\Http\Requests\Admin\{TicketResponseRequest, UpdateTicketRequest, TicketRequest};
-use Illuminate\Support\Facades\{DB, Log, Mail, Auth};
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\{TicketResponseRequest, UpdateTicketRequest, TicketRequest};
+use App\Models\Ticket;
 use App\Services\Admin\TicketService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\{DB, Log, Mail, Auth};
 
 class AdminTicketsController extends Controller
 {
@@ -29,6 +29,8 @@ class AdminTicketsController extends Controller
     public function show(Ticket $ticket, TicketService $service)
     {
         try {
+            $service->sendViewedNotification($ticket);
+            Log::info('Email sent');
             // 1. Process the view (Updates first_viewed_at and sends email if needed)
             $service->markTicketAsViewed($ticket, Auth::user());
 

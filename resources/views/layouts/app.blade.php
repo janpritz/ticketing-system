@@ -2,145 +2,119 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    @include('components.rasa-widget-scripts')
     <script>
         window.AppConfig = {
             verifiedEmail: @json(Cookie::get('verified_email'))
         };
-    </script>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <!-- Disable browser caching -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
-    <script>
-        // Expose globals for push setup
         window.VAPID_PUBLIC_KEY = @json(config('webpush.public'));
         window.APP_AUTHENTICATED = @json(auth()->check());
     </script>
 
     <title>{{ 'SangkayFAQs' }} - @yield('title')</title>
 
-    <!-- Favicons & PWA manifest: use proper icon sizes for add-to-home and modern platforms -->
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icon-192.png') }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('icon-512.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.ico') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icon-512.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icon-512.png') }}">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="theme-color" content="#184c1c">
-    <!-- Fonts -->
+
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600&display=swap" rel="stylesheet" />
 
-    <!-- TailwindCSS -->
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="https://unpkg.com/@rasahq/chat-widget-ui/dist/rasa-chatwidget/rasa-chatwidget.css" />
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-
-    <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Alpine.js for dropdown functionality -->
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <!-- Rasa Widget -->
-    <script type="module" src="https://unpkg.com/@rasahq/chat-widget-ui/dist/rasa-chatwidget/rasa-chatwidget.esm.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
-<body class="font-sans antialiased">
-    <div class="min-h-screen">
-        <!-- Navigation -->
+<body class="font-sans antialiased bg-gray-50">
 
-        <!-- Page Heading -->
-        @if (isset($header))
-            <header class="bg-white shadow">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    {{ $header }}
-                </div>
-            </header>
-        @endif
+    <div class="min-h-screen" x-data="{ open: false }">
 
-        <!-- Page Content -->
         <main>
             @yield('content')
         </main>
+
+        <!-- Mobile Drawer -->
+        <div x-show="open" x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="transform opacity-0 translate-x-4"
+            x-transition:enter-end="transform opacity-100 translate-x-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="transform opacity-100 translate-x-0"
+            x-transition:leave-end="transform opacity-0 translate-x-4"
+            class="fixed inset-y-0 right-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-200"
+            x-cloak>
+            <div class="flex flex-col h-full px-6 py-5 overflow-y-auto">
+                <div class="flex justify-between items-start mb-6">
+                    <span class="text-xl font-bold text-gray-900">Menu</span>
+                    <button @click="open = false" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="mt-6 space-y-4 flex-1">
+                    <div>
+                        <a href="{{ route('faqs.index') }}"
+                            class="text-lg font-medium text-gray-900 hover:text-gray-700 border-b-2 border-transparent px-1 py-2">Home</a>
+                    </div>
+                    <div>
+                        <a href="{{ route('about') }}"
+                            class="text-lg font-medium text-gray-900 hover:text-gray-700 border-b-2 border-transparent px-1 py-2">About
+                            Us</a>
+                    </div>
+                    <div>
+                        <a href="{{ route('tickets.verify-otp', ['identifier' => rand(100000, 999999)]) }}"
+                            class="text-lg font-medium text-gray-900 hover:text-gray-700 border-b-2 border-transparent px-1 py-2">My
+                            Tickets</a>
+                    </div>
+                </nav>
+            </div>
+        </div>
     </div>
 
-    <!-- Global Toasts -->
-    <div id="toastContainer" aria-live="polite" aria-atomic="true" class="fixed top-4 right-4 z-50 space-y-2"
-        style="z-index:2147483647; pointer-events:none;"></div>
-    <script>
-        // Global toast utility, available as window.showToast('success'|'error', message)
-        window.showToast = (function() {
-            let container = null;
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
-            function ensureContainer() {
-                container = document.getElementById('toastContainer') || container;
-                if (!container) {
-                    container = document.createElement('div');
-                    container.id = 'toastContainer';
-                    container.setAttribute('aria-live', 'polite');
-                    container.setAttribute('aria-atomic', 'true');
-                    container.className = 'fixed top-4 right-4 z-50 space-y-2';
-                    container.style.zIndex = '2147483647';
-                    container.style.pointerEvents = 'none';
-                    document.body.appendChild(container);
-                } else if (container.parentElement !== document.body) {
-                    try {
-                        document.body.appendChild(container);
-                    } catch (_) {}
-                }
-                return container;
-            }
-
-            function show(type, message) {
-                const target = ensureContainer();
-                const isSuccess = type === 'success';
-                const icon = isSuccess ?
-                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M9 12.75l-2.25-2.25-1.5 1.5L9 15.75l9-9-1.5-1.5z"/></svg>' :
-                    '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 5.5h-1.5v7h1.5v-7zm0 8.5h-1.5v1.5h1.5V16z"/></svg>';
-                const outer = document.createElement('div');
-                outer.className = 'w-80 rounded-lg border bg-white px-4 py-3 shadow ring-1 ring-black/5';
-                outer.setAttribute('role', 'status');
-                outer.style.pointerEvents = 'auto';
-                outer.innerHTML =
-                    '<div class="flex items-start gap-2">' +
-                    icon +
-                    '<div class="flex-1 text-sm ' +
-                    (isSuccess ? 'text-emerald-800' : 'text-red-800') +
-                    '">' +
-                    String(message || '') +
-                    '</div>' +
-                    '<button type="button" aria-label="Close" class="text-gray-400 hover:text-gray-600" data-close>&times;</button>' +
-                    '</div>';
-                target.appendChild(outer);
-                const closer = outer.querySelector('[data-close]');
-                if (closer) closer.addEventListener('click', () => {
-                    try {
-                        outer.remove();
-                    } catch (_) {}
-                });
-                setTimeout(() => {
-                    try {
-                        outer.remove();
-                    } catch (_) {}
-                }, 5000);
-            }
-            return show;
-        })();
-    </script>
-    <footer class="p-4 text-center text-gray-500 text-xs">
+    <footer class="py-8 text-center text-gray-400 text-xs">
         Sangkay TS &copy; {{ date('Y') }} |
-        <span class="bg-gray-200 px-2 py-1 rounded">v{{ config('app.version') }}</span>
+        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-600">v{{ config('app.version') }}</span>
     </footer>
 
-    <!-- SweetAlert2 (global) -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @stack('scripts')
+
+    <script>
+        // Global Toast Logic
+        window.showToast = (function() {
+            let container = document.getElementById('toastContainer');
+            return function(type, message) {
+                const outer = document.createElement('div');
+                outer.className =
+                    'w-80 rounded-lg border bg-white px-4 py-3 shadow-lg ring-1 ring-black/5 pointer-events-auto';
+                outer.innerHTML = `
+                    <div class="flex items-start gap-2">
+                        <div class="flex-1 text-sm text-gray-800">${message}</div>
+                        <button type="button" class="text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.remove()">&times;</button>
+                    </div>
+                `;
+                container.appendChild(outer);
+                setTimeout(() => outer.remove(), 5000);
+            };
+        })();
+    </script>
 </body>
 
 </html>
