@@ -5,9 +5,6 @@
 | Laravel Framework Imports (Facades/Classes)
 |--------------------------------------------------------------------------
 */
-
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTicketsController;
 use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
@@ -24,19 +21,15 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
 use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\RasaController;
-use App\Http\Controllers\TicketController;
 use App\Http\Controllers\Staff\AnnouncementController as StaffAnnouncementController;
 use App\Http\Controllers\Staff\DocumentController as StaffDocumentController;
 use App\Http\Controllers\Staff\ReportsController as StaffReportsController;
 use App\Http\Controllers\Staff\StaffController;
 use App\Http\Controllers\Staff\UploadLogsController;
-/*
-|--------------------------------------------------------------------------
-| Other Classes (Requests, Services, Models, etc.)
-|--------------------------------------------------------------------------
-*/
+use App\Http\Controllers\TicketController;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -287,13 +280,17 @@ Route::middleware('auth')->group(function () {
                     Route::get('/', [AdminStaffController::class, 'index'])->name('index');
                     Route::get('/create', [AdminStaffController::class, 'create'])->name('create');
                     Route::get('/{user}/edit', [AdminStaffController::class, 'edit'])->name('edit');
+                    Route::get('/{user}/roles', [AdminStaffController::class, 'usersGetRoles'])->name('roles');
+                    Route::get('/check-email', [AdminStaffController::class, 'usersCheckEmail'])->name('check-email');
                 });
 
                 // Tier 2: Write/Actions (10/min)
-                Route::middleware('throttle:10,1')->group(function () {
+                Route::middleware('throttle:50,1')->group(function () {
                     Route::post('/', [AdminStaffController::class, 'store'])->name('store');
                     Route::put('/{user}', [AdminStaffController::class, 'update'])->name('update');
                     Route::delete('/{user}', [AdminStaffController::class, 'destroy'])->name('destroy');
+                    Route::post('/{user}/restore', [AdminStaffController::class, 'usersRestore'])->name('restore');
+                    Route::post('/resend-verification', [AdminStaffController::class, 'usersResendVerification'])->name('resend-verification');
                 });
             });
 

@@ -13,7 +13,7 @@ class RasaServerController extends Controller
      */
     public function index()
     {
-        return view('dashboards.admin.rasa-server.index');
+        return view('dashboards.admin.rasa-server.page');
     }
 
     /**

@@ -252,7 +252,21 @@ class RasaService
     public function getSystemHealthReport(): array
     {
         $config = config('services.faq_updater');
-        $baseUrl = $config['url'];
+        $baseUrl = $config['url'] ?? null;
+        
+        // Check if FAQ updater service is configured
+        if (!$baseUrl || !$config['secret'] ?? null) {
+            return [
+                'endpoint_5001'      => false,
+                'server_5005'        => false,
+                'action_server_5555' => false,
+                'last_training'      => $this->getLastTrainingInfo(),
+                'last_backup'        => $this->getLastBackupInfo(),
+                'current_model'      => $this->getCurrentModelInfo(),
+                'timestamp'          => now()->toISOString(),
+                'error'              => 'FAQ updater service not configured. Please check .env settings.'
+            ];
+        }
 
         // 1. Concurrent Status Checks
         $responses = Http::pool(function (Pool $pool) use ($baseUrl, $config) {
@@ -270,13 +284,29 @@ class RasaService
         });
 
         // 2. Parse results
-        $serverStatus = $responses['server']->successful()
+        $serverAvailable = isset($responses['server']) && $responses['server']->successful();
+        $actionsAvailable = isset($responses['actions']) && $responses['actions']->successful();
+        
+        $serverStatus = $serverAvailable
             ? ($responses['server']->json()['running'] ?? false)
             : false;
 
-        $actionServerStatus = $responses['actions']->successful()
+        $actionServerStatus = $actionsAvailable
             ? ($responses['actions']->json()['running'] ?? false)
             : false;
+
+        // Build error message if service is unreachable
+        $error = null;
+        if (!$serverAvailable || !$actionsAvailable) {
+            $unreachable = [];
+            if (!$serverAvailable) {
+                $unreachable[] = 'Rasa Server';
+            }
+            if (!$actionsAvailable) {
+                $unreachable[] = 'Action Server';
+            }
+            $error = 'Cannot reach FAQ updater service. ' . implode(' and ', $unreachable) . ' may be offline or service is unreachable.';
+        }
 
         // 3. Construct Unified Report
         return [
@@ -286,7 +316,8 @@ class RasaService
             'last_training'      => $this->getLastTrainingInfo(),
             'last_backup'        => $this->getLastBackupInfo(),
             'current_model'      => $this->getCurrentModelInfo(),
-            'timestamp'          => now()->toISOString()
+            'timestamp'          => now()->toISOString(),
+            'error'              => $error
         ];
     }
     /**

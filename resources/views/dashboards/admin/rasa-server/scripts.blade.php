@@ -1,214 +1,6 @@
-@extends('layouts.admin')
-
-@section('title', 'Rasa Server Manager')
-
-@section('admin-content')
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 class="text-xl sm:text-2xl font-semibold text-slate-900">Rasa Server Manager</h1>
-                <p class="text-sm text-gray-600 mt-1">Monitor and manage Rasa chatbot server system status, training, and backups.</p>
-            </div>
-        </div>
-
-        <!-- System Status Card -->
-        <div class="mt-6 bg-white rounded-xl border border-gray-200 p-4">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    System Status
-                </h3>
-                <div class="flex items-center gap-3">
-                    <button id="startServerBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l.707.707A1 1 0 0012.414 11H15m-3-3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Start Server
-                    </button>
-                    <button id="startActionServerBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                        Start Actions
-                    </button>
-                    <button id="refreshStatus" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-4">
-                <!-- Rasa Endpoint Card -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Rasa Endpoint</div>
-                    <div class="text-xs text-gray-500 mb-2">Port 5001</div>
-                    <div id="endpointStatus" class="flex items-center gap-2">
-                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
-                        <span class="text-sm text-gray-600">Checking...</span>
-                    </div>
-                </div>
-
-                <!-- Rasa Server Card -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Rasa Server</div>
-                    <div class="text-xs text-gray-500 mb-2">Port 5005</div>
-                    <div id="serverStatus" class="flex items-center gap-2">
-                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
-                        <span class="text-sm text-gray-600">Checking...</span>
-                    </div>
-                </div>
-
-                <!-- Action Server Card -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Action Server</div>
-                    <div class="text-xs text-gray-500 mb-2">Port 5055</div>
-                    <div id="actionServerStatus" class="flex items-center gap-2">
-                        <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
-                        <span class="text-sm text-gray-600">Checking...</span>
-                    </div>
-                </div>
-
-                <!-- Last Training Card -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Last Training</div>
-                    <div id="lastTraining" class="text-sm text-gray-900 mb-1">Loading...</div>
-                    <div class="text-xs text-gray-500">1 day ago</div>
-                </div>
-
-                <!-- Last Backup card removed (backups stored in DB; unnecessary UI) -->
-
-                <!-- Current Model Card -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Current Model</div>
-                    <div id="currentModel" class="text-sm text-gray-900 mb-1">Loading...</div>
-                    <div class="text-xs text-gray-500" id="currentModelVersion">-</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Training History -->
-        <div class="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Training History</h3>
-                    <div class="flex items-center gap-3">
-                        <button id="trainModelBtn" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                            </svg>
-                            Train Model
-                        </button>
-                        <button id="refreshTrainingHistory" class="text-sm text-blue-600 hover:text-blue-800">Refresh</button>
-                    </div>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Changed</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trainingHistoryTable" class="bg-white divide-y divide-gray-200">
-                        <tr>
-                            <td colspan="3" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">Loading training history...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination Controls -->
-            <div class="px-4 sm:px-6 py-3 border-t border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-700">Show:</span>
-                        <select id="trainingHistoryPerPage" class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <option value="5" selected>5</option>
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                        </select>
-                        <span class="text-sm text-gray-700">entries</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="trainingHistoryPrev" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-                        <span id="trainingHistoryPageInfo" class="text-sm text-gray-700">Page 1 of 1</span>
-                        <button id="trainingHistoryNext" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Backup History removed (not needed; documents stored in DB) -->
-
-        <!-- Models List -->
-        <div class="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Old Models</h3>
-                    <div class="flex items-center gap-3">
-                        <button id="cleanupModelsBtnTop" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                            Cleanup Models
-                        </button>
-                        <button id="refreshModelsList" class="text-sm text-blue-600 hover:text-blue-800">Refresh</button>
-                    </div>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
-                            <th class="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
-                            <th class="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modelsListTable" class="bg-white divide-y divide-gray-200">
-                        <tr>
-                            <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">Loading models list...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination Controls -->
-            <div class="px-4 sm:px-6 py-3 border-t border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-700">Show:</span>
-                        <select id="modelsListPerPage" class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <option value="5" selected>5</option>
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                        </select>
-                        <span class="text-sm text-gray-700">entries</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="modelsListPrev" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-                        <span id="modelsListPageInfo" class="text-sm text-gray-700">Page 1 of 1</span>
-                        <button id="modelsListNext" class="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <!-- Backup Files Modal removed -->
-
-    <!-- Status Data (hidden) -->
-    <div id="statusData" class="hidden" data-csrf="{{ csrf_token() }}"></div>
-@endsection
-
-@section('admin-scripts')
 <script>
 (function() {
-    console.log('Rasa Server Manager script loaded');
+    //console.log('Rasa Server Manager script loaded');
     // CSRF token
     const csrfToken = document.getElementById('statusData').getAttribute('data-csrf');
 
@@ -323,7 +115,7 @@
 
     // Fetch status
     async function fetchStatus() {
-        console.log('Starting fetchStatus');
+        //console.log('Starting fetchStatus');
         try {
             const response = await fetch('{{ route("admin.rasa-server.status") }}', {
                 headers: {
@@ -333,7 +125,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('fetchStatus received data:', data);
+                //console.log('fetchStatus received data:', data);
                 updateEndpointStatus(data.endpoint_5001);
                 updateServerStatus(data.server_5005);
                 updateActionServerStatus(data.action_server_5055);
@@ -348,12 +140,12 @@
             console.error('Failed to fetch status:', error);
             return { success: false, error: error.message };
         }
-        console.log('Completed fetchStatus');
+        //console.log('Completed fetchStatus');
     }
 
     // Fetch training history
     async function fetchTrainingHistory() {
-        console.log('Starting fetchTrainingHistory');
+        //console.log('Starting fetchTrainingHistory');
         try {
             const response = await fetch('{{ route("admin.rasa-server.training-history") }}', {
                 headers: {
@@ -363,7 +155,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('fetchTrainingHistory received data:', data);
+                //console.log('fetchTrainingHistory received data:', data);
                 updateTrainingHistoryTable(data.trainings || []);
             } else {
                 console.error('fetchTrainingHistory response not ok:', response.status);
@@ -371,13 +163,13 @@
         } catch (error) {
             console.error('Failed to fetch training history:', error);
         }
-        console.log('Completed fetchTrainingHistory');
+        //console.log('Completed fetchTrainingHistory');
     }
 
 
     // Fetch models list
     async function fetchModelsList() {
-        console.log('Starting fetchModelsList');
+        //console.log('Starting fetchModelsList');
         try {
             const response = await fetch('{{ route("admin.rasa-server.models-list") }}', {
                 headers: {
@@ -387,7 +179,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('fetchModelsList received data:', data);
+                //console.log('fetchModelsList received data:', data);
                 updateModelsListTable(data.models || []);
             } else {
                 console.error('fetchModelsList response not ok:', response.status);
@@ -395,7 +187,7 @@
         } catch (error) {
             console.error('Failed to fetch models list:', error);
         }
-        console.log('Completed fetchModelsList');
+        //console.log('Completed fetchModelsList');
     }
 
     // Pagination functions
@@ -706,7 +498,7 @@
     }
 
     async function cleanupModels() {
-        console.log('cleanupModels called');
+        //console.log('cleanupModels called');
         const result = await Swal.fire({
             title: 'Cleanup Old Models',
             text: 'This will delete old Rasa models, keeping only the 5 most recent ones. Continue?',
@@ -836,14 +628,13 @@
     });
 
     // Initial load
-    console.log('Starting initial load fetches');
+    //console.log('Starting initial load fetches');
     fetchStatus();
     fetchTrainingHistory();
     fetchModelsList();
-    console.log('Initial load fetches initiated');
+    //console.log('Initial load fetches initiated');
 
     // Auto-refresh status every 30 seconds
     setInterval(fetchStatus, 30000);
 })();
 </script>
-@endsection

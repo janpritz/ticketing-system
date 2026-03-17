@@ -1,4 +1,3 @@
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
@@ -141,114 +140,6 @@
             if (elLastTraining) elLastTraining.textContent = payload.lastTraining ?? 'Never';
         }
 
-        function updateRasaStatus() {
-            const secretEl = document.getElementById('faq-updater-data');
-            const secret = secretEl ? secretEl.getAttribute('data-secret') : '';
-            const url = secretEl ? secretEl.getAttribute('data-url') : '';
-            if (!secret || !url) {
-                console.debug('No FAQ_UPDATER_SECRET or URL available');
-                return;
-            }
-
-            fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'X-FAQ-UPDATER-TOKEN': secret,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    const statusText = document.getElementById('rasaStatusText');
-                    const statusIcon = document.getElementById('rasaStatusIcon');
-                    const statusCard = document.getElementById('rasaStatusCard');
-
-                    if (data.ok && data.running) {
-                        if (statusText) {
-                            statusText.textContent = 'Server Running';
-                            statusText.className = 'text-2xl sm:text-2xl font-bold text-emerald-600';
-                        }
-                        if (statusIcon) {
-                            statusIcon.className =
-                                'rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100';
-                        }
-                        if (statusCard) {
-                            statusCard.className =
-                                'block bg-white rounded-xl border border-emerald-200 p-4 hover:bg-emerald-50 transition-colors cursor-pointer';
-                        }
-                    } else {
-                        if (statusText) {
-                            statusText.textContent = 'Server Offline';
-                            statusText.className = 'text-2xl sm:text-2xl font-bold text-red-600';
-                        }
-                        if (statusIcon) {
-                            statusIcon.className =
-                                'rounded-md bg-red-50 p-2 text-red-600 border border-red-100';
-                        }
-                        if (statusCard) {
-                            statusCard.className =
-                                'block bg-white rounded-xl border border-red-200 p-4 hover:bg-red-50 transition-colors cursor-pointer';
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.debug('Failed to check Rasa status:', err);
-                    const statusText = document.getElementById('rasaStatusText');
-                    const statusIcon = document.getElementById('rasaStatusIcon');
-                    const statusCard = document.getElementById('rasaStatusCard');
-                    if (statusText) {
-                        statusText.textContent = 'Enpoint not reachable';
-                        statusText.className = 'text-2xl sm:text-2xl font-bold text-red-600';
-                    }
-                    if (statusIcon) {
-                        statusIcon.className = 'rounded-md bg-red-50 p-2 text-red-600 border border-red-100';
-                    }
-                    if (statusCard) {
-                        statusCard.className =
-                            'block bg-white rounded-xl border border-red-200 p-4 hover:bg-red-50 transition-colors cursor-pointer';
-                    }
-                });
-        }
-
-        // Click handler for Rasa Server Status
-        document.getElementById('rasaStatusCard').addEventListener('click', async () => {
-            const statusText = document.getElementById('rasaStatusText');
-            if (statusText.textContent !== 'Server Offline') return;
-
-            // Show loading state
-            statusText.textContent = 'Starting...';
-
-            try {
-                const res = await fetch('{{ route('admin.rasa-server.start-rasa-api') }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    statusText.textContent = 'Server Running';
-                    statusText.className = 'text-2xl sm:text-2xl font-bold text-emerald-600';
-                    const statusIcon = document.getElementById('rasaStatusIcon');
-                    if (statusIcon) {
-                        statusIcon.className =
-                            'rounded-md bg-emerald-50 p-2 text-emerald-600 border border-emerald-100';
-                    }
-                    const statusCard = document.getElementById('rasaStatusCard');
-                    if (statusCard) {
-                        statusCard.className =
-                            'block bg-white rounded-xl border border-emerald-200 p-4 hover:bg-emerald-50 transition-colors cursor-pointer';
-                    }
-                } else {
-                    statusText.textContent = 'Start Failed';
-                }
-            } catch (e) {
-                console.error('Failed to start Rasa server:', e);
-                statusText.textContent = 'Start Failed';
-            }
-        });
 
         function updateTopSenders(payload) {
             const tbody = document.getElementById('topSendersBody');
@@ -510,7 +401,9 @@
                 }
 
                 // Update Rasa status
-                updateRasaStatus();
+                if (typeof window.refreshRasaStatus === 'function') {
+                    window.refreshRasaStatus();
+                }
             } catch (e) {
                 // swallow errors to avoid UI disruption
                 console.debug('Admin auto-refresh failed', e);
@@ -644,7 +537,9 @@
         // and a change has been recorded.
         setTimeout(() => {
             refreshAdminData();
-            updateRasaStatus();
+            if (typeof window.refreshRasaStatus === 'function') {
+                window.refreshRasaStatus();
+            }
 
             // Ensure green dot is shown if there are active staff initially
             const initialActiveCount = parseInt(document.getElementById('activeStaffCountText')
@@ -1552,72 +1447,3 @@
     })();
 </script>
 
-<!-- User Management Dropdown Script -->
-<script>
-    (function() {
-        const dropdownBtn = document.getElementById('userManagementDropdown');
-        const dropdownMenu = document.getElementById('userManagementMenu');
-        const chevron = document.getElementById('userManagementChevron');
-
-        if (!dropdownBtn || !dropdownMenu || !chevron) return;
-
-        dropdownBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const isOpen = !dropdownMenu.classList.contains('hidden');
-
-            // Toggle menu visibility
-            dropdownMenu.classList.toggle('hidden', isOpen);
-
-            // Update aria-expanded
-            dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-
-            // Rotate chevron
-            chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.add('hidden');
-                dropdownBtn.setAttribute('aria-expanded', 'false');
-                chevron.style.transform = 'rotate(0deg)';
-            }
-        });
-    })();
-</script>
-
-<!-- FAQ Management Dropdown Script -->
-<script>
-    (function() {
-        const dropdownBtn = document.getElementById('faqManagementDropdown');
-        const dropdownMenu = document.getElementById('faqManagementMenu');
-        const chevron = document.getElementById('faqManagementChevron');
-
-        if (!dropdownBtn || !dropdownMenu || !chevron) return;
-
-        dropdownBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const isOpen = !dropdownMenu.classList.contains('hidden');
-
-            // Toggle menu visibility
-            dropdownMenu.classList.toggle('hidden', isOpen);
-
-            // Update aria-expanded
-            dropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-
-            // Rotate chevron
-            chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.add('hidden');
-                dropdownBtn.setAttribute('aria-expanded', 'false');
-                chevron.style.transform = 'rotate(0deg)';
-            }
-        });
-    })();
-</script>

@@ -19,7 +19,7 @@ class StaffController extends Controller
 
         $users = $userService->getUsersPaginated($q, $isDeleted);
 
-        return view('dashboards.admin.users.index', [
+        return view('dashboards.admin.users.page', [
             'users'         => $users,
             'q'             => $q,
             'isDeletedView' => $isDeleted,

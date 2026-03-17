@@ -39,15 +39,15 @@ class DashboardService
             'weekData'          => $this->getWeeklyAnalytics($startOfWeek, $endOfWeek)['data'],
             'categoryLabels'    => $this->getCategoryAnalytics()['labels'],
             'categoryData'      => $this->getCategoryAnalytics()['data'],
-            'topSenders'        => $this->getTopSenders(),
+            // 'topSenders'        => $this->getTopSenders(),
 
             // Ticket Lists
             'unassignedTickets' => $this->getUnassignedTicketsMapped(),
 
             // Config/Misc
-            'faqUpdaterSecret'  => env('RASA_SECRET'),
-            'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
-            'users'             => User::orderBy('name')->get(['id', 'name']),
+            // 'faqUpdaterSecret'  => env('RASA_SECRET'),
+            // 'faqUpdaterUrl'     => env('RASA_SERVER_CHECKER'),
+            // 'users'             => User::orderBy('name')->get(['id', 'name']),
         ];
     }
 
@@ -169,20 +169,20 @@ class DashboardService
         ];
     }
 
-    private function getTopSenders(): array
-    {
-        return Ticket::select('email', DB::raw('COUNT(*) as c'))
-            ->groupBy('email')
-            ->orderByDesc('c')
-            ->limit(10)
-            ->get()
-            ->map(fn($row) => [
-                'email' => $row->email,
-                'count' => (int) $row->c,
-            ])
-            ->values()
-            ->toArray();
-    }
+    // private function getTopSenders(): array
+    // {
+    //     return Ticket::select('email', DB::raw('COUNT(*) as c'))
+    //         ->groupBy('email')
+    //         ->orderByDesc('c')
+    //         ->limit(10)
+    //         ->get()
+    //         ->map(fn($row) => [
+    //             'email' => $row->email,
+    //             'count' => (int) $row->c,
+    //         ])
+    //         ->values()
+    //         ->toArray();
+    // }
 
     private function getUnassignedTicketsMapped(): array
     {
