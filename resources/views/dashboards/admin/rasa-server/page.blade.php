@@ -22,5 +22,7 @@
 
     <!-- Status Data (hidden) -->
     <div id="statusData" class="hidden" data-csrf="{{ csrf_token() }}"></div>
-    @include('dashboards.admin.rasa-server.scripts')
 @endsection
+@push('scripts')
+    @include('dashboards.admin.rasa-server.scripts')
+@endpush

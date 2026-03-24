@@ -4,69 +4,50 @@ namespace App\Services\Admin;
 
 use App\Models\{DocumentChange, RasaModel};
 use Illuminate\Support\Facades\{Auth, Http, Log};
-use Illuminate\Http\Client\Pool;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
+// use Symfony\Component\Process\Process;
+use Illuminate\Support\Facades\Process; 
 
 class RasaService
 {
+
     public function trainAndRestart(): array
     {
-        try {
-            // The SSH command to trigger the bundled script we made above
-            $sshUser = config('auth.ssh_user'); // Render's default SSH username
-            $sshHost = config('auth.ssh_host'); // Change to your Render SSH Host
-            $serviceId = config('auth.service_id'); // Your Render Service ID
+        // 1. Prepare configuration
+        $serviceId = config('auth.render_service_id'); // e.g., 'srv-c1234567890'
+        $sshHost   = config('auth.render_ssh_host');   // e.g., 'ssh.oregon.render.com'
+        $keyPath   = config('auth.ssh_key_path');     // e.g., '/home/forge/.ssh/id_rsa'
 
-            // Combine them into the Render-specific SSH string
-            $sshTarget = "{$serviceId}@{$sshHost}";
+        // Render format: SERVICE_ID@SSH_HOST
+        $sshTarget = "{$serviceId}@{$sshHost}";
 
-            // Execute the remote script
-            $process = new Process([
-                'ssh',
-                '-o',
-                'StrictHostKeyChecking=no',
-                $sshTarget,
-                'bash /app/deploy_sync.sh'
-            ]);
-
-            // Set a generous timeout (Rasa training can take a couple of minutes!)
-            $process->setTimeout(300); // 5 minutes
-
-            $process->run();
-
-            if (!$process->isSuccessful()) {
-                return [
-                    'success' => false,
-                    'message' => 'Rasa deployment script failed.',
-                    'error' => $process->getErrorOutput(),
-                    'status' => 500
-                ];
-            }
-
+        // 2. Execute using Laravel 12 Process Facade
+        $result = Process::timeout(300)->run([
+            'ssh',
+            '-o',
+            'StrictHostKeyChecking=no',
+            $sshTarget,
+            'bash /app/deploy_sync.sh'
+        ]);
+        // 3. Handle Result
+        if ($result->successful()) {
             return [
                 'success' => true,
-                'message' => 'Rasa successfully synced and trained over SSH!',
-                'output' => $process->getOutput()
-            ];
-        } catch (ProcessFailedException $e) {
-            // Catches environment setup failures (e.g., SSH process couldn't even start)
-            return [
-                'success' => false,
-                'message' => 'Process failed.',
-                'error' => $e->getMessage(),
-                'status' => 500
-            ];
-        } catch (\Exception $e) {
-            // Catches environment setup failures (e.g., SSH process couldn't even start)
-            return [
-                'success' => false,
-                'message' => 'An internal PHP system error occurred while running the process.',
-                'error' => $e->getMessage(),
-                'status' => 500
+                'message' => 'Rasa successfully synced and trained!',
+                'output'  => $result->output()
             ];
         }
+
+        // 4. Handle Failure
+        Log::error("SSH Deployment Failed: " . $result->errorOutput());
+
+        return [
+            'success' => false,
+            'message' => 'Rasa deployment script failed.',
+            'error'   => $result->errorOutput(),
+            'status'  => 500
+        ];
     }
+
     protected function markChangesAsTrained(string $modelName): void
     {
         DocumentChange::requiresTraining()->update([

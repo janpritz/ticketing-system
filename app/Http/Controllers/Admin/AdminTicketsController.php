@@ -7,12 +7,25 @@ use App\Http\Requests\Admin\{TicketResponseRequest, UpdateTicketRequest, TicketR
 use App\Models\Ticket;
 use App\Services\Admin\TicketService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{DB, Log, Mail, Auth};
+use Illuminate\Support\Facades\{Log, Auth};
 
 class AdminTicketsController extends Controller
 {
 
     public function index(Request $request, TicketService $service)
+    {
+        $filters = $request->only(['q', 'status', 'assignee', 'role', 'assignee_id', 'sort', 'per_page', 'page']);
+
+        $result = $service->getFilteredTickets($filters);
+
+        return response()->json($result)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    /**
+     * List tickets for AJAX requests (returns JSON data for the ticket table).
+     */
+    public function list(Request $request, TicketService $service)
     {
         $filters = $request->only(['q', 'status', 'assignee', 'role', 'assignee_id', 'sort', 'per_page', 'page']);
 

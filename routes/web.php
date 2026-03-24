@@ -381,7 +381,7 @@ Route::middleware('auth')->group(function () {
                         Route::get('/', function () {
                             $users = User::orderBy('name')->get(['id', 'name']);
                             $roles = Role::orderBy('name')->pluck('name');
-                            return view('dashboards.admin.tickets.index', compact('users', 'roles'));
+                            return view('dashboards.admin.tickets.page', compact('users', 'roles'));
                         })->name('index');
 
                         Route::get('/list', 'list')->name('list');
@@ -446,7 +446,7 @@ Route::middleware('auth')->group(function () {
 
             Route::controller(RasaTrainingController::class)
                 ->prefix('rasa-server')->name('rasa-server.')
-                ->middleware('throttle:20,1') // Strict throttling to prevent abuse
+                ->middleware('throttle:5,1') // Strict throttling to prevent abuse
                 ->group(function () {
                     Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
                 });
