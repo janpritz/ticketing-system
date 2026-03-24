@@ -93,7 +93,7 @@
             lastTraining.textContent = data.formatted || 'Unknown';
             if (relativeDiv) relativeDiv.textContent = data.relative || '';
         } else {
-            lastTraining.textContent = 'Never';
+            lastTraining.textContent = 'Initial Training';
             if (relativeDiv) relativeDiv.textContent = '';
         }
     }
@@ -104,9 +104,10 @@
      */
     function updateCurrentModel(data) {
         if (!currentModel || !currentModelVersion) return;
+        //console.log("Current Model: ".data.current_model)
 
         if (data) {
-            currentModel.textContent = data.name || 'Unknown';
+            currentModel.textContent = data || 'Unknown';
             currentModelVersion.textContent = data.version ? `v${data.version}` : '-';
         } else {
             currentModel.textContent = 'None';
@@ -129,11 +130,10 @@
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('[RasaStatus] Status data:', data);
+                //console.log('[RasaStatus] Status data:', data);
                 
-                updateEndpointStatus(data.endpoint_5001);
-                updateServerStatus(data.server_5005);
-                updateActionServerStatus(data.action_server_5055);
+                updateEndpointStatus(data.server_status);
+                updateServerStatus(data.server_status);
                 updateLastTraining(data.last_training);
                 updateCurrentModel(data.current_model);
                 

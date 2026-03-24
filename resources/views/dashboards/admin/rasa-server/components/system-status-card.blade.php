@@ -16,14 +16,14 @@
                 </svg>
                 Start Server
             </button>
-            <button id="startActionServerBtn"
+            {{-- <button id="startActionServerBtn"
                 class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Start Actions
-            </button>
+            </button> --}}
             <button id="refreshStatus"
                 class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,32 +35,22 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-4">
         <!-- Rasa Endpoint Card -->
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
+        {{-- <div class="bg-white border border-gray-200 rounded-lg p-4">
             <div class="text-sm font-medium text-gray-600 mb-1">Rasa Endpoint</div>
             <div class="text-xs text-gray-500 mb-2">Port 5001</div>
             <div id="endpointStatus" class="flex items-center gap-2">
                 <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
                 <span class="text-sm text-gray-600">Checking...</span>
             </div>
-        </div>
+        </div> --}}
 
         <!-- Rasa Server Card -->
         <div class="bg-white border border-gray-200 rounded-lg p-4">
             <div class="text-sm font-medium text-gray-600 mb-1">Rasa Server</div>
             <div class="text-xs text-gray-500 mb-2">Port 5005</div>
             <div id="serverStatus" class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
-                <span class="text-sm text-gray-600">Checking...</span>
-            </div>
-        </div>
-
-        <!-- Action Server Card -->
-        <div class="bg-white border border-gray-200 rounded-lg p-4">
-            <div class="text-sm font-medium text-gray-600 mb-1">Action Server</div>
-            <div class="text-xs text-gray-500 mb-2">Port 5055</div>
-            <div id="actionServerStatus" class="flex items-center gap-2">
                 <div class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
                 <span class="text-sm text-gray-600">Checking...</span>
             </div>

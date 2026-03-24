@@ -5,45 +5,66 @@ namespace App\Services\Admin;
 use App\Models\{DocumentChange, RasaModel};
 use Illuminate\Support\Facades\{Auth, Http, Log};
 use Illuminate\Http\Client\Pool;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class RasaService
 {
     public function trainAndRestart(): array
     {
         try {
-            Log::info('Starting Rasa training', ['user' => Auth::user()->name]);
+            // The SSH command to trigger the bundled script we made above
+            $sshUser = config('auth.ssh_user'); // Render's default SSH username
+            $sshHost = config('auth.ssh_host'); // Change to your Render SSH Host
+            $serviceId = config('auth.service_id'); // Your Render Service ID
 
-            $config = config('services.faq_train_rasa');
+            // Combine them into the Render-specific SSH string
+            $sshTarget = "{$serviceId}@{$sshHost}";
 
-            // 1. Call Rasa Server
-            $response = Http::timeout(300)
-                ->withHeaders(['X-FAQ-UPDATER-TOKEN' => $config['secret']])
-                ->post($config['url'], [
-                    'domain' => 'domain.yml',
-                    'data' => 'data',
-                    'out' => 'models'
-                ]);
+            // Execute the remote script
+            $process = new Process([
+                'ssh',
+                '-o',
+                'StrictHostKeyChecking=no',
+                $sshTarget,
+                'bash /app/deploy_sync.sh'
+            ]);
 
-            if (!$response->successful() || !($response->json()['ok'] ?? false)) {
-                throw new \Exception('Rasa training failed: ' . $response->body());
+            // Set a generous timeout (Rasa training can take a couple of minutes!)
+            $process->setTimeout(300); // 5 minutes
+
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                return [
+                    'success' => false,
+                    'message' => 'Rasa deployment script failed.',
+                    'error' => $process->getErrorOutput(),
+                    'status' => 500
+                ];
             }
-
-            // 2. Post-Training Cleanup
-            $modelName = $this->getLatestModelName();
-            $this->markChangesAsTrained($modelName);
-
-            // 3. Restart Server
-            $restart = $this->restartRasaServerAfterTraining();
 
             return [
                 'success' => true,
-                'message' => "Training successful. Server " . ($restart['success'] ? "restarted" : "restart failed"),
-                'model_name' => $modelName,
-                'server_error' => $restart['error'] ?? null
+                'message' => 'Rasa successfully synced and trained over SSH!',
+                'output' => $process->getOutput()
+            ];
+        } catch (ProcessFailedException $e) {
+            // Catches environment setup failures (e.g., SSH process couldn't even start)
+            return [
+                'success' => false,
+                'message' => 'Process failed.',
+                'error' => $e->getMessage(),
+                'status' => 500
             ];
         } catch (\Exception $e) {
-            Log::error('Rasa training failed: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
+            // Catches environment setup failures (e.g., SSH process couldn't even start)
+            return [
+                'success' => false,
+                'message' => 'An internal PHP system error occurred while running the process.',
+                'error' => $e->getMessage(),
+                'status' => 500
+            ];
         }
     }
     protected function markChangesAsTrained(string $modelName): void
@@ -249,76 +270,53 @@ class RasaService
     /**
      * Aggregates health status from the Rasa API, Action Server, and local metadata.
      */
+
     public function getSystemHealthReport(): array
     {
-        $config = config('services.faq_updater');
-        $baseUrl = $config['url'] ?? null;
-        
-        // Check if FAQ updater service is configured
-        if (!$baseUrl || !$config['secret'] ?? null) {
-            return [
-                'endpoint_5001'      => false,
-                'server_5005'        => false,
-                'action_server_5555' => false,
-                'last_training'      => $this->getLastTrainingInfo(),
-                'last_backup'        => $this->getLastBackupInfo(),
-                'current_model'      => $this->getCurrentModelInfo(),
-                'timestamp'          => now()->toISOString(),
-                'error'              => 'FAQ updater service not configured. Please check .env settings.'
-            ];
-        }
+        $rasaUrl = env('RASA_SERVER_URL'); // e.g., https://sangkay-chatbot.onrender.com
+        $modelUrl = env('RASA_SERVER_MODEL'); // e.g., https://sangkay-chatbot.onrender.com/status
 
-        // 1. Concurrent Status Checks
-        $responses = Http::pool(function (Pool $pool) use ($baseUrl, $config) {
-            $headers = [
-                'X-FAQ-UPDATER-TOKEN' => $config['secret'],
-                'X-Requested-With'    => 'XMLHttpRequest'
-            ];
-
-            return [
-                $pool->as('server')->timeout(5)->withHeaders($headers)
-                    ->get($baseUrl . '/check-rasa-status'),
-                $pool->as('actions')->timeout(5)->withHeaders($headers)
-                    ->get($baseUrl . '/check-rasa-actions-status'),
-            ];
-        });
-
-        // 2. Parse results
-        $serverAvailable = isset($responses['server']) && $responses['server']->successful();
-        $actionsAvailable = isset($responses['actions']) && $responses['actions']->successful();
-        
-        $serverStatus = $serverAvailable
-            ? ($responses['server']->json()['running'] ?? false)
-            : false;
-
-        $actionServerStatus = $actionsAvailable
-            ? ($responses['actions']->json()['running'] ?? false)
-            : false;
-
-        // Build error message if service is unreachable
+        $serverStatus = 'offline';
+        $currentModel = 'None';
         $error = null;
-        if (!$serverAvailable || !$actionsAvailable) {
-            $unreachable = [];
-            if (!$serverAvailable) {
-                $unreachable[] = 'Rasa Server';
+
+        // 1. Check if Rasa Server is Online
+        if ($rasaUrl) {
+            try {
+                $response = Http::timeout(5)->get($rasaUrl);
+
+                if ($response->successful() && str_contains($response->body(), 'Hello from Rasa')) {
+                    $serverStatus = 'online';
+                }
+            } catch (\Exception $e) {
+                $error = "Rasa Endpoint Unreachable: " . $e->getMessage();
+                Log::warning($error);
             }
-            if (!$actionsAvailable) {
-                $unreachable[] = 'Action Server';
-            }
-            $error = 'Cannot reach FAQ updater service. ' . implode(' and ', $unreachable) . ' may be offline or service is unreachable.';
         }
+
+        // 2. Fetch the Current Model Active File
+        if ($serverStatus === 'online' && $modelUrl) {
+            try {
+                $modelResponse = Http::timeout(5)->get($modelUrl);
+
+                if ($modelResponse->successful()) {
+                    $currentModel = $modelResponse->json('model_file') ?? 'Unknown Model';
+                }
+            } catch (\Exception $e) {
+                Log::warning("Could not fetch Rasa model status: " . $e->getMessage());
+            }
+        }
+        $data = [
+            'server_online' => $serverStatus === 'online',
+            'server_status' => $serverStatus, // 'online' or 'offline'
+            'current_model' => $currentModel,
+            'last_training' => $this->getLastTrainingInfo(), // your existing method   // your existing method
+            'timestamp'     => now()->toISOString(),
+            'error'         => $error
+        ];
 
         // 3. Construct Unified Report
-        return [
-            'endpoint_5001'      => $this->checkEndpointStatus(5001),
-            'server_5005'        => $serverStatus,
-            'action_server_5555' => $actionServerStatus,
-            'last_training'      => $this->getLastTrainingInfo(),
-            'last_backup'        => $this->getLastBackupInfo(),
-            'current_model'      => $this->getCurrentModelInfo(),
-            'timestamp'          => now()->toISOString(),
-            'error'              => $error
-        ];
+        return $data;
     }
     /**
      * Fetch and format the history of document changes and training events.

@@ -1,0 +1,26 @@
+id: 2
+title: Announcement 2
+Sample textxdcsvfsdfvfxdfsdf
+---------
+id: 1
+title: ENROLLMENT SCHEDULE FOR SECOND SEMESTER
+ENROLLMENT SCHEDULE FOR SECOND SEMESTER, AY 2025–2026 is officially announced!
+To ALL ACC Students:
+     To comply with the CHED-mandated June 2026 opening of classes for AY 2026–2027, the following enrollment schedule has been set.
+     Thank you for understanding.
+     -College President
+     🗓 Enrollment Period:
+     👉 December 9–23, 2025
+     📌 IMPORTANT DATES TO REMEMBER
+     🔹 College Admission Test: December 1–5, 2025
+     🔹 Enrollment per Program: See individual program schedule
+     🔹 Last Day of Enrollment: December 29, 2025
+     🔹 Student Orientation (for New Students, Transferees & Returnees): January 5, 2026
+     🔹 Start of Formal Classes: January 5, 2026
+     🔹 Adding/Dropping of Subjects: January 15–16, 2026
+     Make sure to complete your enrollment within the given period. We look forward to seeing you this coming semester! 💚💛
+---------
+id: 3
+title: New
+new announcement test
+---------

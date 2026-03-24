@@ -125,7 +125,7 @@
 
             if (response.ok) {
                 const data = await response.json();
-                //console.log('fetchStatus received data:', data);
+                console.log('fetchStatus received data:', data);
                 updateEndpointStatus(data.endpoint_5001);
                 updateServerStatus(data.server_5005);
                 updateActionServerStatus(data.action_server_5055);

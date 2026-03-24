@@ -111,5 +111,8 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+    'shh_user'         => env('SSH_USER', 'render'),
+    'ssh_host'         => env('SSH_HOST'),
+    'ssh_service_id'   => env('SSH_SERVICE_ID'),
 
 ];

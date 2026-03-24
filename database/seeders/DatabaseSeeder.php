@@ -29,6 +29,11 @@ class DatabaseSeeder extends Seeder
         // 3. Ensure "Primary Administrator" Role exists
         $adminRole = Role::firstOrCreate(['name' => 'Primary Administrator']);
 
+        // 4. Seed documents from docs folder
+        if (class_exists(DocumentSeeder::class)) {
+            $this->call(DocumentSeeder::class);
+        }
+
         // 4. Create/Update the Primary Administrator User (ID: 1)
         // Using updateOrInsert to force ID 1 specifically
         DB::table('users')->updateOrInsert(
