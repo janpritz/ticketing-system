@@ -3,7 +3,7 @@
 @section('title', 'Admin Dashboard')
 
 @section('admin-content')
-    @include('dashboards.admin.index.components.document-training-alert')
+    {{-- @include('dashboards.admin.index.components.document-training-alert') --}}
 
     {{-- System Status & Metrics --}}
     @include('dashboards.admin.rasa-server.components.system-status-card')

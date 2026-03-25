@@ -88,7 +88,7 @@
             </div>
         </div>
 
-        @if (Auth::check() && (int) (Auth::user()->role_id ?? 0) === 1)
+        {{-- @if (Auth::check() && (int) (Auth::user()->role_id ?? 0) === 1)
             <!-- Training Required Alert -->
             <div id="trainingAlert" class="hidden bg-orange-50 border-l-4 border-orange-400 p-4 mb-4">
                 <div class="flex items-center justify-between">
@@ -125,7 +125,7 @@
                     </div>
                 </div>
             </div>
-        @endif
+        @endif --}}
 
         <div class="mt-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div class="p-6">

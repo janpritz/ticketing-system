@@ -1,0 +1,10 @@
+<div id="admin-faqs-state" class="hidden" data-list-url="{{ $listUrl ?? route('admin.knowledgebase.list') }}"
+        data-store-url="{{ route('admin.knowledgebase.store') }}"
+        data-show-url-template="{{ route('admin.knowledgebase.show', ['faq' => '__ID__']) }}"
+        data-update-url-template="{{ route('admin.knowledgebase.update', ['faq' => '__ID__']) }}"
+        data-destroy-url-template="{{ route('admin.knowledgebase.destroy', ['faq' => '__ID__']) }}"
+        data-revisions-url-template="{{ route('admin.knowledgebase.revisions', ['faq' => '__ID__']) }}"
+        data-restore-url-template="{{ route('admin.knowledgebase.restore', ['faq' => '__ID__']) }}"
+        data-enable-url-template="{{ route('admin.knowledgebase.enable', ['faq' => '__ID__']) }}"
+        data-disable-url-template="{{ route('admin.knowledgebase.disable', ['faq' => '__ID__']) }}"
+        data-local-documents='@json($localDocuments ?? [])' data-history-url=""></div>

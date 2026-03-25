@@ -318,6 +318,8 @@ Route::middleware('auth')->group(function () {
                     // Applies throttle:20,1 to all routes in this group automatically
                     Route::middleware('throttle:20,1')->group(function () {
                         Route::post('/', 'store')->name('store');
+                        Route::post('/update-document', 'updateDocument')->name('update-document');
+                        Route::delete('/delete-document', 'deleteDocument')->name('delete-document');
 
                         Route::prefix('{faq}')->whereNumber('faq')->group(function () {
                             Route::put('/', 'update')->name('update');

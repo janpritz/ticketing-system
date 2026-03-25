@@ -68,6 +68,7 @@ class KnowledgebaseService
                 'modified' => $d->updated_at?->toDateTimeString(),
                 'created_by' => $d->created_by,
                 'rasa_doc_id' => $d->rasa_doc_id,
+                'content' => $d->content,
             ])->values()->toArray();
 
             return ['ok' => true, 'files' => $files];

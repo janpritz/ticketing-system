@@ -45,11 +45,11 @@
                                 clip-rule="evenodd" />
                         </svg>
                     </div>
-                    <div class="ml-3">
+                    {{-- <div class="ml-3">
                         <p class="text-sm text-orange-700">
                             <strong>Training Required:</strong> Documents have been modified and need Rasa retraining.
                         </p>
-                    </div>
+                    </div> --}}
                 </div>
                 <div class="ml-4">
                     <button id="trainRasaBtn"
