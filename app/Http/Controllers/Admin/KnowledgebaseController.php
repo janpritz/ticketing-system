@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DocumentUploadRequest;
 use App\Http\Requests\Admin\KnowledgebaseRequest;
 use Illuminate\Http\Request;
 use App\Services\Admin\KnowledgebaseService;
 use App\Models\Document;
 use App\Models\DocumentChange;
+use App\Services\Admin\DocumentService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -146,12 +148,70 @@ class KnowledgebaseController extends Controller
                 'training_completed' => false,
             ]);
 
-            Log::info('Document deleted: ' . $validated['file_name']);
+            //Log::info('Document deleted: ' . $validated['file_name']);
 
             return response()->json(['ok' => true, 'message' => 'Document deleted successfully']);
         } catch (\Exception $e) {
-            Log::error('Failed to delete document: ' . $e->getMessage());
+            //Log::error('Failed to delete document: ' . $e->getMessage());
             return response()->json(['ok' => false, 'error' => 'Failed to delete document'], 500);
         }
+    }
+
+    public function knowledgebaseDeletedList(KnowledgebaseService $kbService)
+    {
+        return response()->json($kbService->getDeletedDocumentList());
+    }
+
+    public function restoreDocument(Request $request, KnowledgebaseService $kbService)
+    {
+        try {
+            $validated = $request->validate([
+                'file_name' => 'required|string|max:255',
+            ]);
+
+            $document = Document::onlyTrashed()->where('file_name', $validated['file_name'])->first();
+            
+            if (!$document) {
+                return response()->json(['ok' => false, 'error' => 'Document not found in trash'], 404);
+            }
+
+            $document->restore();
+
+            // Log document change for training alert
+            DocumentChange::create([
+                'file_name' => $validated['file_name'],
+                'action' => 'updated',
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? 'System',
+                'training_required' => true,
+                'training_completed' => false,
+            ]);
+
+            return response()->json(['ok' => true, 'message' => 'Document restored successfully']);
+        } catch (\Exception $e) {
+            Log::error('Failed to restore document: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'error' => 'Failed to restore document'], 500);
+        }
+    }
+
+    public function uploadDocument(DocumentUploadRequest $request, DocumentService $service)
+    {
+        $validated = $request->validated();
+        /** @var \App\Models\User $auth */
+        $auth = Auth::user();
+
+        // 1. Validation Logic - Only .txt files are allowed
+        if (!str_ends_with(strtolower($validated['file_name']), '.txt')) {
+            return response()->json(['success' => false, 'message' => 'Only .txt files are allowed'], 403);
+        }
+
+        // 2. Delegate to Service (file_content is already validated by DocumentUploadRequest)
+        $result = $service->handleDocumentUpload($validated, $auth);
+
+        if (!$result['success']) {
+            return response()->json($result, $result['status'] ?? 500);
+        }
+
+        return response()->json($result);
     }
 }

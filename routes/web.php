@@ -307,6 +307,7 @@ Route::middleware('auth')->group(function () {
                         Route::get('/all-json', 'allJson')->name('all-json');
                         Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
                         Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
+                        Route::post('/upload-document','uploadDocument')->name('uploadDocument');
 
                         Route::prefix('{faq}')->whereNumber('faq')->group(function () {
                             Route::get('/', 'knowledgebaseShow')->name('show');
@@ -337,6 +338,9 @@ Route::middleware('auth')->group(function () {
                                 ->name('revert');
                         });
                     });
+
+                    // --- RESTORE DOCUMENT ROUTE ---
+                    Route::post('/restore-document', 'restoreDocument')->name('restore-document');
                 });
 
             // Admin Roles Management

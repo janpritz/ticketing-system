@@ -7,6 +7,18 @@
     </div>
 @else
     <div class="hidden sm:flex items-center gap-2">
+        <!-- Trash Icon Button (View Deleted Documents) -->
+        <a href="{{ route('admin.knowledgebase.index', ['include_deleted' => '1']) }}"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium px-3 py-2"
+            aria-label="View Deleted Documents">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span class="hidden lg:inline">Deleted</span>
+            <span class="lg:hidden">Trash</span>
+        </a>
+
         <!-- Upload File Button -->
         <button id="uploadFileBtn" type="button"
             class="inline-flex items-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2"

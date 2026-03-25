@@ -16,16 +16,26 @@ class KnowledgebaseService
     public function getLocalDocuments(bool $trashed = false): array
     {
         try {
-            $query = Document::orderBy('file_name');
+            // Base query - only pull metadata and let MySQL calculate lengths
+            $query = Document::query()->select([
+                'id',
+                'file_name',
+                'created_by',
+                'updated_at',
+                DB::raw('LENGTH(content) as computed_size') // 🚀 Fast size calculation in SQL
+            ])
+                ->orderBy('file_name');
 
             if ($trashed) {
                 $query->onlyTrashed();
+            } else {
+                $query->withoutTrashed();
             }
 
             return $query->get()
                 ->map(fn($d) => [
                     'name'       => $d->file_name,
-                    'size'       => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
+                    'size'       => (int) $d->computed_size, // 🚀 Uses the MySQL length directly
                     'modified'   => $d->updated_at?->toDateTimeString(),
                     'created_by' => $d->created_by,
                 ])
@@ -61,7 +71,7 @@ class KnowledgebaseService
     public function getFormattedDocumentList(): array
     {
         try {
-            $docs = Document::orderBy('file_name')->get();
+            $docs = Document::query()->orderBy('file_name')->get();
             $files = $docs->map(fn($d) => [
                 'name' => $d->file_name,
                 'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
@@ -99,7 +109,7 @@ class KnowledgebaseService
         DB::transaction(function () use ($data) {
             // 1. Locate and update the specific FAQ document/entry
             // Here we assume 'faqs.json' is the authoritative file name in your documents table
-            $document = Document::where('file_name', 'faqs.json')->firstOrFail();
+            $document = Document::query()->where('file_name', 'faqs.json')->firstOrFail();
 
             // If you are storing the intent/response structure inside a JSON column 'content'
             $currentContent = json_decode($document->content, true) ?? [];
@@ -138,7 +148,7 @@ class KnowledgebaseService
     {
         DB::transaction(function () use ($faqId) {
             // 1. Fetch the authoritative FAQ document
-            $document = Document::where('file_name', 'faqs.json')->firstOrFail();
+            $document = Document::query()->where('file_name', 'faqs.json')->firstOrFail();
 
             // 2. Decode the JSON content
             $currentContent = json_decode($document->content, true) ?? [];
@@ -164,7 +174,7 @@ class KnowledgebaseService
     {
         try {
             // 1. Fetch the authoritative FAQ document
-            $document = Document::where('file_name', 'faqs.json')->first();
+            $document = Document::query()->where('file_name', 'faqs.json')->first();
 
             if (!$document || !$document->content) {
                 return null;
@@ -179,6 +189,27 @@ class KnowledgebaseService
             return $entry ?: null;
         } catch (\Exception $e) {
             throw new \RuntimeException('Failed to retrieve FAQ entry: ' . $e->getMessage());
+        }
+    }
+
+    public function getDeletedDocumentList(): array
+    {
+        try {
+            $docs = Document::onlyTrashed()->orderBy('file_name')->get();
+            $files = $docs->map(fn($d) => [
+                'name' => $d->file_name,
+                'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
+                'modified' => $d->updated_at?->toDateTimeString(),
+                'created_by' => $d->created_by,
+                'deleted_at' => $d->deleted_at?->toDateTimeString(),
+                'rasa_doc_id' => $d->rasa_doc_id,
+                'content' => $d->content,
+            ])->values()->toArray();
+
+            return ['ok' => true, 'files' => $files];
+        } catch (\Exception $e) {
+            Log::error('KB Service Deleted List Error: ' . $e->getMessage());
+            return ['ok' => false, 'error' => 'Failed to list deleted documents'];
         }
     }
 }

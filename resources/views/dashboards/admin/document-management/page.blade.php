@@ -24,10 +24,22 @@
         <!-- Training Required Alert -->
         @include('dashboards.admin.knowledgebase.utils.training-required-alert')
 
+        {{-- Hidden state for JS --}}
+        @include('dashboards.admin.knowledgebase.utils.hidden-state-urls')
+
         {{-- Display the documents table here --}}
         @include('dashboards.admin.document-management.components.document-table')
         
     </div>
+
+    <!-- Mobile Bottom Drawer -->
+    @include('dashboards.admin.knowledgebase.components.mobile-bottom-drawer')
+
+    <!-- Mobile Drawer Overlay -->
+    <div id="mobileDrawerOverlay" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
+
+    <!-- Upload File Modal -->
+    @include('dashboards.admin.knowledgebase.components.upload-file-modal')
 
     <!-- View Document Modal -->
     @include('dashboards.admin.document-management.components.view-document-modal')
