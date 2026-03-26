@@ -13,36 +13,36 @@ class KnowledgebaseService
      * * @param bool $trashed Only fetch soft-deleted documents if true.
      * @return array
      */
+
     public function getLocalDocuments(bool $trashed = false): array
     {
         try {
-            // Base query - only pull metadata and let MySQL calculate lengths
-            $query = Document::query()->select([
-                'id',
-                'file_name',
-                'created_by',
-                'updated_at',
-                DB::raw('LENGTH(content) as computed_size') // 🚀 Fast size calculation in SQL
-            ])
-                ->orderBy('file_name');
+            // 🚀 Letting MySQL do the JOIN, Length, and COALESCE operations!
+            $query = DB::table('documents as d')
+                ->leftJoin('users as u', 'd.created_by', '=', 'u.id')
+                ->select([
+                    'd.file_name as name',
+                    DB::raw('LENGTH(d.content) as size'),
+                    'd.updated_at as modified',
+                    DB::raw("COALESCE(u.name, 'Primary Administrator') as creator_name"),
+                    // 🛠️ Adding this so your JS knows if it can show the Restore button!
+                    DB::raw('CASE WHEN d.deleted_at IS NOT NULL THEN 1 ELSE 0 END as is_trashed')
+                ])
+                ->orderBy('d.file_name', 'asc');
 
             if ($trashed) {
-                $query->onlyTrashed();
+                $query->whereNotNull('d.deleted_at');
             } else {
-                $query->withoutTrashed();
+                $query->whereNull('d.deleted_at');
             }
 
+            // Using ->get()->toArray() on DB::table returns standard PHP objects
+            // We cast them cleanly to arrays for your JSON response
             return $query->get()
-                ->map(fn($d) => [
-                    'name'       => $d->file_name,
-                    'size'       => (int) $d->computed_size, // 🚀 Uses the MySQL length directly
-                    'modified'   => $d->updated_at?->toDateTimeString(),
-                    'created_by' => $d->created_by,
-                ])
-                ->values()
+                ->map(fn($d) => (array) $d)
                 ->toArray();
         } catch (\Throwable $e) {
-            Log::warning('Failed to load local documents: ' . $e->getMessage());
+            Log::warning('Failed to load local documents via SQL Join: ' . $e->getMessage());
             return [];
         }
     }
@@ -71,12 +71,12 @@ class KnowledgebaseService
     public function getFormattedDocumentList(): array
     {
         try {
-            $docs = Document::query()->orderBy('file_name')->get();
+            $docs = Document::query()->with('user')->orderBy('file_name')->get();
             $files = $docs->map(fn($d) => [
                 'name' => $d->file_name,
                 'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
                 'modified' => $d->updated_at?->toDateTimeString(),
-                'created_by' => $d->created_by,
+                'created_by' => $d->user->name ?? 'Primary Administrator',
                 'rasa_doc_id' => $d->rasa_doc_id,
                 'content' => $d->content,
             ])->values()->toArray();
@@ -95,7 +95,7 @@ class KnowledgebaseService
                 'file_name'          => $fileName,
                 'action'             => $action,
                 'user_id'            => Auth::id(),
-                'user_name'          => Auth::user()->name ?? 'System',
+                'user_name'          => Auth::user()->name ?? 'Primary Administrator',
                 'training_required'  => true,
                 'training_completed' => false,
             ]);
@@ -195,12 +195,12 @@ class KnowledgebaseService
     public function getDeletedDocumentList(): array
     {
         try {
-            $docs = Document::onlyTrashed()->orderBy('file_name')->get();
+            $docs = Document::onlyTrashed()->with('user')->orderBy('file_name')->get();
             $files = $docs->map(fn($d) => [
                 'name' => $d->file_name,
                 'size' => is_null($d->content) ? 0 : mb_strlen((string) $d->content, '8bit'),
                 'modified' => $d->updated_at?->toDateTimeString(),
-                'created_by' => $d->created_by,
+                'created_by' => $d->user->name ?? 'Primary Administrator',
                 'deleted_at' => $d->deleted_at?->toDateTimeString(),
                 'rasa_doc_id' => $d->rasa_doc_id,
                 'content' => $d->content,

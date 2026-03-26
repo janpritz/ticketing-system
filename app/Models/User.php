@@ -94,6 +94,11 @@ class User extends Authenticatable
         return $this->roles()->first();
     }
 
+    public function userRole(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
+    }
+
     /**
      * Backwards-compatible accessor so existing code that uses $user->role
      * (expecting a string) continues to work.

@@ -71,6 +71,7 @@
                 if (!res.ok) throw new Error('Failed to fetch documents');
 
                 const data = await res.json();
+                //console.log(data);
                 if (data.ok && Array.isArray(data.files)) {
                     renderDocumentsTable(data.files);
                 }

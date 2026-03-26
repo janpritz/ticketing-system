@@ -13,10 +13,13 @@ class DocumentService
     public function handleDocumentUpload(array $data, User $user): array
     {
         return DB::transaction(function () use ($data, $user) {
+
+            // Grab the roleID
+            $roleId = $user->userRole()->first()?->id ?? null;
             // 1. Create Document Record
             $doc = Document::create([
                 'file_name'  => $data['file_name'],
-                'role_id'    => $user->role_id ?: null,
+                'role_id'    => $roleId ?: null,
                 'created_by' => $user->id,
                 'content'    => $data['file_content'],
             ]);
