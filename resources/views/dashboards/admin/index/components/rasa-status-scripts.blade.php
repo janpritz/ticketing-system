@@ -3,6 +3,13 @@
     // Debug: Log when Rasa status script loads
     console.log('[RasaStatus] Script loaded for Rasa Server Manager System Status Card');
 
+    // Skip auto-polling on rasa-server page to avoid duplicates with page-specific scripts
+    if (window.location.pathname.includes('rasa-server')) {
+        console.log('[RasaStatus] On rasa-server page, skipping auto-polling (manual refresh still available)');
+        // Still allow manual refresh and button actions
+        return;
+    }
+
     // CSRF token from hidden element
     const statusDataEl = document.getElementById('statusData');
     const csrfToken = statusDataEl ? statusDataEl.getAttribute('data-csrf') : '';

@@ -40,8 +40,13 @@
                 <label class="text-slate-900 text-sm font-medium mb-2 block">Password</label>
                 <div class="relative flex items-center">
                   <input name="password" type="password" required class="w-full text-slate-900 text-sm border border-slate-300 px-4 py-3 pr-8 rounded-md outline-blue-600" placeholder="Enter password" />
-                  <svg id="togglePassword" xmlns="http://www.w3.org/2000/svg" fill="#bbb" stroke="#bbb" class="w-4 h-4 absolute right-4 cursor-pointer" viewBox="0 0 128 128" aria-label="Toggle password visibility" role="button" tabindex="0">
+                  <!-- Open Eye Icon -->
+                  <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" fill="#bbb" stroke="#bbb" class="w-4 h-4 absolute right-4 cursor-pointer" viewBox="0 0 128 128" aria-label="Show password" role="button" tabindex="0">
                     <path d="M64 104C22.127 104 1.367 67.496.504 65.943a4 4 0 0 1 0-3.887C1.367 60.504 22.127 24 64 24s62.633 36.504 63.496 38.057a4 4 0 0 1 0 3.887C126.633 67.496 105.873 104 64 104zM8.707 63.994C13.465 71.205 32.146 96 64 96c31.955 0 50.553-24.775 55.293-31.994C114.535 56.795 95.854 32 64 32 32.045 32 13.447 56.775 8.707 63.994zM64 88c-13.234 0-24-10.766-24-24s10.766-24 24-24 24 10.766 24 24-10.766 24-24 24zm0-40c-8.822 0-16 7.178-16 16s7.178 16 16 16 16-7.178 16-16-7.178-16-16-16z" data-original="#000000"></path>
+                  </svg>
+                  <!-- Closed Eye Icon -->
+                  <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#bbb" stroke-width="2" class="w-4 h-4 absolute right-4 cursor-pointer hidden" viewBox="0 0 24 24" aria-label="Hide password" role="button" tabindex="0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
                   </svg>
                 </div>
               </div>
@@ -72,7 +77,7 @@
     </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <!-- SweetAlert2 for success messages -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -114,21 +119,32 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const pwd = document.querySelector('input[name="password"]');
-  const toggle = document.getElementById('togglePassword');
-  if (!pwd || !toggle) return;
+  const eyeOpen = document.getElementById('eyeOpen');
+  const eyeClosed = document.getElementById('eyeClosed');
+  if (!pwd || !eyeOpen || !eyeClosed) return;
 
   function toggleVisibility() {
-    const isText = pwd.getAttribute('type') === 'text';
-    pwd.setAttribute('type', isText ? 'password' : 'text');
+    const isPassword = pwd.getAttribute('type') === 'password';
+    pwd.setAttribute('type', isPassword ? 'text' : 'password');
+    if (isPassword) {
+      eyeOpen.classList.add('hidden');
+      eyeClosed.classList.remove('hidden');
+    } else {
+      eyeOpen.classList.remove('hidden');
+      eyeClosed.classList.add('hidden');
+    }
   }
 
-  toggle.addEventListener('click', toggleVisibility);
-  toggle.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleVisibility();
-    }
+  const toggleElements = [eyeOpen, eyeClosed];
+  toggleElements.forEach(el => {
+    el.addEventListener('click', toggleVisibility);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleVisibility();
+      }
+    });
   });
 });
 </script>
-@endsection
+@endpush

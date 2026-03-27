@@ -51,6 +51,12 @@
         let trainingHistoryTotalPages = 1;
         let modelsListTotalPages = 1;
 
+        // Status polling state
+        let statusInterval = null;
+        let lastStatusFetchTime = 0;
+        let isFetchingStatus = false;
+        const STATUS_CACHE_DURATION = 60000; // 1 minute minimum between fetches for 5-min interval
+
         // Status update functions
         function updateServerStatus(isRunning) {
             if (!serverStatus) return;
@@ -93,8 +99,25 @@
             }
         }
 
+        // Status polling control
+        function startStatusPolling() {
+            stopStatusPolling(); // Clear any existing
+            statusInterval = setInterval(fetchStatus, 300000); // 5 minutes
+        }
+
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
         // Fetch status
         async function fetchStatus() {
+            const now = Date.now();
+            if (isFetchingStatus || now - lastStatusFetchTime < STATUS_CACHE_DURATION) return;
+            isFetchingStatus = true;
+            lastStatusFetchTime = now;
             try {
                 const response = await fetch('{{ route("admin.rasa-server.status") }}', {
                     headers: {
@@ -116,6 +139,8 @@
             } catch (error) {
                 console.error('Failed to fetch status:', error);
                 return { success: false, error: error.message };
+            } finally {
+                isFetchingStatus = false;
             }
         }
 
@@ -490,8 +515,18 @@
         fetchTrainingHistory();
         fetchModelsList();
 
-        // Auto-refresh status every 30 seconds
-        setInterval(fetchStatus, 30000);
+        // Auto-refresh status every 5 minutes
+        startStatusPolling();
+
+        // Visibility-aware polling
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopStatusPolling();
+            } else {
+                fetchStatus(); // Immediate refresh when tab becomes visible
+                startStatusPolling(); // Resume polling
+            }
+        });
     } // End of initScript
 })();
 </script>
