@@ -416,11 +416,19 @@ Route::middleware('auth')->group(function () {
                 });
             });
 
-            // Standard Web Resource
-            Route::resource('announcements', AdminAnnouncementController::class);
+            // List for AJAX
+            Route::get('announcements/list', [AdminAnnouncementController::class, 'list'])->name('announcements.list');
+
+            // Trash
+            Route::get('announcements/deleted', [AdminAnnouncementController::class, 'deletedIndex'])->name('announcements.deleted');
+            Route::get('announcements/deleted/list', [AdminAnnouncementController::class, 'deletedList'])->name('announcements.deleted.list');
+            Route::post('announcements/{announcement}/restore', [AdminAnnouncementController::class, 'restore'])->name('announcements.restore');
 
             // Custom Action (Needs its own line)
             Route::post('announcement/{id}/pin', [AdminAnnouncementController::class, 'pin'])->name('announcement.pin');
+
+            // Standard Web Resource
+            Route::resource('announcements', AdminAnnouncementController::class);
 
             // Admin Rasa Server Manager
             Route::controller(RasaServerController::class)->group(function () {

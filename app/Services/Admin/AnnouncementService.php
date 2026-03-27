@@ -2,78 +2,77 @@
 
 namespace App\Services\Admin;
 
-use Illuminate\Support\Facades\{Auth, DB, Log, Http};
-use App\Models\{Document, DocumentChange, Role};
-
+use Illuminate\Support\Facades\{Auth, DB, Log};
+use App\Models\{Announcement, Document, DocumentChange};
+use Carbon\Carbon;
 
 class AnnouncementService
 {
-    public function createAnnouncementWithRasa(array $data): array
+    public function createAnnouncement(array $data): array
     {
-        // 1. Availability Check
-        if (!\App\Services\RasaServerService::isServerOnline()) {
-            return [
-                'success' => false,
-                'message' => 'Rasa server is offline. Queued uploads are disabled.',
-                'status'  => 503
-            ];
-        }
+        return DB::transaction(function () use ($data) {
+            try {
+                // 1. ⏱️ Calculate the 3-day rule validation check
+                $start = Carbon::parse($data['starts_at']);
+                $end = Carbon::parse($data['expires_at']);
 
-        try {
-            $rasaConfig = config('services.faq_list_docs');
-            $rasaUrl    = $rasaConfig['url'];
-            $secret     = $rasaConfig['secret'];
+                // Force ABSOLUTE (positive) flat integer comparison
+                $daysDifference = (int) $start->diffInDays($end, true);
 
-            // 2. Determine Next ID & Current Content
-            $downloadUrl = str_replace('/list-docs', '/download/Announcements.txt', $rasaUrl);
-            $listUrl     = str_replace('/list-docs', '/download-announcements', $rasaUrl);
-
-            $listResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->get($listUrl);
-
-            $nextId = 1;
-            $currentFileContent = "";
-
-            if ($listResponse->successful()) {
-                $listData = $listResponse->json();
-                if ($listData['ok'] && !empty($listData['announcements'])) {
-                    $nextId = max(array_column($listData['announcements'], 'id')) + 1;
-
-                    // Fetch existing content to append
-                    $downloadResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->get($downloadUrl);
-                    if ($downloadResponse->successful()) {
-                        $currentFileContent = $downloadResponse->body();
-                    }
+                if ($daysDifference < 3) {
+                    throw new \Exception("Announcements must stay active for a minimum of 3 days. Your dates compute to only {$daysDifference} days.");
                 }
+
+                // 2. 💾 Standard Relational Database Insertion
+                $announcement = Announcement::create([
+                    'title'      => $data['title'],
+                    'content'    => $data['content'],
+                    'starts_at'  => $start,
+                    'expires_at' => $end,
+                    'pinned'     => false,
+                    'created_by' => Auth::id() ?? 1, // Fallback to System ID if null
+                ]);
+
+                // 3. 📝 Push state changes to log table to trigger yellow dashboard banners
+                $this->logChange('announcements_table', 'created');
+
+                // // Your legacy mapper (keeping it intact based on your old code)
+                // if (method_exists($this, 'mapAnnouncementToAllRoles')) {
+                //     $this->mapAnnouncementToAllRoles($announcement->id);
+                // }
+
+                return [
+                    'success'      => true,
+                    'message'      => 'Announcement added successfully.',
+                    'announcement' => [
+                        'id'    => $announcement->id,
+                        'title' => $announcement->title
+                    ]
+                ];
+            } catch (\Exception $e) {
+                Log::error('Local Announcement Storage Error: ' . $e->getMessage());
+                return [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'status'  => 500
+                ];
             }
+        });
+    }
 
-            // 3. Prepare New Content
-            $newEntry = "id: {$nextId}\ntitle: {$data['title']}\n{$data['content']}\n---------\n";
-            $finalContent = $currentFileContent . $newEntry;
-
-            // 4. Upload to Rasa
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-            $uploadResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->post($uploadUrl, [
-                'file_name'    => 'Announcements.txt',
-                'file_content' => $finalContent,
-                'file_type'    => 'txt'
+    private function logChange(string $fileName, string $action): void
+    {
+        try {
+            DocumentChange::create([
+                'file_name'          => $fileName,
+                'action'             => $action,
+                'user_id'            => Auth::id(),
+                'user_name'          => Auth::user()->name ?? 'System',
+                'training_required'  => true,
+                'training_completed' => false,
             ]);
-
-            if (!$uploadResponse->successful() || !($uploadResponse->json()['ok'] ?? false)) {
-                throw new \Exception('Rasa upload failed.');
-            }
-
-            // 5. Post-Upload Actions (Logging & Role Mapping)
-            $this->logAnnouncementChange('Announcements.txt', 'created');
-            $this->mapAnnouncementToAllRoles($nextId);
-
-            return [
-                'success' => true,
-                'message' => 'Announcement added successfully',
-                'announcement' => ['id' => $nextId, 'title' => $data['title']]
-            ];
         } catch (\Exception $e) {
-            Log::error('AnnouncementService Error: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage(), 'status' => 500];
+            Log::error("KnowledgebaseService Error ($action): " . $e->getMessage());
         }
     }
 
@@ -88,230 +87,48 @@ class AnnouncementService
             'training_completed' => false,
         ]);
     }
-    private function mapAnnouncementToAllRoles(int $announcementId): void
-    {
-        $roleIds = Role::pluck('id');
-        $rows = $roleIds->map(fn($roleId) => [
-            'announcement_id' => $announcementId,
-            'role_id'         => $roleId,
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ])->toArray();
 
-        DB::table('announcement_roles')->insert($rows);
-    }
 
     public function getEnrichedAnnouncements(): array
     {
         try {
-            $rasaConfig = config('services.faq_list_docs');
-            $url = str_replace('/list-docs', '/download-announcements', $rasaConfig['url']);
+            // 🚀 Fetch directly from the database table
+            $announcements = Announcement::query()
+                ->with(['creator'])
+                // 📌 Sort by Pinned first, then by the newest created_at date
+                ->orderBy('pinned', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-            // 1. Fetch Remote Announcements
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $rasaConfig['secret'],
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])->get($url);
+            // Map it to match the exact JSON array structure your frontend expects
+            $formattedAnnouncements = $announcements->map(fn($ann) => [
+                'id'             => $ann->id,
+                'title'          => $ann->title,
+                'content'        => $ann->content,
+                'starts_at'      => $ann->starts_at?->toDateTimeString(),
+                'expires_at'     => $ann->expires_at?->toDateTimeString(),
+                'pinned'         => (bool) $ann->pinned,
+                'created_at'     => $ann->created_at?->toDateTimeString(),
+                'role_id'        => $ann->role_id,
+                'created_by'     => $ann->creator?->name ?? 'Unknown',
 
-            if (!$response->successful() || !($response->json()['ok'] ?? false)) {
-                throw new \Exception('Rasa connection failed');
-            }
-
-            $announcements = $response->json()['announcements'] ?? [];
-
-            // Extract IDs for bulk DB lookups
-            $ids = collect($announcements)->pluck('id')->filter()->map(fn($id) => (int)$id)->toArray();
-
-            // 2. Fetch Local DB State
-            $roleMap = $this->getRoleMapping($ids);
-            $pinnedIds = DB::table('pinned_announcements')->pluck('announcement_id')->toArray();
-
-            // 3. Enrich Data
-            foreach ($announcements as &$ann) {
-                $aid = (int)($ann['id'] ?? 0);
-                $ann['assigned_roles'] = $roleMap[$aid] ?? [];
-                $ann['pinned'] = in_array($aid, $pinnedIds);
-            }
-
-            // 4. Sort: Pinned first, then ID Descending
-            usort($announcements, function ($a, $b) {
-                if ($a['pinned'] !== $b['pinned']) {
-                    return $b['pinned'] <=> $a['pinned'];
-                }
-                return $b['id'] <=> $a['id'];
-            });
+                // Assigned roles (empty for now)
+                'assigned_roles' => [],
+            ])->values()->toArray();
 
             return [
-                'success' => true,
-                'announcements' => $announcements
+                'success'       => true,
+                'announcements' => $formattedAnnouncements
             ];
-        } catch (\Exception $e) {
-            Log::error('AnnouncementService List Error: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Rasa server is offline.'];
-        }
-    }
-
-    private function getRoleMapping(array $ids): array
-    {
-        if (empty($ids)) return [];
-
-        return DB::table('announcement_roles')
-            ->whereIn('announcement_id', $ids)
-            ->get()
-            ->groupBy('announcement_id')
-            ->map(fn($group) => $group->pluck('role_id')->map(fn($id) => (int)$id)->toArray())
-            ->toArray();
-    }
-
-    public function updateAnnouncementOnRasa(int $id, array $data): array
-    {
-        try {
-            $rasaConfig = config('services.faq_list_docs');
-            $secret = $rasaConfig['secret'];
-            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaConfig['url']);
-
-            // 1. Fetch current list to modify
-            $listResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->get($announcementsUrl);
-
-            if (!$listResponse->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server.');
-            }
-
-            $announcements = $listResponse->json()['announcements'] ?? [];
-            $found = false;
-
-            // 2. Modify the specific entry in the array
-            foreach ($announcements as &$ann) {
-                if ((int)$ann['id'] === $id) {
-                    $ann['title'] = $data['title'];
-                    $ann['content'] = $data['content'];
-                    $found = true;
-                    break;
-                }
-            }
-
-            if (!$found) {
-                return ['success' => false, 'message' => 'Announcement not found', 'status' => 404];
-            }
-
-            // 3. Reconstruct the raw .txt content
-            $rawContent = "";
-            foreach ($announcements as $ann) {
-                $cleanContent = $this->stripLeadingRolesLine((string)($ann['content'] ?? ''));
-                $rawContent .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$cleanContent}\n---------\n";
-            }
-
-            // 4. Upload the full reconstructed file
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaConfig['url']);
-            $uploadResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $rawContent,
-                'file_type' => 'txt'
-            ]);
-
-            if (!$uploadResponse->successful()) {
-                throw new \Exception('Failed to upload updated file to Rasa.');
-            }
-
-            // 5. Post-Update: Sync Roles & Log Change
-            $this->logAnnouncementChange('Announcements.txt', 'updated');
-            $this->syncAnnouncementRoles($id);
-
-            return ['success' => true, 'message' => 'Announcement updated successfully'];
-        } catch (\Exception $e) {
-            Log::error('AnnouncementService Update Error: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
-    }
-
-    private function stripLeadingRolesLine(string $content): string
-    {
-        // Remove "roles: 1,2,3" (or similar) from the very start of the string
-        // including the trailing newline.
-        return preg_replace('/^roles:\s*[\d,]*\s*\n?/i', '', $content);
-    }
-
-    private function syncAnnouncementRoles(int $id): void
-    {
-        $roleIds = Role::pluck('id');
-
-        DB::transaction(function () use ($id, $roleIds) {
-            // Clear old mappings
-            DB::table('announcement_roles')->where('announcement_id', $id)->delete();
-
-            // Re-insert mappings for all roles
-            $rows = $roleIds->map(fn($roleId) => [
-                'announcement_id' => $id,
-                'role_id' => $roleId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->toArray();
-
-            DB::table('announcement_roles')->insert($rows);
-        });
-    }
-
-    public function deleteAnnouncementFromRasa(int $id): array
-    {
-        try {
-            $rasaConfig = config('services.faq_list_docs');
-            $secret = $rasaConfig['secret'];
-            $announcementsUrl = str_replace('/list-docs', '/download-announcements', $rasaConfig['url']);
-
-            // 1. Fetch current list
-            $listResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->get($announcementsUrl);
-
-            if (!$listResponse->successful()) {
-                throw new \Exception('Failed to fetch announcements from Rasa server.');
-            }
-
-            $announcements = $listResponse->json()['announcements'] ?? [];
-
-            // 2. Filter out the deleted ID
-            $filtered = array_filter($announcements, fn($ann) => (int)$ann['id'] !== $id);
-
-            // 3. Reconstruct the file content
-            $rawContent = "";
-            foreach ($filtered as $ann) {
-                $cleanContent = $this->stripLeadingRolesLine((string)($ann['content'] ?? ''));
-                $rawContent .= "id: {$ann['id']}\ntitle: {$ann['title']}\n{$cleanContent}\n---------\n";
-            }
-
-            // 4. Upload the updated file
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaConfig['url']);
-            $uploadResponse = Http::withHeaders(['X-FAQ-UPDATER-TOKEN' => $secret])->post($uploadUrl, [
-                'file_name' => 'Announcements.txt',
-                'file_content' => $rawContent,
-                'file_type' => 'txt'
-            ]);
-
-            if (!$uploadResponse->successful()) {
-                throw new \Exception('Failed to sync deletion to Rasa server.');
-            }
-
-            // 5. Cleanup local DB (Roles and Pins)
-            $this->cleanupLocalAnnouncementData($id);
-            $this->logAnnouncementChange('Announcements.txt', 'deleted');
-
+        } catch (\Throwable $e) {
+            Log::error('Failed to fetch rich announcements from DB: ' . $e->getMessage());
             return [
-                'success' => true,
-                'message' => 'Announcement deleted successfully'
+                'success' => false,
+                'message' => 'Failed to load announcements from the database.'
             ];
-        } catch (\Exception $e) {
-            Log::error('AnnouncementService Delete Error: ' . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    private function cleanupLocalAnnouncementData(int $id): void
-    {
-        DB::transaction(function () use ($id) {
-            // Remove role mappings
-            DB::table('announcement_roles')->where('announcement_id', $id)->delete();
 
-            // Remove pinning status
-            DB::table('pinned_announcements')->where('announcement_id', $id)->delete();
-        });
-    }
 
     public function toggleAnnouncementPin(int $id): array
     {
@@ -344,5 +161,28 @@ class AnnouncementService
                 'message' => 'Database error during pin toggle.'
             ];
         }
+    }
+
+    public function deleteAnnouncement(int $id): array
+    {
+        return DB::transaction(function () use ($id) {
+            try {
+                $announcement = Announcement::findOrFail($id);
+
+                // 🗑️ Soft delete the announcement row
+                $announcement->delete();
+
+                // 📝 Log change to notify Rasa retraining engine
+                $this->logChange('announcements_table', 'deleted');
+
+                return [
+                    'success' => true,
+                    'message' => 'Announcement soft-deleted successfully.'
+                ];
+            } catch (\Exception $e) {
+                Log::error('Announcement Delete Error: ' . $e->getMessage());
+                return ['success' => false, 'message' => 'Failed to delete: ' . $e->getMessage(), 'status' => 500];
+            }
+        });
     }
 }
