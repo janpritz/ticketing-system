@@ -66,7 +66,7 @@ class AdminController extends Controller
 
         $logs = $service->getDocumentLogs($filters);
 
-        return view('dashboards.admin.logs.index', array_merge($filters, [
+        return view('dashboards.admin.document-logs.page', array_merge($filters, [
             'logs' => $logs
         ]));
     }
