@@ -19,7 +19,7 @@ class RolesController extends Controller
         $roles = $service->getPaginatedRoles($request->integer('per_page', 25));
         $departments = $service->getAllDepartments();
 
-        return view('dashboards.admin.roles.index', compact('roles', 'departments'));
+        return view('dashboards.admin.roles.page', compact('roles', 'departments'));
     }
 
     public function create()
