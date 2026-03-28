@@ -16,7 +16,7 @@ class DepartmentController extends Controller
     public function index()
     {
         $departments = Department::with('roles')->orderBy('name')->paginate(10);
-        return view('dashboards.admin.departments.index', compact('departments'));
+        return view('dashboards.admin.departments.page', compact('departments'));
     }
 
     /**

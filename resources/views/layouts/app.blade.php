@@ -11,7 +11,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <title>{{ 'SangkayFAQs' }} - @yield('title')</title>
+    <title>{{ 'Sangkay' }} - @yield('title')</title>
 
     {{-- 1. Global Configurations (Moved up so they are ready for any script) --}}
     <script>
