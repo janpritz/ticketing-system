@@ -19,7 +19,7 @@ class ReportsController extends Controller
         $stats = $service->getAdminDashboardStats();
 
         // 2. Return view with organized data
-        return view('dashboards.admin.reports.index', $stats);
+        return view('dashboards.admin.reports.page', $stats);
     }
 
     public function getBacklogTrendDataAjax(Request $request, ReportService $service)
