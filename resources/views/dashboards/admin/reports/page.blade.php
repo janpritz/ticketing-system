@@ -60,10 +60,5 @@
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        @include('dashboards.admin.reports.scripts.charts')
-        @include('dashboards.admin.reports.scripts.ui-handlers')
-        @include('dashboards.admin.reports.scripts.data-loader')
-    </script>
+    @include('dashboards.admin.reports.scripts')
 @endpush
