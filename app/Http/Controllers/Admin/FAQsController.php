@@ -21,7 +21,7 @@ class FAQsController extends Controller
         // 2. Fetch system metrics for the dashboard header
         $unprocessedTickets = $service->getUnprocessedTicketCount();
 
-        return view('admin.faqs.index', [
+        return view('dashboards.admin.faqs.page', [
             'faqs' => $faqs,
             'unprocessedTickets' => $unprocessedTickets,
             'status' => $request->input('status', 'pending'),
