@@ -12,7 +12,6 @@ class UserService
     public function updateStaffProfile(User $user, array $data, ?UploadedFile $photo): User
     {
         $user->name = $data['name'];
-        $user->category_id = $data['category_id'] ?? null;
 
         if ($photo) {
             $ext = strtolower($photo->getClientOriginalExtension());

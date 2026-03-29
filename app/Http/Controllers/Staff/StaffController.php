@@ -35,19 +35,63 @@ class StaffController extends Controller
      */
     public function profile(TicketService $service)
     {
-        $user = Auth::user();
+        /** @var \App\Models\User $user */
+        $user = User::query()
+            ->with([
+                'department:id,name',
+                'roles:id,name',
+                'userRoles' => function ($query) {
+                    $query->with('role:id,name')->orderByDesc('is_primary_role')->orderBy('id');
+                },
+            ])
+            ->findOrFail(Auth::id());
 
         // 1. Fetch performance stats and recent activity from the Service
         $profileData = $service->getStaffProfileStats($user);
 
-        // 2. Load role-specific categories
-        $categories = $user->role_id
-            ? Role::where('role_id', $user->role_id)->orderBy('name')->get()
+        // 2. Load role options for the authenticated staff member
+        $roles = $user->roles->sortBy('name')->values();
+
+        // 3. Load departments for the edit profile form
+        $departments = Role::query()
+            ->whereIn('id', $roles->pluck('id'))
+            ->with('department:id,name')
+            ->get()
+            ->pluck('department')
+            ->filter()
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
+        $primaryUserRole = $user->userRoles->firstWhere('is_primary_role', true);
+
+        $profileRoles = $user->userRoles
+            ->filter(fn ($userRole) => $userRole->role)
+            ->map(function ($userRole) {
+                return [
+                    'id' => $userRole->role->id,
+                    'name' => $userRole->role->name,
+                    'is_primary' => (bool) $userRole->is_primary_role,
+                ];
+            })
+            ->values();
+
+        $primaryDepartment = $primaryUserRole?->department_id
+            ? $departments->firstWhere('id', $primaryUserRole->department_id)
+            : $user->department
+                ?? $departments->first();
+
+        $user->department = $primaryDepartment;
+
+        $categories = $roles->isNotEmpty()
+            ? $roles
             : collect();
 
-        return view('dashboards.staff.profile', array_merge($profileData, [
+        return view('dashboards.staff.profile.page', array_merge($profileData, [
             'user'                => $user,
-            'categories_for_role' => $categories,
+            'profile_roles'         => $profileRoles,
+            'categories_for_role'   => $categories,
+            'departments_for_staff' => $departments,
         ]));
     }
 
