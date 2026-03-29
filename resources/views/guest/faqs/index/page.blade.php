@@ -91,6 +91,8 @@
             </div>
         </div>
     </div>
+    @include('components.chatbot-widget')
 @endsection
-@include('faqs.index.scripts')
-@include('components.chatbot-widget')
+@push('scripts')
+    @include('guest.faqs.index.scripts')
+@endpush

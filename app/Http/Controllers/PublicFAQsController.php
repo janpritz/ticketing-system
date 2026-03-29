@@ -18,7 +18,7 @@ class PublicFAQsController extends Controller
             ->orderBy('suggested_q')
             ->get();
 
-        return view('faqs.index.page', compact('faqs'));
+        return view('guest.faqs.index.page', compact('faqs'));
     }
 
     /**
