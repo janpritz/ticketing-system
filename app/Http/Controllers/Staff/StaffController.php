@@ -24,7 +24,7 @@ class StaffController extends Controller
         $dashboardData = $service->getStaffDashboardStats($user);
 
         // 3. Merge in global data and return view
-        return view('dashboards.staff.index', array_merge($dashboardData, [
+        return view('dashboards.staff.index.page', array_merge($dashboardData, [
             'user'  => $user,
             'users' => User::orderBy('name')->get(['id', 'name']),
         ]));
