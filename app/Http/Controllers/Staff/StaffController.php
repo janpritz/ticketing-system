@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Staff\TicketResponseRequest;
 use App\Http\Requests\Staff\EmailUpdateNotifRequest;
 use App\Http\Requests\Staff\TicketForwardRequest;
+use App\Http\Requests\Staff\PasswordUpdateRequest;
 use App\Http\Requests\Staff\UpdateProfileRequest;
 use App\Services\Staff\{TicketService, UserService};
 
@@ -147,7 +148,7 @@ class StaffController extends Controller
     /**
      * Update the authenticated user's password.
      */
-    public function passwordUpdate(UpdateProfileRequest $request, UserService $userService)
+    public function passwordUpdate(PasswordUpdateRequest $request, UserService $userService)
     {
         $user = Auth::user();
 

@@ -13,7 +13,7 @@
             <p class="text-sm text-gray-500 mt-1">Manage your account password and security</p>
         </div>
 
-        <button type="button" data-modal-toggle="passwordModal"
+        <button type="button" data-modal-target="passwordModal" data-modal-toggle="passwordModal"
             class="inline-flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">

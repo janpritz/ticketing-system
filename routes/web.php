@@ -180,7 +180,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/profile', 'updateProfile')->name('profile.update');
                 Route::post('/profile/email-notifications', 'updateEmailNotifications')->name('profile.email_notifications');
                 Route::get('/profile/password', 'passwordForm')->name('profile.password');
-                Route::post('/profile/password', 'passwordUpdate')->middleware('throttle:5,1')->name('profile.password.update');
+                Route::post('/profile/password', 'passwordUpdate')->middleware('throttle:20,1')->name('profile.password.update');
 
                 // Utilities
                 Route::get('/mail/test', 'mailTest')->middleware('throttle:5,1')->name('mail.test');
