@@ -12,46 +12,48 @@ use Illuminate\Support\Facades\{Auth, Http, Log};
 
 class AnnouncementController extends Controller
 {
-    public function index(AnnouncementService $service)
+    public function index(Request $request, AnnouncementService $service)
     {
         /** @var \App\Models\User $auth */
         $auth = Auth::user();
-        // Optional: Pass the count or initial data if needed for the UI
-        $initialData = [
-            'can_pin' => $auth->isPrimaryAdmin(),
-        ];
-
-        return view('dashboards.staff.announcements.index', compact('initialData'));
+        $announcements = $service->getAnnouncementsForUser($auth);
+        // 🚀 Fix: If it is an AJAX call (like from Fetch API), return JSON
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'announcements' => $announcements
+            ]);
+        }
+        // 📂 Standard browser visit: render the Blade view
+        return view('dashboards.staff.announcements.page', [
+            'announcements' => $announcements,
+            'initialData' => [
+                'can_pin' => $auth->isPrimaryAdmin(),
+            ]
+        ]);
     }
 
     public function store(AnnouncementStoreRequest $request, AnnouncementService $service)
     {
-        $validated = $request->validated();
+        $data = $request->validated();
 
         /** @var \App\Models\User $auth */
         $auth = Auth::user();
 
-        // Clean and clear check
-        if ($service->isDuplicateTitle($validated['title'])) {
+        try {
+            $announcement = $service->createAnnouncement($data, $auth);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Duplicate title not allowed'
+                'message' => $e->getMessage(),
             ], 400);
         }
 
-        try {
-            // 2. Delegate creation and syncing to the service
-            $announcement = $service->createAnnouncementAndSync($validated, $auth);
-
-            return response()->json([
-                'success'      => true,
-                'message'      => 'Announcement added successfully',
-                'announcement' => $announcement
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Announcement store error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to add announcement'], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Announcement added successfully',
+            'announcement' => $announcement
+        ], 201);
     }
     public function show(AnnouncementService $service)
     {
@@ -88,52 +90,26 @@ class AnnouncementController extends Controller
             return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
         }
 
-        /** @var \App\Models\User $auth */
-        $auth = Auth::user();
-
-        // Check for duplicate title (excluding this specific announcement)
         if ($service->isDuplicateTitle($request->title, $id)) {
             return response()->json(['success' => false, 'message' => 'Duplicate title not allowed'], 400);
         }
 
-        try {
-            $service->updateAnnouncementAndSync($announcement, $request->validated(), $auth);
+        $service->updateAnnouncement($announcement, $request->validated());
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Announcement updated successfully'
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Announcement update error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to update announcement'], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Announcement updated successfully'
+        ]);
     }
 
     /**
      * Delete announcement (AJAX)
      */
-    public function destroy($id, AnnouncementService $service)
+    public function destroy($id)
     {
-        $announcement = Announcement::find($id);
-
-        if (!$announcement) {
-            return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
-        }
-
-        try {
-            /** @var \App\Models\User $auth */
-            $auth = Auth::user();
-
-            $service->deleteAnnouncementAndSync($announcement, $auth);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Announcement deleted successfully'
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Announcement destroy error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to delete announcement'], 500);
-        }
+        $announcement = Announcement::findOrFail($id);
+        $announcement->delete();
+        return response()->json(['success' => true, 'message' => 'Announcement deleted successfully']);
     }
 
     /**
@@ -142,27 +118,72 @@ class AnnouncementController extends Controller
     /**
      * Toggle the pinned status of an announcement and sync with Rasa.
      */
-    public function pin($id, AnnouncementService $service)
+    public function pin(int $id, AnnouncementService $service)
     {
-        $announcement = Announcement::find($id);
-
-        if (!$announcement) {
-            return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
-        }
-
         try {
-            /** @var \App\Models\User $auth */
-            $auth = Auth::user();
+            $announcement = Announcement::findOrFail($id);
 
-            $isPinned = $service->toggleAnnouncementPin($announcement, $auth);
+            // Staff pin should use only `announcements.staff_pinned` (nullable) and must not affect admin pivot pinning.
+            $pinned = $service->toggleStaffPin($announcement);
 
             return response()->json([
                 'success' => true,
-                'message' => $isPinned ? 'Announcement pinned' : 'Announcement unpinned'
+                'message' => $pinned ? 'Announcement pinned successfully' : 'Announcement unpinned successfully',
             ]);
         } catch (\Throwable $e) {
-            Log::error('Pin toggle error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
+    }
+
+    // StaffAnnouncementController.php
+
+    public function deletedIndex()
+    {
+        // This is for the initial page load
+        return view('dashboards.staff.announcements.deleted');
+    }
+
+    public function deletedList()
+    {
+        // This is for the AJAX call that populates your table
+        $auth = Auth::user();
+
+        $announcements = Announcement::onlyTrashed()
+            ->where('created_by', $auth->id)
+            ->with('creator')
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(function ($announcement) {
+                return [
+                    'id' => $announcement->id,
+                    'title' => $announcement->title,
+                    'content' => $announcement->content,
+                    'created_by' => $announcement->creator?->name ?? 'Unknown',
+                    'creator_name' => $announcement->creator?->name ?? 'Unknown',
+                    'deleted_at' => $announcement->deleted_at?->toDateTimeString(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'announcements' => $announcements,
+        ]);
+    }
+
+    public function restore($id)
+    {
+        $announcement = Announcement::onlyTrashed()->find($id);
+        if (!$announcement) {
+            return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
+        }
+        $auth = Auth::user();
+        if ($announcement->created_by !== $auth->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $announcement->restore();
+        return response()->json(['success' => true, 'message' => 'Announcement restored successfully']);
     }
 }

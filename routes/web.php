@@ -5,6 +5,7 @@
 | Laravel Framework Imports (Facades/Classes)
 |--------------------------------------------------------------------------
 */
+
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminTicketsController;
 use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
@@ -221,6 +222,10 @@ Route::middleware('auth')->group(function () {
             Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
 
             // Announcements
+            // Deleted announcements
+            Route::get('announcements/deleted', [StaffAnnouncementController::class, 'deletedIndex'])->name('announcements.deleted.index');
+            Route::get('announcements/deleted/list', [StaffAnnouncementController::class, 'deletedList'])->name('announcements.deleted.list');
+            Route::post('announcements/{announcement}/restore', [StaffAnnouncementController::class, 'restore'])->name('announcements.restore');
             // 1. Custom Action: Pinning (PUT or POST is acceptable, but POST is common for toggles)
             Route::post('announcements/{id}/pin', [StaffAnnouncementController::class, 'pin'])
                 ->whereNumber('id')
@@ -230,7 +235,7 @@ Route::middleware('auth')->group(function () {
             Route::resource('announcements', StaffAnnouncementController::class)
                 ->except(['create', 'edit'])
                 ->middleware('throttle:10,1');
-        })->middleware(['throttle:20,1']);
+        })->middleware(['throttle:40,1']);
 
         // --- GROUP 4: Logs & Testing ---
         Route::get('/document-management/test', function () {
@@ -307,7 +312,7 @@ Route::middleware('auth')->group(function () {
                         Route::get('/all-json', 'allJson')->name('all-json');
                         Route::get('/deleted', 'knowledgebaseDeletedIndex')->name('deleted');
                         Route::get('/deleted/list', 'knowledgebaseDeletedList')->name('deleted.list');
-                        Route::post('/upload-document','uploadDocument')->name('uploadDocument');
+                        Route::post('/upload-document', 'uploadDocument')->name('uploadDocument');
 
                         Route::prefix('{faq}')->whereNumber('faq')->group(function () {
                             Route::get('/', 'knowledgebaseShow')->name('show');

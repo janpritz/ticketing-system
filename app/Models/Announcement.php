@@ -18,11 +18,13 @@ class Announcement extends Model
         'expires_at',
         'role_id',
         'created_by',
-        'pinned'
+        'pinned',
+        'staff_pinned'
     ];
 
     protected $casts = [
         'pinned' => 'boolean',
+        'staff_pinned' => 'boolean',
         'starts_at' => 'datetime', // 👈 Cast to Carbon
         'expires_at' => 'datetime'  // 👈 Cast to Carbon
     ];

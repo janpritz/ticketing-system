@@ -2,44 +2,34 @@
 
 namespace App\Services\Staff;
 
-use App\Models\{Announcement, User, DocumentChange};
-use Illuminate\Support\Facades\{DB, Http, Log};
+use App\Models\{Announcement, DocumentChange, User};
+use Illuminate\Support\Facades\{DB, Log};
+use Carbon\Carbon;
 
 class AnnouncementService
 {
-    /**
-     * Create an announcement, rebuild the master file, and sync to Rasa.
-     */
-    public function createAnnouncementAndSync(array $data, User $user): Announcement
+    public function createAnnouncement(array $data, User $user): Announcement
     {
-        return DB::transaction(function () use ($data, $user) {
-            // 1. Create the database record
-            $announcement = Announcement::create([
-                'title'      => $data['title'],
-                'content'    => $data['content'],
-                'role_id'    => $user->role_id ?: null,
-                'created_by' => $user->id,
-                'pinned'     => false,
-            ]);
+        $start = Carbon::parse($data['starts_at']);
+        $end = Carbon::parse($data['expires_at']);
 
-            // 2. Rebuild the consolidated Announcements.txt content
-            $masterContent = $this->rebuildAnnouncementsMasterContent();
+        // Must stay active for at least 3 days (admin logic equivalent)
+        $daysDifference = (int) $start->diffInDays($end, true);
+        if ($daysDifference < 3) {
+            throw new \Exception(
+                "Announcements must stay active for a minimum of 3 days. Your dates compute to only {$daysDifference} days."
+            );
+        }
 
-            // 3. Sync to Rasa (One file containing all announcements)
-            $this->syncAnnouncementsToRasa($masterContent);
-
-            // 4. Log change for training
-            DocumentChange::create([
-                'file_name'          => 'Announcements.txt',
-                'action'             => 'created',
-                'user_id'            => $user->id,
-                'user_name'          => $user->name,
-                'training_required'  => true,
-                'training_completed' => false,
-            ]);
-
-            return $announcement;
-        });
+        return Announcement::create([
+            'title'      => $data['title'],
+            'content'    => $data['content'],
+            'starts_at'  => $start,
+            'expires_at' => $end,
+            'role_id'    => $user->role_id ?: null,
+            'created_by' => $user->id,
+            'pinned'     => false,
+        ]);
     }
 
     /**
@@ -56,32 +46,7 @@ class AnnouncementService
             ->implode("\n");
     }
 
-    /**
-     * Handle the HTTP request to the Rasa server.
-     */
-    protected function syncAnnouncementsToRasa(string $content): void
-    {
-        $rasaUrl = config('services.faq_list_docs.url');
-        $secret = config('services.faq_list_docs.secret');
-
-        if ($rasaUrl && $secret) {
-            $uploadUrl = str_replace('/list-docs', '/update-document', $rasaUrl);
-
-            $response = Http::withHeaders([
-                'X-FAQ-UPDATER-TOKEN' => $secret,
-                'X-Requested-With'    => 'XMLHttpRequest'
-            ])->post($uploadUrl, [
-                'file_name'    => 'Announcements.txt',
-                'file_content' => $content,
-                'file_type'    => 'txt'
-            ]);
-
-            if (!$response->successful()) {
-                Log::error('Rasa Announcements Sync Failed: ' . $response->status());
-            }
-        }
-    }
-
+    
     /**
      * Check if an announcement title already exists (case-insensitive and trimmed).
      *
@@ -108,29 +73,44 @@ class AnnouncementService
      */
     public function getAnnouncementsForUser(User $user): array
     {
-        // 1. Start the query with roles eager-loaded
-        $query = Announcement::with('roles')
-            ->orderByDesc('pinned')
-            ->orderByDesc('id');
+        $query = Announcement::query()
+            ->with(['creator'])
+            ->orderBy('pinned', 'desc')
+            ->orderBy('created_at', 'desc');
 
-        // 2. Apply visibility filter for non-admins
         if (!$user->isPrimaryAdmin()) {
-            $query->forRole($user->role_id);
+            $query->where('created_by', $user->id);
         }
 
-        // 3. Transform the collection into the desired JSON structure
-        return $query->get()->map(function ($a) {
+        $announcements = $query->get();
+
+        $formattedAnnouncements = $announcements->map(function ($ann) {
             return [
-                'id'             => (int) $a->id,
-                'title'          => (string) $a->title,
-                'content'        => (string) $a->content,
-                'pinned'         => (bool) $a->pinned,
-                'assigned_roles' => $this->getAssignedRoleIds($a),
-                'created_by'     => $a->created_by,
-                'created_at'     => $a->created_at?->toDateTimeString(),
-                'updated_at'     => $a->updated_at?->toDateTimeString(),
+                'id' => $ann->id,
+                'title' => $ann->title,
+                'content' => $ann->content,
+                'starts_at' => $ann->starts_at?->toDateTimeString(),
+                'expires_at' => $ann->expires_at?->toDateTimeString(),
+                // Admin pin uses legacy `pinned`; staff pin should use `staff_pinned` (nullable)
+                'pinned' => (bool) $ann->pinned,
+                'staff_pinned' => $ann->staff_pinned,
+                'created_at' => $ann->created_at?->toDateTimeString(),
+                'role_id' => $ann->role_id,
+                'created_by' => $ann->creator?->name ?? 'Unknown',
+                'assigned_roles' => $ann->role_id ? [(int) $ann->role_id] : [],
             ];
-        })->toArray();
+        })->values()->toArray();
+
+        return $formattedAnnouncements;
+    }
+
+    public function toggleStaffPin(Announcement $announcement): bool
+    {
+        // staff_pinned is nullable boolean; treat null as not pinned
+        $announcement->staff_pinned = !($announcement->staff_pinned ?? false);
+        $announcement->save();
+
+        return (bool) $announcement->staff_pinned;
     }
 
     /**
@@ -147,69 +127,17 @@ class AnnouncementService
         return $ids;
     }
 
-    /**
-     * Update the record, ensure role mapping, and push the master file to Rasa.
-     */
-    public function updateAnnouncementAndSync(Announcement $announcement, array $data, User $user): void
+    public function updateAnnouncement(Announcement $announcement, array $data): void
     {
-        DB::transaction(function () use ($announcement, $data, $user) {
-            // 1. Update the DB record
-            $announcement->update([
-                'title'   => $data['title'],
-                'content' => $data['content'],
-            ]);
-
-            // 2. Ensure role mapping exists for the current user's role
-            if ($user->role_id) {
-                $announcement->roles()->syncWithoutDetaching([$user->role_id]);
-            }
-
-            // 3. Rebuild the master block (stripping "Roles:" lines via model logic)
-            $masterContent = $this->rebuildAnnouncementsMasterContent();
-
-            // 4. Push to Rasa
-            $this->syncAnnouncementsToRasa($masterContent);
-
-            // 5. Log for Training Alert
-            DocumentChange::create([
-                'file_name'          => 'Announcements.txt',
-                'action'             => 'updated',
-                'user_id'            => $user->id,
-                'user_name'          => $user->name,
-                'training_required'  => true,
-                'training_completed' => false,
-            ]);
-        });
+        $announcement->update([
+            'title' => $data['title'],
+            'content' => $data['content'],
+        ]);
     }
 
-    /**
-     * Delete the announcement, clean up roles, and sync the new state to Rasa.
-     */
-    public function deleteAnnouncementAndSync(Announcement $announcement, User $user): void
+    public function deleteAnnouncement(Announcement $announcement): void
     {
-        DB::transaction(function () use ($announcement, $user) {
-            // 1. Remove pivot table mappings automatically
-            $announcement->roles()->detach();
-
-            // 2. Delete the DB record
-            $announcement->delete();
-
-            // 3. Rebuild the master block (now excluding the deleted item)
-            $masterContent = $this->rebuildAnnouncementsMasterContent();
-
-            // 4. Push updated consolidated file to Rasa
-            $this->syncAnnouncementsToRasa($masterContent);
-
-            // 5. Log change for training alert
-            DocumentChange::create([
-                'file_name'          => 'Announcements.txt',
-                'action'             => 'deleted',
-                'user_id'            => $user->id,
-                'user_name'          => $user->name,
-                'training_required'  => true,
-                'training_completed' => false,
-            ]);
-        });
+        $announcement->delete();
     }
     /**
      * Toggle pin status, rebuild the master file, and sync to Rasa.
@@ -237,7 +165,7 @@ class AnnouncementService
 
             // Re-sync with Rasa because order has changed
             $masterContent = $this->rebuildAnnouncementsMasterContent();
-            $this->syncAnnouncementsToRasa($masterContent);
+            //$this->syncAnnouncementsToRasa($masterContent);
 
             // Log the change
             DocumentChange::create([

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Staff;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AnnouncementStoreRequest extends FormRequest
 {
@@ -22,8 +23,16 @@ class AnnouncementStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'   => 'required|string|max:255',
             'content' => 'required|string|max:10000',
+            'starts_at'  => 'required|date|after_or_equal:today',
+            'expires_at' => 'required|date|after_or_equal:starts_at',
+            'title' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('announcements', 'title')
+                    ->whereNull('deleted_at'),
+            ],
         ];
     }
 }
