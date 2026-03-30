@@ -152,8 +152,8 @@
                         <td class="px-3 py-3 text-sm text-gray-700">${formatFileSize(doc.size)}</td>
                         <td class="px-3 py-3 text-sm text-gray-700">${escapeHtml(doc.created_by_name || doc.created_by || 'You')}</td>
                         <td class="px-3 py-3 text-sm text-gray-700">${formatDate(doc.modified)}</td>
-                        <td class="px-3 py-3">
-                            <div class="flex items-center gap-2">
+                        <td class="py-3 pl-3 pr-5">
+                            <div class="flex items-center justify-end gap-2">
                                 <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100" data-id="${escapeHtml(doc.id)}" data-filename="${escapeHtml(doc.name || doc.file_name)}">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

@@ -7,7 +7,7 @@
                     <th class="px-3 py-3 text-left font-medium">Size</th>
                     <th class="px-3 py-3 text-left font-medium">Created By</th>
                     <th class="px-3 py-3 text-left font-medium">Modified</th>
-                    <th class="px-3 py-3 text-left font-medium">Actions</th>
+                    <th class="px-3 py-3 text-center font-medium">Actions</th>
                 </tr>
             </thead>
             <tbody id="documentsTbody" class="divide-y divide-gray-100">
