@@ -8,7 +8,7 @@
             <!-- Main content -->
             <section class="space-y-6 flex flex-col">
                 <!-- KPI cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 order-2 md:order-1 mt-4 md:mt-0">
+                {{-- <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 order-2 md:order-1 mt-4 md:mt-0">
                     <!-- Open -->
                     @include('dashboards.staff.index.components.open-kpi')
 
@@ -20,7 +20,7 @@
 
                     <!-- Total -->
                     @include('dashboards.staff.index.components.total-kpi')
-                </div>
+                </div> --}}
 
                 <!-- Tickets Table -->
                 @include('dashboards.staff.index.components.tickets-table')
