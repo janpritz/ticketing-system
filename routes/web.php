@@ -214,12 +214,14 @@ Route::middleware('auth')->group(function () {
         Route::controller(StaffDocumentController::class)->group(function () {
             Route::get('/document-management', 'index')->name('document_management.index');
             Route::get('/document-management/files', 'filesList')->name('document_management.files');
+            Route::post('/document-management/update-document', 'updateDocument')->middleware('throttle:20,1')->name('document_management.update-document');
+            Route::post('/document-management/restore-document', 'restoreDocument')->middleware('throttle:20,1')->name('document_management.restore-document');
             Route::get('/document-management/fetch', 'fetchFaqs')->name('document_management.fetch');
             Route::post('/document-management', 'store')->middleware('throttle:20,1')->name('document_management.store');
             Route::post('/document-management/upload', 'uploadDocument')->middleware('throttle:20,1')->name('document_management.upload');
             Route::put('/document-management/{faq}', 'update')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.update');
             Route::delete('/document-management/{faq}', 'destroy')->whereNumber('faq')->middleware('throttle:20,1')->name('document_management.destroy');
-            Route::delete('/document-management/document', 'destroyDocumentByName')->middleware('throttle:20,1')->name('document_management.document.destroy');
+            Route::delete('/document-management/document/{document}', 'destroyDocument')->whereNumber('document')->middleware('throttle:20,1')->name('document_management.document.destroy');
 
             // Announcements
             // Deleted announcements

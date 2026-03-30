@@ -16,7 +16,7 @@
         </div>
 
         <div class="mt-4 relative">
-            <p class="text-sm text-gray-600 mb-4">Download submitted documents to import on rasa server.</p>
+            <p class="text-sm text-gray-600 mb-4">Documents are used for reference and training purposes.</p>
             <!-- Mobile hamburger menu aligned with text -->
             @include('dashboards.admin.knowledgebase.components.mobile-hamburger-menu')
         </div>

@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\Document;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DocumentUploadRequest;
 use App\Services\Staff\DocumentService;
-use Illuminate\Http\Client\ConnectionException;
 
 class DocumentController extends Controller
 {
@@ -22,13 +22,13 @@ class DocumentController extends Controller
             'include_deleted' => $includeDeleted ? 'true' : 'false'
         ]);
 
-        return view('dashboards.staff.documents.index', [
+        return view('dashboards.staff.document-management.page', [
             'listUrl'       => $listUrl,
             'isDeletedView' => $includeDeleted,
         ]);
     }
 
-    public function uploadDocument(Request $request, DocumentService $service)
+    public function uploadDocument(DocumentUploadRequest $request, DocumentService $service)
     {
         $validated = $request->validated();
         /** @var \App\Models\User $auth */
@@ -53,40 +53,23 @@ class DocumentController extends Controller
         return response()->json($result);
     }
     /**
-     * Delete a Document by file_name (DB-first) and sync DB -> Rasa by rebuilding documents text and uploading it.
-     * Expects JSON: { "file_name": "Example.txt" }
+     * Remove a document by id from the database.
      */
-    /**
-     * Remove a document by name, syncing the change with Rasa.
-     */
-    public function destroyDocumentByName(Request $request, DocumentService $service)
+    public function destroyDocument(Document $document, DocumentService $service)
     {
-        $validated = $request->validate([
-            'file_name' => 'required|string|max:255'
-        ]);
-
         /** @var \App\Models\User $auth */
         $auth = Auth::user();
 
         try {
-            // 1. Find the document using the service (handles fuzzy matches)
-            $doc = $service->findDocumentByName($validated['file_name']);
-
-            if (!$doc) {
-                return response()->json(['success' => false, 'message' => 'Document not found'], 404);
-            }
-
-            // 2. Authorization check using our clean model method
-            if (!$auth->isPrimaryAdmin() && $doc->created_by !== $auth->id) {
+            if (!$auth->isPrimaryAdmin() && $document->created_by !== $auth->id) {
                 return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
             }
 
-            // 3. Execute the deletion and syncing
-            $service->deleteDocumentAndSync($doc, $auth);
+            $service->deleteDocument($document, $auth);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Document deleted and DB synced'
+                'message' => 'Document deleted successfully'
             ]);
         } catch (\Throwable $e) {
             Log::error('Failed to delete document: ' . $e->getMessage());
@@ -95,29 +78,48 @@ class DocumentController extends Controller
     }
 
     /**
-     * Retrieve a list of document files from Rasa, filtered by user ownership.
+     * Retrieve a list of locally stored document files owned by the authenticated staff user.
      */
     public function filesList(Request $request, DocumentService $service)
     {
         /** @var \App\Models\User $auth */
         $auth = Auth::user();
 
-        try {
-            // Delegate the complex fetching and filtering to the service
-            $result = $service->getOwnedFilesFromRasa($auth);
+        $result = $service->getOwnedFiles($auth);
 
-            return response()->json($result);
-        } catch (ConnectionException $e) {
-            // Specifically caught when the server cannot be reached
-            return response()->json([
-                'ok' => false,
-                'error' => 'Rasa Server is Offline'
-            ], 503);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'ok' => false,
-                'error' => 'Rasa Server is Offline' // The frontend checks for this exact string
-            ], 500);
-        }
+        return response()->json($result);
+    }
+
+    public function updateDocument(Request $request, DocumentService $service)
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer',
+            'content' => 'required|string',
+        ]);
+
+        /** @var \App\Models\User $auth */
+        $auth = Auth::user();
+
+        $result = $service->updateOwnedDocument(
+            $validated['id'],
+            $validated['content'],
+            $auth
+        );
+
+        return response()->json($result, $result['status'] ?? 200);
+    }
+
+    public function restoreDocument(Request $request, DocumentService $service)
+    {
+        $validated = $request->validate([
+            'id' => 'required|integer',
+        ]);
+
+        /** @var \App\Models\User $auth */
+        $auth = Auth::user();
+
+        $result = $service->restoreOwnedDocument($validated['id'], $auth);
+
+        return response()->json($result, $result['status'] ?? 200);
     }
 }

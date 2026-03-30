@@ -3,11 +3,86 @@
 namespace App\Services\Staff;
 
 use App\Models\{User, DocumentChange, Document, UploadLog};
-use App\Services\RasaServerService;
-use Illuminate\Support\Facades\{DB, Log, Http};
+use Illuminate\Support\Facades\DB;
 
 class DocumentService
 {
+    public function updateOwnedDocument(int $documentId, string $content, User $user): array
+    {
+        $document = $this->findOwnedDocumentById($documentId, $user);
+
+        if (!$document) {
+            return [
+                'ok' => false,
+                'error' => 'Document not found',
+                'status' => 404,
+            ];
+        }
+
+        $oldHash = md5((string) $document->content);
+        $newHash = md5($content);
+
+        $document->update([
+            'content' => $content,
+        ]);
+
+        DocumentChange::create([
+            'file_name'          => $document->file_name,
+            'action'             => 'updated',
+            'user_id'            => $user->id,
+            'user_name'          => $user->name,
+            'old_content_hash'   => $oldHash,
+            'new_content_hash'   => $newHash,
+            'change_timestamp'   => now(),
+            'training_required'  => $oldHash !== $newHash,
+            'training_completed' => false,
+        ]);
+
+        return [
+            'ok' => true,
+            'message' => 'Document updated successfully',
+            'document' => $document->fresh(),
+        ];
+    }
+
+    public function restoreOwnedDocument(int $documentId, User $user): array
+    {
+        return DB::transaction(function () use ($documentId, $user) {
+            $document = Document::onlyTrashed()
+                ->where('created_by', $user->id)
+                ->where('id', $documentId)
+                ->first();
+
+            if (!$document) {
+                return [
+                    'ok' => false,
+                    'error' => 'Document not found',
+                    'status' => 404,
+                ];
+            }
+
+            $trashedFileName = $document->file_name;
+
+            $document->restore();
+
+            DocumentChange::create([
+                'file_name'          => $trashedFileName,
+                'action'             => 'restored',
+                'user_id'            => $user->id,
+                'user_name'          => $user->name,
+                'change_timestamp'   => now(),
+                'training_required'  => true,
+                'training_completed' => false,
+            ]);
+
+            return [
+                'ok' => true,
+                'message' => 'Document restored successfully',
+                'document' => $document->fresh(),
+            ];
+        });
+    }
+
     public function handleDocumentUpload(array $data, User $user): array
     {
         return DB::transaction(function () use ($data, $user) {
@@ -29,23 +104,7 @@ class DocumentService
             $oldHash = $existing ? md5((string)$existing->content) : null;
             $action = $oldHash ? 'updated' : 'created';
 
-            // 3. Rasa Sync
-            $uploadResult = RasaServerService::uploadDocument(
-                $doc->file_name,
-                $doc->toTxtBlock(),
-                'txt'
-            );
-
-            if (!$uploadResult['ok']) {
-                throw new \Exception("Rasa upload failed: " . ($uploadResult['error'] ?? 'Unknown error'));
-            }
-
-            // 4. Update with Rasa ID
-            if (isset($uploadResult['doc_id'])) {
-                $doc->update(['rasa_doc_id' => $uploadResult['doc_id']]);
-            }
-
-            // 5. Log Document Change
+            // 3. Log Document Change
             DocumentChange::create([
                 'file_name'          => $doc->file_name,
                 'action'             => $action,
@@ -58,7 +117,7 @@ class DocumentService
                 'training_completed' => false,
             ]);
 
-            // 6. Persist Upload Log
+            // 4. Persist Upload Log
             $log = UploadLog::create([
                 'staff_id'             => $user->id,
                 'file_name'            => $doc->file_name,
@@ -69,7 +128,7 @@ class DocumentService
 
             return [
                 'success'    => true,
-                'message'    => 'Document saved and uploaded successfully',
+                'message'    => 'Document saved successfully',
                 'document'   => $doc,
                 'upload_log' => $log
             ];
@@ -99,10 +158,18 @@ class DocumentService
         return Document::whereRaw('LOWER(TRIM(file_name)) = ?', [strtolower(trim($fileName))])->first();
     }
 
+    public function findOwnedDocumentById(int $documentId, User $user): ?Document
+    {
+        return Document::query()
+            ->where('created_by', $user->id)
+            ->where('id', $documentId)
+            ->first();
+    }
+
     /**
-     * Perform a synchronized deletion between DB, Rasa, and Change Logs.
+     * Delete a document from the database and log the change.
      */
-    public function deleteDocumentAndSync(Document $doc, User $user): void
+    public function deleteDocument(Document $doc, User $user): void
     {
         DB::transaction(function () use ($doc, $user) {
             $fileName = $doc->file_name;
@@ -119,69 +186,40 @@ class DocumentService
 
             // 2. Delete the DB record
             $doc->delete();
-
-            // 3. Sync with Rasa
-            try {
-                $response = RasaServerService::deleteFile($fileName);
-                if (!($response['ok'] ?? false)) {
-                    Log::error("Rasa delete failed for {$fileName}: " . ($response['error'] ?? 'unknown'));
-                }
-            } catch (\Exception $e) {
-                Log::error("Rasa API communication error: " . $e->getMessage());
-            }
         });
     }
 
     /**
-     * Fetch files from Rasa and filter them based on the user's owned documents.
+     * Fetch locally stored files owned by the authenticated staff user.
      */
-    public function getOwnedFilesFromRasa(User $user): array
+    public function getOwnedFiles(User $user): array
     {
-        $rasaUrl = config('services.faq_list_docs.url');
-        $secret = config('services.faq_list_docs.secret');
+        $includeDeleted = request()->boolean('include_deleted');
 
-        if (!$rasaUrl) {
-            throw new \Exception('Rasa list-docs URL not configured');
-        }
+        $ownedDocuments = Document::query()
+            ->when($includeDeleted, fn ($query) => $query->onlyTrashed())
+            ->with('user:id,name')
+            ->where('created_by', $user->id)
+            ->get(['id', 'file_name', 'created_by', 'content', 'updated_at', 'deleted_at', 'created_at']);
 
-        // 1. Fetch files from Rasa server
-        $response = Http::withHeaders([
-            'X-FAQ-UPDATER-TOKEN' => $secret,
-            'X-Requested-With'    => 'XMLHttpRequest'
-        ])->get($rasaUrl);
-
-        if (!$response->successful()) {
-            throw new \Exception("Rasa API error: {$response->status()}");
-        }
-
-        $allFiles = $response->json()['files'] ?? [];
-
-        // 2. Perform Diagnostics (Duplicate Check)
-        $nameCounts = collect($allFiles)
-            ->map(fn($f) => $f['name'] ?? ($f['file_name'] ?? null))
-            ->filter()
-            ->countBy();
-
-        $duplicates = $nameCounts->filter(fn($count) => $count > 1)->keys();
-
-        // 3. Filter by Local Ownership
-        // Only return Rasa files that exist in our local DB and were created by this user
-        $ownedNames = Document::where('created_by', $user->id)
-            ->pluck('file_name')
-            ->toArray();
-
-        $filtered = collect($allFiles)->filter(function ($file) use ($ownedNames) {
-            $name = $file['name'] ?? ($file['file_name'] ?? null);
-            return $name && in_array($name, $ownedNames);
+        $files = $ownedDocuments->map(function ($document) {
+            return [
+                'id' => $document->id,
+                'name' => $document->file_name,
+                'file_name' => $document->file_name,
+                'content' => $document->content,
+                'size' => strlen((string) $document->content),
+                'created_by' => $document->created_by,
+                'created_by_name' => $document->user?->name,
+                'modified' => $document->updated_at?->toISOString(),
+                'deleted_at' => $document->deleted_at?->toISOString(),
+                'created_at' => $document->created_at?->toISOString(),
+            ];
         })->values()->all();
 
         return [
             'ok'    => true,
-            'files' => $filtered,
-            'diagnostics' => [
-                'total_on_rasa'   => count($allFiles),
-                'duplicate_names' => $duplicates,
-            ]
+            'files' => $files,
         ];
     }
 }
