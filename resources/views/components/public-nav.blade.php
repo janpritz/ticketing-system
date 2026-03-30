@@ -13,19 +13,25 @@
                 </a>
 
                 <!-- Desktop Menu -->
+                @php
+                    $linkBaseClasses = 'text-white text-sm font-medium transition-all px-1 pb-1 border-b-2';
+                    $linkInactiveClasses = 'border-transparent hover:text-gray-100';
+                    $linkActiveClasses = 'border-white text-white';
+                @endphp
+
                 <div class="hidden md:flex items-center gap-3">
                     <a href="{{ route('faqs.index') }}"
-                        class="text-white text-sm font-medium hover:text-gray-100 transition-all px-1 {{ isset($active) && $active === 'home' ? 'border-b-2 border-white' : '' }}">
+                        class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'home' ? $linkActiveClasses : $linkInactiveClasses }}">
                         Home
                     </a>
 
                     <a href="{{ route('about') }}"
-                        class="text-white text-sm font-medium hover:text-gray-100 transition-all px-1 {{ isset($active) && $active === 'about' ? 'border-b-2 border-white' : '' }}">
+                        class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'about' ? $linkActiveClasses : $linkInactiveClasses }}">
                         About Us
                     </a>
 
                     <a href="{{ route('tickets.verify-otp', ['identifier' => rand(100000, 999999)]) }}"
-                        class="text-white text-sm font-medium hover:text-gray-100 transition-all px-1 {{ isset($active) && $active === 'tickets.index' ? 'border-b-2 border-white' : '' }}">
+                        class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'tickets.index' ? $linkActiveClasses : $linkInactiveClasses }}">
                         My Tickets
                     </a>
                 </div>

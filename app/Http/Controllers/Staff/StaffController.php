@@ -183,7 +183,7 @@ class StaffController extends Controller
      */
     public function tickets()
     {
-        return view('staff.tickets.index', [
+        return view('dashboards.staff.tickets.page', [
             'user' => Auth::user(),
             'users' => User::orderBy('name')->get(['id', 'name']),
         ]);
