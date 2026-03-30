@@ -234,6 +234,6 @@
     </div>
     <!-- Sidebar & Dropdowns Script -->
     @push('scripts')
-        @include('layouts.scripts.scripts')
+        @include('layouts.scripts.admin-scripts')
     @endpush
 @endsection
