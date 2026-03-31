@@ -38,7 +38,7 @@ class TicketService
         // Recent Active Tickets
         $recentTickets = (clone $staffTickets)
             ->whereNotIn('status', ['Closed'])
-            ->with(['staff', 'routingHistories.staff', 'category'])
+            ->with(['staff', 'routingHistories.staff', 'role'])
             ->orderByDesc('date_created')
             ->get();
 
@@ -78,7 +78,7 @@ class TicketService
         // Build the query for active tickets
         $query = Ticket::where('staff_id', $user->id)
             ->whereIn('status', ['Open', 'Forwarded'])
-            ->with(['staff', 'routingHistories.staff', 'category'])
+            ->with(['staff', 'routingHistories.staff', 'role'])
             ->orderByDesc('date_created');
 
         // Handle Search
@@ -126,7 +126,7 @@ class TicketService
 
         // 2. Build Base Query
         $query = Ticket::where('staff_id', $user->id)
-            ->with(['staff', 'routingHistories.staff', 'category']);
+            ->with(['staff', 'routingHistories.staff', 'role']);
 
         // 3. Status Filtering
         if (in_array($params['status'], ['open', 'forwarded', 'closed'])) {
@@ -141,7 +141,7 @@ class TicketService
                     ->orWhere('response', 'like', $term)
                     ->orWhere('email', 'like', $term)
                     ->orWhere('status', 'like', $term)
-                    ->orWhereHas('category', fn($cq) => $cq->where('name', 'like', $term));
+                    ->orWhereHas('role', fn($rq) => $rq->where('name', 'like', $term));
             });
         }
 
@@ -149,10 +149,10 @@ class TicketService
         // Priority: Open (1) -> Forwarded (2) -> Closed (3)
         $query->orderByRaw("CASE WHEN status = 'Open' THEN 1 WHEN status = 'Forwarded' THEN 2 ELSE 3 END");
 
-        if ($params['sort_by'] === 'category') {
-            $query->leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
+        if ($params['sort_by'] === 'role') {
+            $query->leftJoin('roles', 'tickets.role_id', '=', 'roles.id')
                 ->select('tickets.*')
-                ->orderBy('categories.name', $params['sort_direction']);
+                ->orderBy('roles.name', $params['sort_direction']);
         } else {
             $allowed = ['id', 'date_created', 'updated_at', 'status', 'email', 'question'];
             $sort = in_array($params['sort_by'], $allowed) ? $params['sort_by'] : 'date_created';
@@ -182,6 +182,16 @@ class TicketService
      */
     public function forwardTicket(Ticket $ticket, User $newStaff, User $sender): void
     {
+        // Prevent forwarding to unverified users
+        if (!$newStaff->isVerified()) {
+            Log::warning('Staff\TicketService::forwardTicket: Target staff is not verified', [
+                'ticket_id' => $ticket->id,
+                'target_staff_id' => $newStaff->id,
+                'target_staff_name' => $newStaff->name,
+            ]);
+            throw new \InvalidArgumentException('Cannot forward ticket to an unverified user. The staff member must verify their email first.');
+        }
+
         DB::transaction(function () use ($ticket, $newStaff, $sender) {
             // 1. Update Ticket State
             $ticket->update([
@@ -321,7 +331,7 @@ class TicketService
     public function getRecentTicketsForStaff(User $user, string $search = '', int $perPage = 10): array
     {
         $query = Ticket::where('staff_id', $user->id)
-            ->with(['staff', 'routingHistories.staff', 'category'])
+            ->with(['staff', 'routingHistories.staff', 'role'])
             ->orderByDesc('date_created');
 
         // Apply Search Filter
@@ -330,7 +340,7 @@ class TicketService
                 $term = '%' . $search . '%';
                 $q->where('question', 'like', $term)
                     ->orWhere('response', 'like', $term)
-                    ->orWhereHas('category', fn($cq) => $cq->where('name', 'like', $term));
+                    ->orWhereHas('role', fn($rq) => $rq->where('name', 'like', $term));
             });
         }
 

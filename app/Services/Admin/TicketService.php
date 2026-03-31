@@ -150,7 +150,7 @@ class TicketService
             'routingHistories' => fn($q) => $q->orderBy('routed_at', 'desc')
         ]);
 
-        $staffList = User::whereHas('roles')->select('id', 'name')->orderBy('name')->get();
+        $staffList = User::whereHas('roles')->whereNotNull('email_verified_at')->select('id', 'name')->orderBy('name')->get();
 
         $data = $ticket->toArray();
         $data['role_name'] = $ticket->role->name ?? $ticket->getAttribute('role');
@@ -250,6 +250,19 @@ class TicketService
     {
         $originalStaffId = $ticket->staff_id;
         $newStaff = User::findOrFail($newStaffId);
+
+        // Prevent forwarding to unverified users
+        if (!$newStaff->isVerified()) {
+            Log::warning('TicketService::forwardTicket: Target staff is not verified', [
+                'ticket_id' => $ticket->id,
+                'target_staff_id' => $newStaff->id,
+                'target_staff_name' => $newStaff->name,
+            ]);
+            return [
+                'success' => false,
+                'message' => 'Cannot forward ticket to an unverified user. The staff member must verify their email first.',
+            ];
+        }
 
         try {
             DB::transaction(function () use ($ticket, $newStaff, $admin) {
@@ -408,7 +421,7 @@ class TicketService
 
         // 2. Persist Ticket
         $ticket = Ticket::create([
-            'category_id'  => $data['role_id'] ?? null,
+            'role_id'      => $data['role_id'] ?? null,
             'question'     => $data['question'],
             'recepient_id' => $data['recepient_id'] ?? null,
             'email'        => $data['email'],
@@ -451,7 +464,7 @@ class TicketService
      */
     public function getSimpleUserList(): Collection
     {
-        return User::orderBy('name')->get(['id', 'name']);
+        return User::whereNotNull('email_verified_at')->orderBy('name')->get(['id', 'name']);
     }
 
     public function updateTicketStatus(int $ticketId, int $userId, string $newStatus): \App\Models\Ticket

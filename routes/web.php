@@ -94,12 +94,13 @@ Route::middleware(['guest'])->group(function () {
         Route::get('/password/reset', 'showResetForm')->name('password.reset.form');
         Route::post('/password/reset', 'resetWithOtp')->name('password.reset.apply');
     })->middleware('throttle:10,1');
+});
 
-    // Account Verification (new staff set password)
-    Route::controller(AuthController::class)->group(function () {
-        Route::get('/verify-account/{token}', 'showVerifyAccountForm')->middleware('throttle:10,1')->name('staff.verify-account');
-        Route::post('/verify-account', 'verifyAccount')->middleware('throttle:10,1')->name('staff.verify-account.post');
-    });
+// Account Verification (new staff set password) — outside guest middleware
+// so the link works whether the user is logged in or not
+Route::controller(AuthController::class)->group(function () {
+    Route::get('/verify-account/{token}', 'showVerifyAccountForm')->middleware('throttle:10,1')->name('staff.verify-account');
+    Route::post('/verify-account', 'verifyAccount')->middleware('throttle:30,1')->name('staff.verify-account.post');
 });
 
 /*

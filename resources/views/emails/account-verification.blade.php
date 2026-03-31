@@ -95,10 +95,18 @@
                 your account and set your permanent password to get started.
             </p>
 
-            <div class="button-wrapper">
-                <a href="{{ route('staff.verify-account', ['token' => $verificationToken]) }}" class="button">
-                    Verify Account
-                </a>
+            <div style="text-align:center; margin:32px 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                    <tr>
+                        <td style="background-color:#ff9d00; border-radius:8px; text-align:center;">
+                            <a href="{{ route('staff.verify-account', ['token' => $verificationToken]) }}"
+                                target="_blank"
+                                style="display:inline-block; background-color:#ff9d00; color:#ffffff; text-decoration:none; padding:14px 28px; border-radius:8px; font-weight:600; font-size:16px; font-family:'Poppins','Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+                                Verify Account
+                            </a>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <div class="footer">

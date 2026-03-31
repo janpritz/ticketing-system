@@ -44,10 +44,10 @@ class PopulateTicketSnapshots extends Command
         $snapshots = [];
 
         foreach ($tickets as $ticket) {
-            // Get category name from relation (we now use category_id as source of truth)
+            // Get category name from role relation (we now use role_id as source of truth)
             $categoryName = 'Uncategorized';
-            if ($ticket->category && is_object($ticket->category)) {
-                $categoryName = $ticket->category->name ?? 'Uncategorized';
+            if ($ticket->role && is_object($ticket->role)) {
+                $categoryName = $ticket->role->name ?? 'Uncategorized';
             }
 
             $snapshots[] = [

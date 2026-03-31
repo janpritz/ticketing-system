@@ -242,6 +242,9 @@ class StaffController extends Controller
                 'new_staff'         => $newStaff,
                 'refresh_dashboard' => true
             ]);
+        } catch (\InvalidArgumentException $e) {
+            // Validation errors (e.g. unverified user) — return 422
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error("Failed to forward ticket #{$ticket->id}: " . $e->getMessage());
             return response()->json(['message' => 'Failed to forward ticket'], 500);
@@ -270,14 +273,14 @@ class StaffController extends Controller
         }
 
         // 2. Load Relations
-        $ticket->load(['staff', 'routingHistories.staff', 'category']);
+        $ticket->load(['staff', 'routingHistories.staff', 'role']);
 
         // 3. Mark as Viewed (Logic moved to Service)
         $service->markTicketAsViewed($ticket, $auth);
 
         // 4. Handle AJAX/JSON Responses
         if (request()->expectsJson()) {
-            $users = User::whereHas('roles')->select('id', 'name')->orderBy('name')->get();
+            $users = User::whereHas('roles')->whereNotNull('email_verified_at')->select('id', 'name')->orderBy('name')->get();
             return response()->json(array_merge($ticket->toArray(), ['users' => $users]));
         }
 
@@ -303,7 +306,7 @@ class StaffController extends Controller
             $service->resolveTicketWithResponse($ticket, $auth, $validated['message']);
 
             // 3. Load relations for the frontend update
-            $ticket->load(['staff', 'routingHistories.staff', 'category']);
+            $ticket->load(['staff', 'routingHistories.staff', 'role']);
 
             return response()->json([
                 'message' => 'Response email sent, ticket closed',

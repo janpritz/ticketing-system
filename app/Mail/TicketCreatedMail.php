@@ -19,8 +19,8 @@ class TicketCreatedMail extends Mailable
     public function __construct(Ticket $ticket)
     {
         $this->ticket = $ticket;
-        // Eager load staff and category to include in the confirmation email
-        $this->ticket->load('staff', 'category');
+        // Eager load staff and role to include in the confirmation email
+        $this->ticket->load('staff', 'role');
     }
 
     /**
@@ -32,7 +32,7 @@ class TicketCreatedMail extends Mailable
         $year = $createdAt ? date('Y', strtotime($createdAt)) : date('Y');
         $ticketNo = sprintf('T-%s-%06d', $year, $this->ticket->id);
 
-        $categoryName = $this->ticket->category?->name ?: 'Uncategorized';
+        $categoryName = $this->ticket->role?->name ?: 'Uncategorized';
 
         return $this
             ->subject('Ticket Delivered: ' . $ticketNo)

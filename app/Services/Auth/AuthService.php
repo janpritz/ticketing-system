@@ -86,6 +86,29 @@ class AuthService
         return $user;
     }
 
+    /**
+     * Verify the account by setting the password and marking email as verified.
+     */
+    public function verifyAccount(array $data): User
+    {
+        $user = User::where('verification_token', $data['token'])->first();
+
+        if (!$user) {
+            throw ValidationException::withMessages(['token' => 'Invalid or expired verification link.']);
+        }
+
+        if ($user->email_verified_at) {
+            throw new \Exception('Account already verified.');
+        }
+
+        $user->password = Hash::make($data['password']);
+        $user->email_verified_at = now();
+        $user->verification_token = null;
+        $user->save();
+
+        return $user;
+    }
+
     public function logout(): void
     {
         Auth::logout();

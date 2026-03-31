@@ -95,4 +95,23 @@ class AuthController extends Controller
             return redirect()->route('login')->with('status', $e->getMessage());
         }
     }
+
+    public function verifyAccount(Request $request, AuthService $authService): RedirectResponse
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        try {
+            $authService->verifyAccount($request->only('token', 'password'));
+
+            return redirect()->route('login')
+                ->with('success', 'Your account has been verified and password set successfully. You can now log in.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return redirect()->route('login')->with('error', $e->getMessage());
+        }
+    }
 }

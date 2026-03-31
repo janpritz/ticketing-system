@@ -68,23 +68,25 @@ class ProcessTicketCreation implements ShouldQueue
         $ticket->update(['role_id' => $roleModel->id]);
 
         // Find staff with the lowest open-ticket load within the selected role
+        // Only consider verified users (email_verified_at is not null)
         $staff = null;
         if ($roleModel) {
-            Log::info('ProcessTicketCreation: Searching for staff in role', [
+            Log::info('ProcessTicketCreation: Searching for verified staff in role', [
                 'role_id' => $roleModel->id,
                 'role_name' => $roleModel->name
             ]);
             
-            // Find users who have this role assigned via user_roles table
+            // Find verified users who have this role assigned via user_roles table
             $candidates = User::whereHas('roles', function($q) use ($roleModel) {
                     $q->where('roles.id', $roleModel->id);
                 })
+                ->whereNotNull('email_verified_at')
                 ->withCount(['assignedTickets as open_tickets_count' => function ($q) {
                     $q->where('status', 'Open');
                 }])
                 ->get();
 
-            Log::info('ProcessTicketCreation: Found candidates', [
+            Log::info('ProcessTicketCreation: Found verified candidates', [
                 'role_id' => $roleModel->id,
                 'candidate_count' => $candidates->count(),
                 'candidates' => $candidates->map(function($user) {
@@ -92,6 +94,7 @@ class ProcessTicketCreation implements ShouldQueue
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
+                        'email_verified_at' => $user->email_verified_at,
                         'open_tickets' => $user->open_tickets_count ?? 0
                     ];
                 })
@@ -114,10 +117,37 @@ class ProcessTicketCreation implements ShouldQueue
                     'open_tickets' => $staff->open_tickets_count ?? 0
                 ]);
             } else {
-                Log::warning('ProcessTicketCreation: No staff found for role', [
+                // No verified staff found in this role — fallback to Primary Administrator (role ID 1)
+                Log::warning('ProcessTicketCreation: No verified staff found for role, falling back to Primary Administrator', [
                     'role_id' => $roleModel->id,
                     'role_name' => $roleModel->name
                 ]);
+
+                $fallbackCandidates = User::whereHas('roles', function($q) {
+                        $q->where('roles.id', 1);
+                    })
+                    ->whereNotNull('email_verified_at')
+                    ->withCount(['assignedTickets as open_tickets_count' => function ($q) {
+                        $q->where('status', 'Open');
+                    }])
+                    ->get();
+
+                if ($fallbackCandidates->isNotEmpty()) {
+                    $min = $fallbackCandidates->min('open_tickets_count');
+                    $ties = $fallbackCandidates->where('open_tickets_count', $min);
+                    $staff = $ties->count() > 1 ? $ties->random() : $ties->first();
+
+                    // Update the ticket's role_id to the Primary Administrator role
+                    $ticket->update(['role_id' => 1]);
+
+                    Log::info('ProcessTicketCreation: Assigned to Primary Administrator fallback', [
+                        'staff_id' => $staff->id,
+                        'staff_name' => $staff->name,
+                        'open_tickets' => $staff->open_tickets_count ?? 0
+                    ]);
+                } else {
+                    Log::warning('ProcessTicketCreation: No verified Primary Administrator found either');
+                }
             }
         } else {
             Log::warning('ProcessTicketCreation: No role model available for assignment');

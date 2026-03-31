@@ -21,9 +21,9 @@ class ReportService
 
     protected function getRecentForwarders(int $staffId, int $limit = 10): array
     {
-        // 1. Get recent routing history with ticket and category relationships pre-loaded
+        // 1. Get recent routing history with ticket and role relationships pre-loaded
         $recentRouting = TicketRoutingHistory::where('staff_id', $staffId)
-            ->with(['ticket.category', 'ticket.routingHistory'])
+            ->with(['ticket.role', 'ticket.routingHistories'])
             ->orderByDesc('routed_at')
             ->take($limit * 2) // Take a few extra to ensure we find enough with "previous" staff
             ->get();
@@ -31,22 +31,21 @@ class ReportService
         $forwarders = [];
 
         foreach ($recentRouting as $entry) {
-            // 2. Find the previous staff member directly from the loaded relationship 
+            // 2. Find the previous staff member directly from the loaded relationship
             // instead of a fresh DB query inside the loop.
-            $prev = $entry->ticket->routingHistory
+            $prev = $entry->ticket->routingHistories
                 ->where('routed_at', '<', $entry->routed_at)
                 ->sortByDesc('routed_at')
                 ->first();
 
             $forwarderName = $prev?->staff?->name ?? $entry->ticket?->staff?->name ?? 'Unknown';
 
-            // 3. Resolve Category Name
-            $categoryName = $entry->ticket?->category?->name
-                ?? (is_string($entry->ticket?->category) ? $entry->ticket->category : 'Uncategorized');
+            // 3. Resolve Role Name
+            $roleName = $entry->ticket?->role?->name ?? 'Uncategorized';
 
             $forwarders[] = [
                 'name'     => $forwarderName,
-                'category' => $categoryName,
+                'category' => $roleName,
             ];
 
             if (count($forwarders) >= $limit) break;

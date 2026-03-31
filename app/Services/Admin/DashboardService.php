@@ -157,8 +157,8 @@ class DashboardService
 
     private function getCategoryAnalytics(): array
     {
-        $rows = Ticket::leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
-            ->select(DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
+        $rows = Ticket::leftJoin('roles', 'tickets.role_id', '=', 'roles.id')
+            ->select(DB::raw("COALESCE(roles.name, 'Uncategorized') as category_name"), DB::raw('COUNT(*) as c'))
             ->groupBy('category_name')
             ->orderByDesc('c')
             ->get();
@@ -186,7 +186,7 @@ class DashboardService
 
     private function getUnassignedTicketsMapped(): array
     {
-        $tickets = Ticket::with('staff')
+        $tickets = Ticket::with(['staff', 'role'])
             ->where(function ($query) {
                 $query->whereNull('staff_id')->orWhere('staff_id', 1);
             })
@@ -202,7 +202,7 @@ class DashboardService
                 'id'           => (int) $t->id,
                 'status'       => (string) $t->status,
                 'email'        => (string) ($t->email ?? ''),
-                'category'     => (string) (is_object($t->category) ? ($t->category->name ?? '') : ($t->getAttribute('category') ?? '')),
+                'category'     => (string) ($t->role?->name ?? ''),
                 'date_created' => optional($t->date_created ?? $t->created_at)->format('Y-m-d h:i a'),
                 'created_at'   => optional($t->created_at)->format('Y-m-d h:i a'),
                 'updated_at'   => optional($t->updated_at)->format('Y-m-d h:i a'),
@@ -219,14 +219,12 @@ class DashboardService
             return [];
         }
 
-        return $role->categories()
-            ->orderBy('name')
-            ->get(['categories.id', 'categories.name']) // Specify table to avoid ambiguity
-            ->map(fn($category) => [
-                'id' => $category->id,
-                'name' => $category->name,
-            ])
-            ->values()
-            ->toArray();
+        // Since categories have been replaced by roles, return the role itself
+        return [
+            [
+                'id' => $role->id,
+                'name' => $role->name,
+            ]
+        ];
     }
 }

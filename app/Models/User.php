@@ -162,4 +162,12 @@ class User extends Authenticatable
         // This checks the pivot table directly without loading all role data
         return $this->roles()->where('roles.id', 1)->exists();
     }
+
+    /**
+     * Check if the user has verified their email address.
+     */
+    public function isVerified(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
 }

@@ -156,20 +156,16 @@ class ReportService
     public function getTopTicketDriversForPeriod($days)
     {
         $startDate = now()->subDays($days);
-        // Assuming category is a field, but in the model, perhaps it's category_id
-        // For simplicity, let's assume category is a string field
-        // If it's id, need to join
-        // Group by the categories table (use category_id as source of truth)
-        // disambiguate created_at (categories also has timestamps) and group by the real column
+        // Group by the roles table (use role_id as source of truth)
         $rows = Ticket::where('tickets.created_at', '>=', $startDate)
-            ->leftJoin('categories', 'tickets.category_id', '=', 'categories.id')
-            ->select(DB::raw("COALESCE(categories.name, 'Unknown') as category_name"), DB::raw('COUNT(*) as count'))
-            ->groupBy('categories.name')
+            ->leftJoin('roles', 'tickets.role_id', '=', 'roles.id')
+            ->select(DB::raw("COALESCE(roles.name, 'Unknown') as role_name"), DB::raw('COUNT(*) as count'))
+            ->groupBy('roles.name')
             ->orderByDesc('count')
             ->get()
             ->map(function ($item) {
                 return [
-                    'label' => $item->category_name ?: 'Unknown',
+                    'label' => $item->role_name ?: 'Unknown',
                     'count' => (int) $item->count,
                 ];
             })
