@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Primary Administrator',
                 'email' => 'acc.sangkaychatbot@gmail.com',
                 'password' => Hash::make('ACCSangkay2025'),
+                'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]
@@ -62,7 +63,7 @@ class DatabaseSeeder extends Seeder
         $this->fixPrimaryRoles();
 
         // 7. Seed Staff Data
-        $this->seedStaffUsers();
+        //$this->seedStaffUsers();
     }
 
     private function fixPrimaryRoles(): void

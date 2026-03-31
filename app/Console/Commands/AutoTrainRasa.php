@@ -40,11 +40,17 @@ class AutoTrainRasa extends Command
         if ($pendingCount > 0) {
             Log::info("AutoTrainRasa: Triggering automatic training");
 
+            // Get current counts for initial display
+            $stagedFaqsCount = DB::table('staged_faqs')->where('status', 'publish')->count();
+            $documentsCount = DB::table('documents')->count();
+
             // Create training record
             $training = Training::create([
                 'status' => 'training',
                 'started_at' => now(),
                 'trigger' => 'automatic',
+                'faq_count' => $stagedFaqsCount,
+                'doc_count' => $documentsCount,
             ]);
 
             Log::info("AutoTrainRasa: Created training record with ID: {$training->id}");

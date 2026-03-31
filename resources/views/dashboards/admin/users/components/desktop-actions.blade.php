@@ -30,7 +30,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" />
             </svg>
-            <span class="hidden sm:inline">Add Staff</span>
+            <span class="hidden sm:inline">New Staff</span>
         </button>
     @endif
 </div>

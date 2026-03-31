@@ -13,11 +13,17 @@ class RasaTrainingController extends Controller
         Log::info("RasaTrainingController::syncAndTrain - Starting training process");
 
         try {
+            // Get current counts for initial display
+            $stagedFaqsCount = DB::table('staged_faqs')->where('status', 'publish')->count();
+            $documentsCount = DB::table('documents')->count();
+
             // Create the record so the UI shows "Training..." immediately
             $training = Training::create([
                 'status' => 'training',
                 'started_at' => now(),
                 'trigger' => 'manual',
+                'faq_count' => $stagedFaqsCount,
+                'doc_count' => $documentsCount,
             ]);
             
             Log::info("RasaTrainingController::syncAndTrain - Created training record with ID: {$training->id}");

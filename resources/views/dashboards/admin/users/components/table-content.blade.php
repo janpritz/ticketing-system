@@ -32,15 +32,15 @@
                             @endphp
                             @foreach ($roles as $index => $role)
                                 @php
-                                    $isMain = $index === 0;
+                                    $isPrimary = $role->pivot->is_primary_role ?? false;
                                     $bgColor =
                                         $role->name === 'Primary Administrator'
                                             ? 'bg-purple-50 text-purple-700 ring-purple-600/20'
                                             : 'bg-slate-50 text-slate-700 ring-slate-600/20';
                                 @endphp
                                 <span
-                                    class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $bgColor }} {{ $isMain ? 'ring-1 ring-yellow-400' : '' }}"
-                                    title="{{ $isMain ? 'Main Role' : 'Additional Role' }}">
+                                    class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset {{ $bgColor }} {{ $isPrimary ? 'ring-1 ring-yellow-400' : '' }}"
+                                    title="{{ $isPrimary ? 'Primary Role' : 'Additional Role' }}">
                                     {{ $role->name }}
                                 </span>
                             @endforeach

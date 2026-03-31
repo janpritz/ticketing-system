@@ -81,6 +81,17 @@ class SyncRasaKnowledge implements ShouldQueue
 
             Log::info("SyncRasaKnowledge: All steps completed successfully");
 
+            // Update training record with actual counts
+            $stagedFaqsCount = DB::table('staged_faqs')->where('status', 'publish')->count();
+            $documentsCount = DB::table('documents')->count();
+
+            $training->update([
+                'faq_count' => $stagedFaqsCount,
+                'doc_count' => $documentsCount,
+            ]);
+
+            Log::info("SyncRasaKnowledge: Updated training record with faq_count: {$stagedFaqsCount}, doc_count: {$documentsCount}");
+
             // Note: We don't mark as 'success' here because 
             // the Python script on Render will do that! 
 
