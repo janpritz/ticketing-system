@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\TicketResponseMail;
 use App\Models\Ticket;
 use App\Jobs\SendOverdueTicketReminderJob;
+use App\Console\Commands\AutoTrainRasa;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -41,6 +42,13 @@ Artisan::command('mail:test {email?}', function ($email = null) {
 Schedule::job(new SendOverdueTicketReminderJob())
     ->dailyAt(env('TICKET_REMINDER_TIME', '09:00'))
     ->description('Send push notifications for overdue tickets');
+
+// Schedule automatic Rasa training at 9PM Manila time (UTC+8) daily
+// If there are document_changes with training_completed = false
+Schedule::command('rasa:auto-train')
+    ->dailyAt('21:00')
+    ->timezone('Asia/Manila')
+    ->description('Auto-train Rasa if there are pending document changes');
 
 /**
  * One-time helper: backfill announcement role mappings from legacy Announcements.txt entries.

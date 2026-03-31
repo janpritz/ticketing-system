@@ -12,8 +12,8 @@ class PublicFAQsController extends Controller
      */
     public function index()
     {
-        // Get all approved FAQs
-        $faqs = StagedFaq::where('status', 'approved')
+        // Get all published FAQs
+        $faqs = StagedFaq::where('status', 'publish')
             ->orderBy('general_topic')
             ->orderBy('suggested_q')
             ->get();
@@ -22,11 +22,11 @@ class PublicFAQsController extends Controller
     }
 
     /**
-     * Get approved FAQs as JSON (for API consumption)
+     * Get published FAQs as JSON (for API consumption)
      */
-    public function getApprovedFAQs()
+    public function getPublishedFAQs()
     {
-        $faqs = StagedFaq::where('status', 'approved')
+        $faqs = StagedFaq::where('status', 'publish')
             ->select('id', 'general_topic', 'semantic_key', 'suggested_q', 'suggested_a')
             ->orderBy('general_topic')
             ->get();

@@ -95,13 +95,12 @@ class AnnouncementController extends Controller
             $announcement = Announcement::findOrFail((int)$id);
             $data = $request->validated();
 
-            // Update the announcement
-            $announcement->update([
-                'title' => $data['title'],
-                'content' => $data['content'],
-                'starts_at' => $data['starts_at'],
-                'expires_at' => $data['expires_at'],
-            ]);
+            // Update the announcement through service to log DocumentChange
+            $result = $service->updateAnnouncement($announcement, $data);
+
+            if (!$result['success']) {
+                return response()->json($result, $result['status'] ?? 500);
+            }
 
             return response()->json([
                 'success' => true,
@@ -115,10 +114,10 @@ class AnnouncementController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy($id, AnnouncementService $service)
     {
         $announcement = Announcement::findOrFail($id);
-        $announcement->delete();
+        $service->deleteAnnouncement((int)$id);
 
         return response()->json(['success' => true, 'message' => 'Announcement deleted successfully']);
     }
@@ -152,10 +151,13 @@ class AnnouncementController extends Controller
         return response()->json(['announcements' => $deletedAnnouncements]);
     }
 
-    public function restore($announcement)
+    public function restore($announcement, AnnouncementService $service)
     {
-        $announcement = Announcement::withTrashed()->findOrFail($announcement);
-        $announcement->restore();
+        $result = $service->restoreAnnouncement((int)$announcement);
+
+        if (!$result['success']) {
+            return response()->json($result, $result['status'] ?? 500);
+        }
 
         return response()->json(['success' => true, 'message' => 'Announcement restored successfully']);
     }

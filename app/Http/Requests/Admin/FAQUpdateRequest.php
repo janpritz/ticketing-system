@@ -23,7 +23,7 @@ class FAQUpdateRequest extends FormRequest
     {
         return [
             'id'     => 'required|integer|exists:staged_faqs,id',
-            'status' => 'required|string|in:approved,rejected,pending',
+            'status' => 'required|string|in:publish,unpublish,pending',
         ];
     }
 }

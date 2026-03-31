@@ -45,14 +45,5 @@
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script type="module">
-        // Include each file's text body directly into the page
-        @include('dashboards.admin.faqs.scripts.state')
-        @include('dashboards.admin.faqs.scripts.utils')
-        @include('dashboards.admin.faqs.scripts.http')
-        @include('dashboards.admin.faqs.scripts.faq-manager')
-        @include('dashboards.admin.faqs.scripts.ai-analyzer')
-        @include('dashboards.admin.faqs.scripts.main')
-    </script>
+    @include('dashboards.admin.faqs.scripts')
 @endpush

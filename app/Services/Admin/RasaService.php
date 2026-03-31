@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Models\{DocumentChange, RasaModel};
+use App\Models\Training;
 use Illuminate\Support\Facades\{Auth, Http, Log};
 // use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Process; 
@@ -304,33 +305,27 @@ class RasaService
      */
     public function getTrainingHistory(int $limit = 50): array
     {
-        $trainings = DocumentChange::whereNotNull('training_timestamp')
-            ->with('user')
-            ->orderBy('training_timestamp', 'desc')
+        $trainings = Training::orderBy('started_at', 'desc')
             ->limit($limit)
             ->get();
 
-        // Find the very latest successful training timestamp to identify the "Current" model
-        $latestSuccessTimestamp = $trainings->where('training_completed', true)
-            ->first()?->training_timestamp;
-
-        return $trainings->map(function ($training) use ($latestSuccessTimestamp) {
-            $status = 'pending';
-
-            if ($training->training_completed) {
-                // If there is a successful training with a newer timestamp, this one is superseded
-                $status = ($latestSuccessTimestamp && $training->training_timestamp->lt($latestSuccessTimestamp))
-                    ? 'superseded'
-                    : 'success';
-            }
+        return $trainings->map(function ($training) {
+            $status = $training->status;
+            
+            // Format trigger for display
+            $triggerLabel = $training->trigger === 'automatic' 
+                ? 'Automatic Training' 
+                : 'Manual Training';
 
             return [
-                'id'        => $training->id,
-                'date'      => $training->training_timestamp->format('Y-m-d H:i:s'),
-                'status'    => $status,
-                'user'      => $training->user->name ?? 'System',
-                'file_name' => $training->file_name,
-                'action'    => $training->action
+                'id'            => $training->id,
+                'started_at'    => $training->started_at ? $training->started_at->format('Y-m-d H:i:s') : null,
+                'completed_at'  => $training->completed_at ? $training->completed_at->format('Y-m-d H:i:s') : null,
+                'status'        => $status,
+                'trigger'       => $triggerLabel,
+                'trigger_type'  => $training->trigger,
+                'faq_count'     => $training->faq_count,
+                'doc_count'     => $training->doc_count
             ];
         })->toArray();
     }

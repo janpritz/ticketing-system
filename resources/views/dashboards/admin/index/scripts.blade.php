@@ -427,9 +427,17 @@
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     }
                 });
+
+                if (!res.ok) {
+                    // Handle non-JSON responses (like HTML error pages)
+                    const text = await res.text();
+                    console.error('Training request failed with status:', res.status, 'Body:', text);
+                    throw new Error('Server error: HTTP ' + res.status);
+                }
 
                 const data = await res.json();
 

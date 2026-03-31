@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\Admin\{FAQService, RasaService};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class RasaServerController extends Controller
 {
@@ -13,6 +14,7 @@ class RasaServerController extends Controller
      */
     public function index()
     {
+        Log::info("RasaServerController::index - Loading rasa-server page");
         return view('dashboards.admin.rasa-server.page');
     }
 
@@ -21,18 +23,39 @@ class RasaServerController extends Controller
      */
     public function startRasaApi(RasaService $service)
     {
-
-        $result = $service->ensureApiIsRunning();
-
-        return response()->json($result, $result['success'] ? 200 : 500);
+        Log::info("RasaServerController::startRasaApi - Request received");
+        
+        try {
+            $result = $service->ensureApiIsRunning();
+            Log::info("RasaServerController::startRasaApi - Result:", $result);
+            
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::startRasaApi - Exception: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start Rasa API: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 
     public function status(RasaService $service)
     {
-        $healthReport = $service->getSystemHealthReport();
-
-        return response()->json($healthReport);
+        Log::info("RasaServerController::status - Request received");
+        
+        try {
+            $healthReport = $service->getSystemHealthReport();
+            Log::info("RasaServerController::status - Health report:", $healthReport);
+            
+            return response()->json($healthReport);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::status - Exception: " . $e->getMessage());
+            return response()->json([
+                'server_status' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -43,10 +66,17 @@ class RasaServerController extends Controller
      */
     public function trainingHistory(RasaService $service)
     {
-
-        $history = $service->getTrainingHistory(50);
-
-        return response()->json(['trainings' => $history]);
+        Log::info("RasaServerController::trainingHistory - Request received");
+        
+        try {
+            $history = $service->getTrainingHistory(50);
+            Log::info("RasaServerController::trainingHistory - Found " . count($history) . " records");
+            
+            return response()->json(['trainings' => $history]);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::trainingHistory - Exception: " . $e->getMessage());
+            return response()->json(['trainings' => []], 500);
+        }
     }
     /**
      * Get models list from Rasa server.
@@ -56,9 +86,17 @@ class RasaServerController extends Controller
      */
     public function modelsList(RasaService $service)
     {
-        $models = $service->getAvailableModels();
-
-        return response()->json(['models' => $models]);
+        Log::info("RasaServerController::modelsList - Request received");
+        
+        try {
+            $models = $service->getAvailableModels();
+            Log::info("RasaServerController::modelsList - Found " . count($models) . " models");
+            
+            return response()->json(['models' => $models]);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::modelsList - Exception: " . $e->getMessage());
+            return response()->json(['models' => []], 500);
+        }
     }
 
     /**
@@ -69,9 +107,20 @@ class RasaServerController extends Controller
      */
     public function startActionServer(RasaService $service)
     {
-        $result = $service->ensureActionServerIsRunning();
-
-        return response()->json($result, $result['success'] ? 200 : 500);
+        Log::info("RasaServerController::startActionServer - Request received");
+        
+        try {
+            $result = $service->ensureActionServerIsRunning();
+            Log::info("RasaServerController::startActionServer - Result:", $result);
+            
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::startActionServer - Exception: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start Action Server: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -84,9 +133,20 @@ class RasaServerController extends Controller
      */
     public function fetchFaqs(FAQService $service)
     {
-        $result = $service->fetchRemoteFaqs();
-
-        return response()->json($result, $result['success'] ? 200 : 500);
+        Log::info("RasaServerController::fetchFaqs - Request received");
+        
+        try {
+            $result = $service->fetchRemoteFaqs();
+            Log::info("RasaServerController::fetchFaqs - Result:", $result);
+            
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::fetchFaqs - Exception: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch FAQs: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -94,17 +154,39 @@ class RasaServerController extends Controller
      */
     public function cleanupModels(Request $request, RasaService $service)
     {
-        $keepCount = $request->integer('keep_count', 5);
-        $result = $service->performModelCleanup($keepCount);
-
-        return response()->json($result, $result['success'] ? 200 : 500);
+        Log::info("RasaServerController::cleanupModels - Request received");
+        
+        try {
+            $keepCount = $request->integer('keep_count', 5);
+            Log::info("RasaServerController::cleanupModels - keep_count: {$keepCount}");
+            
+            $result = $service->performModelCleanup($keepCount);
+            Log::info("RasaServerController::cleanupModels - Result:", $result);
+            
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::cleanupModels - Exception: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cleanup models: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function getTrainingData(FAQService $service)
     {
-
-        $data = $service->prepareChatbotTrainingData();
-
-        return response()->json($data, isset($data['error']) ? 500 : 200);
+        Log::info("RasaServerController::getTrainingData - Request received");
+        
+        try {
+            $data = $service->prepareChatbotTrainingData();
+            Log::info("RasaServerController::getTrainingData - Result keys:", array_keys($data));
+            
+            return response()->json($data, isset($data['error']) ? 500 : 200);
+        } catch (\Exception $e) {
+            Log::error("RasaServerController::getTrainingData - Exception: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to get training data: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

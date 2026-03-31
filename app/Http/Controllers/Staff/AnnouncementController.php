@@ -94,7 +94,7 @@ class AnnouncementController extends Controller
             return response()->json(['success' => false, 'message' => 'Duplicate title not allowed'], 400);
         }
 
-        $service->updateAnnouncement($announcement, $request->validated());
+        $service->updateAnnouncement($announcement, $request->validated(), Auth::user());
 
         return response()->json([
             'success' => true,
@@ -105,10 +105,10 @@ class AnnouncementController extends Controller
     /**
      * Delete announcement (AJAX)
      */
-    public function destroy($id)
+    public function destroy($id, AnnouncementService $service)
     {
         $announcement = Announcement::findOrFail($id);
-        $announcement->delete();
+        $service->deleteAnnouncement($announcement, Auth::user());
         return response()->json(['success' => true, 'message' => 'Announcement deleted successfully']);
     }
 
@@ -173,17 +173,25 @@ class AnnouncementController extends Controller
         ]);
     }
 
-    public function restore($id)
+    public function restore($id, AnnouncementService $service)
     {
+        $auth = Auth::user();
         $announcement = Announcement::onlyTrashed()->find($id);
+        
         if (!$announcement) {
             return response()->json(['success' => false, 'message' => 'Announcement not found'], 404);
         }
-        $auth = Auth::user();
+        
         if ($announcement->created_by !== $auth->id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
-        $announcement->restore();
+        
+        $result = $service->restoreAnnouncement($id, $auth);
+        
+        if (!$result) {
+            return response()->json(['success' => false, 'message' => 'Failed to restore announcement'], 500);
+        }
+        
         return response()->json(['success' => true, 'message' => 'Announcement restored successfully']);
     }
 }

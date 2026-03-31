@@ -35,7 +35,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-4">
         <!-- Rasa Endpoint Card -->
         {{-- <div class="bg-white border border-gray-200 rounded-lg p-4">
             <div class="text-sm font-medium text-gray-600 mb-1">Rasa Endpoint</div>
@@ -70,6 +70,21 @@
             <div class="text-sm font-medium text-gray-600 mb-1">Current Model</div>
             <div id="currentModel" class="text-sm text-gray-900 mb-1">Loading...</div>
             <div class="text-xs text-gray-500" id="currentModelVersion">-</div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <div class="text-sm font-medium text-gray-600 mb-1">Chatbot Training Status</div>
+            <div id="training-status-container" class="flex flex-col items-center justify-center py-2">
+                <i id="status-icon" class="fas fa-robot fa-2x mb-2 text-blue-600"></i>
+                <h4 id="status-text" class="text-sm font-medium text-gray-800">Checking system...</h4>
+                <p id="status-subtext" class="text-xs text-gray-500 mt-1"></p>
+            </div>
+            <div id="progress-wrapper" class="hidden mt-3">
+                <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-600 animate-pulse rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 text-center">Syncing & Rebuilding on Render...</p>
+            </div>
         </div>
     </div>
 </div>

@@ -57,7 +57,7 @@ Route::get('/test-widget', function () {
 // Public FAQs
 Route::controller(PublicFAQsController::class)->group(function () {
     Route::get('/faqs', 'index')->name('faqs.index');
-    Route::get('/api/faqs', 'getApprovedFAQs')->name('api.faqs');
+    Route::get('/api/faqs', 'getPublishedFAQs')->name('api.faqs');
 })->middleware('throttle:10,1');
 
 // Static pages
@@ -258,6 +258,32 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('admin')->group(function () {
         Route::prefix('admin')->name('admin.')->group(function () {
+
+            // Training Status Healthcheck Route (for AJAX polling on frontend)
+            Route::get('/training-status', function () {
+                $latest = \App\Models\Training::latest()->first();
+                
+                $status = $latest->status ?? 'idle';
+                $time = 'Initial Training Completed';
+                
+                if ($latest) {
+                    if ($status === 'failed') {
+                        // Show failed timestamp
+                        $time = $latest->completed_at ? $latest->completed_at->format('M j, Y g:i A') : 'Failed at unknown time';
+                    } elseif ($status === 'success' && $latest->completed_at) {
+                        $time = $latest->completed_at->diffForHumans();
+                    } elseif ($status === 'training') {
+                        $time = 'Started: ' . ($latest->started_at ? $latest->started_at->diffForHumans() : 'Just now');
+                    }
+                }
+                
+                return response()->json([
+                    'status' => $status,
+                    'id' => $latest->id ?? 0,
+                    'time' => $time
+                ]);
+            })->name('training-status')->middleware('throttle:30,1');
+
             // Admin Dashboard
             Route::controller(AdminController::class)->group(function () {
                 Route::middleware('throttle:30,1')->group(function () {
@@ -467,9 +493,9 @@ Route::middleware('auth')->group(function () {
 
             Route::controller(RasaTrainingController::class)
                 ->prefix('rasa-server')->name('rasa-server.')
-                ->middleware('throttle:5,1') // Strict throttling to prevent abuse
+                ->middleware('throttle:30,1') // Strict throttling to prevent abuse
                 ->group(function () {
-                    Route::post('/train-rasa', 'trainRasa')->name('train-rasa');
+                    Route::post('/train-rasa', 'syncAndTrain')->name('train-rasa');
                 });
 
             // Admin Push Notifications

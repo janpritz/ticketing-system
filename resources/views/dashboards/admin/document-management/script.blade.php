@@ -32,6 +32,9 @@
         const editDocSpinner = document.getElementById('editDocSpinner');
         const editDocBtnText = document.getElementById('editDocBtnText');
         const deleteDocBtn = document.getElementById('deleteDocBtn');
+        const deleteDocIcon = document.getElementById('deleteDocIcon');
+        const deleteDocSpinner = document.getElementById('deleteDocSpinner');
+        const deleteDocBtnText = document.getElementById('deleteDocBtnText');
         const viewDocEditBtn = document.getElementById('viewDocEditBtn');
 
         const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -235,6 +238,9 @@
 
             try {
                 deleteDocBtn.disabled = true;
+                if (deleteDocIcon) deleteDocIcon.classList.add('hidden');
+                if (deleteDocSpinner) deleteDocSpinner.classList.remove('hidden');
+                if (deleteDocBtnText) deleteDocBtnText.textContent = 'Deleting...';
 
                 const res = await fetch(DELETE_DOC_URL, {
                     method: 'DELETE',
@@ -264,6 +270,9 @@
                 showToast('error', err.message || 'Failed to delete document');
             } finally {
                 deleteDocBtn.disabled = false;
+                if (deleteDocIcon) deleteDocIcon.classList.remove('hidden');
+                if (deleteDocSpinner) deleteDocSpinner.classList.add('hidden');
+                if (deleteDocBtnText) deleteDocBtnText.textContent = 'Delete';
             }
         }
 
@@ -387,8 +396,14 @@
 
         // --- Restore Handler ---
         async function onRestoreDocClick(e) {
-            const filename = e.currentTarget.getAttribute('data-filename');
-            if (!filename) return;
+            const button = e.currentTarget;
+            const documentId = button.getAttribute('data-id');
+            const filename = button.getAttribute('data-filename');
+            if (!documentId || !filename) return;
+
+            const icon = button.querySelector('.restoreDocIcon');
+            const spinner = button.querySelector('.restoreDocSpinner');
+            const text = button.querySelector('.restoreDocText');
 
             const confirmResult = await Swal.fire({
                 title: 'Restore document?',
@@ -402,6 +417,11 @@
             if (!confirmResult.isConfirmed) return;
 
             try {
+                button.disabled = true;
+                if (icon) icon.classList.add('hidden');
+                if (spinner) spinner.classList.remove('hidden');
+                if (text) text.textContent = 'Restoring...';
+
                 const res = await fetch('{{ route('admin.knowledgebase.restore-document') }}', {
                     method: 'POST',
                     headers: {
@@ -410,7 +430,7 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify({
-                        file_name: filename
+                        id: documentId
                     })
                 });
 
@@ -425,6 +445,11 @@
 
             } catch (err) {
                 showToast('error', err.message || 'Failed to restore document');
+            } finally {
+                button.disabled = false;
+                if (icon) icon.classList.remove('hidden');
+                if (spinner) spinner.classList.add('hidden');
+                if (text) text.textContent = 'Restore';
             }
         }
 
@@ -456,10 +481,10 @@
                     <td class="px-3 py-3 text-sm text-gray-700">${formatFileSize(doc.size)}</td>
                     <td class="px-3 py-3 text-sm text-gray-700">${escapeHtml(doc.created_by || '-')}</td>
                     <td class="px-3 py-3 text-sm text-gray-700">${formatDate(doc.modified)}</td>
-                    <td class="px-3 py-3">
-                        <div class="flex items-center gap-2">
+                    <td class="py-3 pl-3 pr-5">
+                        <div class="flex items-center justify-end gap-2">
                             <button class="viewDocBtn inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                                    data-filename="${escapeHtml(doc.name)}">
+                                    data-id="${escapeHtml(doc.id)}" data-filename="${escapeHtml(doc.name)}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -467,16 +492,20 @@
                                 <span>View</span>
                             </button>
                             ${doc.deleted_at ? `
-                            <button class="restoreDocBtn inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-100"
-                                    data-filename="${escapeHtml(doc.name)}">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button class="restoreDocBtn inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-70"
+                                    data-id="${escapeHtml(doc.id)}" data-filename="${escapeHtml(doc.name)}">
+                                <svg class="h-4 w-4 restoreDocIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                                <span>Restore</span>
+                                <svg class="h-4 w-4 animate-spin hidden restoreDocSpinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="restoreDocText">Restore</span>
                             </button>
                             ` : `
                             <button class="editDocBtn inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
-                                    data-filename="${escapeHtml(doc.name)}">
+                                    data-id="${escapeHtml(doc.id)}" data-filename="${escapeHtml(doc.name)}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>

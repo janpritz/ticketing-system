@@ -166,21 +166,23 @@ class KnowledgebaseController extends Controller
     {
         try {
             $validated = $request->validate([
-                'file_name' => 'required|string|max:255',
+                'id' => 'required|integer',
             ]);
 
-            $document = Document::onlyTrashed()->where('file_name', $validated['file_name'])->first();
+            $document = Document::onlyTrashed()->where('id', $validated['id'])->first();
             
             if (!$document) {
                 return response()->json(['ok' => false, 'error' => 'Document not found in trash'], 404);
             }
 
+            $trashedFileName = $document->file_name;
+
             $document->restore();
 
             // Log document change for training alert
             DocumentChange::create([
-                'file_name' => $validated['file_name'],
-                'action' => 'updated',
+                'file_name' => $trashedFileName,
+                'action' => 'restored',
                 'user_id' => Auth::id(),
                 'user_name' => Auth::user()->name ?? 'System',
                 'training_required' => true,

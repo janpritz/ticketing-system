@@ -5,9 +5,9 @@ const Utils = {
     },
     getStatusClass(status) {
         const classes = {
-            'approved': 'text-green-700 bg-green-50 ring-green-600/20',
+            'publish': 'text-green-700 bg-green-50 ring-green-600/20',
             'pending': 'text-yellow-700 bg-yellow-50 ring-yellow-600/20',
-            'rejected': 'text-red-700 bg-red-50 ring-red-600/20'
+            'unpublish': 'text-red-700 bg-red-50 ring-red-600/20'
         };
         return classes[status] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
     }

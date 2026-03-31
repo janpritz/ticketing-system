@@ -185,4 +185,52 @@ class AnnouncementService
             }
         });
     }
+
+    /**
+     * Update an announcement and log the change to DocumentChange.
+     */
+    public function updateAnnouncement(Announcement $announcement, array $data): array
+    {
+        try {
+            $announcement->update([
+                'title' => $data['title'],
+                'content' => $data['content'],
+                'starts_at' => Carbon::parse($data['starts_at']),
+                'expires_at' => Carbon::parse($data['expires_at']),
+            ]);
+
+            // 📝 Log change to notify Rasa retraining engine
+            $this->logChange('announcements_table', 'updated');
+
+            return [
+                'success' => true,
+                'message' => 'Announcement updated successfully.'
+            ];
+        } catch (\Exception $e) {
+            Log::error('Announcement Update Error: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to update: ' . $e->getMessage(), 'status' => 500];
+        }
+    }
+
+    /**
+     * Restore a soft-deleted announcement and log the change to DocumentChange.
+     */
+    public function restoreAnnouncement(int $id): array
+    {
+        try {
+            $announcement = Announcement::withTrashed()->findOrFail($id);
+            $announcement->restore();
+
+            // 📝 Log change to notify Rasa retraining engine
+            $this->logChange('announcements_table', 'restored');
+
+            return [
+                'success' => true,
+                'message' => 'Announcement restored successfully.'
+            ];
+        } catch (\Exception $e) {
+            Log::error('Announcement Restore Error: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to restore: ' . $e->getMessage(), 'status' => 500];
+        }
+    }
 }

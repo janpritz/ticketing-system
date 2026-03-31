@@ -14,8 +14,8 @@
             <label for="filterStatus" class="block text-xs text-slate-600 mb-1">Status</label>
             <select id="filterStatus" class="w-full rounded-md border border-gray-300 bg-white text-sm px-3 py-2">
                 <option value="pending" selected>Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
+                <option value="publish">Published</option>
+                <option value="unpublish">Unpublished</option>
             </select>
         </div>
         <div>

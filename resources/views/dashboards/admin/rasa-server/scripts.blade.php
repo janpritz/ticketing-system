@@ -25,31 +25,21 @@
         const refreshStatusBtn = document.getElementById('refreshStatus');
         const startServerBtn = document.getElementById('startServerBtn');
         const trainModelBtn = document.getElementById('trainModelBtn');
-        const cleanupModelsBtnTop = document.getElementById('cleanupModelsBtnTop');
 
         // Table elements - check for existence
         const trainingHistoryTable = document.getElementById('trainingHistoryTable');
-        const modelsListTable = document.getElementById('modelsListTable');
         const refreshTrainingHistoryBtn = document.getElementById('refreshTrainingHistory');
-        const refreshModelsListBtn = document.getElementById('refreshModelsList');
 
         // Pagination elements - check for existence
         const trainingHistoryPrev = document.getElementById('trainingHistoryPrev');
-        const modelsListPrev = document.getElementById('modelsListPrev');
         const trainingHistoryNext = document.getElementById('trainingHistoryNext');
-        const modelsListNext = document.getElementById('modelsListNext');
         const trainingHistoryPageInfo = document.getElementById('trainingHistoryPageInfo');
-        const modelsListPageInfo = document.getElementById('modelsListPageInfo');
         const trainingHistoryPerPage = document.getElementById('trainingHistoryPerPage');
-        const modelsListPerPage = document.getElementById('modelsListPerPage');
 
         // Pagination state
         let trainingHistoryData = [];
-        let modelsListData = [];
         let trainingHistoryCurrentPage = 1;
-        let modelsListCurrentPage = 1;
         let trainingHistoryTotalPages = 1;
-        let modelsListTotalPages = 1;
 
         // Status polling state
         let statusInterval = null;
@@ -164,26 +154,6 @@
             }
         }
 
-        // Fetch models list
-        async function fetchModelsList() {
-            try {
-                const response = await fetch('{{ route("admin.rasa-server.models-list") }}', {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    updateModelsListTable(data.models || []);
-                } else {
-                    console.error('fetchModelsList response not ok:', response.status);
-                }
-            } catch (error) {
-                console.error('Failed to fetch models list:', error);
-            }
-        }
-
         // Pagination functions
         function updateTrainingHistoryTable(data) {
             trainingHistoryData = data || [];
@@ -203,7 +173,7 @@
             if (pageData.length === 0) {
                 trainingHistoryTable.innerHTML = `
                     <tr>
-                        <td colspan="3" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No training history found.</td>
+                        <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No training history found.</td>
                     </tr>
                 `;
             } else {
@@ -212,18 +182,31 @@
                         'success': 'text-green-700 bg-green-50',
                         'failed': 'text-red-700 bg-red-50',
                         'pending': 'text-yellow-700 bg-yellow-50',
-                        'superseded': 'text-gray-700 bg-gray-50'
+                        'training': 'text-blue-700 bg-blue-50'
                     }[training.status] || 'text-gray-700 bg-gray-50';
+
+                    // Format the status for display
+                    const statusDisplay = {
+                        'success': 'Success',
+                        'failed': 'Failed',
+                        'pending': 'Pending',
+                        'training': 'Training...'
+                    }[training.status] || training.status;
+
+                    // Format the date/time
+                    const startedAt = training.started_at || '-';
+                    const completedAt = training.completed_at || '-';
 
                     return `
                         <tr>
-                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.date}</td>
+                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${startedAt}</td>
+                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${completedAt}</td>
                             <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                                    ${training.status.charAt(0).toUpperCase() + training.status.slice(1)}
+                                    ${statusDisplay}
                                 </span>
                             </td>
-                            <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.file_name}</td>
+                            <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${training.trigger}</td>
                         </tr>
                     `;
                 }).join('');
@@ -234,61 +217,6 @@
             updatePaginationControls('trainingHistory');
         }
 
-        function updateModelsListTable(data) {
-            modelsListData = data || [];
-            modelsListCurrentPage = 1;
-            renderModelsListPage();
-        }
-
-        function renderModelsListPage() {
-            if (!modelsListPerPage || !modelsListTable) return;
-            const perPage = parseInt(modelsListPerPage.value);
-            const start = (modelsListCurrentPage - 1) * perPage;
-            const end = start + perPage;
-            const pageData = modelsListData.slice(start, end);
-            
-            modelsListTotalPages = Math.ceil(modelsListData.length / perPage);
-
-            if (pageData.length === 0) {
-                modelsListTable.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="px-4 sm:px-6 py-4 text-center text-sm text-gray-500">No models found.</td>
-                    </tr>
-                `;
-            } else {
-                const rows = pageData.map(model => {
-                    const statusClass = {
-                        'loaded': 'text-green-700 bg-green-50',
-                        'available': 'text-blue-700 bg-blue-50',
-                        'training': 'text-yellow-700 bg-yellow-50',
-                        'failed': 'text-red-700 bg-red-50'
-                    }[model.status] || 'text-gray-700 bg-gray-50';
-
-                    // Special styling for current model
-                    const rowClass = model.is_current ? 'bg-blue-50 border-l-4 border-blue-500' : '';
-                    const nameClass = model.is_current ? 'text-blue-900 font-bold' : 'text-gray-900 font-medium';
-                    const currentBadge = model.is_current ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Current</span>' : '';
-
-                    return `
-                        <tr class="${rowClass}">
-                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm ${nameClass}">${model.name}${currentBadge}</td>
-                            <td class="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.version}</td>
-                            <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                                    ${model.status.charAt(0).toUpperCase() + model.status.slice(1)}
-                                </span>
-                            </td>
-                            <td class="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">${model.size_formatted}</td>
-                        </tr>
-                    `;
-                }).join('');
-                
-                modelsListTable.innerHTML = rows;
-            }
-            
-            updatePaginationControls('modelsList');
-        }
-
         function updatePaginationControls(tableType) {
             switch(tableType) {
                 case 'trainingHistory':
@@ -296,21 +224,18 @@
                     if (trainingHistoryPrev) trainingHistoryPrev.disabled = trainingHistoryCurrentPage <= 1;
                     if (trainingHistoryNext) trainingHistoryNext.disabled = trainingHistoryCurrentPage >= trainingHistoryTotalPages;
                     break;
-                case 'modelsList':
-                    if (modelsListPageInfo) modelsListPageInfo.textContent = `Page ${modelsListCurrentPage} of ${modelsListTotalPages}`;
-                    if (modelsListPrev) modelsListPrev.disabled = modelsListCurrentPage <= 1;
-                    if (modelsListNext) modelsListNext.disabled = modelsListCurrentPage >= modelsListTotalPages;
-                    break;
             }
         }
 
         // Action handlers
         async function startServer() {
             if (!startServerBtn) return;
+            console.log('[startServer] Starting server...');
             startServerBtn.disabled = true;
             startServerBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Starting...';
 
             try {
+                console.log('[startServer] Sending POST request to start-rasa-api endpoint');
                 const response = await fetch('{{ route("admin.rasa-server.start-rasa-api") }}', {
                     method: 'POST',
                     headers: {
@@ -320,9 +245,19 @@
                     }
                 });
 
+                console.log('[startServer] Response received - status:', response.status, 'ok:', response.ok);
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('[startServer] Request failed with status:', response.status, 'body:', text);
+                    throw new Error('Server error: HTTP ' + response.status);
+                }
+
                 const data = await response.json();
+                console.log('[startServer] JSON parsed successfully:', data);
 
                 if (data.success) {
+                    console.log('[startServer] Server started successfully');
                     Swal.fire({
                         icon: 'success',
                         title: 'Server Started',
@@ -332,9 +267,11 @@
                     });
                     fetchStatus(); // Refresh status
                 } else {
+                    console.error('[startServer] Server start returned success=false:', data);
                     throw new Error(data.message || 'Failed to start server');
                 }
             } catch (error) {
+                console.error('[startServer] Caught error:', error.message);
                 Swal.fire({
                     icon: 'error',
                     title: 'Start Failed',
@@ -350,10 +287,12 @@
 
         async function trainModel() {
             if (!trainModelBtn) return;
+            console.log('[trainModel] Starting training...');
             trainModelBtn.disabled = true;
             trainModelBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Training...';
 
             try {
+                console.log('[trainModel] Sending POST request to train-rasa endpoint');
                 const response = await fetch('{{ route("admin.rasa-server.train-rasa") }}', {
                     method: 'POST',
                     headers: {
@@ -363,9 +302,21 @@
                     }
                 });
 
+                console.log('[trainModel] Response received - status:', response.status, 'ok:', response.ok);
+
+                if (!response.ok) {
+                    // Handle non-JSON responses (like HTML error pages)
+                    const text = await response.text();
+                    console.error('[trainModel] Training request failed with status:', response.status);
+                    console.error('[trainModel] Response body:', text);
+                    throw new Error('Server error: HTTP ' + response.status);
+                }
+
                 const data = await response.json();
+                console.log('[trainModel] JSON parsed successfully:', data);
 
                 if (data.success) {
+                    console.log('[trainModel] Training successful!');
                     Swal.fire({
                         icon: 'success',
                         title: 'Training Completed',
@@ -379,9 +330,11 @@
                         fetchTrainingHistory();
                     }, 2000);
                 } else {
+                    console.error('[trainModel] Training returned success=false:', data);
                     throw new Error(data.message || 'Training failed');
                 }
             } catch (error) {
+                console.error('[trainModel] Caught error:', error.message);
                 Swal.fire({
                     icon: 'error',
                     title: 'Training Failed',
@@ -395,78 +348,14 @@
             }
         }
 
-        async function cleanupModels() {
-            if (!cleanupModelsBtnTop) return;
-            const result = await Swal.fire({
-                title: 'Cleanup Old Models',
-                text: 'This will delete old Rasa models, keeping only the 5 most recent ones. Continue?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#f97316',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, cleanup'
-            });
-
-            if (!result.isConfirmed) return;
-
-            cleanupModelsBtnTop.disabled = true;
-            cleanupModelsBtnTop.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Cleaning...';
-
-            try {
-                const response = await fetch('{{ route("admin.rasa-server.cleanup-models") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Cleanup Complete',
-                        text: data.message,
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-                    fetchStatus(); // Refresh status
-                } else {
-                    throw new Error(data.message || 'Cleanup failed');
-                }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Cleanup Failed',
-                    text: error.message
-                });
-            } finally {
-                if (cleanupModelsBtnTop) {
-                    cleanupModelsBtnTop.disabled = false;
-                    cleanupModelsBtnTop.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Cleanup Models';
-                }
-            }
-        }
-
         // Event listeners - only attach to elements that exist
         if (refreshStatusBtn) refreshStatusBtn.addEventListener('click', fetchStatus);
         if (startServerBtn) startServerBtn.addEventListener('click', startServer);
         if (trainModelBtn) trainModelBtn.addEventListener('click', trainModel);
-        if (cleanupModelsBtnTop) cleanupModelsBtnTop.addEventListener('click', cleanupModels);
 
         if (refreshTrainingHistoryBtn) refreshTrainingHistoryBtn.addEventListener('click', fetchTrainingHistory);
-        if (refreshModelsListBtn) refreshModelsListBtn.addEventListener('click', fetchModelsList);
 
         // Pagination event listeners - only attach to elements that exist
-        if (modelsListPerPage) {
-            modelsListPerPage.addEventListener('change', (e) => {
-                modelsListCurrentPage = 1;
-                renderModelsListPage();
-            });
-        }
-
         if (trainingHistoryPerPage) {
             trainingHistoryPerPage.addEventListener('change', (e) => {
                 trainingHistoryCurrentPage = 1;
@@ -483,15 +372,6 @@
             });
         }
 
-        if (modelsListPrev) {
-            modelsListPrev.addEventListener('click', (e) => {
-                if (modelsListCurrentPage > 1) {
-                    modelsListCurrentPage--;
-                    renderModelsListPage();
-                }
-            });
-        }
-
         if (trainingHistoryNext) {
             trainingHistoryNext.addEventListener('click', (e) => {
                 if (trainingHistoryCurrentPage < trainingHistoryTotalPages) {
@@ -501,32 +381,70 @@
             });
         }
 
-        if (modelsListNext) {
-            modelsListNext.addEventListener('click', (e) => {
-                if (modelsListCurrentPage < modelsListTotalPages) {
-                    modelsListCurrentPage++;
-                    renderModelsListPage();
-                }
-            });
-        }
-
         // Initial load
         fetchStatus();
         fetchTrainingHistory();
-        fetchModelsList();
 
         // Auto-refresh status every 5 minutes
         startStatusPolling();
 
-        // Visibility-aware polling
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                stopStatusPolling();
-            } else {
-                fetchStatus(); // Immediate refresh when tab becomes visible
-                startStatusPolling(); // Resume polling
-            }
-        });
+        // Training status check function
+        function checkStatus() {
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+            const subtext = document.getElementById('status-subtext');
+            const progress = document.getElementById('progress-wrapper');
+            const btn = document.getElementById('sync-btn');
+
+            if (!icon || !text || !subtext) return;
+
+            fetch('/admin/training-status')
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('Training status check failed:', response.status);
+                        return { status: 'idle', time: 'Status check failed' };
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'training') {
+                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-yellow-600";
+                        text.innerText = "Training in Progress...";
+                        text.className = "text-sm font-medium text-yellow-700";
+                        subtext.innerText = "Render is currently rebuilding the model.";
+                        if (progress) progress.classList.remove('hidden');
+                        if (btn) btn.disabled = true;
+                    } else if (data.status === 'success') {
+                        icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
+                        text.innerText = "System Active";
+                        text.className = "text-sm font-medium text-green-700";
+                        subtext.innerText = "Last trained: " + (data.time || "Just now");
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    } else if (data.status === 'failed') {
+                        icon.className = "fas fa-times-circle fa-2x mb-2 text-red-600";
+                        text.innerText = "Training Failed";
+                        text.className = "text-sm font-medium text-red-700";
+                        subtext.innerText = "Failed at: " + (data.time || "Unknown time");
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    } else if (data.status === 'idle') {
+                        icon.className = "fas fa-robot fa-2x mb-2 text-blue-600";
+                        text.innerText = "System Ready";
+                        text.className = "text-sm font-medium text-blue-700";
+                        subtext.innerText = data.time || "Ready for training";
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('checkStatus error:', error);
+                });
+        }
+
+        // Poll training status every 5 minutes
+        setInterval(checkStatus, 300000);
+        checkStatus(); // Initial check on load
     } // End of initScript
 })();
 </script>

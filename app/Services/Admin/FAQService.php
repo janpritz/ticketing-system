@@ -2,9 +2,9 @@
 
 namespace App\Services\Admin;
 
-use App\Http\Requests\Admin\FAQUpdateRequest;
 use App\Models\StagedFaq;
 use App\Models\Ticket;
+use App\Models\DocumentChange;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\{Log, Auth, Http};
 use App\Services\Admin\FAQGeneratorService;
@@ -53,22 +53,48 @@ class FAQService
     /**
      * Updates the status of a staged FAQ record.
      */
-    public function updateStagedFaqStatus(FAQUpdateRequest $request): array
+    public function updateStagedFaqStatus(array $data): array
     {
         try {
-            $faq = StagedFaq::findOrFail($request->input('id'));
+            $faq = StagedFaq::findOrFail($data['id']);
+            $oldStatus = $faq->status;
+            $newStatus = $data['status'];
 
-            $faq->update(['status' => $request->input('status')]);
+            $faq->update(['status' => $newStatus]);
 
-            // Logic expansion: If status is 'approved', you could trigger 
-            // the creation of a permanent FAQ record here.
+            // Log to document_changes table if status changed to 'publish' or 'unpublish'
+            // This ensures changes are reflected in the global training
+            if (in_array($newStatus, ['publish', 'unpublish']) && $oldStatus !== $newStatus) {
+                // Use valid enum values: 'created', 'updated', 'deleted', 'restored'
+                $action = $newStatus === 'publish' ? 'created' : 'deleted';
+                
+                DocumentChange::create([
+                    'file_name' => "staged_faq_{$faq->id}",
+                    'action' => $action,
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? 'Admin',
+                    'old_content_hash' => $oldStatus,
+                    'new_content_hash' => $newStatus,
+                    'change_timestamp' => now(),
+                    'training_required' => true,
+                    'training_completed' => false,
+                    'model_name' => 'staged_faq',
+                ]);
+
+                Log::info("Staged FAQ status change logged to document_changes", [
+                    'faq_id' => $faq->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'action' => $action
+                ]);
+            }
 
             return [
                 'success' => true,
-                'message' => "FAQ " . ucfirst($request->input('status')) . " successfully."
+                'message' => "FAQ " . ucfirst($data['status']) . " successfully."
             ];
         } catch (\Throwable $e) {
-            Log::error("Staged FAQ Status Update Failed [ID: {$request->input('id')}]: " . $e->getMessage());
+            Log::error("Staged FAQ Status Update Failed [ID: {$data['id']}]: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => "Failed to update FAQ status."
@@ -180,14 +206,14 @@ class FAQService
     }
 
     /**
-     * Aggregates approved staged FAQs and transforms them for Rasa ingestion.
+     * Aggregates published staged FAQs and transforms them for Rasa ingestion.
      */
     public function prepareChatbotTrainingData(): array
     {
         try {
             // 1. Fetch and Aggregate
             // We group by semantic_key to avoid teaching the bot the same intent twice
-            $approvedFaqs = StagedFaq::where('status', 'approved')
+            $publishedFaqs = StagedFaq::where('status', 'publish')
                 ->selectRaw('semantic_key, MAX(suggested_q) as question, MAX(suggested_a) as answer, COUNT(*) as ticket_count')
                 ->groupBy('semantic_key')
                 ->orderBy('semantic_key')
@@ -195,7 +221,7 @@ class FAQService
 
             // 2. Transform into Chatbot-friendly format
             return [
-                'faqs' => $approvedFaqs->map(function ($faq) {
+                'faqs' => $publishedFaqs->map(function ($faq) {
                     return [
                         'semantic_key' => $faq->semantic_key,
                         'question'     => $faq->question,
@@ -203,7 +229,7 @@ class FAQService
                         'ticket_count' => (int) $faq->ticket_count,
                     ];
                 })->toArray(),
-                'total_faqs'   => $approvedFaqs->count(),
+                'total_faqs'   => $publishedFaqs->count(),
                 'generated_at' => now()->toISOString(),
             ];
         } catch (\Throwable $e) {

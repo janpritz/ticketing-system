@@ -20,13 +20,13 @@ const faqManager = {
             this.renderPagination(data.meta || {});
         } catch (err) {
             console.error('[FaqManager Error]:', err);
-            this.tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>';
+            this.tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-6 text-center text-sm text-red-600">Error loading FAQs</td></tr>';
         }
     },
 
     render(items) {
         if (!items.length) {
-            this.tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>';
+            this.tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>';
             return;
         }
 
@@ -35,26 +35,34 @@ const faqManager = {
                 <td class="py-4 pl-5 pr-3">${Utils.escapeHtml((f.general_topic || '').slice(0, 50))}</td>
                 <td class="px-3 py-4">${Utils.escapeHtml((f.suggested_q || '').slice(0, 80))}</td>
                 <td class="px-3 py-4">${Utils.escapeHtml((f.suggested_a || '').slice(0, 100))}</td>
-                <td class="px-3 py-4">
-                    <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${Utils.getStatusClass(f.status)}">
-                        ${Utils.escapeHtml(f.status || '')}
-                    </span>
-                </td>
                 <td class="px-3 py-4 space-x-2">${this.getActionButtons(f)}</td>
             </tr>
         `).join('');
     },
 
     getActionButtons(f) {
-        if (f.status === 'pending') {
+        const pending = 'pending', publish = 'publish', unpublish = 'unpublish';
+        
+        // Pending: can publish or reject
+        if (f.status === pending) {
             return `
-                <button onclick="changeStatus(${f.id}, 'approved')" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">Approve</button>
-                <button onclick="changeStatus(${f.id}, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">Reject</button>
+                <button onclick="changeStatus(${f.id}, '${publish}', this)" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors disabled:opacity-50" data-faq-id="${f.id}">Publish</button>
+                <button onclick="changeStatus(${f.id}, '${unpublish}', this)" class="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors disabled:opacity-50" data-faq-id="${f.id}">Reject</button>
             `;
         }
-        const target = f.status === 'approved' ? 'rejected' : 'approved';
-        const color = f.status === 'approved' ? 'red' : 'green';
-        return `<button onclick="changeStatus(${f.id}, '${target}')" class="px-3 py-1 bg-${color}-600 text-white text-xs rounded hover:bg-${color}-700">${target.charAt(0).toUpperCase() + target.slice(1)}</button>`;
+        
+        // Published: can unpublish (reject)
+        if (f.status === publish) {
+            return `<button onclick="changeStatus(${f.id}, '${unpublish}', this)" class="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors disabled:opacity-50" data-faq-id="${f.id}">Unpublish</button>`;
+        }
+        
+        // Unpublished (rejected): can republish
+        if (f.status === unpublish) {
+            return `<button onclick="changeStatus(${f.id}, '${publish}', this)" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors disabled:opacity-50" data-faq-id="${f.id}">Publish</button>`;
+        }
+        
+        // Fallback for any other status
+        return `<button onclick="changeStatus(${f.id}, '${publish}', this)" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors disabled:opacity-50" data-faq-id="${f.id}">Publish</button>`;
     },
 
     renderPagination(meta) {
@@ -77,16 +85,52 @@ const faqManager = {
 // Global hooks for standard HTML onclick bindings
 window.fetchAndRenderFaqs = (page) => faqManager.fetchList(page);
 
-window.changeStatus = async (id, status) => {
+// Spinner SVG for loading state
+const SPINNER_SVG = `<svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+function setButtonLoading(btn, isLoading, originalText = null) {
+    if (isLoading) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = SPINNER_SVG;
+        btn.classList.add('opacity-75');
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalText || originalText;
+        btn.classList.remove('opacity-75');
+    }
+}
+
+function getAllActionButtons() {
+    return document.querySelectorAll('#faqsTbody button[data-faq-id]');
+}
+
+function disableAllActionButtons(disable = true) {
+    getAllActionButtons().forEach(btn => {
+        btn.disabled = disable;
+        if (disable) btn.classList.add('opacity-50', 'cursor-not-allowed');
+        else btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    });
+}
+
+window.changeStatus = async (id, status, btn) => {
     const result = await Swal.fire({
         title: 'Confirm Action',
         text: `Are you sure you want to ${status} this FAQ?`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: status === 'approved' ? '#10b981' : '#ef4444'
+        confirmButtonColor: status === 'publish' ? '#3b82f6' : '#6b7280',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, continue',
+        cancelButtonText: 'Cancel'
     });
 
     if (!result.isConfirmed) return;
+
+    // Show loading state on the clicked button
+    setButtonLoading(btn, true);
+    // Disable all action buttons to prevent multiple clicks
+    disableAllActionButtons(true);
 
     try {
         const data = await apiFetch(Config.updateStatusUrl, 'POST', { id, status });
@@ -98,5 +142,8 @@ window.changeStatus = async (id, status) => {
         }
     } catch (err) {
         Swal.fire('Error!', err.message, 'error');
+    } finally {
+        // Reset button state (will be restored when table re-renders)
+        disableAllActionButtons(false);
     }
 };

@@ -7,13 +7,12 @@
                     <th class="py-3 pl-5 pr-3 text-left font-medium">Topic</th>
                     <th class="px-3 py-3 text-left font-medium">Question</th>
                     <th class="px-3 py-3 text-left font-medium">Answer</th>
-                    <th class="px-3 py-3 text-left font-medium">Status</th>
                     <th class="px-3 py-3 text-left font-medium">Actions</th>
                 </tr>
             </thead>
             <tbody id="faqsTbody" class="divide-y divide-gray-100">
                 <tr>
-                    <td colspan="5" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
+                    <td colspan="4" class="px-5 py-6 text-center text-sm text-gray-500">Loading...</td>
                 </tr>
             </tbody>
         </table>

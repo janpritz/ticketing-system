@@ -26,9 +26,9 @@
 
             function getStatusClass(status) {
                 const classes = {
-                    'approved': 'text-green-700 bg-green-50 ring-green-600/20',
+                    'publish': 'text-green-700 bg-green-50 ring-green-600/20',
                     'pending': 'text-yellow-700 bg-yellow-50 ring-yellow-600/20',
-                    'rejected': 'text-red-700 bg-red-50 ring-red-600/20'
+                    'unpublish': 'text-red-700 bg-red-50 ring-red-600/20'
                 };
                 return classes[status] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
             }
@@ -73,7 +73,7 @@
                 faqsMap = new Map(items.map(f => [String(f.id), f]));
                 if (!items.length) {
                     faqsTbody.innerHTML =
-                        '<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>';
+                        '<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>';
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => {
@@ -83,7 +83,6 @@
                     <td class="py-4 pl-5 pr-3">${escapeHtml((f.general_topic || '').slice(0, 50))}</td>
                     <td class="px-3 py-4">${escapeHtml((f.suggested_q || '').slice(0, 80))}</td>
                     <td class="px-3 py-4">${escapeHtml((f.suggested_a || '').slice(0, 100))}</td>
-                    <td class="px-3 py-4"><span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ${getStatusClass(f.status)}">${escapeHtml(f.status || '')}</span></td>
                     <td class="px-3 py-4 space-x-2">${actionButtons}</td>
                 </tr>
             `;
@@ -94,14 +93,14 @@
                 if (faq.status === 'pending') {
                     return `
                 <div class="flex gap-2">
-                    <button onclick="updateFAQStatus(${faq.id}, 'approved')" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">Approve</button>
-                    <button onclick="updateFAQStatus(${faq.id}, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">Reject</button>
+                    <button onclick="updateFAQStatus(${faq.id}, 'publish')" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Publish</button>
+                    <button onclick="updateFAQStatus(${faq.id}, 'unpublish')" class="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700">Reject</button>
                 </div>
             `;
-                } else if (faq.status === 'approved') {
-                    return `<button onclick="updateFAQStatus(${faq.id}, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">Reject</button>`;
-                } else if (faq.status === 'rejected') {
-                    return `<button onclick="updateFAQStatus(${faq.id}, 'approved')" class="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">Approve</button>`;
+                } else if (faq.status === 'publish') {
+                    return `<button onclick="updateFAQStatus(${faq.id}, 'unpublish')" class="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700">Unpublish</button>`;
+                } else if (faq.status === 'unpublish') {
+                    return `<button onclick="updateFAQStatus(${faq.id}, 'publish')" class="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Publish</button>`;
                 }
                 return '';
             }
@@ -228,7 +227,7 @@
                     text: `Are you sure you want to ${status} this FAQ?`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: status === 'approved' ? '#10b981' : '#ef4444',
+                    confirmButtonColor: status === 'publish' ? '#10b981' : '#ef4444',
                     cancelButtonColor: '#6b7280',
                     confirmButtonText: statusText,
                     cancelButtonText: 'Cancel'

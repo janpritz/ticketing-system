@@ -21,7 +21,7 @@ class AnnouncementService
             );
         }
 
-        return Announcement::create([
+        $announcement = Announcement::create([
             'title'      => $data['title'],
             'content'    => $data['content'],
             'starts_at'  => $start,
@@ -30,6 +30,18 @@ class AnnouncementService
             'created_by' => $user->id,
             'pinned'     => false,
         ]);
+
+        // Log to DocumentChange for global training alert
+        DocumentChange::create([
+            'file_name'          => 'announcements_table',
+            'action'             => 'created',
+            'user_id'            => $user->id,
+            'user_name'          => $user->name,
+            'training_required'  => true,
+            'training_completed' => false,
+        ]);
+
+        return $announcement;
     }
 
     /**
@@ -127,17 +139,62 @@ class AnnouncementService
         return $ids;
     }
 
-    public function updateAnnouncement(Announcement $announcement, array $data): void
+    public function updateAnnouncement(Announcement $announcement, array $data, User $user): void
     {
         $announcement->update([
             'title' => $data['title'],
             'content' => $data['content'],
         ]);
+
+        // Log to DocumentChange for global training alert
+        DocumentChange::create([
+            'file_name'          => 'announcements_table',
+            'action'             => 'updated',
+            'user_id'            => $user->id,
+            'user_name'          => $user->name,
+            'training_required'  => true,
+            'training_completed' => false,
+        ]);
     }
 
-    public function deleteAnnouncement(Announcement $announcement): void
+    public function deleteAnnouncement(Announcement $announcement, User $user): void
     {
         $announcement->delete();
+
+        // Log to DocumentChange for global training alert
+        DocumentChange::create([
+            'file_name'          => 'announcements_table',
+            'action'             => 'deleted',
+            'user_id'            => $user->id,
+            'user_name'          => $user->name,
+            'training_required'  => true,
+            'training_completed' => false,
+        ]);
+    }
+
+    /**
+     * Restore a soft-deleted announcement and log the change to DocumentChange.
+     */
+    public function restoreAnnouncement(int $id, User $user): bool
+    {
+        $announcement = Announcement::onlyTrashed()->find($id);
+        if (!$announcement) {
+            return false;
+        }
+
+        $announcement->restore();
+
+        // Log to DocumentChange for global training alert
+        DocumentChange::create([
+            'file_name'          => 'announcements_table',
+            'action'             => 'restored',
+            'user_id'            => $user->id,
+            'user_name'          => $user->name,
+            'training_required'  => true,
+            'training_completed' => false,
+        ]);
+
+        return true;
     }
     /**
      * Toggle pin status, rebuild the master file, and sync to Rasa.
