@@ -153,9 +153,7 @@
             const rows = tickets.map(t => {
                 const ticketNo = String(t.id);
                 const style = statusStyles[t.status] || 'text-slate-700 bg-slate-50 ring-slate-600/20';
-                const updatedAt = fmtDate(t.updated_at);
                 const createdAt = fmtDate(t.date_created || t.created_at);
-                const assignee = (t.staff && t.staff.name) ? t.staff.name : '-';
                 const category = (t.category && typeof t.category === 'object') ? (t.category.name ?? '') :
                     (t.category ?? '');
 
@@ -186,11 +184,6 @@
                                 ${t.status ?? ''}
                             </span>
                         </td>
-
-                        <td class="px-3 py-4 align-top">
-                            <div class="text-gray-900">${assignee}</div>
-                            <div class="mt-1 text-xs text-gray-500">Updated ${updatedAt}</div>
-                        </td>
                     </tr>
                 `;
             });
@@ -198,7 +191,7 @@
             if (rows.length === 0) {
                 ticketsBodyEl.innerHTML = `
                     <tr>
-                        <td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">
+                        <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">
                             No tickets assigned yet.
                         </td>
                     </tr>
@@ -424,6 +417,14 @@
 
         const csrfToken = '{{ csrf_token() }}';
         const forwardBase = "{{ url('/staff/tickets') }}";
+        // Attachment URL helper (works even when /public/storage symlink is missing on hosted setups)
+        const ATTACHMENT_BASE = "{{ url('/attachments') }}";
+
+        function attachmentUrl(p) {
+            if (!p) return '';
+            return ATTACHMENT_BASE + '/' + String(p).split('/').map(encodeURIComponent).join('/');
+        }
+
         let currentTicketId = null;
 
         function statusClassFor(s) {
@@ -557,7 +558,7 @@
                         console.log('Showing attachments block');
                         attachments.forEach((path, index) => {
                             const img = document.createElement('img');
-                            img.src = '/storage/' + path;
+                            img.src = attachmentUrl(path);
                             console.log('Image src:', img.src);
                             img.alt = 'Attachment ' + (index + 1);
                             img.className =
@@ -667,9 +668,8 @@
             const lightbox = document.getElementById('imageLightbox');
             const img = document.getElementById('lightboxImage');
             if (lightbox && img) {
-                img.src = '/storage/' + images[index];
+                img.src = attachmentUrl(images[index]);
                 lightbox.classList.remove('hidden');
-                document.body.classList.add('overflow-hidden');
                 updateLightboxButtons();
             }
         }
@@ -678,7 +678,10 @@
             const lightbox = document.getElementById('imageLightbox');
             if (lightbox) {
                 lightbox.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
+                // Only remove overflow-hidden if the ticket modal is also closed
+                if (!modalEl || modalEl.classList.contains('hidden')) {
+                    document.body.classList.remove('overflow-hidden');
+                }
             }
         }
 
@@ -694,7 +697,7 @@
             if (currentLightboxIndex > 0) {
                 currentLightboxIndex--;
                 const img = document.getElementById('lightboxImage');
-                if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
                 updateLightboxButtons();
             }
         }
@@ -703,7 +706,7 @@
             if (currentLightboxIndex < currentLightboxImages.length - 1) {
                 currentLightboxIndex++;
                 const img = document.getElementById('lightboxImage');
-                if (img) img.src = '/storage/' + currentLightboxImages[currentLightboxIndex];
+                if (img) img.src = attachmentUrl(currentLightboxImages[currentLightboxIndex]);
                 updateLightboxButtons();
             }
         }
@@ -757,7 +760,12 @@
             modalCloseBtns.forEach(btn => btn.addEventListener('click', closeModal));
         }
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                // Don't close modal if lightbox is open (lightbox handles its own Escape)
+                const lightbox = document.getElementById('imageLightbox');
+                if (lightbox && !lightbox.classList.contains('hidden')) return;
+                closeModal();
+            }
         });
 
         // Lightbox event listeners
@@ -905,20 +913,8 @@
                                         ticketsMap.set(key, t);
                                     }
                                 }
-                                // Update table row assignee cell if visible
-                                const row = document.querySelector(`tr[data-id="${currentTicketId}"]`);
-                                if (row) {
-                                    const cells = row.querySelectorAll('td');
-                                    if (cells && cells.length >= 4) {
-                                        const assigneeDiv = cells[3].querySelector('div');
-                                        if (assigneeDiv) assigneeDiv.textContent = newStaff.name || '';
-                                        const metaDiv = cells[3].querySelector('.mt-1.text-xs');
-                                        if (metaDiv) metaDiv.textContent = 'Updated ' + (new Date())
-                                            .toLocaleString();
-                                    }
-                                }
                             } catch (e) {
-                                console.warn('Failed to apply immediate assignee update', e);
+                                console.warn('Failed to apply immediate update', e);
                             }
                         }
                         lastSnapshot = '';
@@ -1030,19 +1026,27 @@
                         closeModal();
                     } else {
                         const txt = await res.text();
+                        let errorMsg = 'Failed to send response.';
+                        try {
+                            const errData = JSON.parse(txt);
+                            if (errData && errData.message) {
+                                errorMsg = errData.message;
+                            } else if (errData && errData.errors && errData.errors.message) {
+                                errorMsg = errData.errors.message[0] || errorMsg;
+                            }
+                        } catch (_) {}
                         console.error('Send response failed', txt);
                         if (window.Swal) {
                             Swal.fire({
                                 position: 'top-end',
                                 icon: 'error',
                                 title: 'Failed to send response',
-                                text: 'Please check mail configuration.',
+                                text: errorMsg,
                                 showConfirmButton: false,
-                                timer: 2000
+                                timer: 3000
                             });
                         } else {
-                            showToast('error',
-                                'Failed to send response. Please check mail configuration. ' + txt);
+                            showToast('error', errorMsg);
                         }
                     }
                 } catch (err) {

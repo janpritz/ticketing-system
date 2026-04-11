@@ -27,6 +27,9 @@
 
                 <!-- Ticket Details Modal - Modern Design from Admin Dashboard -->
                 @include('dashboards.staff.index.components.ticket-details-modal')
+
+                <!-- Image Lightbox - Full screen viewer for attachment images -->
+                @include('dashboards.staff.index.components.image-lightbox')
             </section>
         </div>
     </div>

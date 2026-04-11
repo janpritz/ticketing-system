@@ -105,11 +105,11 @@
                     </button>
 
                     <div id="tmDetailsContent" class="hidden mt-4 space-y-4 pb-2">
-                        <!-- Category & Dates -->
+                        <!-- Role & Dates -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label
-                                    class="text-xs font-medium text-gray-500 uppercase tracking-wide">Category</label>
+                                    class="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</label>
                                 <div id="tmCategory"
                                     class="mt-1 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
                                 </div>

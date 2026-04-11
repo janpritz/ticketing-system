@@ -29,7 +29,6 @@
                     <th class="py-3 pl-5 pr-3 text-left font-medium">Ticket</th>
                     <th class="px-3 py-3 text-left font-medium">Concern</th>
                     <th class="px-3 py-3 text-left font-medium">Status</th>
-                    <th class="px-3 py-3 text-left font-medium">Assignee</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100" id="ticketsBody">
@@ -74,15 +73,6 @@
                                 </svg>
                                 {{ $t->status }}
                             </span>
-                        </td>
-
-                        <!-- Assignee -->
-                        <td class="px-3 py-4 align-top">
-                            <div class="text-gray-900">{{ optional($t->staff)->name ?? '-' }}
-                            </div>
-                            <div class="mt-1 text-xs text-gray-500">Updated
-                                {{ \Illuminate\Support\Carbon::parse($t->updated_at)->format('Y-m-d h:i a') }}
-                            </div>
                         </td>
                     </tr>
                 @empty

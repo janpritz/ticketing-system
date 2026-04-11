@@ -117,14 +117,8 @@ function renderTickets(tickets) {
     if (!tickets || tickets.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="px-4 py-12 text-center">
-                    <div class="flex flex-col items-center">
-                        <svg class="h-12 w-12 text-gray-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <h3 class="text-sm font-medium text-gray-900 mb-1">No tickets found</h3>
-                        <p class="text-sm text-gray-500">No tickets match the current filter.</p>
-                    </div>
+                <td colspan="3" class="px-5 py-10 text-center text-sm text-gray-500">
+                    No tickets found.
                 </td>
             </tr>
         `;
@@ -133,27 +127,31 @@ function renderTickets(tickets) {
 
     const rows = tickets.map(ticket => {
         const statusClass = getStatusClass(ticket.status);
-        const createdDate = formatDate(ticket.date_created);
+        const createdDate = formatDateTime(ticket.date_created || ticket.created_at);
+        const category = (ticket.category && typeof ticket.category === 'object') ? (ticket.category.name ?? '') : (ticket.category || '');
+        const subject = (ticket.question || '').length > 80 ? (ticket.question || '').slice(0, 77) + '...' : (ticket.question || '');
 
         return `
-            <tr class="hover:bg-gray-50 cursor-pointer" data-id="${ticket.id}">
-                <td class="px-4 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-indigo-600">#${ticket.id}</div>
+            <tr class="hover:bg-gray-50" data-id="${ticket.id}" style="cursor: pointer;">
+                <td class="py-4 pl-5 pr-3 align-top">
+                    <div class="text-indigo-700 font-medium">${ticket.id}</div>
+                    <div class="mt-1 text-xs text-gray-500">${createdDate}</div>
                 </td>
-                <td class="px-4 py-4">
-                    <div class="text-sm text-gray-900 max-w-xs truncate" title="${ticket.question || ''}">${ticket.question || 'No Concern'}</div>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">${(ticket.category && typeof ticket.category === 'object') ? (ticket.category.name ?? 'Uncategorized') : (ticket.category || 'Uncategorized')}</span>
+                <td class="px-3 py-4 align-top">
+                    <div class="text-gray-900">${subject}</div>
+                    <div class="mt-1 text-xs text-gray-500 flex items-center gap-2">
+                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">${category}</span>
                     </div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${statusClass}">
+                <td class="px-3 py-4 align-top">
+                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${statusClass}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="5"></circle>
+                        </svg>
                         ${ticket.status}
                     </span>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${createdDate}
-                </td>
+                
             </tr>
         `;
     }).join('');
@@ -162,32 +160,24 @@ function renderTickets(tickets) {
 }
 
 function renderPagination(pagination) {
+    const currentPage = pagination.current_page || 1;
+    const lastPage = pagination.last_page || 1;
+    const total = pagination.total || 0;
+
     // Update showing info
     document.getElementById('showingFrom').textContent = pagination.from || 0;
     document.getElementById('showingTo').textContent = pagination.to || 0;
-    document.getElementById('totalResults').textContent = pagination.total || 0;
+    document.getElementById('totalResults').textContent = total;
 
     // Update navigation buttons
-    document.getElementById('prevPageBtn').disabled = pagination.current_page <= 1;
-    document.getElementById('nextPageBtn').disabled = pagination.current_page >= pagination.last_page;
-    document.getElementById('mobilePrevBtn').disabled = pagination.current_page <= 1;
-    document.getElementById('mobileNextBtn').disabled = pagination.current_page >= pagination.last_page;
+    document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+    document.getElementById('nextPageBtn').disabled = currentPage >= lastPage;
+    document.getElementById('mobilePrevBtn').disabled = currentPage <= 1;
+    document.getElementById('mobileNextBtn').disabled = currentPage >= lastPage;
 
-    // Render page numbers (simplified)
+    // Render page info (matching dashboard style)
     const pageNumbers = document.getElementById('pageNumbers');
-    pageNumbers.innerHTML = '';
-
-    for (let i = Math.max(1, pagination.current_page - 2); i <= Math.min(pagination.last_page, pagination.current_page + 2); i++) {
-        const button = document.createElement('button');
-        button.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-            i === pagination.current_page
-                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-        }`;
-        button.textContent = i;
-        button.onclick = () => changePage(i);
-        pageNumbers.appendChild(button);
-    }
+    pageNumbers.innerHTML = `<span class="text-gray-500">Page ${currentPage} of ${lastPage}</span>`;
 }
 
 function setActiveFilter(filter, shouldReload = true) {
@@ -260,12 +250,23 @@ function formatDate(dateString) {
     }
 }
 
+function formatDateTime(dateString) {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleString();
+    } catch (error) {
+        return '-';
+    }
+}
+
 function showErrorState(message = 'Failed to load tickets. Please try again.') {
     const tbody = document.getElementById('ticketsTableBody');
     if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="px-4 py-12 text-center">
+                <td colspan="3" class="px-4 py-12 text-center">
                     <div class="flex flex-col items-center">
                         <svg class="h-8 w-8 text-red-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -555,7 +556,10 @@ function openTicket(id) {
         const lightbox = document.getElementById('imageLightbox');
         if (lightbox) {
             lightbox.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
+            // Only remove overflow-hidden if the ticket modal is also closed
+            if (!ticketModal || ticketModal.classList.contains('hidden')) {
+                document.body.classList.remove('overflow-hidden');
+            }
         }
     }
 
@@ -821,16 +825,25 @@ function openTicket(id) {
                     loadTickets();
                 } else {
                     const txt = await res.text();
+                    let errorMsg = 'Failed to send response.';
+                    try {
+                        const errData = JSON.parse(txt);
+                        if (errData && errData.message) {
+                            errorMsg = errData.message;
+                        } else if (errData && errData.errors && errData.errors.message) {
+                            errorMsg = errData.errors.message[0] || errorMsg;
+                        }
+                    } catch (_) {}
                     console.error('Send response failed', txt);
                     if (window.Swal) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Failed to Send Response',
-                            text: 'Failed to send response. Please check mail configuration.',
+                            text: errorMsg,
                             confirmButtonText: 'OK'
                         });
                     } else {
-                        alert('Failed to send response. Please check mail configuration.');
+                        alert(errorMsg);
                     }
                 }
             } catch (err) {
@@ -867,9 +880,12 @@ function openTicket(id) {
         }
     });
 
-    // Escape key to close modal
+    // Escape key to close modal (but not if lightbox is open)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && ticketModal && !ticketModal.classList.contains('hidden')) {
+            // Don't close modal if lightbox is open (lightbox handles its own Escape)
+            const lightbox = document.getElementById('imageLightbox');
+            if (lightbox && !lightbox.classList.contains('hidden')) return;
             closeModal();
         }
     });
