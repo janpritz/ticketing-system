@@ -24,6 +24,7 @@ class ReportsController extends Controller
 
         // Get all report data via the Service
         $data = $service->getStaffReportData($staffId, $days);
+        // dd($data);
 
         return view('dashboards.staff.reports.page', array_merge($data, ['days' => $days]));
     }

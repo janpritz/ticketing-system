@@ -8,7 +8,8 @@
             const total = {{ $performanceMetrics['total_tickets'] }};
             const open = total - resolved;
 
-            new Chart(statusEl, {
+            if (total > 0) {
+                new Chart(statusEl, {
                 type: 'doughnut',
                 data: {
                     labels: ['Resolved', 'Open'],
@@ -29,6 +30,14 @@
                     cutout: '60%'
                 }
             });
+            } else {
+                // No data to display
+                const ctx = statusEl.getContext('2d');
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#999';
+                ctx.textAlign = 'center';
+                ctx.fillText('No tickets to display', statusEl.width / 2, statusEl.height / 2);
+            }
         }
 
         // FAQ Chart
@@ -114,10 +123,11 @@
             @php
                 $resolvedTickets = \App\Models\Ticket::where('staff_id', auth()->id())
                     ->where('status', 'Closed')
+                    ->whereNotNull('date_closed')
                     ->get();
                 $timeRanges = ['0-1h' => 0, '1-2h' => 0, '2-4h' => 0, '4-8h' => 0, '8h+' => 0];
                 foreach ($resolvedTickets as $ticket) {
-                    $hours = $ticket->updated_at->diffInHours($ticket->created_at);
+                    $hours = \Carbon\Carbon::parse($ticket->date_closed)->diffInHours(\Carbon\Carbon::parse($ticket->date_created));
                     if ($hours <= 1) {
                         $timeRanges['0-1h']++;
                     } elseif ($hours <= 2) {
@@ -170,7 +180,8 @@
             const total = {{ $performanceMetrics['total_tickets'] }};
             const open = total - resolved;
 
-            new Chart(resolutionRateEl, {
+            if (total > 0) {
+                new Chart(resolutionRateEl, {
                 type: 'pie',
                 data: {
                     labels: ['Resolved', 'Open'],
@@ -189,6 +200,14 @@
                     }
                 }
             });
+            } else {
+                // No data to display
+                const ctx = resolutionRateEl.getContext('2d');
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#999';
+                ctx.textAlign = 'center';
+                ctx.fillText('No tickets to display', resolutionRateEl.width / 2, resolutionRateEl.height / 2);
+            }
         }
     })();
 </script>
