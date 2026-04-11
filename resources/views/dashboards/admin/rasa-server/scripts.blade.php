@@ -385,9 +385,6 @@
         fetchStatus();
         fetchTrainingHistory();
 
-        // Auto-refresh status every 5 minutes
-        startStatusPolling();
-
         // Training status check function
         function checkStatus() {
             const icon = document.getElementById('status-icon');
@@ -398,7 +395,7 @@
 
             if (!icon || !text || !subtext) return;
 
-            fetch('/admin/training-status')
+            fetch('{{ route('admin.document-changes.training-status') }}')
                 .then(response => {
                     if (!response.ok) {
                         console.error('Training status check failed:', response.status);
@@ -407,43 +404,34 @@
                     return response.json();
                 })
                 .then(data => {
-                    if (data.status === 'training') {
+                    if (data.requires_training) {
                         icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-yellow-600";
-                        text.innerText = "Training in Progress...";
+                        text.innerText = "Training Required";
                         text.className = "text-sm font-medium text-yellow-700";
-                        subtext.innerText = "Render is currently rebuilding the model.";
-                        if (progress) progress.classList.remove('hidden');
-                        if (btn) btn.disabled = true;
-                    } else if (data.status === 'success') {
+                        subtext.innerText = "New documents need to be trained.";
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    } else {
                         icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
                         text.innerText = "System Active";
                         text.className = "text-sm font-medium text-green-700";
-                        subtext.innerText = "Last trained: " + (data.time || "Just now");
-                        if (progress) progress.classList.add('hidden');
-                        if (btn) btn.disabled = false;
-                    } else if (data.status === 'failed') {
-                        icon.className = "fas fa-times-circle fa-2x mb-2 text-red-600";
-                        text.innerText = "Training Failed";
-                        text.className = "text-sm font-medium text-red-700";
-                        subtext.innerText = "Failed at: " + (data.time || "Unknown time");
-                        if (progress) progress.classList.add('hidden');
-                        if (btn) btn.disabled = false;
-                    } else if (data.status === 'idle') {
-                        icon.className = "fas fa-robot fa-2x mb-2 text-blue-600";
-                        text.innerText = "System Ready";
-                        text.className = "text-sm font-medium text-blue-700";
-                        subtext.innerText = data.time || "Ready for training";
+                        subtext.innerText = "All documents are trained.";
                         if (progress) progress.classList.add('hidden');
                         if (btn) btn.disabled = false;
                     }
                 })
                 .catch(error => {
                     console.error('checkStatus error:', error);
+                    // Update UI on error
+                    if (icon && text && subtext) {
+                        icon.className = "fas fa-exclamation-triangle fa-2x mb-2 text-red-600";
+                        text.innerText = "Status Check Failed";
+                        text.className = "text-sm font-medium text-red-700";
+                        subtext.innerText = "Unable to fetch training status";
+                    }
                 });
         }
 
-        // Poll training status every 5 minutes
-        setInterval(checkStatus, 300000);
         checkStatus(); // Initial check on load
     } // End of initScript
 })();

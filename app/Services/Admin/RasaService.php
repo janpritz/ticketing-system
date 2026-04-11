@@ -253,9 +253,57 @@ class RasaService
      * Aggregates health status from the Rasa API, Action Server, and local metadata.
      */
 
+    // public function getSystemHealthReport(): array
+    // {
+    //     $rasaUrl = env('RASA_SERVER_URL'); // e.g., https://sangkay-chatbot.onrender.com
+    //     $modelUrl = env('RASA_SERVER_MODEL'); // e.g., https://sangkay-chatbot.onrender.com/status
+
+    //     $serverStatus = 'offline';
+    //     $currentModel = 'None';
+    //     $error = null;
+
+    //     // 1. Check if Rasa Server is Online
+    //     if ($rasaUrl) {
+    //         try {
+    //             $response = Http::timeout(5)->get($rasaUrl);
+
+    //             if ($response->successful() && str_contains($response->body(), 'Hello from Rasa')) {
+    //                 $serverStatus = 'online';
+    //             }
+    //         } catch (\Exception $e) {
+    //             $error = "Rasa Endpoint Unreachable: " . $e->getMessage();
+    //             Log::warning($error);
+    //         }
+    //     }
+
+    //     // 2. Fetch the Current Model Active File
+    //     if ($serverStatus === 'online' && $modelUrl) {
+    //         try {
+    //             $modelResponse = Http::timeout(5)->get($modelUrl);
+
+    //             if ($modelResponse->successful()) {
+    //                 $currentModel = $modelResponse->json('model_file') ?? 'Unknown Model';
+    //             }
+    //         } catch (\Exception $e) {
+    //             Log::warning("Could not fetch Rasa model status: " . $e->getMessage());
+    //         }
+    //     }
+    //     $data = [
+    //         'server_online' => $serverStatus === 'online',
+    //         'server_status' => $serverStatus, // 'online' or 'offline'
+    //         'current_model' => $currentModel,
+    //         'last_training' => $this->getLastTrainingInfo(), // your existing method   // your existing method
+    //         'timestamp'     => now()->toISOString(),
+    //         'error'         => $error
+    //     ];
+
+    //     // 3. Construct Unified Report
+    //     return $data;
+    // }
+
     public function getSystemHealthReport(): array
     {
-        $rasaUrl = env('RASA_SERVER_URL'); // e.g., https://sangkay-chatbot.onrender.com
+        //$rasaUrl = env('RASA_SERVER_URL'); // e.g., https://sangkay-chatbot.onrender.com
         $modelUrl = env('RASA_SERVER_MODEL'); // e.g., https://sangkay-chatbot.onrender.com/status
 
         $serverStatus = 'offline';
@@ -263,26 +311,27 @@ class RasaService
         $error = null;
 
         // 1. Check if Rasa Server is Online
-        if ($rasaUrl) {
-            try {
-                $response = Http::timeout(5)->get($rasaUrl);
+        // if ($rasaUrl) {
+        //     try {
+        //         $response = Http::timeout(5)->get($rasaUrl);
 
-                if ($response->successful() && str_contains($response->body(), 'Hello from Rasa')) {
-                    $serverStatus = 'online';
-                }
-            } catch (\Exception $e) {
-                $error = "Rasa Endpoint Unreachable: " . $e->getMessage();
-                Log::warning($error);
-            }
-        }
+        //         if ($response->successful() && str_contains($response->body(), 'Hello from Rasa')) {
+        //             $serverStatus = 'online';
+        //         }
+        //     } catch (\Exception $e) {
+        //         $error = "Rasa Endpoint Unreachable: " . $e->getMessage();
+        //         Log::warning($error);
+        //     }
+        // }
 
         // 2. Fetch the Current Model Active File
-        if ($serverStatus === 'online' && $modelUrl) {
+        if ($modelUrl) {
             try {
                 $modelResponse = Http::timeout(5)->get($modelUrl);
 
                 if ($modelResponse->successful()) {
                     $currentModel = $modelResponse->json('model_file') ?? 'Unknown Model';
+                    $serverStatus = 'online';
                 }
             } catch (\Exception $e) {
                 Log::warning("Could not fetch Rasa model status: " . $e->getMessage());

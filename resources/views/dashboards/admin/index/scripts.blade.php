@@ -457,7 +457,10 @@
                 });
 
                 // Hide the training alert
-                document.getElementById('trainingAlert').classList.add('hidden');
+                const trainingAlert = document.getElementById('trainingAlert');
+                if (trainingAlert) {
+                    trainingAlert.classList.add('hidden');
+                }
 
             } catch (err) {
                 console.error('[DEBUG] Training error:', err);
@@ -486,13 +489,14 @@
                 if (res.ok) {
                     const data = await res.json();
                     const alertEl = document.getElementById('trainingAlert');
-
-                    if (data.requires_training) {
-                        // Show training alert
-                        alertEl.classList.remove('hidden');
-                    } else {
-                        // Hide training alert
-                        alertEl.classList.add('hidden');
+                    if (alertEl) {
+                        if (data.requires_training) {
+                            // Show training alert
+                            alertEl.classList.remove('hidden');
+                        } else {
+                            // Hide training alert
+                            alertEl.classList.add('hidden');
+                        }
                     }
                 }
             } catch (err) {
@@ -539,15 +543,139 @@
             });
         }
 
+        // Rasa status update functions
+        function updateServerStatus(isRunning) {
+            const serverStatus = document.getElementById('serverStatus');
+            if (!serverStatus) return;
+            const dot = serverStatus.querySelector('div');
+            const text = serverStatus.querySelector('span');
+
+            if (isRunning) {
+                dot.className = 'w-4 h-4 rounded-full bg-green-600';
+                text.textContent = 'Online';
+                text.className = 'text-sm text-green-800';
+            } else {
+                dot.className = 'w-4 h-4 rounded-full bg-red-600';
+                text.textContent = 'Offline';
+                text.className = 'text-sm text-red-800';
+            }
+        }
+
+        function updateLastTraining(data) {
+            const lastTraining = document.getElementById('lastTraining');
+            if (!lastTraining) return;
+            if (data && data.formatted) {
+                lastTraining.textContent = data.formatted;
+                const relativeDiv = lastTraining.closest('.bg-white').querySelector('.text-xs.text-gray-500');
+                if (relativeDiv) relativeDiv.textContent = data.relative || '';
+            } else {
+                lastTraining.textContent = 'Never';
+                const relativeDiv = lastTraining.closest('.bg-white').querySelector('.text-xs.text-gray-500');
+                if (relativeDiv) relativeDiv.textContent = '';
+            }
+        }
+
+        function updateCurrentModel(data) {
+            const currentModel = document.getElementById('currentModel');
+            if (!currentModel) return;
+            currentModel.textContent = data || 'None';
+
+            const currentModelVersion = document.getElementById('currentModelVersion');
+            if (currentModelVersion) {
+                currentModelVersion.textContent = data ? '-' : '';
+            }
+        }
+
+        // Fetch Rasa status
+        async function fetchRasaStatus() {
+            try {
+                const response = await fetch('{{ route("admin.rasa-server.status") }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateServerStatus(data.server_status === 'online');
+                    updateLastTraining(data.last_training);
+                    updateCurrentModel(data.current_model);
+                }
+            } catch (error) {
+                console.error('Failed to fetch Rasa status:', error);
+            }
+        }
+
+        // Fetch training status
+        async function fetchTrainingStatus() {
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+            const subtext = document.getElementById('status-subtext');
+            const progress = document.getElementById('progress-wrapper');
+            const btn = document.getElementById('sync-btn');
+
+            if (!icon || !text || !subtext) return;
+
+            try {
+                const response = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.requires_training) {
+                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-yellow-600";
+                        text.innerText = "Training Required";
+                        text.className = "text-sm font-medium text-yellow-700";
+                        subtext.innerText = "New documents need to be trained.";
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    } else {
+                        icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
+                        text.innerText = "System Active";
+                        text.className = "text-sm font-medium text-green-700";
+                        subtext.innerText = "All documents are trained.";
+                        if (progress) progress.classList.add('hidden');
+                        if (btn) btn.disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.error('fetchTrainingStatus error:', error);
+                // Update UI on error
+                if (icon && text && subtext) {
+                    icon.className = "fas fa-exclamation-triangle fa-2x mb-2 text-red-600";
+                    text.innerText = "Status Check Failed";
+                    text.className = "text-sm font-medium text-red-700";
+                    subtext.innerText = "Unable to fetch training status";
+                }
+            }
+        }
+
+        // Global function for refreshing Rasa status
+        window.refreshRasaStatus = () => {
+            fetchRasaStatus();
+            fetchTrainingStatus();
+        };
+
+        // Attach event listener for refresh status button
+        const refreshStatusBtn = document.getElementById('refreshStatus');
+        if (refreshStatusBtn) {
+            refreshStatusBtn.addEventListener('click', () => {
+                fetchRasaStatus();
+                fetchTrainingStatus();
+            });
+        }
+
         // Initial fetch (once) - polling disabled to avoid overloading the database.
         // The dashboard will only refresh when a CRUD operation signals a change
         // via localStorage (key: 'ts_tickets_changed') or when the user focuses the tab
         // and a change has been recorded.
         setTimeout(() => {
             refreshAdminData();
-            if (typeof window.refreshRasaStatus === 'function') {
-                window.refreshRasaStatus();
-            }
+            fetchRasaStatus();
+            fetchTrainingStatus();
 
             // Ensure green dot is shown if there are active staff initially
             const initialActiveCount = parseInt(document.getElementById('activeStaffCountText')
