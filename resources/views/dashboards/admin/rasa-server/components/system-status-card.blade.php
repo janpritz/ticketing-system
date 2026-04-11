@@ -83,7 +83,7 @@
                 <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div class="h-full bg-blue-600 animate-pulse rounded-full" style="width: 100%"></div>
                 </div>
-                <p class="text-xs text-gray-500 mt-1 text-center">Syncing & Rebuilding on Render...</p>
+                <p class="text-xs text-gray-500 mt-1 text-center">Updating chatbot knowledge base...</p>
             </div>
         </div>
     </div>

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\RasaModel;
+use App\Models\{RasaModel, Training};
 use App\Services\Admin\{FAQService, RasaService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -45,24 +45,28 @@ class RasaServerController extends Controller
     {
         try {
             $healthReport = $service->getSystemHealthReport();
-
-            // 1. Extract the model name from the response
             $modelName = $healthReport['current_model'] ?? null;
 
-            // 2. Only store if a model name actually exists
             if ($modelName) {
-                // Update existing or create new record based on model_name
-                RasaModel::updateOrCreate(
-                    ['model_name' => $modelName], // Unique identifier
+                // 1. Check if this model is already known and current
+                $modelExists = RasaModel::where('model_name', $modelName)
+                    ->where('is_current', true)
+                    ->exists();
+
+                // 2. Update or Create the model record
+                $model = RasaModel::updateOrCreate(
+                    ['model_name' => $modelName],
                     [
-                        'size'       => $healthReport['size'] ?? 0, // Ensure your service provides this or set a default
+                        'size'       => $healthReport['size'] ?? 0,
                         'is_current' => ($healthReport['server_status'] === 'online'),
-                        // You can add more fields here if you update your migration
                     ]
                 );
 
-                // Optional: If this is the 'current' model, mark all others as not current
-                if ($healthReport['server_status'] === 'online') {
+                // 3. NEW LOGIC: If this is a fresh model switch, resolve training alerts
+                if (!$modelExists && $healthReport['server_status'] === 'online') {
+                    $this->resolveTrainingAlerts();
+
+                    // Set all other models to not current
                     RasaModel::where('model_name', '!=', $modelName)
                         ->update(['is_current' => false]);
                 }
@@ -70,10 +74,36 @@ class RasaServerController extends Controller
 
             return response()->json($healthReport);
         } catch (\Exception $e) {
+            Log::error("Rasa Status Check Failed: " . $e->getMessage());
             return response()->json([
                 'server_status' => false,
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Ported logic from your Python/Shell scripts to Laravel
+     */
+    protected function resolveTrainingAlerts()
+    {
+        try {
+            // 1. Mark the latest 'training' record as success
+            Training::where('status', 'training')
+                ->orderBy('created_at', 'desc')
+                ->limit(1)
+                ->update([
+                    'status' => 'success',
+                    'completed_at' => now()
+                ]);
+
+            // 2. Mark all pending document changes as completed
+            \App\Models\DocumentChange::where('training_completed', 0)
+                ->update(['training_completed' => 1]);
+
+            Log::info("Rasa Server: New model detected. Training alerts and documents auto-resolved.");
+        } catch (\Exception $e) {
+            Log::warning("Failed to resolve training alerts: " . $e->getMessage());
         }
     }
 

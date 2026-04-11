@@ -50,6 +50,11 @@ Schedule::command('rasa:auto-train')
     ->timezone('Asia/Manila')
     ->description('Auto-train Rasa if there are pending document changes');
 
+// Schedule announcement expiration check hourly
+Schedule::command('app:expire-announcements')
+    ->hourly()
+    ->description('Soft delete expired announcements');
+
 /**
  * One-time helper: backfill announcement role mappings from legacy Announcements.txt entries.
  *

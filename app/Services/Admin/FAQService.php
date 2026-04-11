@@ -108,8 +108,8 @@ class FAQService
             // Log start of process
             Log::info('FAQ AI Analysis started', ['admin_id' => Auth::id()]);
 
-            // Delegate the heavy lifting to the generator service
-            $result = $this->generator->generate();
+            // Delegate the heavy lifting to the generator service (synchronous for immediate is_processed update)
+            $result = $this->generator->generateSync(50);
 
             return [
                 'success'           => true,

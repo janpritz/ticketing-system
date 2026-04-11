@@ -94,6 +94,7 @@ class AnnouncementService
         try {
             // 🚀 Fetch directly from the database table
             $announcements = Announcement::query()
+                ->active()
                 ->with(['creator'])
                 // 📌 Sort by Pinned first, then by the newest created_at date
                 ->orderBy('pinned', 'desc')

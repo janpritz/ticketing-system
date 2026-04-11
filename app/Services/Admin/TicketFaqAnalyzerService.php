@@ -164,6 +164,7 @@ Return as a JSON array of cluster objects.';
 
             Log::info('TicketFaqAnalyzer: OpenAI response received', [
                 'content_length' => strlen($content),
+                'content_preview' => substr($content, 0, 1000),
             ]);
 
             return $this->parseClustersFromResponse($content);
@@ -208,23 +209,28 @@ Return as a JSON array of cluster objects.';
         if (is_array($parsed)) {
             // If the result is wrapped in an object with clusters key
             if (isset($parsed['clusters']) && is_array($parsed['clusters'])) {
+                Log::info('Clusters parsed successfully', ['count' => count($parsed['clusters'])]);
                 return $parsed['clusters'];
             }
             // If it's a direct array of clusters
             if (isset($parsed[0]) && is_array($parsed[0])) {
                 // Check if first element has cluster-like structure
                 if (isset($parsed[0]['cluster_id']) || isset($parsed[0]['general_topic'])) {
+                    Log::info('Clusters parsed successfully', ['count' => count($parsed)]);
                     return $parsed;
                 }
                 // It might be an array of FAQ items without cluster wrapper
                 // Wrap them into a pseudo-cluster format
-                return $this->convertFlatArrayToClusters($parsed);
+                $clusters = $this->convertFlatArrayToClusters($parsed);
+                Log::info('Clusters parsed successfully (converted)', ['count' => count($clusters)]);
+                return $clusters;
             }
         }
 
         Log::warning('TicketFaqAnalyzer: Unrecognized response structure', [
             'parsed_type' => gettype($parsed),
         ]);
+        Log::info('No clusters parsed', ['count' => 0]);
         return [];
     }
 

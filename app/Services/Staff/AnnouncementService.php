@@ -86,6 +86,7 @@ class AnnouncementService
     public function getAnnouncementsForUser(User $user): array
     {
         $query = Announcement::query()
+            ->active()
             ->with(['creator'])
             ->orderBy('pinned', 'desc')
             ->orderBy('created_at', 'desc');

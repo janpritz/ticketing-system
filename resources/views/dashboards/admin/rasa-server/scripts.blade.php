@@ -405,12 +405,12 @@
                 })
                 .then(data => {
                     if (data.requires_training) {
-                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-yellow-600";
-                        text.innerText = "Training Required";
-                        text.className = "text-sm font-medium text-yellow-700";
-                        subtext.innerText = "New documents need to be trained.";
-                        if (progress) progress.classList.add('hidden');
-                        if (btn) btn.disabled = false;
+                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-blue-600";
+                        text.innerText = "Training Progress";
+                        text.className = "text-sm font-medium text-blue-700";
+                        subtext.innerText = "Training in progress...";
+                        if (progress) progress.classList.remove('hidden');
+                        if (btn) btn.disabled = true;
                     } else {
                         icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
                         text.innerText = "System Active";
