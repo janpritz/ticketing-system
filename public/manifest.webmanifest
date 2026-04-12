@@ -1,8 +1,8 @@
 {
   "name": "Sangkay Ticketing System",
   "short_name": "Sangkay TS",
-  "id": "/",
-  "start_url": "/login",
+  "id": "/admin/login",
+  "start_url": "/admin/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ff9d00",

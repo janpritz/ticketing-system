@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\DocumentChange;
+use App\Models\Training;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -53,8 +54,10 @@ class DashboardService
 
     private function getLastTrainingFormatted(): string
     {
-        $lastTraining = DocumentChange::getLastTrainingTimestamp();
-        return $lastTraining ? $lastTraining->format('M j, Y g:i A') : 'Never';
+        $lastTraining = Training::whereNotNull('completed_at')
+            ->orderBy('completed_at', 'desc')
+            ->first();
+        return $lastTraining && $lastTraining->completed_at ? $lastTraining->completed_at->format('M j, Y g:i A') : 'Never';
     }
 
     private function getActiveStaffCount(int $cutoff): int

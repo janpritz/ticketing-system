@@ -13,6 +13,24 @@ class RasaTrainingController extends Controller
         Log::info("RasaTrainingController::syncAndTrain - Starting training process");
 
         try {
+            // Check if there's already a training in progress
+            $ongoingTraining = Training::where('status', 'training')
+                ->whereNull('completed_at')
+                ->exists();
+
+            if ($ongoingTraining) {
+                Log::warning("RasaTrainingController::syncAndTrain - Training already in progress, rejecting request");
+
+                if (request()->expectsJson() || request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'A training process is already running. Please wait for it to complete before starting a new training.'
+                    ], 409); // 409 Conflict
+                }
+
+                return back()->with('error', 'A training process is already running. Please wait for it to complete before starting a new training.');
+            }
+
             // Get current counts for initial display
             $stagedFaqsCount = DB::table('staged_faqs')->where('status', 'publish')->count();
             $documentsCount = DB::table('documents')->count();

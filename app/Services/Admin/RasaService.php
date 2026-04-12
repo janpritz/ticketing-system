@@ -663,13 +663,15 @@ class RasaService
 
     protected function getLastTrainingInfo()
     {
-        $lastTraining = DocumentChange::getLastTrainingTimestamp();
+        $lastTraining = Training::whereNotNull('completed_at')
+            ->orderBy('completed_at', 'desc')
+            ->first();
 
-        if ($lastTraining) {
+        if ($lastTraining && $lastTraining->completed_at) {
             return [
-                'timestamp' => $lastTraining->format('Y-m-d H:i:s'),
-                'formatted' => $lastTraining->format('M j, Y g:i A'),
-                'relative' => $lastTraining->diffForHumans()
+                'timestamp' => $lastTraining->completed_at->format('Y-m-d H:i:s'),
+                'formatted' => $lastTraining->completed_at->format('M j, Y g:i A'),
+                'relative' => $lastTraining->completed_at->diffForHumans()
             ];
         }
 

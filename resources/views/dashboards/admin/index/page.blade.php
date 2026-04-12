@@ -10,10 +10,10 @@
             @include('dashboards.admin.rasa-server.components.system-status-card')
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             @include('dashboards.admin.index.components.total-open-tickets')
             @include('dashboards.admin.index.components.active-staff')
-            @include('dashboards.admin.index.components.last-training')
+            {{-- @include('dashboards.admin.index.components.last-training') --}}
         </div>
 
         {{-- Analytics Section --}}

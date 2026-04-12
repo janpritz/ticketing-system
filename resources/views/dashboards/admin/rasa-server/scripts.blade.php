@@ -41,6 +41,9 @@
         let trainingHistoryCurrentPage = 1;
         let trainingHistoryTotalPages = 1;
 
+        // Training status state
+        let isTrainingInProgress = false;
+
         // Status polling state
         let statusInterval = null;
         let lastStatusFetchTime = 0;
@@ -159,6 +162,7 @@
             trainingHistoryData = data || [];
             trainingHistoryCurrentPage = 1;
             renderTrainingHistoryPage();
+            checkTrainingStatus(); // Check training status after updating data
         }
 
         function renderTrainingHistoryPage() {
@@ -287,9 +291,20 @@
 
         async function trainModel() {
             if (!trainModelBtn) return;
+
+            // Check if training is already in progress
+            if (isTrainingInProgress) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Training in Progress',
+                    text: 'A training process is already running. Please wait for it to complete before starting a new training.'
+                });
+                return;
+            }
+
             console.log('[trainModel] Starting training...');
             trainModelBtn.disabled = true;
-            trainModelBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Training...';
+            trainModelBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Training...';
 
             try {
                 console.log('[trainModel] Sending POST request to train-rasa endpoint');
@@ -385,54 +400,51 @@
         fetchStatus();
         fetchTrainingHistory();
 
-        // Training status check function
-        function checkStatus() {
+        // Check for ongoing trainings and update UI
+        function checkTrainingStatus() {
             const icon = document.getElementById('status-icon');
             const text = document.getElementById('status-text');
             const subtext = document.getElementById('status-subtext');
             const progress = document.getElementById('progress-wrapper');
-            const btn = document.getElementById('sync-btn');
+            const trainBtn = document.getElementById('trainModelBtn');
 
-            if (!icon || !text || !subtext) return;
+            // Check if there's any training with status 'training' and no completed_at
+            const ongoingTraining = trainingHistoryData.find(training =>
+                training.status === 'training' && !training.completed_at
+            );
 
-            fetch('{{ route('admin.document-changes.training-status') }}')
-                .then(response => {
-                    if (!response.ok) {
-                        console.error('Training status check failed:', response.status);
-                        return { status: 'idle', time: 'Status check failed' };
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.requires_training) {
-                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-blue-600";
-                        text.innerText = "Training Progress";
-                        text.className = "text-sm font-medium text-blue-700";
-                        subtext.innerText = "Training in progress...";
-                        if (progress) progress.classList.remove('hidden');
-                        if (btn) btn.disabled = true;
-                    } else {
-                        icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
-                        text.innerText = "System Active";
-                        text.className = "text-sm font-medium text-green-700";
-                        subtext.innerText = "All documents are trained.";
-                        if (progress) progress.classList.add('hidden');
-                        if (btn) btn.disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error('checkStatus error:', error);
-                    // Update UI on error
-                    if (icon && text && subtext) {
-                        icon.className = "fas fa-exclamation-triangle fa-2x mb-2 text-red-600";
-                        text.innerText = "Status Check Failed";
-                        text.className = "text-sm font-medium text-red-700";
-                        subtext.innerText = "Unable to fetch training status";
-                    }
-                });
+            isTrainingInProgress = !!ongoingTraining;
+
+            if (ongoingTraining) {
+                // Training is in progress
+                if (icon) icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-blue-600";
+                if (text) {
+                    text.innerText = "Training Processing";
+                    text.className = "text-sm font-medium text-blue-700";
+                }
+                if (subtext) subtext.innerText = "Training in progress...";
+                if (progress) progress.classList.remove('hidden');
+                if (trainBtn) {
+                    trainBtn.disabled = true;
+                    trainBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Training...';
+                }
+            } else {
+                // No training in progress
+                if (icon) icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
+                if (text) {
+                    text.innerText = "System Active";
+                    text.className = "text-sm font-medium text-green-700";
+                }
+                if (subtext) subtext.innerText = "Ready for training.";
+                if (progress) progress.classList.add('hidden');
+                if (trainBtn) {
+                    trainBtn.disabled = false;
+                    trainBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Train Model';
+                }
+            }
         }
 
-        checkStatus(); // Initial check on load
+        checkTrainingStatus(); // Initial check on load
     } // End of initScript
 })();
 </script>

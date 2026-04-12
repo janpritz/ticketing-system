@@ -18,6 +18,10 @@
         // Chart instances (assigned after init so refresh can update them)
         let weeklyChart, catChart;
 
+        // Training status state
+        let trainingHistoryData = [];
+        let isTrainingInProgress = false;
+
         // Weekly Tickets Chart
         const weeklyEl = document.getElementById('weeklyTicketsChart');
         if (weeklyEl) {
@@ -606,18 +610,10 @@
             }
         }
 
-        // Fetch training status
-        async function fetchTrainingStatus() {
-            const icon = document.getElementById('status-icon');
-            const text = document.getElementById('status-text');
-            const subtext = document.getElementById('status-subtext');
-            const progress = document.getElementById('progress-wrapper');
-            const btn = document.getElementById('sync-btn');
-
-            if (!icon || !text || !subtext) return;
-
+        // Fetch training history
+        async function fetchTrainingHistory() {
             try {
-                const response = await fetch('{{ route("admin.document-changes.training-status") }}', {
+                const response = await fetch('{{ route("admin.rasa-server.training-history") }}', {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
@@ -625,38 +621,60 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.requires_training) {
-                        icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-blue-600";
-                        text.innerText = "Training Progress";
-                        text.className = "text-sm font-medium text-blue-700";
-                        //subtext.innerText = "Training in progress...";
-                        if (progress) progress.classList.remove('hidden');
-                        if (btn) btn.disabled = true;
-                    } else {
-                        icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
-                        text.innerText = "System Active";
-                        text.className = "text-sm font-medium text-green-700";
-                        subtext.innerText = "All documents are trained.";
-                        if (progress) progress.classList.add('hidden');
-                        if (btn) btn.disabled = false;
-                    }
+                    trainingHistoryData = data.trainings || [];
+                    checkTrainingStatus();
+                } else {
+                    console.error('fetchTrainingHistory response not ok:', response.status);
                 }
             } catch (error) {
-                console.error('fetchTrainingStatus error:', error);
-                // Update UI on error
-                if (icon && text && subtext) {
-                    icon.className = "fas fa-exclamation-triangle fa-2x mb-2 text-red-600";
-                    text.innerText = "Status Check Failed";
-                    text.className = "text-sm font-medium text-red-700";
-                    subtext.innerText = "Unable to fetch training status";
-                }
+                console.error('Failed to fetch training history:', error);
             }
+        }
+
+        // Check for ongoing trainings and update UI
+        function checkTrainingStatus() {
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+            const subtext = document.getElementById('status-subtext');
+            const progress = document.getElementById('progress-wrapper');
+
+            // Check if there's any training with status 'training' and no completed_at
+            const ongoingTraining = trainingHistoryData.find(training =>
+                training.status === 'training' && !training.completed_at
+            );
+
+            isTrainingInProgress = !!ongoingTraining;
+
+            if (ongoingTraining) {
+                // Training is in progress
+                if (icon) icon.className = "fas fa-sync fa-spin fa-2x mb-2 text-blue-600";
+                if (text) {
+                    text.innerText = "Training Processing";
+                    text.className = "text-sm font-medium text-blue-700";
+                }
+                if (subtext) subtext.innerText = "Training in progress...";
+                if (progress) progress.classList.remove('hidden');
+            } else {
+                // No training in progress
+                if (icon) icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
+                if (text) {
+                    text.innerText = "System Active";
+                    text.className = "text-sm font-medium text-green-700";
+                }
+                if (subtext) subtext.innerText = "Ready for training.";
+                if (progress) progress.classList.add('hidden');
+            }
+        }
+
+        // Legacy function for backward compatibility
+        async function fetchTrainingStatus() {
+            return fetchTrainingHistory();
         }
 
         // Global function for refreshing Rasa status
         window.refreshRasaStatus = () => {
             fetchRasaStatus();
-            fetchTrainingStatus();
+            fetchTrainingHistory();
         };
 
         // Attach event listener for refresh status button
@@ -664,7 +682,7 @@
         if (refreshStatusBtn) {
             refreshStatusBtn.addEventListener('click', () => {
                 fetchRasaStatus();
-                fetchTrainingStatus();
+                fetchTrainingHistory();
             });
         }
 
@@ -675,7 +693,7 @@
         setTimeout(() => {
             refreshAdminData();
             fetchRasaStatus();
-            fetchTrainingStatus();
+            fetchTrainingHistory();
 
             // Ensure green dot is shown if there are active staff initially
             const initialActiveCount = parseInt(document.getElementById('activeStaffCountText')
@@ -688,7 +706,7 @@
         }, 250);
 
         // Refresh on tab focus only if a change was recorded by another tab/window
-        window.addEventListener('focus', () => {
+        /**window.addEventListener('focus', () => {
             try {
                 if (localStorage.getItem('ts_tickets_changed')) refreshAdminData();
             } catch (_) {}
@@ -700,6 +718,7 @@
                 if (!document.hidden && localStorage.getItem('ts_tickets_changed')) refreshAdminData();
             } catch (_) {}
         });
+        **/
 
         // Cross-tab notification: when other tabs perform CRUD they should set
         // localStorage.ts_tickets_changed to notify this tab to refresh.

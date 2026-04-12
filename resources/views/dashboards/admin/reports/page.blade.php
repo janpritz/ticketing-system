@@ -19,7 +19,7 @@
             @include('dashboards.admin.reports.components.current-open-tickets')
 
             <!-- Placeholder for future KPIs -->
-            @include('dashboards.admin.reports.components.place-holder-for-future-fpis')
+            @include('dashboards.admin.reports.components.place-holder-for-future-FPIs')
 
             {{-- Total Tickets --}}
             @include('dashboards.admin.reports.components.total-tickets')
