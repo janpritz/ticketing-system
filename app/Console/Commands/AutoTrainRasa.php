@@ -30,6 +30,14 @@ class AutoTrainRasa extends Command
     {
         Log::info("AutoTrainRasa command started");
 
+        // Check if there's an ongoing training
+        $ongoingTraining = Training::whereNull('completed_at')->first();
+        if ($ongoingTraining) {
+            Log::info("AutoTrainRasa: Training already in progress (ID: {$ongoingTraining->id}). Skipping.");
+            $this->info("Training already in progress. Skipping automatic training.");
+            return self::SUCCESS;
+        }
+
         // Check if there are any document_changes with training_completed = 0 (false)
         $pendingCount = DB::table('document_changes')
             ->where('training_completed', false)
