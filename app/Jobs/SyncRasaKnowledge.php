@@ -9,6 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\{Http, DB, Log};
 use App\Models\Training;
+use DateTime;
 
 class SyncRasaKnowledge implements ShouldQueue
 {
@@ -45,13 +46,7 @@ class SyncRasaKnowledge implements ShouldQueue
             Log::info("SyncRasaKnowledge: Step 2 - Uploading FAQ YAML");
             $faqYaml = $this->generateFaqYaml();
             Log::info("SyncRasaKnowledge: Generated FAQ YAML length: " . strlen($faqYaml));
-            $this->uploadToGithub("docs/staged_faqs.yml", $faqYaml);
-
-            // 2a. Upload Document Changes
-            Log::info("SyncRasaKnowledge: Step 2a - Uploading Document Changes YAML");
-            $documentChangesYaml = $this->generateDocumentChangesYaml();
-            Log::info("SyncRasaKnowledge: Generated Document Changes YAML length: " . strlen($documentChangesYaml));
-            $this->uploadToGithub("docs/document_changes.yml", $documentChangesYaml);
+            $this->uploadToGithub("docs/staged_faqs.txt", $faqYaml);
 
             // 3. Upload Docs
             Log::info("SyncRasaKnowledge: Step 3 - Uploading documents");
@@ -69,7 +64,10 @@ class SyncRasaKnowledge implements ShouldQueue
             $announcements = DB::table('announcements')->get();
             Log::info("SyncRasaKnowledge: Found {$announcements->count()} announcements to upload");
 
-            $announcementsContent = "";
+            $announcementsContent = " \n";
+            $date = new DateTime();
+            $announcementsContent = "CURRENT POLICY - UPDATED: " . $date->format('F j, Y');
+
             foreach ($announcements as $ann) {
                 Log::info("SyncRasaKnowledge: Processing announcement ID: {$ann->id}");
                 $announcementsContent .= "id: {$ann->id}\n";
@@ -145,17 +143,21 @@ class SyncRasaKnowledge implements ShouldQueue
 
             foreach ($files as $file) {
                 Log::info("SyncRasaKnowledge::cleanGithubFolder - Deleting file: {$file['path']}");
-                // Delete each file found
-                Http::withHeaders(
-                    [
-                        'Authorization' => 'Bearer ' . $token,
-                        'Accept' => 'application/vnd.github+json'
-                    ]
-                )->delete("{$this->baseUrl}/{$owner}/{$repo}/contents/{$file['path']}", [
-                    'message' => "Cleaning {$folderPath} before sync",
-                    'sha'     => $file['sha'],
-                    'branch'  => $branch
-                ]);
+
+                // INCREASE TIMEOUT TO 30 or 60 SECONDS
+                Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/vnd.github+json'
+                ])
+                    ->timeout(60) // Add this line
+                    ->delete("{$this->baseUrl}/{$owner}/{$repo}/contents/{$file['path']}", [
+                        'message' => "Cleaning {$folderPath} before sync",
+                        'sha'     => $file['sha'],
+                        'branch'  => $branch
+                    ]);
+
+                // ADD A TINY DELAY (0.2 seconds) to avoid rate limits
+                usleep(200000);
             }
         } else {
             Log::info("SyncRasaKnowledge::cleanGithubFolder - No files found or folder doesn't exist, response: " . $response->body());
@@ -223,7 +225,9 @@ class SyncRasaKnowledge implements ShouldQueue
         $faqs = DB::table('staged_faqs')->where('status', 'publish')->get();
         Log::info("SyncRasaKnowledge::generateFaqYaml - Found {$faqs->count()} published staged FAQs");
 
-        $content = "";
+        $content = " \n";
+        $date = new DateTime();
+        $content = "CURRENT POLICY - UPDATED: " . $date->format('F j, Y');
 
         foreach ($faqs as $faq) {
             $content .= "General Topic: " . trim($faq->general_topic ?? 'General') . " {\n";
@@ -240,30 +244,4 @@ class SyncRasaKnowledge implements ShouldQueue
     /**
      * Generate document changes content for training
      */
-    private function generateDocumentChangesYaml()
-    {
-        Log::info("SyncRasaKnowledge::generateDocumentChangesYaml - Starting document changes generation");
-
-        // Get document changes that require training (CRUD operations)
-        $documentChanges = DB::table('document_changes')
-            ->where('training_required', true)
-            ->where('training_completed', false)
-            ->get();
-
-        Log::info("SyncRasaKnowledge::generateDocumentChangesYaml - Found {$documentChanges->count()} document changes requiring training");
-
-        $content = "";
-
-        foreach ($documentChanges as $change) {
-            $content .= "Document Change: " . trim($change->file_name ?? 'Unknown') . " {\n";
-            $content .= "Action: " . strtoupper(trim($change->action ?? 'unknown')) . "\n";
-            $content .= "User: " . trim($change->user_name ?? 'Unknown') . "\n";
-            $content .= "Timestamp: " . ($change->change_timestamp ?? 'N/A') . "\n";
-            $content .= "}\n\n";
-        }
-
-        Log::info("SyncRasaKnowledge::generateDocumentChangesYaml - Generated content length: " . strlen($content));
-
-        return $content;
-    }
 }

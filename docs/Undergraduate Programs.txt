@@ -1,187 +1,69 @@
-INSTITUTION: ABUYOG COMMUNITY COLLEGE
+[OUTDATED - See current policy]
+INSTITUTION: ABUYOG COMMUNITY COLLEGE (ACC)
 
 =====================================
+SECTION 1: SEMANTIC MAPPING & DIALECT RULES
+=====================================
+- Synonyms: "program" = "course" = "kurso" = "degree" = "kinukuha"
+- Dialect Matching Rule: Always reply using the same language the student used.
+    * If query is in Waray (e.g., "Anot mga programa?"), respond in Waray.
+    * If query is in Tagalog (e.g., "Anong kurso meron?"), respond in Tagalog.
+    * If query is in English, respond in English.
+- Coverage Rule: When asked for "available courses" or "list of programs," scan ALL colleges below to provide a complete list.
+
+=====================================
+SECTION 2: COMPLETE LIST OF PROGRAMS
+=====================================
+
+COLLEGE OF INFORMATION TECHNOLOGY EDUCATION (CITE)
+- Bachelor of Science in Information Technology (BSIT)
+
+COLLEGE OF MANAGEMENT AND ENTREPRENEURSHIP (CME)
+- Bachelor of Science in Entrepreneurship (BSEntrep)
+- Bachelor of Science in Hospitality Management (BSHM)
+
+COLLEGE OF CRIMINAL JUSTICE EDUCATION (CCJE)
+- Bachelor of Science in Criminology (BSCrim)
+
 COLLEGE OF ARTS, SCIENCE, AND EDUCATION (CASE)
-=====================================
-
-PROGRAMS:
+- Bachelor of Elementary Education (BEEd)
 - Bachelor of Secondary Education (BSEd)
   Majors:
+  - English
   - Mathematics
   - Science
-  - English
   - Social Studies
-- Bachelor of Elementary Education (BEEd)
-
-VISION:
-An innovative and responsive college that prepares educators with strong teaching, research, and professional skills for societal development.
-
-MISSION:
-To produce professional educators who demonstrate mastery in teaching and can address educational needs at local, regional, and national levels through effective pedagogy, research, and extension services.
-
-GOALS:
-- Offer 4-year teacher education programs (BEEd and BSEd).
-- Provide BSEd specializations: English, Mathematics, Science, Social Studies.
-- Align teaching and research with community and industry needs.
-- Adapt to curriculum changes and educational trends.
-- Ensure quality education with updated and relevant course content.
-- Develop students’ teaching skills, classroom management, and assessment abilities.
-- Prepare students for pre-service training and professional practice.
-- Increase LET passers and produce top-performing graduates.
 
 =====================================
-COLLEGE OF MANAGEMENT AND ENTREPRENEURSHIP (CME)
+SECTION 3: COLLEGE DETAILS (MISSION & VISION)
 =====================================
 
-PROGRAMS:
-- Bachelor of Science in Entrepreneurship (BSEntrep)
-- Bachelor of Science in Hospitality Management (BSHM)
-
-VISION:
-To be a leading business college known for excellence in entrepreneurship and hospitality education, producing skilled graduates and contributing to local industry.
-
-MISSION:
-To provide accessible, high-quality education that promotes integrity and academic excellence, preparing students for professional careers in a global environment.
-
-GOALS:
-- Equip students with skills for the modern business world.
-- Develop leadership and teamwork abilities.
-- Train students in research for community development.
-
-=====================================
-COLLEGE OF CRIMINAL JUSTICE EDUCATION (CCJE)
-=====================================
-
-PROGRAM:
-- Bachelor of Science in Criminology (BSCrim)
-
-VISION:
-To be a leading institution producing graduates who address crime-related issues and meet global standards in criminal justice.
-
-MISSION:
-To develop competent and ethical graduates who provide effective services in public safety and law enforcement.
-
-=====================================
-COLLEGE OF INFORMATION TECHNOLOGY EDUCATION (CITE)
-=====================================
-
-PROGRAM:
-- Bachelor of Science in Information Technology (BSIT)
-
-VISION:
-To be a center of excellence in IT education and research, producing innovative professionals and collaborating with industry and government.
-
-MISSION:
-- Provide high-quality IT education.
-- Develop future IT leaders.
-- Support teaching, research, and industry collaboration.
-
-GOALS:
-- Achieve excellence in IT education.
-- Provide strong IT knowledge for local and global impact.
-- Build partnerships with institutions for research and development.
-
-=====================================
-KNOWLEDGE BASE
-========================
-
-INSTITUTION:
-Abuyog Community College (ACC)
-
--------------------------------------
 COLLEGE OF ARTS, SCIENCE, AND EDUCATION (CASE)
--------------------------------------
+- Vision: An innovative and responsive college that prepares educators with strong teaching, research, and professional skills.
+- Mission: To produce professional educators who demonstrate mastery in teaching and address local/national educational needs.
+- Goals: Increase LET passers; align research with community needs; develop expert classroom management skills.
 
-PROGRAMS:
-- Bachelor of Elementary Education (BEEd)
-- Bachelor of Secondary Education (BSEd)
-
-BSEd MAJORS:
-- English
-- Mathematics
-- Science
-- Social Studies
-
--------------------------------------
 COLLEGE OF MANAGEMENT AND ENTREPRENEURSHIP (CME)
--------------------------------------
+- Vision: A leading business college known for excellence in entrepreneurship and hospitality education.
+- Mission: To provide high-quality education promoting integrity and academic excellence for global careers.
 
-PROGRAMS:
-- Bachelor of Science in Entrepreneurship (BSEntrep)
-- Bachelor of Science in Hospitality Management (BSHM)
+COLLEGE of CRIMINAL JUSTICE EDUCATION (CCJE)
+- Vision: To produce graduates who meet global standards in criminal justice and law enforcement.
+- Mission: To develop competent and ethical graduates for public safety.
 
--------------------------------------
-COLLEGE OF CRIMINAL JUSTICE EDUCATION (CCJE)
--------------------------------------
-
-PROGRAM:
-- Bachelor of Science in Criminology (BSCrim)
-
--------------------------------------
 COLLEGE OF INFORMATION TECHNOLOGY EDUCATION (CITE)
--------------------------------------
+- Vision: To be a center of excellence in IT education and research.
+- Mission: Provide high-quality IT education and develop future IT leaders.
 
-PROGRAM:
-- Bachelor of Science in Information Technology (BSIT)
-
--------------------------------------
-SEMANTIC MAPPING (FOR UNDERSTANDING)
--------------------------------------
-
-"course" = "program" = "kurso" = "degree"
-
-Examples:
-- "IT course" → BSIT
-- "Criminology course" → BSCrim
-- "Teaching course" → BEEd or BSEd
-- "Business course" → BSEntrep or BSHM
-
--------------------------------------
-RESPONSE TEMPLATES
--------------------------------------
-
-1. GENERAL QUESTION:
-User: "What courses are offered?"
-
-Response:
-"Abuyog Community College offers the following programs:
-
-[Then list all programs grouped by college]"
-
--------------------------------------
-
-2. FILIPINO / TAGLISH:
-User: "Anong kurso meron?"
-
-Response:
-"Narito ang mga courses/programs na available sa Abuyog Community College:
-
-[Then list programs]"
-
--------------------------------------
-
-3. SPECIFIC COURSE:
-User: "What is BSIT?"
-
-Response:
-"BSIT (Bachelor of Science in Information Technology) is offered under the College of Information Technology Education."
-
--------------------------------------
-
-4. RECOMMENDATION:
-User: "Anong course para sa tech?"
-
-Response:
-"If you're interested in technology, you can take:
-- BSIT (Bachelor of Science in Information Technology)"
-
--------------------------------------
-
-5. CLARIFICATION:
-User: "May course ba?"
-
-Response:
-"Yes, we offer several programs. What field are you interested in? (Education, Business, IT, or Criminology)"
-
--------------------------------------
 =====================================
+SECTION 4: RESPONSE EXAMPLES FOR TRAINING
+=====================================
+
+User: "Anot mga program sa ACC?" (Waray)
+Assistant: "An Abuyog Community College in nag-ooffer han mga nasunod nga programa: BSIT, BSEntrep, BSHM, BSCrim, BEEd, ngan BSEd (English, Math, Science, Social Studies). Ano hini nga mga kurso an imo ginkakainteresan?"
+
+User: "Ano ang mga kurso sa ACC?" (Tagalog)
+Assistant: "Ang Abuyog Community College ay nag-aalok ng mga sumusunod na kurso: BSIT, BSEntrep, BSHM, BSCrim, BEEd, at BSEd. Mayroon ka bang partikular na kursong gustong malaman?"
+
+User: "What are the courses?" (English)
+Assistant: "Abuyog Community College offers several undergraduate programs including BSIT, Criminology, Hospitality Management, Entrepreneurship, and Education (Elementary and Secondary). Let me know if you need the specific details of a program!"

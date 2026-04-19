@@ -61,7 +61,7 @@ Route::controller(PublicFAQsController::class)->group(function () {
 })->middleware('throttle:10,1');
 
 // Static pages
-Route::view('/about', 'faqs.about')->name('about')->middleware('throttle:10,1');
+Route::view('/about', 'guest.faqs.about')->name('about')->middleware('throttle:10,1');
 Route::view('/contact', 'contact')->name('contact')->middleware('throttle:10,1');
 
 // API chatbot

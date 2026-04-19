@@ -652,7 +652,7 @@
                     text.innerText = "Training Processing";
                     text.className = "text-sm font-medium text-blue-700";
                 }
-                if (subtext) subtext.innerText = "Training in progress...";
+                //if (subtext) subtext.innerText = "Training in progress...";
                 if (progress) progress.classList.remove('hidden');
             } else {
                 // No training in progress
