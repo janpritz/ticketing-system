@@ -11,29 +11,50 @@ use Illuminate\Support\Collection;
 class TicketFaqAnalyzerService
 {
     private const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-    private const CLUSTERING_MODEL = 'gpt-3.5-turbo';
+    private const CLUSTERING_MODEL = 'gpt-4o-mini';
     private const BATCH_SIZE = 20;
 
     /**
      * System prompt for FAQ clustering analysis
      */
-    private const SYSTEM_PROMPT = 'You are an expert at analyzing customer support tickets and identifying common campus issues.
-Your task is to:
-1. Analyze the provided tickets (question + response pairs)
-2. Cluster them into meaningful FAQ categories based on topics
-3. For each cluster, generate a refined question (clear, concise) and answer (helpful, accurate)
-4. Return a JSON structure with clusters containing: cluster_id, general_topic, semantic_key, suggested_q, suggested_a, and source_ticket_ids
+    private const SYSTEM_PROMPT = <<<PROMPT
+        You are an expert at analyzing customer support tickets from a multilingual campus environment and identifying common issues.
 
-Rules:
-- Group similar tickets into the same cluster
-- semantic_key should be a 2-3 word slug describing the topic (e.g., "password-reset", "account-access")
-- suggested_q should be a general question that covers the cluster topic
-- suggested_a should synthesize the best answer from all tickets in the cluster
-- If tickets are too different to cluster meaningfully, each can be its own cluster
-- Focus on actionable, commonly applicable FAQs
-- Do 
+        Your task is to:
+        1. FIRST, understand the semantic meaning and context of each ticket, regardless of language (Tagalog, Bisaya, English, Waray-waray).
+        2. Detect the language of each ticket (question and response)
+        3. Translate the core meaning into English for clustering purposes while preserving intent
+        4. Cluster tickets based on conceptual similarity, not just literal text matches
+        5. For each cluster, generate:
+        - general_topic: Broad category name (in English)
+        - semantic_key: 2-3 word slug in English (e.g., "password-reset", "account-access")
+        - suggested_q: Clear, concise general question in English that covers the cluster topic
+        - suggested_a: Comprehensive answer in English synthesized from all ticket responses
+        - source_ticket_ids: Array of original ticket IDs
 
-Return as a JSON array of cluster objects.';
+        CRITICAL RULES:
+        - SEMANTIC CLUSTERING: Group tickets by underlying issue/concept, not by language or exact wording
+        - LANGUAGE HANDLING: Tickets may be in Tagalog, Bisaya, English, or mixed. Translate concepts to English for clustering
+        - CROSS-LANGUAGE MATCHING: A ticket in Tagalog about "hindi makapag-login" (can't login) should cluster with English "can't access account" tickets
+        - CONTEXT OVER TEXT: Focus on what the user is asking, not specific phrases
+        - Each cluster must have at least one ticket ID
+        - If tickets are genuinely different topics, create separate clusters
+        - Ensure suggested_q and suggested_a are actionable and helpful
+
+        OUTPUT FORMAT (JSON only):
+        {
+        "clusters": [
+            {
+            "cluster_id": "unique_id_1",
+            "general_topic": "Topic Name",
+            "semantic_key": "topic-slug",
+            "suggested_q": "General question covering this topic?",
+            "suggested_a": "Comprehensive synthesized answer...",
+            "source_ticket_ids": [123, 456, 789]
+            }
+        ]
+        }
+        PROMPT;
 
     /**
      * Process closed tickets to generate FAQ clusters
@@ -46,10 +67,12 @@ Return as a JSON array of cluster objects.';
         $query = Ticket::where('status', 'closed')
             ->whereNotNull('response')
             ->where('response', '!=', '')
-            ->whereHas('stagedFaqs', function ($query) {
-                $query->where('ticket_id', 'ticket_id');
-            }, '=', 0)
-            ->orWhereDoesntHave('stagedFaqs');
+            ->where(function ($q) {
+                $q->whereDoesntHave('stagedFaqs')
+                  ->orWhereHas('stagedFaqs', function ($q2) {
+                      $q2->where('ticket_id', '!=', null);
+                  }, '=', 0);
+            });
 
         $tickets = $query
             ->orderBy('date_closed', 'desc')
