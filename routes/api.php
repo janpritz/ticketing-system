@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -27,8 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/tickets/{id}', [TicketController::class, 'updateStatus'])->whereNumber('id')->middleware('throttle:30,1');
 
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/staff', [StaffController::class, 'index']);
+    Route::get('/staff', [AdminStaffController::class, 'index']);
     
     // Get recent tickets for authenticated staff member
-    Route::get('/staff/tickets/recent', [StaffController::class, 'recentTickets'])->middleware('throttle:60,1');
+    //Route::get('/staff/tickets/recent', [StaffController::class, 'recentTickets'])->middleware('throttle:60,1');
 });

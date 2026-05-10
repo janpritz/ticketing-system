@@ -232,7 +232,7 @@ class StaffController extends Controller
         }
 
         try {
-            $newStaff = User::findOrFail($validated->input('user_id'));
+            $newStaff = User::findOrFail($validated['user_id']);
 
             // 2. Delegate the logic to the Service
             $service->forwardTicket($ticket, $newStaff, $auth);
@@ -267,6 +267,8 @@ class StaffController extends Controller
     {
         /** @var \App\Models\User $auth */
         $auth = Auth::user();
+        $user_id = Auth::id();
+
         // 1. Authorization Check
         if (!$service->ticketPermissions($ticket, $auth)) {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -280,7 +282,12 @@ class StaffController extends Controller
 
         // 4. Handle AJAX/JSON Responses
         if (request()->expectsJson()) {
-            $users = User::whereHas('roles')->whereNotNull('email_verified_at')->select('id', 'name')->orderBy('name')->get();
+            $users = User::whereHas('roles')
+                ->whereNotNull('email_verified_at')
+                ->where('id', '!=', $user_id)// Exclude the current user
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
             return response()->json(array_merge($ticket->toArray(), ['users' => $users]));
         }
 

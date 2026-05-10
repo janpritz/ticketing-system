@@ -150,7 +150,15 @@ class TicketService
             'routingHistories' => fn($q) => $q->orderBy('routed_at', 'desc')
         ]);
 
-        $staffList = User::whereHas('roles')->whereNotNull('email_verified_at')->select('id', 'name')->orderBy('name')->get();
+        //Get the user id
+        $user_id = Auth::id();
+
+        $staffList = User::whereHas('roles')
+            ->whereNotNull('email_verified_at')
+            ->where('id', '!=', $user_id)// Exclude the current user
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
         $data = $ticket->toArray();
         $data['role_name'] = $ticket->role->name ?? $ticket->getAttribute('role');
@@ -250,6 +258,14 @@ class TicketService
     {
         $originalStaffId = $ticket->staff_id;
         $newStaff = User::findOrFail($newStaffId);
+
+        // Prevent forwarding to the current assignee
+        if ($newStaffId === $ticket->staff_id) {
+            return [
+                'success' => false,
+                'message' => 'Cannot forward ticket to the same staff member.',
+            ];
+        }
 
         // Prevent forwarding to unverified users
         if (!$newStaff->isVerified()) {

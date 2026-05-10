@@ -244,8 +244,8 @@ class TicketService
             } else {
                 // Send "Ticket Forwarded" email to customer
                 // Load relationships needed for the mailer
-                $newStaff->loadMissing('role');
-                $sender->loadMissing('role');
+                $newStaff->loadMissing('roles');
+                $sender->loadMissing('roles');
 
                 Mail::to($ticket->email)->queue(new TicketProcessedMail($ticket, $sender, $newStaff, true));
             }
