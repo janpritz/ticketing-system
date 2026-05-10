@@ -658,7 +658,7 @@
                 // No training in progress
                 if (icon) icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
                 if (text) {
-                    text.innerText = "Chat Active";
+                    text.innerText = "Chatbot Active";
                     text.className = "text-sm font-medium text-green-700";
                 }
                 //if (subtext) subtext.innerText = "Ready for training.";
