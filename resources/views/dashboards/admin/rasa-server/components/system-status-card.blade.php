@@ -73,7 +73,7 @@
         </div>
 
         <div class="bg-white border border-gray-200 rounded-lg p-4">
-            <div class="text-sm font-medium text-gray-600 mb-1">Chatbot Training Status</div>
+            <div class="text-sm font-medium text-gray-600 mb-1">Chatbot Status</div>
             <div id="training-status-container" class="flex flex-col items-center justify-center py-2">
                 <i id="status-icon" class="fas fa-robot fa-2x mb-2 text-blue-600"></i>
                 <h4 id="status-text" class="text-sm font-medium text-gray-800">Checking system...</h4>

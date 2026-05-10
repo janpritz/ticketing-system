@@ -334,7 +334,7 @@
                     console.log('[trainModel] Training successful!');
                     Swal.fire({
                         icon: 'success',
-                        title: 'Training Completed',
+                        title: 'Restarting Server',
                         text: 'Rasa model training has been completed. Rasa Server will restart and may take several minutes to apply update.',
                         timer: 5000,
                         showConfirmButton: false
@@ -432,7 +432,7 @@
                 // No training in progress
                 if (icon) icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
                 if (text) {
-                    text.innerText = "System Active";
+                    text.innerText = "Chatbot Active";
                     text.className = "text-sm font-medium text-green-700";
                 }
                 if (subtext) subtext.innerText = "Ready for training.";

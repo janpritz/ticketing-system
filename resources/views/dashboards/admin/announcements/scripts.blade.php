@@ -423,7 +423,7 @@
                 const data = await res.json();
                 if (!res.ok || !data.success) throw new Error(data.message || 'Training failed');
 
-                showToast('success', 'Rasa training completed successfully!');
+                showToast('success', 'Chatbot Training Started');
                 const alertEl = $('#trainingAlert');
                 if (alertEl) alertEl.classList.add('hidden');
 

@@ -454,7 +454,7 @@
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
-                    title: 'Rasa training completed successfully!',
+                    title: 'Chatbot Training Started',
                     showConfirmButton: false,
                     timer: 3000,
                     timerProgressBar: true
@@ -658,10 +658,10 @@
                 // No training in progress
                 if (icon) icon.className = "fas fa-check-circle fa-2x mb-2 text-green-600";
                 if (text) {
-                    text.innerText = "System Active";
+                    text.innerText = "Chat Active";
                     text.className = "text-sm font-medium text-green-700";
                 }
-                if (subtext) subtext.innerText = "Ready for training.";
+                //if (subtext) subtext.innerText = "Ready for training.";
                 if (progress) progress.classList.add('hidden');
             }
         }
