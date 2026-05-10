@@ -61,11 +61,43 @@
             @yield('content')
         </main>
 
-        <div x-show="open" 
-             x-transition ... 
-             class="fixed inset-y-0 right-0 w-64 bg-white shadow-2xl z-50" 
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="transform translate-x-full"
+             x-transition:enter-end="transform translate-x-0"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="transform translate-x-0"
+             x-transition:leave-end="transform translate-x-full"
+             class="fixed inset-y-0 right-0 w-64 bg-white shadow-2xl z-50"
              x-cloak>
-             {{-- Drawer Content --}}
+            <!-- Mobile Menu Header -->
+            <div class="flex items-center justify-between p-4 border-b border-gray-200" style="background-color: #FF9D00;">
+                <div class="flex items-center">
+                    <img src="{{ asset('logo-white.png') }}" alt="Sangkay Logo" class="h-6 w-6">
+                    <span class="text-white font-bold text-sm tracking-wider ml-2">SANGKAY</span>
+                </div>
+                <button @click="open = false" class="text-white hover:bg-white/20 p-2 rounded-md transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Menu Items -->
+            <div class="py-4">
+                <a href="{{ route('faqs.index') }}" @click="open = false"
+                   class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('faqs.index') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
+                    Home
+                </a>
+                <a href="{{ route('about') }}" @click="open = false"
+                   class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('about') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
+                    About Us
+                </a>
+                <a href="{{ route('tickets.verify-otp', ['identifier' => rand(100000, 999999)]) }}" @click="open = false"
+                   class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('tickets.*') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
+                    My Tickets
+                </a>
+            </div>
         </div>
     </div>
 
