@@ -6,8 +6,9 @@ use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class TicketResponseMail extends Mailable
+class TicketResponseMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

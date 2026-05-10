@@ -7,8 +7,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
-class TicketProcessedMail extends Mailable
+class TicketProcessedMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

@@ -1,0 +1,226 @@
+LIBRARY OFFICE
+
+1. Borrowing of Books
+
+Borrowing of books refers to the process of charging library materials to legitimate students, faculty, or staff of Abuyog Community College. The circulation librarian or staff determines whether the book is for reserve or regular circulation. Reserved books may be used only within library premises and are not allowed for overnight borrowing. Circulation books may be borrowed overnight, while fiction books may be borrowed for seven (7) days using a validated Borrower’s Card.
+
+Office/Unit:
+Library Office
+
+Classification:
+Standard
+
+Type of Transaction:
+G2C – Government to Citizen
+G2G – Government to Government
+
+Who May Avail:
+Students, Faculty, and Staff of Abuyog Community College
+
+Checklist of Requirements and Where to Secure:
+- Validated ACC Borrower’s Card – ACC Library (Circulation Unit)
+- Validated ACC ID – ACC Registrar
+
+Client Steps and Agency Actions:
+Client Step 1:
+Write the date, full name, course, year level, and signature on the book card.
+Agency Action:
+The librarian compares the book information with the book card, Borrower’s Card, and the actual book.
+Fee: None
+Processing Time: 2 minutes per book
+Responsible Person: Librarian/Staff
+
+Client Step 2:
+Present the book(s) and Borrower’s Card to the librarian or staff on duty.
+Agency Action:
+Write the accession number and due date on the Borrower’s Card and release the borrowed book(s).
+Fee: None
+Processing Time: 2 minutes per book
+Responsible Person: Librarian/Staff
+
+Total Processing Time:
+4 minutes per book
+
+--------------------------------------------------
+
+2. Borrowed Book Check-in
+
+Borrowed Book Check-in is the process of returning borrowed library materials. The circulation librarian or staff checks whether the book is overdue or damaged. Applicable fines are imposed based on the Library Handbook. Once returned on or before the due date, the borrower’s obligation ends and records are updated.
+
+Office/Unit:
+Library Office
+
+Classification:
+Standard
+
+Type of Transaction:
+G2C – Government to Citizen
+G2G – Government to Government
+
+Who May Avail:
+Students, Faculty, and Staff of Abuyog Community College
+
+Checklist of Requirements and Where to Secure:
+- Validated ACC Borrower’s Card – ACC Library (Circulation Unit)
+- Validated ACC ID – ACC Registrar
+
+Client Steps and Agency Actions:
+Client Step 1:
+Present the borrowed book(s) to the librarian or staff on duty.
+Agency Action:
+Receive the book(s) and verify call number and accession number against records.
+Fee: None
+Processing Time: 1 minute and 30 seconds per book
+Responsible Person: Librarian/Staff
+
+Agency Action:
+Inspect returned materials and apply penalties for overdue or damaged items if applicable.
+Fee: PHP 50.00 per day per book (excluding weekends and holidays)
+Processing Time: 2 minutes
+Responsible Person: Librarian/Staff
+
+Agency Action:
+Record the return date on the Borrower’s Card and return it to the owner.
+Fee: None
+Processing Time: 1 minute
+Responsible Person: Librarian/Staff
+
+Total Processing Time:
+4 minutes and 30 seconds per book
+
+--------------------------------------------------
+
+3. Issuance of Borrower’s Card
+
+The issuance of a Borrower’s Card is required to borrow books from the ACC Library. This card contains the borrower’s personal information and is issued only to legitimate students, faculty, or staff.
+
+Office/Unit:
+Library Office
+
+Classification:
+Standard
+
+Type of Transaction:
+G2C – Government to Citizen
+G2G – Government to Government
+
+Who May Avail:
+Students, Faculty, and Staff of Abuyog Community College
+
+Checklist of Requirements and Where to Secure:
+- Validated ACC ID – ACC Registrar
+- 1x1 ID Picture – Provided by applicant
+
+Client Steps and Agency Actions:
+Client Step 1:
+Present ACC ID and 1x1 picture.
+Agency Action:
+Verify and confirm accuracy of information.
+Fee: None
+Processing Time: 1 minute
+Responsible Person: Librarian/Staff
+
+Client Step 2:
+Fill out the Borrower’s Card application form.
+Agency Action:
+Verify details, paste ID picture, validate, and release Borrower’s Card.
+Fee: PHP 20.00 per card
+Processing Time: 3 minutes
+Responsible Person: Librarian/Staff
+
+Total Processing Time:
+4 minutes
+
+--------------------------------------------------
+
+4. Signing of Clearance
+
+Clearance signing is conducted at the ACC Library Circulation Unit. The librarian verifies whether the client has outstanding library obligations before signing the clearance.
+
+Office/Unit:
+Library Office
+
+Classification:
+Standard
+
+Type of Transaction:
+G2C – Government to Citizen
+G2G – Government to Government
+
+Who May Avail:
+Students, Faculty, and Staff of Abuyog Community College
+
+Checklist of Requirements and Where to Secure:
+- Validated ACC Borrower’s Card – ACC Library (Circulation Unit)
+- Validated ACC ID – ACC Registrar
+
+Client Steps and Agency Actions:
+Client Step 1:
+Present clearance form duly signed by the owner.
+Agency Action:
+Verify information, check for library accountabilities, and confirm Borrower’s Card status.
+Fee: None
+Processing Time: 3 minutes
+Responsible Person: Librarian/Staff
+
+Client Step 2:
+Surrender Borrower’s Card.
+Agency Action:
+Clear records, sign clearance form, and release it to the owner.
+Fee: None
+Processing Time: 2 minutes
+Responsible Person: Librarian/Staff
+
+Total Processing Time:
+5 minutes
+
+--------------------------------------------------
+
+5. Use of E-Library Section
+
+The E-Library Section is available to all students, faculty, and staff for internet access and electronic library resources at no cost.
+
+Office/Unit:
+Library Office
+
+Classification:
+Standard
+
+Type of Transaction:
+G2C – Government to Citizen
+G2G – Government to Government
+
+Who May Avail:
+Students, Faculty, and Staff of Abuyog Community College
+
+Checklist of Requirements and Where to Secure:
+- Validated ACC Borrower’s Card – ACC Library (Circulation Unit)
+- Validated ACC ID – ACC Registrar
+
+Client Steps and Agency Actions:
+Client Step 1:
+Log in on the internet usage log sheet.
+Agency Action:
+Instruct the client and assign a vacant computer station.
+Fee: None
+Processing Time: 2 minutes
+Responsible Person: Librarian/Staff
+
+Client Step 2:
+Perform academic-related activities.
+Agency Action:
+Ensure compliance with E-Library policies.
+Fee: None
+Processing Time: Up to 1 hour
+Responsible Person: Librarian/Staff
+
+Client Step 3:
+Log out from the computer.
+Agency Action:
+Check workstation after use.
+Fee: None
+Processing Time: 30 seconds
+Responsible Person: Librarian/Staff
+
+Total Processing Time:
+1 hour, 2 minutes, and 30 seconds

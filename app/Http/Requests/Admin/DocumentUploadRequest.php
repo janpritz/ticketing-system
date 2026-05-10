@@ -29,7 +29,7 @@ class DocumentUploadRequest extends FormRequest
                 'string',
                 'max:255',
                 // This replaces your boot model check with a clean UI validation error!
-                Rule::unique('documents', 'file_name')->ignore($this->route('document')),
+                //Rule::unique('documents', 'file_name')->ignore($this->route('document')),
             ],
             'file_content' => ['required', 'string'],
 
