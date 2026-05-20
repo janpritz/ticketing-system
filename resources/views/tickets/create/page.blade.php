@@ -190,9 +190,18 @@
                             </div>
                         </div>
 
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="privacy-consent" name="privacy_consent" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="privacy-consent" class="font-medium text-gray-700">I consent to the collection of my email address, questions, and attachments for processing this support ticket.</label>
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-end">
-                            <button id="submitTicketBtn" type="submit"
-                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <button id="submitTicketBtn" type="submit" disabled
+                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
                                 Create Ticket
                             </button>
                         </div>
