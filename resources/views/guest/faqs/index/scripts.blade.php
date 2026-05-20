@@ -1,8 +1,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-
-        //Load Any errors
         @if (session('error'))
             Swal.fire({
                 toast: true,
@@ -15,44 +13,46 @@
                 position: 'top-end'
             });
         @endif
-        // FAQ Accordion Toggle
-        const faqHeaders = document.querySelectorAll('.faq-header');
 
-        faqHeaders.forEach(header => {
-            header.addEventListener('click', function() {
-                const item = this.closest('.faq-item');
-                const body = item.querySelector('.faq-body');
-                const chevron = item.querySelector('.faq-chevron');
-
-                // Toggle the hidden class
-                body.classList.toggle('hidden');
-
-                // Rotate the chevron
-                if (chevron) {
-                    chevron.classList.toggle('rotate-180');
-                }
-            });
+        const faqCards = document.querySelectorAll('.faq-card');
+        faqCards.forEach((card, idx) => {
+            card.addEventListener('click', () => selectQuestion(idx));
         });
 
-        // Search Functionality
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const faqItems = document.querySelectorAll('.faq-item');
-
-                faqItems.forEach(item => {
-                    const question = item.querySelector('h3').textContent.toLowerCase();
-                    const topic = item.querySelector('.text-gray-500')?.textContent
-                    .toLowerCase() || '';
-
-                    if (question.includes(searchTerm) || topic.includes(searchTerm)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendMessage();
             });
         }
     });
+
+    function selectQuestion(index) {
+        const cards = document.querySelectorAll('.faq-card');
+        if (!cards[index]) return;
+        const questionText = cards[index].querySelector('p').textContent.trim();
+        showFaqModal(questionText, "Thank you for your question! Our team will get back to you shortly or check the chatbot for instant answers.");
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        if (!input || !input.value.trim()) return;
+        const message = input.value.trim();
+        showFaqModal("Your question", message + "<br><br>Thank you! We'll respond via the chatbot or email shortly.");
+        input.value = '';
+    }
+
+    function showFaqModal(question, answer) {
+        const modal = document.getElementById('faqModal');
+        document.getElementById('modalQuestion').textContent = question;
+        document.getElementById('modalAnswer').innerHTML = answer;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('faqModal');
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
 </script>

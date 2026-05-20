@@ -3,95 +3,81 @@
 @section('title', 'Frequently Asked Questions')
 
 @section('content')
-    <div class="bg-white flex flex-col min-h-screen lg:h-screen">
+    <div class="bg-white flex flex-col min-h-screen">
         <!-- Navigation Bar - Using Component -->
         <x-public-nav active="home" :logo-text="'SANGKAY FAQs'" />
 
-        <!-- Main Content -->
-        <div class="flex-1 overflow-hidden">
-            <div class="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
-                    <!-- Left Column: Title and FAQs -->
-                    <div class="lg:col-span-1 flex flex-col lg:overflow-hidden mt-12 lg:mt-20">
-                        <div class="flex-shrink-0 pt-8 px-0 lg:pt-0 lg:px-0">
-                            <h1 class="text-4xl font-bold text-gray-900 mb-2 px-8 lg:px-12">Frequently Asked</h1>
-                            <h2 class="text-4xl font-bold text-gray-900 mb-8 px-8 lg:px-12">Questions</h2>
+        <!-- ChatGPT/Claude/Gemini Style Landing -->
+        <div class="flex-1 flex flex-col items-center justify-center px-4 pt-8 pb-24">
+            <div class="max-w-3xl w-full text-center">
+                <!-- Welcome Greeting -->
+                <div class="mb-8">
+                    <h1 class="text-5xl font-semibold text-gray-900 mb-3">Hi there! 👋</h1>
+                    <p class="text-2xl text-gray-700">How can I help you today?</p>
+                    <p class="mt-2 text-gray-500">Ask me anything about SANGKAY or browse popular questions below.</p>
+                </div>
 
-                            <!-- Search Bar -->
-                            <div class="mb-8 px-8 lg:px-12">
-                                <div class="relative">
-                                    <input type="text" id="searchInput" placeholder="Search question here"
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                                    <button class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- FAQ List - Scrollable -->
-                        <div class="flex-1 overflow-y-auto px-0 lg:px-0 pb-8">
-                            <div class="space-y-3 px-8 lg:px-12">
-                                @if ($faqs->isEmpty())
-                                    <div class="text-center py-12">
-                                        <p class="text-gray-600">No FAQs available at the moment.</p>
+                <!-- Top 3 Floating Question Cards -->
+                @if ($faqs->isNotEmpty())
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+                        @foreach ($faqs->take(3) as $index => $faq)
+                            <button class="faq-card group p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-orange-300 transition-all text-left">
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-1 w-8 h-8 flex-shrink-0 rounded-full bg-orange-100 flex items-center justify-center">
+                                        <span class="text-orange-600 text-sm font-medium">{{ $index + 1 }}</span>
                                     </div>
-                                @else
-                                    @foreach ($faqs as $faq)
-                                        <div
-                                            class="faq-item border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                                            <!-- FAQ Header (Question) -->
-                                            <button
-                                                class="faq-header w-full px-6 py-4 flex items-center justify-between bg-white hover:bg-gray-50 transition-colors text-left">
-                                                <div class="flex-1">
-                                                    <h3 class="text-gray-900 font-medium">{{ $faq->suggested_q }}</h3>
-                                                    @if ($faq->general_topic)
-                                                        <p class="text-sm text-gray-500 mt-1">{{ $faq->general_topic }}</p>
-                                                    @endif
-                                                </div>
-                                                <svg class="faq-chevron w-5 h-5 text-gray-400 flex-shrink-0 ml-4 transition-transform duration-300"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                                </svg>
-                                            </button>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-gray-900 font-medium leading-snug group-hover:text-orange-600 transition-colors">
+                                            {{ $faq->suggested_q }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
 
-                                            <!-- FAQ Body (Answer - Hidden by default) -->
-                                            <div class="faq-body hidden bg-gray-50 px-6 py-4 border-t border-gray-200">
-                                                <p class="text-gray-700 text-sm leading-relaxed">
-                                                    {!! nl2br(e($faq->suggested_a)) !!}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @endif
-                            </div>
+                <!-- Message Input Field -->
+                <div class="max-w-2xl mx-auto w-full">
+                    <div class="relative">
+                        <div class="flex items-center bg-white border border-gray-300 rounded-3xl shadow-sm focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-400 transition-all">
+                            <input type="text" id="messageInput" 
+                                   class="flex-1 bg-transparent px-6 py-4 text-gray-900 placeholder-gray-400 focus:outline-none text-base"
+                                   placeholder="Send a message...">
+                            <button onclick="sendMessage()"
+                                    class="mr-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-colors flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                            </button>
                         </div>
+                        <p class="text-xs text-gray-400 mt-2 text-center">Press enter to send • Click cards above to ask a question</p>
                     </div>
-
-                    <!-- Right Column: Illustration -->
-                    <div
-                        class="lg:col-span-1 
-                                flex items-center justify-center 
-                                mt-8 lg:mt-20 
-                                h-auto lg:h-full">
-
-                        <img src="{{ asset('faq_img.png') }}" alt="FAQ Illustration"
-                            class="w-full 
-                                    max-w-md mx-auto 
-                                    h-auto 
-                                    lg:w-full lg:h-full 
-                                    object-contain lg:object-contain">
-                    </div>
-
                 </div>
             </div>
         </div>
     </div>
-    @include('components.chatbot-widget')
+
+    <!-- FAQ Modal -->
+    <div id="faqModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full mx-4 overflow-hidden">
+            <div class="px-6 py-5 border-b flex justify-between items-center">
+                <h3 id="modalQuestion" class="font-semibold text-gray-900 pr-4"></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div class="px-6 py-6">
+                <p id="modalAnswer" class="text-gray-700 leading-relaxed"></p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end">
+                <button onclick="closeModal()" 
+                        class="px-5 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- @include('components.chatbot-widget') --}}
 @endsection
 @push('scripts')
     @include('guest.faqs.index.scripts')
