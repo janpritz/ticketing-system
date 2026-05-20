@@ -150,7 +150,7 @@
                             <path
                                 d="M9 2a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V6.414A2 2 0 0016.414 5L11 5 9.707 3.707A1 1 0 009 2zM2 6a1 1 0 00-1 1v8a1 1 0 001 1h6a1 1 0 001-1V7a1 1 0 00-1-1H2z" />
                         </svg>
-                        <span class="ms-3">FAQ Management</span>
+                        <span class="ms-3">RAQ Management</span>
                     </a>
                 </li>
                 <li>
