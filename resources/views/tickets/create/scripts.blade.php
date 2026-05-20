@@ -109,6 +109,15 @@
             form.submit();
         });
 
+        // Privacy consent checkbox enables submit button
+        const consentCheckbox = document.getElementById('privacy-consent');
+        const submitBtn = document.getElementById('submitTicketBtn');
+        if (consentCheckbox && submitBtn) {
+            consentCheckbox.addEventListener('change', function() {
+                submitBtn.disabled = !this.checked;
+            });
+        }
+
         // Map category name -> id and keep hidden role_id in sync
         const categoryMapCreate = {};
         @if (isset($roles) && count($roles))
