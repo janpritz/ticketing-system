@@ -73,7 +73,7 @@
                 faqsMap = new Map(items.map(f => [String(f.id), f]));
                 if (!items.length) {
                     faqsTbody.innerHTML =
-                        '<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No FAQs found.</td></tr>';
+                        '<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No RAQs found.</td></tr>';
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => {

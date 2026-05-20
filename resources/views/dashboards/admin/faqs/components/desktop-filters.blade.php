@@ -7,7 +7,7 @@
                     d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.71.71l.27.28v.79L20 21.5 21.5 20l-6-6zM10 15a5 5 0 110-10 5 5 0 010 10z" />
             </svg>
         </span>
-        <input id="q" type="text" placeholder="Search FAQs..."
+        <input id="q" type="text" placeholder="Search RAQs..."
             class="pl-9 pr-3 py-2 rounded-md border border-gray-200 text-sm w-72" />
     </label>
     <button id="searchBtn" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">Search</button>
