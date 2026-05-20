@@ -6,7 +6,7 @@ use App\Models\Faq;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class FaqService
+class FAQService
 {
     /**
      * Attempt to fetch FAQs from Rasa server, falling back to local DB on failure.

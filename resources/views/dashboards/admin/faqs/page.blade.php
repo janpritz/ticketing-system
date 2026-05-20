@@ -1,15 +1,15 @@
 <!-- FAQ Management -->
 @extends('layouts.admin')
 
-@section('title', 'FAQ Management')
+@section('title', 'RAQ Management')
 
 @section('admin-content')
     <div class="sm:px-2">
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold text-slate-900">FAQ Management</h1>
-                <p class="text-sm text-slate-500 mt-1">Review and approve FAQs from tickets</p>
+                <h1 class="text-2xl font-semibold text-slate-900">RAQ Management</h1>
+                <p class="text-sm text-slate-500 mt-1">Review and approve RAQs from tickets</p>
             </div>
             <div class="flex items-center gap-3">
                 <!-- Desktop filters (hidden on mobile) -->
