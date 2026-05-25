@@ -85,15 +85,15 @@
 
             <!-- Mobile Menu Items -->
             <div class="py-4">
-                <a href="{{ route('faqs.index') }}" @click="open = false"
-                   class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('faqs.index') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
+                <a href="{{ route('home') }}" @click="open = false"
+                   class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('home') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
                     Home
                 </a>
                 <a href="{{ route('about') }}" @click="open = false"
                    class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('about') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
                     About Us
                 </a>
-                <a href="{{ route('tickets.verify-otp', ['identifier' => rand(100000, 999999)]) }}" @click="open = false"
+                <a href="{{ route('tickets.verify') }}" @click="open = false"
                    class="block px-6 py-3 text-gray-800 hover:bg-gray-100 transition-colors border-l-4 {{ request()->routeIs('tickets.*') ? 'border-orange-500 bg-orange-50' : 'border-transparent' }}">
                     My Tickets
                 </a>

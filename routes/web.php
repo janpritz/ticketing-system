@@ -21,7 +21,7 @@ use App\Http\Controllers\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PublicFAQsController;
 use App\Http\Controllers\PushNotificationController;
-use App\Http\Controllers\RasaController;
+use App\Http\Controllers\Admin\RasaController;
 use App\Http\Controllers\Staff\AnnouncementController as StaffAnnouncementController;
 use App\Http\Controllers\Staff\DocumentController as StaffDocumentController;
 use App\Http\Controllers\Staff\ReportsController as StaffReportsController;
@@ -39,8 +39,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return redirect()->route('faqs.index');
-})->name('home')->middleware('throttle:10,1');
+    return redirect()->route('tickets.create');
+})->name('home')->middleware('throttle:30,1');
 
 // Service Worker: serve sw.js via Laravel to avoid 404 on some hosts
 Route::get('/sw.js', function () {
@@ -50,15 +50,12 @@ Route::get('/sw.js', function () {
 })->name('sw')->middleware('throttle:10:1');
 
 // Test widget
-Route::get('/test-widget', function () {
-    return view('test-widget');
-})->name('test-widget')->middleware('throttle:10,1');
+// Route::get('/test-widget', function () {
+//     return view('test-widget');
+// })->name('test-widget')->middleware('throttle:10,1');
 
-// Public FAQs
-Route::controller(PublicFAQsController::class)->group(function () {
-    Route::get('/faqs', 'index')->name('faqs.index');
-    Route::get('/api/faqs', 'getPublishedFAQs')->name('api.faqs');
-})->middleware('throttle:10,1');
+// Public FAQs (Chat landing page) - HIDDEN ENTIRELY per requirements
+// Route::get('/faqs', [PublicFAQsController::class, 'index'])->name('faqs.index')->middleware('throttle:10,1');
 
 // Static pages
 Route::view('/about', 'guest.faqs.about')->name('about')->middleware('throttle:10,1');
@@ -108,27 +105,30 @@ Route::controller(AuthController::class)->group(function () {
 | PUBLIC TICKET ROUTES (Email verification + OTP middleware)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['check.verified.email', 'otp.verified'])->group(function () {
-    // Ticket creation
-    Route::controller(TicketController::class)->group(function () {
-        Route::get('/tickets/create/{recepient_id?}', 'showCreateForm')->name('tickets.create');
-        Route::post('/tickets', 'store')->middleware('throttle:10,1')->name('tickets.store');
-    });
 
-    // Ticket viewing (catch-all)
-    Route::get('/tickets/{recepient_id?}', [TicketController::class, 'index'])->name('tickets.index');
-});
-
-// Ticket status viewing (public)
-Route::get('/tickets/status', [TicketController::class, 'showStatusForm'])->name('tickets.status.form');
-
-// Ticket email/OTP verification routes
+// 1. Verification & Public Routes (No verification middleware needed here)
 Route::controller(TicketController::class)->group(function () {
     Route::get('/tickets/verify-email', 'showVerifyEmail')->name('tickets.verify');
     Route::get('/tickets/verify-otp/{identifier?}', 'showVerifyOtp')->name('tickets.verify-otp')->middleware(['throttle:10,1']);
     Route::post('/tickets/send-otp', 'sendTicketOtp')->middleware('throttle:5,1')->name('tickets.send-otp');
     Route::post('/tickets/verify-otp', 'verifyTicketOtp')->middleware('throttle:10,1')->name('tickets.verify-otp-submit');
     Route::post('/tickets/resend-otp', 'resendTicketOtp')->middleware('throttle:5,1')->name('tickets.resend-otp');
+    Route::get('/tickets/status', 'showStatusForm')->name('tickets.status.form');
+});
+
+// 2. Protected Ticket Routes (Require verification)
+Route::middleware(['check.verified.email', 'otp.verified'])->group(function () {
+    Route::controller(TicketController::class)->group(function () {
+        // Ticket Index (View my tickets)
+        Route::get('/tickets', 'index')->name('tickets.index')->middleware('throttle:10,1');
+        
+        // Ticket Creation
+        Route::get('/tickets/create/{recepient_id?}', 'showCreateForm')->name('tickets.create');
+        Route::post('/tickets', 'store')->middleware('throttle:10,1')->name('tickets.store');
+        
+        // Catch-all (Redirects /tickets/{email} to /tickets/create/{email})
+        Route::get('/tickets/{recepient_id?}', 'redirectToCreateOrVerify');
+    });
 });
 
 // Ticket update/destroy (public - needs ticket ownership verification)
@@ -296,15 +296,15 @@ Route::middleware('auth')->group(function () {
                 });
             });
 
-            // Admin FAQs
-            Route::controller(FAQsController::class)->group(function () {
-                Route::middleware('throttle:30,1')->group(function () {
-                    Route::get('/faqs', 'index')->name('faqs.index');
-                    Route::get('/faqs/list', 'list')->name('faqs.list');
-                    Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
-                    Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
-                });
-            });
+// Admin FAQs
+             Route::controller(FAQsController::class)->group(function () {
+                 Route::middleware('throttle:30,1')->group(function () {
+                     Route::get('/faqs', 'index')->name('faqs.index');
+                     Route::get('/faqs/list', 'list')->name('faqs.list');
+                     Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
+                     Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
+                 });
+             });
 
             //Admin Staff Management
             Route::prefix('users')->name('users.')->group(function () {

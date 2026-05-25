@@ -53,7 +53,7 @@
 
                 if (verifiedEmail && verifiedEmail !== 'deleted' && verifiedEmail !== "") {
                     const cleanEmail = decodeURIComponent(verifiedEmail).replace(/^"|"$/g, '');
-                    window.location.href = `/tickets/create/${encodeURIComponent(cleanEmail)}`;
+                    window.location.href = `/tickets/create`;
                 } else {
                     window.location.href = "{{ route('tickets.verify-otp') }}";
                 }

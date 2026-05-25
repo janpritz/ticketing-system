@@ -67,7 +67,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
                     body: JSON.stringify({
-                        email: email,
+                        identifier: email,
                         is_resend: isResend
                     })
                 });
@@ -126,7 +126,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
                     body: JSON.stringify({
-                        email: email,
+                        identifier: email,
                         otp_code: otpCode
                     })
                 });
@@ -141,7 +141,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Email Verified!',
-                            text: 'Redirecting to your tickets...',
+                            text: 'Redirecting to create ticket page...',
                             position: 'top-end',
                             timer: 2000,
                             timerProgressBar: true,
@@ -149,14 +149,14 @@
                             toast: true,
                             willOpen: () => {
                                 setTimeout(() => {
-                                    window.location.href = `/tickets/${encodeURIComponent(email)}`;
+                                    window.location.href = `/tickets/create`;
                                 }, 2000);
                             }
                         });
                     } else {
                         // Fallback - redirect immediately
                         setTimeout(() => {
-                            window.location.href = `/tickets/${encodeURIComponent(email)}`;
+                            window.location.href = `/tickets/create/${encodeURIComponent(email)}`;
                         }, 1000);
                     }
                 } else {

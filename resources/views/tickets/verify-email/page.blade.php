@@ -12,7 +12,7 @@
                 </svg>
             </div>
             <h2 class="mt-4 text-2xl font-bold text-gray-900">Email Verification Required</h2>
-            <p class="mt-2 text-sm text-gray-600">Please enter your email address to view your tickets.</p>
+            <p class="mt-2 text-sm text-gray-600">Please enter your email address to create a support ticket.</p>
         </div>
 
         <!-- Email Input Form -->

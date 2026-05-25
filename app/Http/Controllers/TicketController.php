@@ -49,18 +49,18 @@ class TicketController extends Controller
         $email = $service->resolveEmailFromIdentifier($recepient_id ?? '');
         $roles = Role::pluck('name', 'id');
 
-        // Security: Check the cookie against the URL identifier
-        $cookieEmail = $request->cookie('verified_email');
+        // Security: Check session or cookie
+        $verifiedEmail = session('verified_email') ?? $request->cookie('verified_email');
 
-        // If they have no cookie, or the URL identifier resolves to a different email
-        if (!$cookieEmail || ($email && $cookieEmail !== $email)) {
-            return redirect()->route('tickets.verify-otp')
+        // If they have no verification, or the URL identifier resolves to a different email
+        if (!$verifiedEmail || ($email && $verifiedEmail !== $email)) {
+            return redirect()->route('tickets.verify', ['email' => $recepient_id])
                 ->with('error', 'Please verify your identity.');
         }
 
         return view('tickets.create.page', [
             'recepient_id' => $recepient_id,
-            'email' => $cookieEmail // Always use the verified cookie email for the form
+            'email' => $verifiedEmail // Always use the verified email for the form
         ], compact('roles'));
     }
 
@@ -105,9 +105,7 @@ class TicketController extends Controller
             ? 'Ticket created and assigned successfully!'
             : 'Ticket created successfully! Assignment is being processed.';
 
-        $redirectUrl = url('/tickets/' . $validated['recepient_id']) . '?email=' . rawurlencode($ticket->email);
-
-        return redirect()->to($redirectUrl)->with('success', $statusMessage);
+        return redirect()->route('tickets.create', ['recepient_id' => $validated['recepient_id']])->with('success', $statusMessage);
     }
 
 
@@ -127,7 +125,7 @@ class TicketController extends Controller
             $request->file('attachments', [])
         );
 
-        return redirect()->route('tickets.index', ['recepient_id' => $email])
+        return redirect()->route('tickets.create', ['recepient_id' => $email])
             ->with('success', 'Ticket created!');
     }
 
@@ -218,12 +216,22 @@ class TicketController extends Controller
         return view('tickets.status');
     }
 
+    public function redirectToCreateOrVerify(Request $request, $recepient_id = null)
+    {
+        return redirect()->route('tickets.create', ['recepient_id' => $recepient_id]);
+    }
 
     /**
      * Show email verification page
      */
     public function showVerifyEmail(Request $request)
     {
+        $verifiedEmail = $request->cookie('verified_email');
+
+        if ($verifiedEmail && $verifiedEmail !== 'deleted') {
+            return redirect()->route('tickets.create');
+        }
+
         $email = $request->query('email');
         return view('tickets.verify-email.page', compact('email'));
     }
@@ -237,8 +245,8 @@ class TicketController extends Controller
         $verifiedEmail = $request->cookie('verified_email');
 
         if ($verifiedEmail && $verifiedEmail !== 'deleted') {
-            // If already verified, redirect to tickets with their email
-            return redirect()->route('tickets.index', ['email' => $verifiedEmail]);
+            // If already verified, redirect to create ticket page
+            return redirect()->route('tickets.create');
         }
 
         // 2. If no identifier in the URL, redirect to a version with a random one
@@ -327,27 +335,24 @@ class TicketController extends Controller
                 ], 422);
             }
 
-            // Use the request instance to ensure the session is bound to this specific call
-            $request->session()->put('otp_verified', true);
-            $request->session()->put('verified_email', $email);
-
-            // Force the session to write to the driver (file/database) immediately
-            $request->session()->save();
-
-            $cookie = cookie('verified_email', $email, 60, '/', null, false, false);
-            // --- NEW: Store in Session for Middleware Security ---
+            // 3. Establish Session & Cookie
+            // Store in session for immediate middleware security
             session([
                 'otp_verified' => true,
                 'verified_email' => $email,
                 'otp_verified_at' => now(),
             ]);
 
-            $cookie = cookie('verified_email', $email, 60, '/', null, true, false);
+            // Save session immediately
+            $request->session()->save();
+
+            // Create a 60-minute cookie for persistence
+            $cookie = cookie('verified_email', $email, 60, '/', null, false, false);
 
             return response()->json([
                 'success'      => true,
                 'message'      => 'OTP verified successfully!',
-                'redirect_url' => route('tickets.index', ['email' => $email])
+                'redirect_url' => route('tickets.create')
             ])->withCookie($cookie);
         } catch (\Throwable $e) {
             // This is where that "Variable variable" error was being caught

@@ -17,26 +17,24 @@ class EnsureOtpVerified
     // In your EnsureOtpVerified Middleware
     public function handle(Request $request, Closure $next)
     {
-        $cookieEmail = $request->cookie('verified_email');
-
-        // 1. EXISTENCE CHECK
-        if (!$cookieEmail || $cookieEmail === 'deleted') {
-            return redirect()->route('tickets.verify-otp')
-                ->with('error', 'Your session has expired.');
-                // ->withoutCookie('verified_email');
-        }
+        // 1. Get verified email from session or cookie
+        $verifiedEmail = session('verified_email') ?? $request->cookie('verified_email');
 
         // 2. IDENTIFIER RESOLUTION
         // Check route param first (recepient_id), then query param (email)
         $identifier = $request->route('recepient_id') ?? $request->query('email');
 
-        // 3. SECURITY & SYNC CHECK
-        // If an identifier exists in the URL, it MUST match the cookie email
-        // (Note: This assumes recepient_id is the email. If it's a numeric ID, you'd need your service here)
-        if ($identifier && $identifier !== $cookieEmail) {
-            return redirect()->route('tickets.verify-otp')
+        // 3. EXISTENCE CHECK
+        if (!$verifiedEmail || $verifiedEmail === 'deleted') {
+            return redirect()->route('tickets.verify', ['email' => $identifier])
+                ->with('error', 'Your session has expired.');
+        }
+
+        // 4. SECURITY & SYNC CHECK
+        // If an identifier exists in the URL, it MUST match the verified email
+        if ($identifier && $identifier !== $verifiedEmail) {
+            return redirect()->route('tickets.verify', ['email' => $identifier])
                 ->with('error', 'Unauthorized access.');
-                // ->withoutCookie('verified_email');
         }
 
         return $next($request);

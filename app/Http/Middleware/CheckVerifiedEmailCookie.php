@@ -15,14 +15,14 @@ class CheckVerifiedEmailCookie
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $verifiedEmail = $request->cookie('verified_email');
+        $verifiedEmail = session('verified_email') ?? $request->cookie('verified_email');
 
         // 1. If they enter the URL exactly as /tickets/verify-otp, 
         // redirect them to include a random 6-digit identifier.
         if ($request->is('tickets/verify-otp') && !$request->route('identifier')) {
             $randomId = rand(100000, 999999);
 
-            // Build the new URL with the random ID and keep the email cookie if it exists
+            // Build the new URL with the random ID and keep the email if it exists
             $query = $verifiedEmail ? ['email' => $verifiedEmail] : [];
 
             return redirect()->to(url("tickets/verify-otp/{$randomId}", $query));

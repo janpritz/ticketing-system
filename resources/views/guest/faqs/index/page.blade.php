@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="bg-gray-50 flex flex-col min-h-screen">
-    <x-public-nav active="home" :logo-text="'SANGKAY FAQs'" />
+    <x-public-nav active="home" :logo-text="'SANGKAY TICKETS'" />
 
     <div class="flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-24">
         <div class="max-w-2xl w-full space-y-12">

@@ -5,10 +5,10 @@
             <!-- LEFT GROUP (logo + menu) -->
             <div class="flex items-center gap-5">
 
-                <a href="{{ route('faqs.index') }}" class="flex items-center">
+                <a href="{{ route('home') }}" class="flex items-center">
                     <img src="{{ asset('logo-white.png') }}" alt="Sangkay Logo" class="h-8 w-8">
                     <span class="text-white font-bold text-sm tracking-wider ml-2">
-                        {{ 'SANGKAY FAQs' }}
+                        {{ 'SANGKAY TICKETS' }}
                     </span>
                 </a>
 
@@ -20,17 +20,21 @@
                 @endphp
 
                 <div class="hidden md:flex items-center gap-3">
+                    {{-- 
                     <a href="{{ route('faqs.index') }}"
                         class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'home' ? $linkActiveClasses : $linkInactiveClasses }}">
                         Home
                     </a>
+                    --}}
 
+                    {{-- 
                     <a href="{{ route('about') }}"
                         class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'about' ? $linkActiveClasses : $linkInactiveClasses }}">
                         About Us
-                    </a>
+                    </a> 
+                    --}}
 
-                    <a href="{{ route('tickets.verify-otp', ['identifier' => rand(100000, 999999)]) }}"
+                    <a href="{{ route('tickets.index') }}"
                         class="{{ $linkBaseClasses }} {{ isset($active) && $active === 'tickets.index' ? $linkActiveClasses : $linkInactiveClasses }}">
                         My Tickets
                     </a>
