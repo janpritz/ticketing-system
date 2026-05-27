@@ -135,8 +135,10 @@ class FAQService
         $query = StagedFaq::query();
 
         // 1. Status Filter
-        $status = $params['status'] ?? 'pending';
-        $query->where('status', $status);
+        $status = $params['status'] ?? 'all';
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
 
         // 2. Search Logic
         if ($search = ($params['search'] ?? null)) {

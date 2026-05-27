@@ -296,15 +296,17 @@ Route::middleware('auth')->group(function () {
                 });
             });
 
-// Admin FAQs
-             Route::controller(FAQsController::class)->group(function () {
-                 Route::middleware('throttle:30,1')->group(function () {
-                     Route::get('/faqs', 'index')->name('faqs.index');
-                     Route::get('/faqs/list', 'list')->name('faqs.list');
-                     Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
-                     Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
-                 });
-             });
+            // Admin FAQs
+              Route::controller(FAQsController::class)->group(function () {
+                  Route::middleware('throttle:30,1')->group(function () {
+                      Route::get('/faqs', 'index')->name('faqs.index');
+                      Route::get('/faqs/list', 'list')->name('faqs.list');
+                      Route::post('/faqs', 'store')->name('faqs.store');
+                      Route::post('/faqs/update-status', 'updateStatus')->name('faqs.update-status');
+                      Route::post('/faqs/process-analysis', 'processAnalysis')->name('faqs.process-analysis');
+                      Route::delete('/faqs/{faq}', 'destroy')->whereNumber('faq')->name('faqs.destroy');
+                  });
+              });
 
             //Admin Staff Management
             Route::prefix('users')->name('users.')->group(function () {

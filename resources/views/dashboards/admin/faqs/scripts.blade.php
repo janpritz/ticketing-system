@@ -44,7 +44,7 @@
                     const statusEl = document.getElementById('filterStatus');
                     const perEl = document.getElementById('filterPerPage');
 
-                    const statusVal = statusEl ? statusEl.value : 'pending';
+                    const statusVal = statusEl ? statusEl.value : 'all';
                     const per = perEl ? perEl.value : '25';
 
                     const sep = LIST_URL.includes('?') ? '&' : '?';
@@ -73,16 +73,24 @@
                 faqsMap = new Map(items.map(f => [String(f.id), f]));
                 if (!items.length) {
                     faqsTbody.innerHTML =
-                        '<tr><td colspan="4" class="px-5 py-10 text-center text-sm text-gray-500">No RAQs found.</td></tr>';
+                        '<tr><td colspan="5" class="px-5 py-10 text-center text-sm text-gray-500">No RAQs found.</td></tr>';
                     return;
                 }
                 faqsTbody.innerHTML = items.map(f => {
                     const actionButtons = getActionButtons(f);
+                    const statusClass = getStatusClass(f.status);
+                    const statusLabel = f.status.charAt(0).toUpperCase() + f.status.slice(1);
+                    
                     return `
                 <tr class="hover:bg-gray-50">
                     <td class="py-4 pl-5 pr-3">${escapeHtml((f.general_topic || '').slice(0, 50))}</td>
                     <td class="px-3 py-4">${escapeHtml((f.suggested_q || '').slice(0, 80))}</td>
                     <td class="px-3 py-4">${escapeHtml((f.suggested_a || '').slice(0, 100))}</td>
+                    <td class="px-3 py-4 text-center">
+                        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${statusClass}">
+                            ${statusLabel}
+                        </span>
+                    </td>
                     <td class="px-3 py-4 space-x-2">${actionButtons}</td>
                 </tr>
             `;
@@ -197,7 +205,7 @@
                 resetFiltersBtn.addEventListener('click', () => {
                     const statusEl = document.getElementById('filterStatus');
                     const perEl = document.getElementById('filterPerPage');
-                    if (statusEl) statusEl.value = 'pending';
+                    if (statusEl) statusEl.value = 'all';
                     if (perEl) perEl.value = '25';
                     if (qInput) qInput.value = '';
                     if (qMobileInput) qMobileInput.value = '';
@@ -259,6 +267,149 @@
                                     Swal.fire({
                                         title: 'Error!',
                                         text: data.message || 'Failed to update FAQ.',
+                                        icon: 'error',
+                                        confirmButtonColor: '#ef4444'
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: 'Error: ' + error.message,
+                                    icon: 'error',
+                                    confirmButtonColor: '#ef4444'
+                                });
+                            });
+                    }
+                });
+            };
+
+            // Global create function
+            window.createFAQ = function() {
+                // Get form values
+                const generalTopic = document.getElementById('general_topic').value.trim();
+                const semanticKey = document.getElementById('semantic_key').value.trim();
+                const suggestedQ = document.getElementById('suggested_q').value.trim();
+                const suggestedA = document.getElementById('suggested_a').value.trim();
+                const ticketId = document.getElementById('ticket_id').value || null;
+                const status = document.getElementById('faq_status').value;
+
+                // Simple validation
+                if (!generalTopic || !semanticKey || !suggestedQ || !suggestedA) {
+                    Swal.fire({
+                        title: 'Validation Error',
+                        text: 'Please fill in all required fields.',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                    return;
+                }
+
+                // Show loading state
+                const createBtn = document.getElementById('createFAQBtn');
+                const originalBtnText = createBtn.innerHTML;
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<span class="spinner mr-2"></span>Creating...';
+
+                // Send request
+                fetch('{{ route('admin.faqs.store') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf
+                        },
+                        body: JSON.stringify({
+                            general_topic: generalTopic,
+                            semantic_key: semanticKey,
+                            suggested_q: suggestedQ,
+                            suggested_a: suggestedA,
+                            ticket_id: ticketId,
+                            status: status
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Reset button
+                        createBtn.disabled = false;
+                        createBtn.innerHTML = originalBtnText;
+
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Success!',
+                                text: 'FAQ created successfully.',
+                                icon: 'success',
+                                confirmButtonColor: '#3b82f6'
+                            }).then(() => {
+                                // Clear form
+                                document.getElementById('general_topic').value = '';
+                                document.getElementById('semantic_key').value = '';
+                                document.getElementById('suggested_q').value = '';
+                                document.getElementById('suggested_a').value = '';
+                                document.getElementById('ticket_id').value = '';
+                                document.getElementById('faq_status').value = 'pending';
+                                
+                                // Reload list
+                                fetchList(currentPage);
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: data.message || 'Failed to create FAQ.',
+                                icon: 'error',
+                                confirmButtonColor: '#ef4444'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        // Reset button
+                        createBtn.disabled = false;
+                        createBtn.innerHTML = originalBtnText;
+                        
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Error: ' + error.message,
+                            icon: 'error',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    });
+            };
+
+            // Global delete function
+            window.deleteFAQ = function(faqId) {
+                Swal.fire({
+                    title: 'Confirm Delete',
+                    text: 'Are you sure you want to delete this FAQ? This action cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Delete',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Show loading state on button (we'll need to pass the button element or find another way)
+                        fetch(`{{ route('admin.faqs.destroy', ':id') }}`.replace(':id', faqId), {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrf
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire({
+                                        title: 'Deleted!',
+                                        text: 'FAQ has been deleted.',
+                                        icon: 'success',
+                                        confirmButtonColor: '#3b82f6'
+                                    }).then(() => {
+                                        fetchList(currentPage);
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: data.message || 'Failed to delete FAQ.',
                                         icon: 'error',
                                         confirmButtonColor: '#ef4444'
                                     });
@@ -412,6 +563,65 @@
                 if (unprocessedCount === 0) {
                     analyzeBtn.disabled = true;
                 }
+
+                // Modal handlers for create FAQ
+                const createFAQModal = document.getElementById('create-faq-modal');
+                const openCreateFAQModal = document.getElementById('openCreateFAQModal');
+                const closeCreateFAQModal = document.getElementById('closeCreateFAQModal');
+                const cancelCreateFAQ = document.getElementById('cancelCreateFAQ');
+                const createFAQBtn = document.getElementById('createFAQBtn');
+
+                if (openCreateFAQModal && createFAQModal) {
+                    openCreateFAQModal.addEventListener('click', () => {
+                        createFAQModal.classList.remove('hidden');
+                    });
+                }
+
+                if (closeCreateFAQModal && createFAQModal) {
+                    closeCreateFAQModal.addEventListener('click', () => {
+                        createFAQModal.classList.add('hidden');
+                        // Reset form
+                        document.getElementById('general_topic').value = '';
+                        document.getElementById('semantic_key').value = '';
+                        document.getElementById('suggested_q').value = '';
+                        document.getElementById('suggested_a').value = '';
+                        document.getElementById('ticket_id').value = '';
+                        document.getElementById('faq_status').value = 'pending';
+                    });
+                }
+
+                if (cancelCreateFAQ && createFAQModal) {
+                    cancelCreateFAQ.addEventListener('click', () => {
+                        createFAQModal.classList.add('hidden');
+                        // Reset form
+                        document.getElementById('general_topic').value = '';
+                        document.getElementById('semantic_key').value = '';
+                        document.getElementById('suggested_q').value = '';
+                        document.getElementById('suggested_a').value = '';
+                        document.getElementById('ticket_id').value = '';
+                        document.getElementById('faq_status').value = 'pending';
+                    });
+                }
+
+                if (createFAQBtn) {
+                    createFAQBtn.addEventListener('click', () => {
+                        window.createFAQ();
+                    });
+                }
+
+                // Close modal on ESC key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !createFAQModal.classList.contains('hidden')) {
+                        createFAQModal.classList.add('hidden');
+                        // Reset form
+                        document.getElementById('general_topic').value = '';
+                        document.getElementById('semantic_key').value = '';
+                        document.getElementById('suggested_q').value = '';
+                        document.getElementById('suggested_a').value = '';
+                        document.getElementById('ticket_id').value = '';
+                        document.getElementById('faq_status').value = 'pending';
+                    }
+                });
 
                 fetchList(1);
             });

@@ -6,9 +6,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\PublicFAQsController;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 use App\Http\Controllers\RasaController;
+
+// Public FAQs API (published only, no auth)
+Route::get('/faqs', [PublicFAQsController::class, 'getPublishedFAQs'])
+    ->middleware('throttle:30,1')
+    ->name('api.faqs.published');
 
 
 
