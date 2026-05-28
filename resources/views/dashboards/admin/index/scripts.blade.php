@@ -591,7 +591,45 @@
         }
 
         // Fetch Rasa status
+        async function checkExternalRasaStatus() {
+            const statusText = document.getElementById('rasaStatusText');
+            const statusCard = document.getElementById('rasaStatusCard');
+            const statusIcon = document.getElementById('rasaStatusIcon');
+
+            if (!statusText) return;
+
+            try {
+                // External Rasa status check
+                const response = await fetch('https://sangkay-chatbot.onrender.com/status', {
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // If model_file contains a value, the server is considered online
+                    if (data.model_file) {
+                        statusText.textContent = 'Online';
+                        statusText.className = 'text-2xl sm:text-2xl font-bold text-green-600';
+                        if (statusIcon) statusIcon.className = 'rounded-md p-2 border border-green-200 bg-green-50 text-green-600';
+                    } else {
+                        statusText.textContent = 'Offline';
+                        statusText.className = 'text-2xl sm:text-2xl font-bold text-red-600';
+                        if (statusIcon) statusIcon.className = 'rounded-md p-2 border border-red-200 bg-red-50 text-red-600';
+                    }
+                } else {
+                    throw new Error('Network response was not ok');
+                }
+            } catch (error) {
+                statusText.textContent = 'Offline';
+                statusText.className = 'text-2xl sm:text-2xl font-bold text-red-600';
+                if (statusIcon) statusIcon.className = 'rounded-md p-2 border border-red-200 bg-red-50 text-red-600';
+            }
+        }
+
         async function fetchRasaStatus() {
+            // Also check external status for the card
+            checkExternalRasaStatus();
+
             try {
                 const response = await fetch('{{ route("admin.rasa-server.status") }}', {
                     headers: {
@@ -683,6 +721,15 @@
             refreshStatusBtn.addEventListener('click', () => {
                 fetchRasaStatus();
                 fetchTrainingHistory();
+            });
+        }
+
+        const rasaStatusCard = document.getElementById('rasaStatusCard');
+        if (rasaStatusCard) {
+            rasaStatusCard.addEventListener('click', () => {
+                const statusText = document.getElementById('rasaStatusText');
+                if (statusText) statusText.textContent = 'Checking...';
+                checkExternalRasaStatus();
             });
         }
 
