@@ -23,7 +23,7 @@
 
                 <!-- Create FAQ Button -->
                 <button id="openCreateFAQModal"
-                        class="ml-2 rounded-md border border-blue-500 bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                        class="ml-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                         onclick="document.getElementById('create-faq-modal').classList.remove('hidden')">
                     Create FAQ
                 </button>
@@ -74,13 +74,7 @@
                                       rows="4" placeholder="Enter suggested answer"></textarea>
                         </div>
                         <div class="flex items-center gap-4">
-                            <div>
-                                <label for="ticket_id" class="block text-sm font-medium text-gray-700 mb-1">Related Ticket ID (Optional)</label>
-                                <input type="number" id="ticket_id" name="ticket_id"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                       placeholder="Enter ticket ID">
-                            </div>
-                            <div>
+                            <div class="w-full">
                                 <label for="faq_status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                 <select id="faq_status" name="faq_status"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">

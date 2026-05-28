@@ -291,7 +291,6 @@
                 const semanticKey = document.getElementById('semantic_key').value.trim();
                 const suggestedQ = document.getElementById('suggested_q').value.trim();
                 const suggestedA = document.getElementById('suggested_a').value.trim();
-                const ticketId = document.getElementById('ticket_id').value || null;
                 const status = document.getElementById('faq_status').value;
 
                 // Simple validation
@@ -323,7 +322,6 @@
                             semantic_key: semanticKey,
                             suggested_q: suggestedQ,
                             suggested_a: suggestedA,
-                            ticket_id: ticketId,
                             status: status
                         })
                     })
@@ -345,7 +343,6 @@
                                 document.getElementById('semantic_key').value = '';
                                 document.getElementById('suggested_q').value = '';
                                 document.getElementById('suggested_a').value = '';
-                                document.getElementById('ticket_id').value = '';
                                 document.getElementById('faq_status').value = 'pending';
                                 
                                 // Reload list
@@ -585,7 +582,6 @@
                         document.getElementById('semantic_key').value = '';
                         document.getElementById('suggested_q').value = '';
                         document.getElementById('suggested_a').value = '';
-                        document.getElementById('ticket_id').value = '';
                         document.getElementById('faq_status').value = 'pending';
                     });
                 }
@@ -598,7 +594,6 @@
                         document.getElementById('semantic_key').value = '';
                         document.getElementById('suggested_q').value = '';
                         document.getElementById('suggested_a').value = '';
-                        document.getElementById('ticket_id').value = '';
                         document.getElementById('faq_status').value = 'pending';
                     });
                 }
@@ -618,7 +613,6 @@
                         document.getElementById('semantic_key').value = '';
                         document.getElementById('suggested_q').value = '';
                         document.getElementById('suggested_a').value = '';
-                        document.getElementById('ticket_id').value = '';
                         document.getElementById('faq_status').value = 'pending';
                     }
                 });
