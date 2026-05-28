@@ -192,20 +192,139 @@
 
                         <div class="flex items-start">
                             <div class="flex items-center h-5">
-                                <input id="privacy-consent" name="privacy_consent" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                <input id="privacy-consent" name="privacy_consent" type="checkbox"
+                                    class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
                             </div>
                             <div class="ml-3 text-sm">
-                                <label for="privacy-consent" class="font-medium text-gray-700">I consent to the collection of my email address, questions, and attachments for processing this support ticket.</label>
+                                <label for="privacy-consent" class="font-medium text-gray-700">
+                                    I consent to the collection of my email address, questions, and attachments for
+                                    processing this support ticket in accordance with the
+                                    <button type="button" id="open-privacy-modal"
+                                        class="text-indigo-600 hover:text-indigo-500 underline focus:outline-none">Data
+                                        Privacy Policy</button>
+                                    and
+                                    <button type="button" id="open-terms-modal"
+                                        class="text-indigo-600 hover:text-indigo-500 underline focus:outline-none">Terms
+                                        of Service</button>.
+                                </label>
                             </div>
                         </div>
 
                         <div class="flex items-center justify-end">
                             <button id="submitTicketBtn" type="submit" disabled
                                 class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                                Create Ticket
+                                Submit
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Privacy Policy Modal -->
+    <div id="privacyModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-policy></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div
+                class="w-full max-w-2xl bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="h-14 flex-shrink-0 flex items-center justify-between px-6 border-b bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Data Privacy Policy</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" data-close-policy>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto text-gray-700 space-y-4">
+                    <p class="font-semibold">Your privacy is important to us.</p>
+                    <p>At SANGKAY, we are committed to protecting your personal data in compliance with applicable data
+                        privacy laws. This policy outlines how we handle the information you provide through our support
+                        ticketing system.</p>
+
+                    <h4 class="font-bold text-gray-900">1. Information Collection</h4>
+                    <p>We collect your email address, ticket category, question details, and any uploaded attachments to
+                        effectively process and respond to your support requests.</p>
+
+                    <h4 class="font-bold text-gray-900">2. Purpose of Use</h4>
+                    <p>The collected information is used solely for:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Identifying your account and verifying your identity.</li>
+                        <li>Routing your ticket to the appropriate department/staff.</li>
+                        <li>Providing technical or administrative support.</li>
+                        <li>Improving our support services through anonymized analytics.</li>
+                    </ul>
+
+                    <h4 class="font-bold text-gray-900">3. Data Protection</h4>
+                    <p>We implement appropriate technical and organizational measures to protect your data against
+                        unauthorized access, loss, or alteration. Access to your information is restricted to authorized
+                        personnel who need it to fulfill their duties.</p>
+
+                    <h4 class="font-bold text-gray-900">4. Data Retention</h4>
+                    <p>We retain your ticket information for as long as necessary to resolve your request and for a
+                        reasonable period thereafter for record-keeping and quality assurance purposes, unless a longer
+                        retention period is required by law.</p>
+
+                    <h4 class="font-bold text-gray-900">5. Your Rights</h4>
+                    <p>You have the right to access, correct, or request the deletion of your personal data. For any
+                        concerns regarding your privacy, please contact our Data Protection Office.</p>
+                </div>
+                <div class="p-4 flex-shrink-0 flex justify-end border-t bg-gray-50">
+                    <button type="button"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
+                        data-close-policy>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="termsModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-close-terms></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div
+                class="w-full max-w-2xl bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="h-14 flex-shrink-0 flex items-center justify-between px-6 border-b bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-900">Terms of Service</h3>
+                    <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" data-close-terms>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto text-gray-700 space-y-4">
+                    <p>By using the SANGKAY Ticketing System, you agree to the following terms and conditions:</p>
+
+                    <h4 class="font-bold text-gray-900">1. Proper Use</h4>
+                    <p>Users are expected to use the system for legitimate support inquiries related to SANGKAY
+                        services. Any misuse of the platform, including the submission of offensive, illegal, or
+                        malicious content, is strictly prohibited.</p>
+
+                    <h4 class="font-bold text-gray-900">2. User Responsibility</h4>
+                    <p>You are responsible for the accuracy and completeness of the information you provide. Please do
+                        not include sensitive personal information (such as passwords or credit card numbers) in your
+                        tickets unless specifically requested via secure channels.</p>
+
+                    <h4 class="font-bold text-gray-900">3. System Availability</h4>
+                    <p>While we strive to keep the ticketing system available at all times, SANGKAY does not guarantee
+                        uninterrupted access and may perform maintenance as needed.</p>
+
+                    <h4 class="font-bold text-gray-900">4. Response Times</h4>
+                    <p>We aim to respond to all tickets in a timely manner, but response times may vary depending on the
+                        volume of requests and the complexity of the issue.</p>
+
+                    <h4 class="font-bold text-gray-900">5. Changes to Terms</h4>
+                    <p>SANGKAY reserves the right to update these terms at any time. Continued use of the system after
+                        changes are posted constitutes acceptance of the new terms.</p>
+                </div>
+                <div class="p-4 flex-shrink-0 flex justify-end border-t bg-gray-50">
+                    <button type="button"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm"
+                        data-close-terms>Close</button>
                 </div>
             </div>
         </div>

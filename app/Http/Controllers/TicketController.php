@@ -105,7 +105,7 @@ class TicketController extends Controller
             ? 'Ticket created and assigned successfully!'
             : 'Ticket created successfully! Assignment is being processed.';
 
-        return redirect()->route('tickets.create', ['recepient_id' => $validated['recepient_id']])->with('success', $statusMessage);
+        return redirect()->route('tickets.index')->with('success', $statusMessage);
     }
 
 
@@ -125,7 +125,7 @@ class TicketController extends Controller
             $request->file('attachments', [])
         );
 
-        return redirect()->route('tickets.create', ['recepient_id' => $email])
+        return redirect()->route('tickets.index')
             ->with('success', 'Ticket created!');
     }
 

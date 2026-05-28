@@ -20,7 +20,7 @@ class StoreTicketRequest extends FormRequest
         return [
             'role_id'              => 'nullable|integer|exists:roles,id',
             'question'             => 'required|string',
-            'recepient_id'         => ['required'],
+            'recepient_id'         => ['nullable'],
             'attachments'          => 'nullable|array|max:5',
             'attachments.*'        => 'image|mimes:jpeg,png,jpg,gif|max:5120',
             'g-recaptcha-response' => 'required|captcha',

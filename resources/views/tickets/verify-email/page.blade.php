@@ -47,12 +47,41 @@
             </div>
         </div>
 
-        <div class="mt-6 text-center">
+        <!-- <div class="mt-6 text-center">
             <a href="{{ route('tickets.status.form') }}" class="text-sm text-indigo-600 hover:text-indigo-500">
                 Back to Check Status
             </a>
+        </div> -->
+    </div>
+</div>
+<div id="cookie-modal" class="fixed bottom-4 right-4 z-50 hidden">
+    <div class="bg-white rounded-lg shadow-2xl p-6 max-w-sm w-full border border-gray-200">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold text-gray-900">Cookie Preferences</h3>
+                <p class="mt-1 text-xs text-gray-600">We use cookies to improve your experience. By continuing, you accept our cookie policy.</p>
+<div class="mt-4 flex gap-2">
+                    <button type="button" id="accept-cookies" class="flex-1 inline-flex justify-center py-2 px-3 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Accept
+                    </button>
+                    <button type="button" id="decline-cookies" class="flex-1 inline-flex justify-center py-2 px-3 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Decline
+                    </button>
+                </div>
+            </div>
+            <button type="button" id="close-cookie-modal" class="text-gray-400 hover:text-gray-600">
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     </div>
 </div>
+
 @include('tickets.verify-email.scripts')
 @endsection

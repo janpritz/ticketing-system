@@ -24,7 +24,7 @@ class SubmitTicketRequest extends FormRequest
         return [
             'role_id'              => 'nullable|integer|exists:roles,id',
             'question'             => 'required|string',
-            'recepient_id'         => ['required'],
+            'recepient_id'         => ['nullable'],
             'email'                => 'required|email|max:255',
             'attachments'          => 'nullable|array|max:5',
             'attachments.*'        => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max

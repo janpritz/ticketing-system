@@ -9,15 +9,46 @@
         const verifyOtpBtn = document.getElementById('verify-otp-btn');
         const resendOtpBtn = document.getElementById('resend-otp-btn');
         const otpTimer = document.getElementById('otp-timer');
-        
+
+        // Cookie Modal
+        const cookieModal = document.getElementById('cookie-modal');
+        const acceptCookies = document.getElementById('accept-cookies');
+        const declineCookies = document.getElementById('decline-cookies');
+        const closeCookieModal = document.getElementById('close-cookie-modal');
+
         let currentEmail = '';
         let otpTimerInterval = null;
         let countdown = 15 * 60; // 15 minutes in seconds
 
+        // Show cookie modal if not yet accepted
+        if (!localStorage.getItem('cookies-accepted')) {
+            setTimeout(function() {
+                cookieModal.classList.remove('hidden');
+            }, 1000);
+        }
+
+        function hideCookieModal() {
+            cookieModal.classList.add('hidden');
+        }
+
+        acceptCookies?.addEventListener('click', function() {
+            localStorage.setItem('cookies-accepted', 'accepted');
+            hideCookieModal();
+        });
+
+        declineCookies?.addEventListener('click', function() {
+            localStorage.setItem('cookies-accepted', 'declined');
+            hideCookieModal();
+        });
+
+        closeCookieModal?.addEventListener('click', function() {
+            hideCookieModal();
+        });
+
         // Get email from URL if present
         const urlParams = new URLSearchParams(window.location.search);
         const urlEmail = urlParams.get('email');
-        
+
         // Use email from URL if available
         if (urlEmail) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,7 +68,7 @@
             const minutes = Math.floor(countdown / 60);
             const seconds = countdown % 60;
             otpTimer.textContent = `Code expires in ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
+
             if (countdown <= 0) {
                 clearInterval(otpTimerInterval);
                 otpTimer.textContent = 'Code has expired. Please request a new one.';
@@ -58,7 +89,8 @@
         async function sendOTP(email, isResend = false) {
             try {
                 sendOtpBtn.disabled = true;
-                sendOtpBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Sending...';
+                resendOtpBtn.disabled = true;
+                sendOtpBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Sending...';
 
                 const response = await fetch('{{ route("tickets.send-otp") }}', {
                     method: 'POST',
@@ -79,7 +111,7 @@
                     otpForm.classList.remove('hidden');
                     resetTimer();
                     startTimer();
-                    
+
                     // Show success message
                     if (window.Swal) {
                         Swal.fire({
@@ -109,6 +141,7 @@
                 }
             } finally {
                 sendOtpBtn.disabled = false;
+                resendOtpBtn.disabled = false;
                 sendOtpBtn.textContent = 'Send Verification Code';
             }
         }
@@ -117,7 +150,7 @@
         async function verifyOTP(email, otpCode) {
             try {
                 verifyOtpBtn.disabled = true;
-                verifyOtpBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Verifying...';
+                verifyOtpBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Verifying...';
 
                 const response = await fetch('{{ route("tickets.verify-otp") }}', {
                     method: 'POST',
@@ -136,7 +169,7 @@
                 if (data.success) {
                     // Verification successful - redirect to tickets page
                     localStorage.setItem('verified_email_' + email, 'true');
-                    
+
                     if (window.Swal) {
                         Swal.fire({
                             icon: 'success',
@@ -232,9 +265,53 @@
             verifyOTP(currentEmail, otpCode);
         });
 
-        resendOtpBtn.addEventListener('click', function() {
-            if (currentEmail) {
-                sendOTP(currentEmail, true);
+        resendOtpBtn.addEventListener('click', async function() {
+            if (!currentEmail) return;
+            resendOtpBtn.disabled = true;
+            resendOtpBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Sending...';
+            resetTimer();
+            try {
+                const response = await fetch('{{ route("tickets.send-otp") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        identifier: currentEmail,
+                        is_resend: true
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    startTimer();
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: 'Verification code resent!',
+                            position: 'top-end',
+                            timer: 3000,
+                            timerProgressBar: true,
+                            showConfirmButton: false,
+                            toast: true
+                        });
+                    }
+                } else {
+                    throw new Error(data.message || 'Failed to resend code');
+                }
+            } catch (error) {
+                console.error('Resend OTP error:', error);
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Failed to resend code',
+                    });
+                }
+            } finally {
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Resend';
             }
         });
 
